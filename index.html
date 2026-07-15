@@ -1,0 +1,649 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HERETICS 40K</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Alegreya+Sans:wght@400;500;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<style>
+:root{--void:#0D0B09;--panel:#171310;--p2:#1F1A15;--raise:#26201A;--ink:#D8CDB8;--dim:#8F8674;--faint:#5A554B;--br:#B08D3E;--brh:#D8B45E;--bl:#8E2F23;--blh:#C4503F;--vd:#4A7A6B;--vdh:#6FA893;--ln:#332C24}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--void);color:var(--ink);font-family:'Alegreya Sans',sans-serif;font-size:15px;line-height:1.45}
+h1,h2,h3{font-family:Cinzel,serif;letter-spacing:.06em}
+.mono{font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+button{font-family:inherit;cursor:pointer}
+.shell{display:flex;min-height:100vh}
+.rail{width:200px;background:#121010;border-right:1px solid var(--ln);padding:16px 0;flex-shrink:0;position:sticky;top:0;height:100vh}
+.rail .brand{padding:0 16px 14px;border-bottom:1px solid var(--ln);margin-bottom:10px}
+.rail .brand h1{font-size:16px;color:var(--brh)}
+.rail .brand span{font-size:10px;color:var(--dim);letter-spacing:.18em}
+.navbtn{display:block;width:100%;padding:9px 16px;background:none;border:none;border-left:3px solid transparent;color:var(--dim);font-size:14px;text-align:left}
+.navbtn:hover{color:var(--ink)}
+.navbtn.active{color:var(--brh);border-left-color:var(--br);background:rgba(176,141,62,.08)}
+.rail .foot{position:absolute;bottom:12px;left:16px;right:16px;font-size:11px;color:var(--faint);border-top:1px solid var(--ln);padding-top:8px;line-height:1.6}
+.main{flex:1;padding:24px 30px;max-width:1220px}
+.screen{display:none}.screen.on{display:block}
+.crumb{font-size:11px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;margin-bottom:4px}
+.screen>h2{font-size:23px;margin-bottom:14px}
+.card{background:var(--panel);border:1px solid var(--ln);border-radius:6px;padding:15px;margin-bottom:14px}
+.card h3{font-size:12px;color:var(--br);letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px}
+.grid{display:grid;gap:12px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+.pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;border:1px solid var(--ln);color:var(--dim)}
+.pill.br{border-color:var(--br);color:var(--brh)}.pill.bl{border-color:var(--bl);color:var(--blh)}.pill.vd{border-color:var(--vd);color:var(--vdh)}
+.tc{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--ln);color:var(--dim);margin:1px 3px 1px 0;white-space:nowrap}
+.tc.dep{border-color:var(--vd);color:var(--vdh)}.tc.dead{border-color:var(--bl);color:var(--blh)}.tc.loc{border-color:var(--br);color:var(--brh)}
+.stat{background:var(--p2);border-radius:4px;padding:9px 11px}
+.stat .k{font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+.stat .v{font-family:'IBM Plex Mono',monospace;font-size:19px}.stat .v small{font-size:11px;color:var(--dim)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:left;padding:5px 7px;border-bottom:1px solid var(--ln)}
+td{padding:6px 7px;border-bottom:1px solid rgba(51,44,36,.5);vertical-align:top}
+tr.rb{cursor:pointer}tr.rb:hover{background:rgba(176,141,62,.05)}tr.rb.sel{background:rgba(176,141,62,.1);box-shadow:inset 3px 0 0 var(--br)}
+.btn{background:var(--raise);border:1px solid var(--br);color:var(--brh);padding:7px 14px;border-radius:4px;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase}
+.btn:hover{background:var(--br);color:var(--void)}
+.btn.gh{border-color:var(--ln);color:var(--dim)}.btn.gh:hover{background:var(--p2);color:var(--ink)}
+.btn.bl{border-color:var(--bl);color:var(--blh)}.btn.bl:hover{background:var(--bl);color:var(--ink)}
+.btn.sm{padding:3px 9px;font-size:11px}.btn:disabled{opacity:.35;cursor:not-allowed}
+select,input[type=text]{background:var(--p2);border:1px solid var(--ln);color:var(--ink);padding:6px 9px;border-radius:4px;font-family:inherit;font-size:13px;width:100%}
+textarea{background:var(--p2);border:1px solid var(--ln);color:var(--ink);padding:6px 9px;border-radius:4px;font-family:inherit;font-size:13px;width:100%;min-height:80px}
+label.f{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:9px 0 4px}
+.toast{position:fixed;bottom:18px;right:18px;background:var(--p2);border:1px solid var(--br);border-radius:5px;padding:9px 14px;font-size:13px;color:var(--brh);opacity:0;transition:opacity .3s;pointer-events:none;z-index:90;max-width:340px}
+.toast.show{opacity:1}
+.qi{display:flex;justify-content:space-between;align-items:center;padding:9px 11px;border:1px solid var(--ln);border-radius:5px;margin-bottom:7px;background:var(--p2);cursor:pointer}
+.qi:hover{border-color:var(--br)}.qi .t{font-weight:500}.qi .m{font-size:12px;color:var(--dim)}
+.tabs{display:flex;gap:2px;margin-bottom:12px;border-bottom:1px solid var(--ln)}
+.tab{background:none;border:none;color:var(--dim);padding:7px 14px;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;border-bottom:2px solid transparent}
+.tab.on{color:var(--brh);border-bottom-color:var(--br)}
+.sub{display:none}.sub.on{display:block}
+.fbar{display:flex;gap:7px;margin-bottom:10px;flex-wrap:wrap}
+.fbar select,.fbar input{width:auto;flex:1;min-width:120px}
+.slotg{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:9px;margin-top:8px}
+.slot{border:1px dashed var(--faint);border-radius:5px;padding:9px;min-height:74px;font-size:12px;cursor:pointer}
+.slot:hover{border-color:var(--brh)}.slot.fl{border-style:solid;border-color:var(--br);background:rgba(176,141,62,.06)}
+.slot .sk{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:3px}
+.slot .sm{color:var(--dim);font-size:11px}
+input[type=range]{width:100%;accent-color:var(--br)}
+.succ{display:flex;align-items:center;gap:9px;padding:7px 9px;border:1px solid var(--ln);border-radius:5px;margin-bottom:5px;background:var(--p2)}
+.succ .rk{font-family:Cinzel,serif;color:var(--brh);width:14px}.succ .mv{margin-left:auto;display:flex;gap:4px}
+.pb{position:fixed;inset:0;background:rgba(5,4,3,.72);display:none;align-items:center;justify-content:center;z-index:70}
+.pb.on{display:flex}
+.pk{background:var(--panel);border:1px solid var(--br);border-radius:8px;width:min(540px,92vw);max-height:80vh;overflow:auto;padding:16px}
+.pki{display:flex;justify-content:space-between;align-items:center;padding:8px 9px;border:1px solid var(--ln);border-radius:5px;margin-bottom:6px;font-size:13px}
+.pki .d{color:var(--dim);font-size:11.5px}
+.shopc{background:var(--p2);border:1px solid var(--ln);border-radius:5px;padding:11px}
+.shopc .d{font-size:12px;color:var(--dim);margin:3px 0 7px}
+.price{font-family:'IBM Plex Mono',monospace;color:var(--brh)}
+.tg{display:flex;justify-content:space-between;padding:6px 9px;border:1px solid var(--ln);border-radius:4px;margin-bottom:5px;cursor:pointer;font-size:12.5px}
+.tg.sel{border-color:var(--br);background:rgba(176,141,62,.08)}.tg.lk{opacity:.5;cursor:not-allowed}
+.tg .rq{font-size:10.5px;color:var(--blh)}
+.mc{display:flex;gap:8px;align-items:center;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:10px;flex-wrap:wrap}
+.mc button{background:none;border:none;color:var(--brh);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;padding:0}
+.mg{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:11px}
+.mn{border:1px solid var(--ln);border-radius:6px;padding:12px;cursor:pointer;position:relative}
+.mn:hover{border-color:var(--br)}.mn.sel{border-color:var(--br);box-shadow:0 0 0 1px var(--br)}
+.mn.lk{opacity:.45}
+.mn .pn{font-family:Cinzel,serif;font-size:14px}.mn .pt{font-size:11px;color:var(--dim)}
+.here{position:absolute;top:-9px;left:9px;background:var(--bl);color:var(--ink);font-size:9px;letter-spacing:.14em;padding:2px 7px;border-radius:3px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+.dot.chaos{background:var(--blh)}.dot.imperial{background:var(--brh)}.dot.xenos{background:var(--vdh)}.dot.con{background:var(--faint)}
+.zh{font-size:10.5px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;margin:14px 0 7px;border-bottom:1px solid var(--ln);padding-bottom:3px}
+.stt{display:inline-block;padding:1px 7px;border-radius:3px;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--ln)}
+.stt.Peace{border-color:var(--vd);color:var(--vdh)}.stt.Warring{border-color:var(--bl);color:var(--blh)}.stt.Thriving{border-color:var(--br);color:var(--brh)}.stt.Famine{color:var(--dim)}.stt.Corrupted{border-color:#7a4a8e;color:#b06fd0}
+.route{border:1px dashed var(--br);border-radius:5px;padding:9px 11px;font-size:12px;margin-top:9px}
+.transit{border:1px solid var(--bl);border-radius:6px;background:rgba(142,47,35,.08);padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.thc{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border:1px solid var(--ln);border-radius:6px;margin-bottom:9px;background:var(--panel);cursor:pointer}
+.thc:hover{border-color:var(--br)}
+.tp{display:inline-block;padding:2px 8px;border-radius:3px;font-size:9.5px;letter-spacing:.12em;border:1px solid var(--ln);margin-right:7px}
+.tp.SKIRMISH,.tp.INVASION{border-color:var(--bl);color:var(--blh)}.tp.DIPLOMACY{border-color:var(--br);color:var(--brh)}.tp.MISSION{border-color:var(--vd);color:var(--vdh)}.tp.TRAVEL{color:var(--dim)}
+.tw{display:grid;grid-template-columns:1fr 290px;gap:14px;align-items:start;margin-top:12px}
+.tw.solo{grid-template-columns:1fr}
+.post{border:1px solid var(--ln);border-radius:6px;background:var(--panel);margin-bottom:12px;overflow:hidden}
+.post .ph{display:flex;justify-content:space-between;padding:8px 13px;background:var(--p2);border-bottom:1px solid var(--ln);font-size:12px}
+.post .ph .who{font-weight:700}.who.en{color:var(--vdh)}.who.you{color:var(--blh)}
+.post .body{padding:13px;font-size:14px;font-style:italic;line-height:1.6}
+.ab{margin:0 13px 13px;border:1px solid var(--br);border-radius:5px;background:rgba(176,141,62,.05)}
+.ab .ah{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--br);padding:5px 9px;border-bottom:1px solid rgba(176,141,62,.3)}
+.ab ul{list-style:none;padding:7px 9px}
+.ab li{font-family:'IBM Plex Mono',monospace;font-size:11.5px;padding:2px 0}
+.ab li b{color:var(--brh)}
+.fg{margin-bottom:12px}.fg h4{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;padding-bottom:5px;margin-bottom:7px;border-bottom:1px solid var(--ln);font-family:inherit}
+.fg.you h4{color:var(--blh)}.fg.en h4{color:var(--vdh)}
+.mr{margin-bottom:7px;font-size:12px}.mr .n{display:flex;justify-content:space-between}
+.mr .a{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim)}
+.band{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--brh)}
+.hp{height:4px;background:#241E18;border-radius:3px;overflow:hidden}.hp i{display:block;height:100%;background:var(--vd)}.hp.lo i{background:var(--blh)}
+.comp{border:1px solid var(--br);border-radius:6px;background:var(--panel);overflow:hidden}
+.comp .ch{padding:8px 13px;background:linear-gradient(90deg,rgba(176,141,62,.12),transparent);border-bottom:1px solid var(--ln);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--brh)}
+.ft{display:flex;gap:4px;padding:5px 9px;border-bottom:1px solid var(--ln);background:var(--p2)}
+.ft button{background:var(--raise);border:1px solid var(--ln);color:var(--ink);min-width:27px;height:25px;border-radius:3px;font-size:12px}
+.ft button:hover{border-color:var(--br)}
+.fic{min-height:150px;background:var(--void);padding:12px 13px;font-size:14px;outline:none;line-height:1.6}
+.fic:empty:before{content:attr(data-ph);color:var(--faint);font-style:italic}
+.abld{padding:11px 13px;border-top:1px dashed var(--ln)}
+.arow{display:flex;gap:7px;align-items:center;margin-bottom:7px;flex-wrap:wrap}
+.arow select{width:auto;flex:1;min-width:140px}
+.apt{display:flex;justify-content:space-between;align-items:center;padding-top:9px;border-top:1px solid var(--ln);margin-top:5px}
+.apt .n{font-family:'IBM Plex Mono',monospace;font-size:17px;color:var(--brh)}
+.chip{display:inline-flex;gap:5px;align-items:center;background:var(--p2);border:1px solid var(--ln);border-radius:4px;padding:3px 7px;font-family:'IBM Plex Mono',monospace;font-size:11px;margin:2px 3px 2px 0}
+.chip button{background:none;border:none;color:var(--blh);padding:0}
+.warn{color:var(--blh);font-size:12px;min-height:15px}
+.choice{border:1px solid var(--ln);border-radius:6px;padding:12px;cursor:pointer;text-align:left}
+.choice:hover{border-color:var(--br)}.choice.sel{border-color:var(--br);background:rgba(176,141,62,.07)}
+.choice.dim{opacity:.45}
+.choice .cn{font-family:Cinzel,serif;font-size:14px}.choice .cd{font-size:12px;color:var(--dim);margin-top:3px}
+.cw{display:grid;grid-template-columns:270px 1fr;gap:14px;align-items:start}
+.cv{padding:9px 11px;border:1px solid var(--ln);border-radius:5px;margin-bottom:7px;cursor:pointer;background:var(--p2)}
+.cv:hover{border-color:var(--br)}.cv.sel{border-color:var(--br)}.cv.dis{opacity:.5}
+.cv .cn{font-weight:700;font-size:13px}.cv .cl{font-size:11.5px;color:var(--dim)}
+.msg{max-width:78%;padding:9px 11px;border-radius:6px;margin-bottom:9px;font-size:13px}
+.msg.them{background:var(--p2);border:1px solid var(--ln)}
+.msg.me{background:rgba(142,47,35,.15);border:1px solid var(--bl);margin-left:auto}
+.msg .who{font-size:10.5px;color:var(--dim);margin-bottom:2px}
+.npct{font-size:9.5px;color:var(--vdh);border:1px solid var(--vd);border-radius:3px;padding:1px 4px;margin-left:5px}
+.empty{border:1px dashed var(--ln);border-radius:6px;padding:24px;text-align:center;color:var(--dim);font-size:13.5px}
+.rb2{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 30%,#14100C,#0A0806 70%);display:none;z-index:60;overflow-y:auto}
+.rb2.on{display:block}
+.rite{max-width:880px;margin:0 auto;padding:6vh 22px 60px;text-align:center}
+.rite .eb{font-size:10.5px;letter-spacing:.4em;color:var(--br);text-transform:uppercase;margin-bottom:12px}
+.rite h1{font-size:30px;margin-bottom:8px}
+.rite .sb{color:var(--dim);font-size:14px;margin-bottom:26px;font-style:italic}
+.rite .chs{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:10px;margin-bottom:26px}
+.rite .gl{display:flex;justify-content:center;gap:10px;margin-bottom:30px}
+.rite .gl span{font-family:Cinzel,serif;font-size:12px;color:var(--faint);width:25px;height:25px;line-height:23px;border:1px solid var(--ln);border-radius:50%}
+.rite .gl span.on{color:var(--brh);border-color:var(--br)}.rite .gl span.dn{color:var(--vdh);border-color:var(--vd)}
+.rite input[type=text],.rite textarea{max-width:470px;margin:0 auto;display:block;text-align:center;font-size:15px}
+.rite textarea{text-align:left}
+.rx{position:fixed;top:16px;right:20px;background:none;border:none;color:var(--faint);font-size:21px;z-index:61}
+.ov{max-width:600px;margin:0 auto 22px;text-align:left;background:var(--panel);border:1px solid var(--br);border-radius:6px;padding:14px}
+.rc{border:1px solid var(--ln);border-radius:8px;padding:22px;cursor:pointer;background:var(--panel)}
+.rc:hover{border-color:var(--br)}.rc.dim{opacity:.55}
+.rc .rn{font-family:Cinzel,serif;font-size:18px;color:var(--brh)}
+.rc .rd{font-size:12.5px;color:var(--dim);margin-top:7px;line-height:1.5}
+.mt{width:100%;border-collapse:collapse;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10.5px}
+.mt th{font-size:9px;color:var(--faint);padding:2px 5px;border-bottom:1px solid var(--ln)}
+.mt td{padding:3px 5px;color:var(--brh);border-bottom:none}
+.fcard{border:1px solid var(--ln);border-radius:6px;padding:12px;background:var(--p2);margin-bottom:10px}
+.fcard .fh{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.fcard input{max-width:210px}
+.mem div{padding:3px 0;border-bottom:1px solid rgba(51,44,36,.4);display:flex;justify-content:space-between;font-size:12px}
+#boot{position:fixed;inset:0;background:var(--void);display:flex;align-items:center;justify-content:center;z-index:100;text-align:center;padding:20px}
+@media(max-width:900px){.shell{flex-direction:column}.rail{width:100%;height:auto;position:static}.rail .foot{display:none}.tw,.cw{grid-template-columns:1fr}.g2,.g3{grid-template-columns:1fr}}
+</style></head><body>
+<div id="boot"><div><h1 style="color:var(--brh);font-size:22px;margin-bottom:10px">HERETICS 40K</h1><div id="bootmsg" style="color:var(--dim);font-size:14px">Loading canon…</div></div></div>
+<div class="shell" style="display:none" id="shell">
+<nav class="rail">
+<div class="brand"><h1>HERETICS 40K</h1><span>COMMAND INTERFACE</span></div>
+<button class="navbtn" data-s="creation">I · Rites of Creation</button>
+<button class="navbtn active" data-s="hq">II · Commander HQ</button>
+<button class="navbtn" data-s="barracks">III · The Barracks</button>
+<button class="navbtn" data-s="shop">IV · Requisition</button>
+<button class="navbtn" data-s="map">V · The Map</button>
+<button class="navbtn" data-s="threads">VI · Threads</button>
+<button class="navbtn" data-s="comms">VII · Comms</button>
+<div class="foot">COMMANDER<br><b style="color:var(--blh)" id="rname"></b><br><span id="rloc"></span><br><span id="rship"></span><br><span id="rdata" style="color:var(--br)"></span></div>
+</nav>
+<main class="main">
+<section class="screen" id="s-creation"><div class="crumb">The rites</div><h2>Rites of Creation</h2>
+<div class="grid g2">
+<div class="rc dim" id="r-found"><div class="rn">The Founding</div><div class="rd">A lineage begins. One Commander, one story, one death. Yours is written — should he fall with no heir, this rite opens again.</div></div>
+<div class="rc" id="r-name"><div class="rn">The Naming</div><div class="rd">A veteran of five ranks rises: a name, the Named delta of its class, and the Origins choice from Founding — made again.</div></div>
+</div></section>
+<section class="screen on" id="s-hq"><div class="crumb" id="hqc"></div><h2>Commander HQ</h2>
+<div class="grid g2">
+<div class="card"><div style="display:flex;gap:14px">
+<div style="width:66px;height:66px;border-radius:50%;border:2px solid var(--br);display:flex;align-items:center;justify-content:center;font-family:Cinzel;font-size:26px;color:var(--brh);flex-shrink:0" id="sigil"></div>
+<div style="flex:1"><div style="display:flex;justify-content:space-between"><b id="hqname"></b><span class="pill bl" id="hqrank"></span></div>
+<div style="font-size:12px;color:var(--dim)" id="hqsub"></div>
+<div style="margin:7px 0 3px;font-size:11.5px;color:var(--dim)" id="hqw"></div>
+<div class="hp"><i style="width:100%"></i></div></div></div>
+<div class="grid g3" style="margin-top:12px">
+<div class="stat"><div class="k" id="lc"></div><div class="v" id="wc"></div></div>
+<div class="stat"><div class="k" id="ld"></div><div class="v" id="wd"></div></div>
+<div class="stat"><div class="k" id="li"></div><div class="v" id="wi"></div></div></div>
+<div style="margin-top:9px;font-size:12px;color:var(--dim)" id="hqa"></div></div>
+<div class="card"><h3>Awaiting your post</h3><div id="hqq"></div></div>
+</div></section>
+<section class="screen" id="s-barracks"><div class="crumb">Army management</div><h2>The Barracks</h2>
+<div class="tabs"><button class="tab on" data-b="roster">Roster</button><button class="tab" data-b="loadout">Loadout</button><button class="tab" data-b="forces">Forces</button></div>
+<div class="sub on" id="b-roster"><div class="card"><h3 id="rh"></h3>
+<div class="fbar"><input type="text" id="fq" placeholder="Search…"><select id="fc"><option value="">Class — all</option></select><select id="fs"><option value="">Status — all</option><option>DEPLOYED</option><option>GARRISON</option><option>DEAD</option></select><select id="ff"><option value="">Force — all</option></select></div>
+<table id="rt"><thead><tr><th>Model</th><th>Class</th><th>Rank</th><th>PC</th><th>AP</th><th>W</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
+<div class="sub" id="b-loadout"><div class="card"><h3 id="lt"></h3><div style="font-size:12px;color:var(--dim)" id="ls"></div><div class="slotg" id="sg"></div><h3 style="margin-top:18px">Inventory — unequipped</h3><div id="il"></div></div></div>
+<div class="sub" id="b-forces"><div id="fw"></div></div></section>
+<section class="screen" id="s-shop"><div class="crumb" id="shc"></div><h2>Requisition</h2><div id="shb"></div></section>
+<section class="screen" id="s-map"><div class="crumb">Navigation</div><h2>The Map</h2><div id="tb"></div><div class="mc" id="mcr"></div><div id="mz"></div><div class="card" style="margin-top:14px" id="mp"></div></section>
+<section class="screen" id="s-threads"><div class="crumb">The play surface</div><h2>Threads</h2><div id="tl"></div><div id="tv" style="display:none"></div></section>
+<section class="screen" id="s-comms"><div class="crumb" id="cc"></div><h2>Comms</h2>
+<div style="font-size:12px;color:var(--dim);margin:-6px 0 12px" id="commsrule"></div>
+<div class="cw"><div id="cl"></div><div class="card" id="cp"></div></div></section>
+</main></div>
+<div class="toast" id="toast"></div>
+<script>
+/* HERETICS 40K — ENGINE v6. Contains NO canon: all rules & content load from heretics-40k-data-v1.json. This file holds only rendering logic and the demo save-state. */
+var D=null; /* canon */
+var S=null; /* save-state (player, world overlays, threads) */
+function T(t){var e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(function(){e.classList.remove('show')},2700)}
+function E(t,c,h){var d=document.createElement(t);if(c)d.className=c;if(h!=null)d.innerHTML=h;return d}
+/* ---- canon lookups ---- */
+function AP(pc){var b=D.rules.ap_bands;for(var i=0;i<b.length;i++)if(pc<=b[i].pc_max)return b[i].ap;return b[b.length-1].ap}
+function FAC(id){return D.factions.filter(function(f){return f.id===id})[0]}
+function FACS(al){return D.factions.filter(function(f){return f.allegiance===al})}
+function szTag(pc){var t=D.rules.force_size_tags;for(var i=0;i<t.length;i++)if(t[i].pc_max===null||pc<=t[i].pc_max)return t[i].tag;return 'CRUSADE'}
+function CLASSES(){var s={};D.factions.forEach(function(f){f.models.forEach(function(m){s[m.cls]=1})});return Object.keys(s)}
+function fSeg(id){return D.galaxy.segmentums.filter(function(g){return g.id===id})[0]}
+function fSec(id){var r=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){if(s.id===id)r={g:g,z:z,s:s}})})});return r}
+function fPl(id){var r=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){if(p.id===id)r={g:g,z:z,s:s,p:p}})})})});return r}
+function fLoc(pid,lid){var p=fPl(pid);for(var i=0;i<p.p.locations.length;i++)if(p.p.locations[i].id===lid)return p.p.locations[i]}
+function wallets(){return D.allegiances[S.player.allegiance].wallets}
+function curName(){return FAC(S.player.faction).currency}
+/* ---- world overlays (dynamic state, not canon) ---- */
+function forcesAt(pid){return S.world.forces[pid]||[]}
+function histAt(pid,lid){return S.world.history[pid+'/'+lid]||[]}
+function npcsAt(pid,lid){var out=[];D.npcs_alpha.forEach(function(n){if(n.location===pid+'/'+lid&&S.world.met.indexOf(n.id)>=0)out.push(n.name+' — '+n.kind+', '+n.faction+' · met')});return out}
+/* ---- demo save ---- */
+function pms(){return[{k:'WEAPON',it:{n:'Boltgun',cat:'WEAPON',d:'Phys 2 - Med'}},{k:'WEAPON',it:{n:'Plague Knife',cat:'WEAPON',d:'Corr 2 - Effortless'}},{k:'ITEM',it:null}]}
+function pxs(){return[{k:'WEAPON',it:{n:'Rusted Claws',cat:'WEAPON',d:'Phys 1 - Melee - Effortless'}}]}
+function demoSave(){var lA='Vigilus · Ash Ravine',lR='Vigilus · Rotforge Bastion',fo='The Rotward';
+return{
+player:{name:'Vexos Kane, the Rotforged',allegiance:'chaos',faction:'death_guard',model:'Plague Marine',cmdRank:3,mdlRank:3,w:'9/9',xp:'51/68'},
+pos:{pl:'vigilus',sp:'ashravine'},tr:null,cur:1240,infl:655,army:512,dom:90,dru:false,vess:false,
+ships:{sys:'The Pale Barge',warp:null},
+inv:[{n:'Blight Grenade',cat:'ITEM',d:'Phys 2 - Multihit II - DoT I'},{n:'Boltgun',cat:'WEAPON',d:'Phys 2 - Med - 1 AP'},{n:'Stimm-Injector',cat:'ITEM',d:'Stimm - Consumable'}],
+roster:[
+{id:'kane',n:'Vexos Kane, the Rotforged',tag:'Commander',cls:'Core',rk:3,pc:68,w:'9/9',st:'DEPLOYED',loc:lA,fo:'—',sub:'Plague Marine - R3 - 5 slots',sl:[{k:'WEAPON',it:{n:'Whisper of the Seventh Sore',cat:'WEAPON',d:'Named Boltgun - Phys 2 - DoT I'}},{k:'WEAPON',it:{n:'Plague Knife',cat:'WEAPON',d:'Corr 2 - Effortless'}},{k:'ITEM',it:{n:'Censer Kit',cat:'ITEM',d:'Melee DoT I aura'}},{k:'ABILITY',it:{n:'Miasma of Pestilence',cat:'ABILITY',d:'Force: -1 Ranged dmg, 2 posts'}},{k:'WARP CAST',it:{n:'Curse of the Leper',cat:'CAST',d:'R3 - Multihit II + DoT II'}}]},
+{id:'morvax',n:'Brother Morvax',tag:'Named · Leader',cls:'Core',rk:5,pc:96,w:'7/7',st:'DEPLOYED',loc:lA,fo:fo,sub:'Named Plague Marine - R5 - 5 slots',sl:[{k:'WEAPON',it:{n:'Boltgun',cat:'WEAPON',d:'Phys 2'}},{k:'WEAPON',it:{n:'Power Fist',cat:'WEAPON',d:'Energy 3 - Unwieldy'}},{k:'ITEM',it:{n:'Blight Grenade x2',cat:'ITEM',d:'Consumable'}},{k:'ABILITY',it:{n:'Disgustingly Resilient',cat:'ABILITY',d:'Dmg 3+ reduced by 1'}},{k:'NAMED',it:null}]},
+{id:'gharn',n:'Gharn the Sevenfold',tag:'Named',cls:'Assault',rk:2,pc:88,w:'4/8',st:'DEPLOYED',loc:lA,fo:fo,sub:'Named Blightlord - R2 - 5 slots',sl:[{k:'WEAPON',it:{n:'Reaper Autocannon',cat:'WEAPON',d:'Phys 3 - Rapid I'}},{k:'WEAPON',it:{n:'Bubotic Axe',cat:'WEAPON',d:'Corr 2 - Melee'}},{k:'ITEM',it:{n:'Putrescent Hide',cat:'ITEM',d:'+2 W, -1 Spd'}},{k:'ABILITY',it:null},{k:'NAMED',it:null}]},
+{id:'sarghul',n:'Plague Marine Sarghul',tag:'',cls:'Core',rk:5,pc:77,w:'6/6',st:'GARRISON',loc:lR,fo:'—',sub:'Plague Marine - R5 - 4 slots',sl:pms().concat([{k:'ABILITY',it:null}])},
+{id:'vetch',n:'Plague Marine Vetch',tag:'',cls:'Core',rk:2,pc:34,w:'5/5',st:'DEPLOYED',loc:lA,fo:fo,sub:'Plague Marine - R2 - 3 slots',sl:pms()},
+{id:'koll',n:'Plague Marine Koll',tag:'',cls:'Core',rk:2,pc:34,w:'5/5',st:'DEPLOYED',loc:lA,fo:fo,sub:'Plague Marine - R2 - 3 slots',sl:pms()},
+{id:'dreg',n:'Plague Marine Dreg',tag:'',cls:'Core',rk:2,pc:34,w:'3/5',st:'DEPLOYED',loc:lA,fo:fo,sub:'Plague Marine - R2 - 3 slots',sl:pms()},
+{id:'pa',n:'Poxwalker Alpha',tag:'',cls:'Core',rk:1,pc:4,w:'1/1',st:'DEPLOYED',loc:lA,fo:fo,sub:'Poxwalker - R1 - 1 slot',sl:pxs()},
+{id:'pb',n:'Poxwalker Beta',tag:'',cls:'Core',rk:1,pc:4,w:'1/1',st:'DEPLOYED',loc:lA,fo:fo,sub:'Poxwalker - R1 - 1 slot',sl:pxs()},
+{id:'pc',n:'Poxwalker Gamma',tag:'',cls:'Core',rk:1,pc:4,w:'1/1',st:'DEPLOYED',loc:lA,fo:fo,sub:'Poxwalker - R1 - 1 slot',sl:pxs()},
+{id:'pd',n:'Poxwalker Delta',tag:'',cls:'Core',rk:1,pc:4,w:'1/1',st:'DEPLOYED',loc:lA,fo:fo,sub:'Poxwalker - R1 - 1 slot',sl:pxs()},
+{id:'pe',n:'Poxwalker Epsilon',tag:'',cls:'Core',rk:1,pc:4,w:'0/1',st:'DEAD',loc:'Ash Ravine — field, intact',fo:fo,sub:'Poxwalker - R1 - 1 slot',sl:pxs()},
+{id:'pf',n:'Poxwalker Zeta',tag:'',cls:'Core',rk:1,pc:4,w:'0/1',st:'DEAD',loc:'Ash Ravine — field, intact',fo:fo,sub:'Poxwalker - R1 - 1 slot',sl:pxs()},
+{id:'vec',n:'Foetid Vector',tag:'',cls:'Flying',rk:1,pc:90,w:'6/6',st:'GARRISON',loc:lR,fo:'—',sub:'Foetid Bloat-Drone - R1 - 2 slots',sl:[{k:'WEAPON',it:{n:'Plaguespitter',cat:'WEAPON',d:'Heat 2 - Multihit II'}},{k:'ITEM',it:null}]}],
+forces:[{id:'rw',n:'The Rotward',lead:'morvax',ap:26}],
+succ:[{n:'Brother Morvax',fid:'rw'},{n:'Gharn the Sevenfold',fid:null}],
+world:{
+ met:['vess','herald','sskarith'],
+ forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
+  sangua:[['89th Sanguan Garrison','NPC, Astra Militarum · COMPANY','Hive Primus']],
+  nurth:[['The Pallid Host','NPC, Death Guard · HOST','The Pallid Court']],
+  kraithv:[['The Verge Broods','NPC, Tyranids · BATTLEGROUP','The Gestation Vault']]},
+ history:{'vigilus/ashravine':['SKIRMISH — vs Sskarith · ACTIVE, post 7','MISSION — The First Landing · concluded, victory'],
+  'vigilus/carrion':['DIPLOMACY — The Carrion Bargain · ACTIVE'],'vigilus/voxbastion':['MISSION — open'],
+  'sangua/hiveprimus':['INVASION — requires COMPANY+ · open'],'nurth/court':['DIPLOMACY — open'],
+  'kraithv/vault':['MISSION — high risk · open'],'kraithv/reef':['RAID — open']}},
+threads:[{id:'ash',type:'SKIRMISH',n:'Skirmish at the Ash Ravine',loc:'Vigilus · The Ash Ravine',turn:'you'},
+{id:'bar',type:'DIPLOMACY',n:'The Carrion Bargain',loc:'Vigilus · The Carrion Market',turn:'you'},
+{id:'vox',type:'MISSION',n:'The Sunken Vox-Bastion',loc:'Vigilus · Sunken Vox-Bastion',turn:'open'}],
+convos:[{id:'herald',pc:false,pl:'nurth',l:'Faction broker · Nurth, Pallid Reach',n:'Herald of the Pallid Court',ms:[['them','The Garden blooms, rot-lord. The Court asks: when do you come to kneel — or to bargain?']]},
+{id:'kryv',pc:true,pl:'sangua',l:'Adeptus Mechanicus · Sangua Tertius',n:'Magos Kryv',ms:[['them','Your plague-patterns interest me, heretic. Data for data?']]},
+{id:'dravok',pc:true,pl:'vigilus',l:'Black Legion',n:'Warsmith Dravok',ms:[]},
+{id:'vess',pc:false,pl:'vigilus',l:'Wild Named · Drukhari',n:'Vess the Carrion-Broker',ms:[]}]
+}}
+/* ---- nav ---- */
+function go(s){document.querySelectorAll('.screen').forEach(function(e){e.classList.remove('on')});document.getElementById('s-'+s).classList.add('on');document.querySelectorAll('.navbtn').forEach(function(b){b.classList.toggle('active',b.dataset.s===s)});
+if(s==='shop')rShop();if(s==='comms')rComms();if(s==='hq')rHQ();if(s==='map')rMap();if(s==='threads')rTL();window.scrollTo(0,0)}
+/* ---- HQ ---- */
+function posTxt(){if(S.tr)return({g:'Overland',s:'In-system',c:'Warp'})[S.tr.m]+' → '+fLoc(S.tr.pl,S.tr.sp).name;return fPl(S.pos.pl).p.name+' · '+fLoc(S.pos.pl,S.pos.sp).name}
+function rW(){var w=wallets();
+document.getElementById('lc').textContent=w[0];document.getElementById('ld').innerHTML=w[1]+' <small>(AP)</small>';document.getElementById('li').innerHTML=w[2]+' <small>(ceiling)</small>';
+document.getElementById('wc').textContent=S.cur.toLocaleString();
+document.getElementById('wd').innerHTML=(S.dom-S.forces[0].ap)+' <small>/ '+S.dom+'</small>';
+document.getElementById('wi').textContent=S.infl;
+document.getElementById('hqa').innerHTML='Army: <b class="mono">'+S.army+' / '+S.infl+' PC</b> under your '+w[2]+' ceiling · <b class="mono">'+S.forces[0].ap+' AP</b> dispatched';
+document.getElementById('rloc').textContent=posTxt();
+document.getElementById('rship').textContent='Vessel: '+S.ships.sys+(S.ships.warp?' · '+S.ships.warp:' · no warp drive');
+var f=fPl(S.pos.pl);document.getElementById('hqc').textContent=f.g.name+' · '+f.s.name+' · '+posTxt()}
+function rHQ(){rW();
+document.getElementById('hqname').textContent=S.player.name;
+document.getElementById('sigil').textContent=S.player.name.split(' ').map(function(x){return x[0]}).slice(0,2).join('');
+document.getElementById('hqrank').textContent='Commander R'+S.player.cmdRank;
+document.getElementById('hqsub').textContent=FAC(S.player.faction).name+' · '+S.player.model+' · Model Rank '+S.player.mdlRank;
+document.getElementById('hqw').innerHTML='Wounds '+S.player.w+' · 3 actions · XP: <span class="mono" style="color:var(--brh)">'+S.player.xp+'</span>';
+var q=document.getElementById('hqq');q.innerHTML='';
+var it=S.threads.filter(function(t){return t.turn==='you'}).map(function(t){return{a:t.type+' — '+t.n,b:t.loc,f:function(){go('threads');openT(t.id)}}});
+if(S.tr)it.push({a:'TRAVEL — '+fLoc(S.tr.pl,S.tr.sp).name,b:S.tr.left+' post(s) to arrival',f:function(){go('threads');openT('tr')}});
+it.forEach(function(i){var d=E('div','qi','<div><div class="t">'+i.a+'</div><div class="m">'+i.b+'</div></div><span class="mono" style="color:var(--blh)">YOUR TURN</span>');d.onclick=i.f;q.appendChild(d)})}
+/* ---- barracks ---- */
+var sel=null;
+function chips(m){var c=m.st==='DEAD'?'dead':m.st==='DEPLOYED'?'dep':'';var h='<span class="tc '+c+'">'+m.st+(m.st==='DEAD'?' · recoverable':'')+'</span><span class="tc loc">'+m.loc+'</span>';if(m.fo!=='—')h+='<span class="tc">FORCE: '+m.fo+'</span>';return h}
+function rRos(){var tb=document.querySelector('#rt tbody');tb.innerHTML='';
+document.getElementById('rh').textContent='Owned models — '+S.army+' / '+S.infl+' PC';
+var q=(document.getElementById('fq').value||'').toLowerCase(),c=document.getElementById('fc').value,s=document.getElementById('fs').value,f=document.getElementById('ff').value;
+S.roster.forEach(function(m){if(q&&m.n.toLowerCase().indexOf(q)<0)return;if(c&&m.cls!==c)return;if(s&&m.st!==s)return;if(f&&m.fo!==f)return;
+var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b> '+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+m.pc+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.w+'</td><td>'+chips(m)+'</td>');
+tr.onclick=function(){sel=m;rRos();rLoad();document.querySelector('[data-b=loadout]').click()};tb.appendChild(tr)})}
+function rLoad(){if(!sel)sel=S.roster[0];
+document.getElementById('lt').textContent='Loadout — '+sel.n;document.getElementById('ls').textContent=sel.sub;
+var g=document.getElementById('sg');g.innerHTML='';
+sel.sl.forEach(function(s,i){var d=E('div','slot'+(s.it?' fl':''),'<span class="sk">'+s.k+'</span>'+(s.it?'<b style="font-size:12.5px">'+s.it.n+'</b><div class="sm">'+s.it.d+'</div>':'<div class="sm">Empty — click to equip</div>'));d.onclick=function(){pick(i)};g.appendChild(d)});
+var il=document.getElementById('il');il.innerHTML=S.inv.length?'':'<div class="empty">Inventory empty.</div>';
+S.inv.forEach(function(it){il.appendChild(E('div','pki','<div><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+it.d+'</div></div>'))})}
+var PB=null;
+function mkPicker(){PB=E('div','pb','<div class="pk"><h3 style="color:var(--br);font-size:13px;margin-bottom:10px" id="pkh"></h3><div id="pkl"></div><button class="btn gh" style="margin-top:8px" id="pkc">Close</button></div>');
+document.body.appendChild(PB);document.getElementById('pkc').onclick=function(){PB.classList.remove('on')};
+PB.onclick=function(e){if(e.target===PB)PB.classList.remove('on')}}
+function pick(i){var s=sel.sl[i];document.getElementById('pkh').textContent=sel.n+' — '+s.k+' slot';
+var L=document.getElementById('pkl');L.innerHTML='';
+if(s.it){var r=E('div','pki','<div><b>'+s.it.n+'</b><div class="d">'+s.it.d+'</div></div>');var b=E('button','btn gh sm','Unequip');b.onclick=function(){S.inv.push(s.it);s.it=null;PB.classList.remove('on');rLoad();T('Unequipped.')};r.appendChild(b);L.appendChild(r)}
+var cat=s.k==='WARP CAST'?'CAST':s.k==='NAMED'?null:s.k;
+var lg=S.inv.filter(function(it){return cat===null||it.cat===cat});
+if(!lg.length&&!s.it)L.innerHTML='<div class="empty">Nothing legal in inventory for this slot.</div>';
+lg.forEach(function(it){var r=E('div','pki','<div><b>'+it.n+'</b><div class="d">'+it.d+'</div></div>');var b=E('button','btn sm','Equip');
+b.onclick=function(){if(s.it)S.inv.push(s.it);s.it=it;S.inv.splice(S.inv.indexOf(it),1);PB.classList.remove('on');rLoad();T(it.n+' equipped.')};r.appendChild(b);L.appendChild(r)});
+PB.classList.add('on')}
+function fpc(f){var t=0;S.roster.forEach(function(m){if(m.fo===f.n)t+=m.pc});return t}
+function rF(){var w=document.getElementById('fw');w.innerHTML='';
+S.forces.forEach(function(f){var pc=fpc(f),ld=S.roster.filter(function(m){return m.id===f.lead})[0];
+var c=E('div','card','<h3>Force</h3>');var fc=E('div','fcard');
+var fh=E('div','fh');var inp=E('input');inp.type='text';inp.value=f.n;
+inp.onchange=function(){var o=f.n;f.n=inp.value.trim()||o;S.roster.forEach(function(m){if(m.fo===o)m.fo=f.n});rF();rRos();T('Force renamed: '+f.n)};
+fh.appendChild(inp);fh.appendChild(E('span','pill vd',szTag(pc)+' · '+pc+' PC'));fh.appendChild(E('span','pill br','Leader: '+ld.n));fc.appendChild(fh);
+var ml=E('div','mem');S.roster.filter(function(m){return m.fo===f.n}).forEach(function(m){ml.appendChild(E('div',null,'<span>'+m.n+(m.id===f.lead?' <span class="pill br">Leader</span>':'')+'</span><span class="mono">'+m.pc+' PC · '+m.w+' W'+(m.st==='DEAD'?' · DEAD':'')+'</span>'))});
+fc.appendChild(ml);
+fc.insertAdjacentHTML('beforeend','<label class="f">Dispatched AP — <span class="mono" id="apv">'+f.ap+'</span></label>');
+var s=E('input');s.type='range';s.min=0;s.max=S.dom;s.value=f.ap;
+s.oninput=function(){f.ap=+s.value;fc.querySelector('#apv').textContent=f.ap;rW();rSucc()};
+fc.appendChild(s);c.appendChild(fc);w.appendChild(c)});
+var dc=E('div','card','<h3>Under direct command</h3>');var ml2=E('div','mem');
+S.roster.filter(function(m){return m.fo==='—'}).forEach(function(m){ml2.appendChild(E('div',null,'<span>'+m.n+(m.tag?' <span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</span><span class="mono">'+m.pc+' PC · '+m.loc+'</span>'))});
+dc.appendChild(ml2);w.appendChild(dc);
+w.appendChild(E('div','card','<h3>Succession order</h3><div id="sc"></div>'));rSucc()}
+function rSucc(){var x=document.getElementById('sc');if(!x)return;x.innerHTML='';
+var inh=D.rules.death.succession.inherits.join(' + ');
+S.succ.forEach(function(s,i){var f=S.forces.filter(function(z){return z.id===s.fid})[0];var ap=f?f.ap:0;
+var d=E('div','succ','<span class="rk">'+(i+1)+'</span><div><b>'+s.n+'</b> — holds '+ap+' AP<div style="font-size:11px;color:'+(ap>0?'var(--dim)':'var(--blh)')+'">'+(ap>0?'Valid heir · inherits '+inh:'Not a valid heir — no AP dispatched')+'</div></div>');
+var mv=E('div','mv');var u=E('button','btn gh sm','↑');u.disabled=!i;u.onclick=function(){var t=S.succ[i-1];S.succ[i-1]=S.succ[i];S.succ[i]=t;rSucc()};
+var dn=E('button','btn gh sm','↓');dn.disabled=i===S.succ.length-1;dn.onclick=function(){var t=S.succ[i+1];S.succ[i+1]=S.succ[i];S.succ[i]=t;rSucc()};
+mv.appendChild(u);mv.appendChild(dn);d.appendChild(mv);x.appendChild(d)})}
+/* ---- shop (parked) ---- */
+function rShop(){var f=fPl(S.pos.pl),h=fLoc(S.pos.pl,S.pos.sp);
+document.getElementById('shc').textContent=f.s.name+' · '+f.p.name+' · '+(S.tr?'In transit':h.name);
+var b=document.getElementById('shb');
+if(S.tr){b.innerHTML='<div class="empty">In transit — no requisition on the move.</div>';return}
+if(!h.stations.length){b.innerHTML='<div class="empty"><b>'+h.name+'</b> — no stations stand here.</div>';return}
+b.innerHTML='';var w=E('div','grid g2');
+var sh=h.stations.filter(function(s){return s.kind==='shop'})[0];
+if(sh){var c=E('div','card','<h3>'+sh.name+'</h3>');var g=E('div','grid g2');
+D.equipment_alpha.shop_catalog.forEach(function(it){var s=E('div','shopc','<b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+it.d+'</div>');
+var r=E('div',null,'<span class="price">'+it.pc+' PC</span>');r.style.cssText='display:flex;justify-content:space-between';
+var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<it.pc){T('Not enough '+curName()+'.');return}S.cur-=it.pc;S.inv.push({n:it.n,cat:it.cat,d:it.d});rW();rLoad();T(it.n+' purchased.')};
+r.appendChild(bt);s.appendChild(r);g.appendChild(s)});c.appendChild(g);w.appendChild(c)}
+var fg=h.stations.filter(function(s){return s.kind==='forge'})[0];
+if(fg){var c2=E('div','card','<h3>'+fg.name+' — tiers '+fg.tiers+'</h3><label class="f">Base weapon</label><select id="fb"></select><label class="f">Tag</label><div id="ftg"></div><label class="f">Name your work</label><input type="text" id="fn" placeholder="It must have a name"><div class="apt"><span style="font-size:11px;color:var(--dim)">Cost</span><span class="n" id="fp">—</span></div><button class="btn" style="width:100%;margin-top:9px" id="fgo">FORGE IT</button>');
+w.appendChild(c2);b.appendChild(w);
+var bs=c2.querySelector('#fb');var ws=S.inv.filter(function(i){return i.cat==='WEAPON'});
+if(!ws.length)bs.add(new Option('— no weapons —',''));
+ws.forEach(function(x,i){bs.add(new Option(x.n,i))});
+var tags=D.equipment_alpha.forge_tags_alpha.map(function(t){return{t:t.tag,c:t.cost,d:t.d,lk:t.access!=='open'&&!(t.access.indexOf('Drukhari')>=0&&S.dru),rq:'requires '+t.access}});
+var tw=c2.querySelector('#ftg'),st=tags[0];
+tags.forEach(function(t){var d=E('div','tg'+(t===st?' sel':'')+(t.lk?' lk':''),'<span>'+t.t+' — '+t.d+'</span>'+(t.lk?'<span class="rq">'+t.rq+'</span>':'<span class="mono">+'+t.c+'</span>'));
+if(!t.lk)d.onclick=function(){st=t;tw.querySelectorAll('.tg').forEach(function(x){x.classList.remove('sel')});d.classList.add('sel');pr()};tw.appendChild(d)});
+var base=D.equipment_alpha.forge_rules.base_cost;
+function pr(){c2.querySelector('#fp').textContent=ws.length?(base+st.c)+' PC':'—'}pr();
+c2.querySelector('#fgo').onclick=function(){var x=ws[bs.value];if(!x){T('No base weapon.');return}
+var n=c2.querySelector('#fn').value.trim();if(!n){T('A Named weapon needs a name.');return}
+var cost=base+st.c;if(S.cur<cost){T('Not enough '+curName()+'.');return}
+S.cur-=cost;S.inv.splice(S.inv.indexOf(x),1);S.inv.push({n:n,cat:'WEAPON',d:'Named '+x.n+' - '+st.t+' I'});rW();rLoad();rShop();T('The forge tolls once. "'+n+'" is made.')}}
+else b.appendChild(w)}
+/* ---- map ---- */
+var MV=null;
+function route(pl,sp){var f=fPl(S.pos.pl),t=fPl(pl),tv=D.travel;
+if(S.pos.pl===pl){if(S.pos.sp===sp)return null;return{m:'g',p:tv.same_planet.posts,c:tv.same_planet.cost,d:'Overland march — same world'}}
+if(f.s.id===t.s.id)return S.ships.sys?{m:'s',p:tv.same_sector.posts,c:0,d:'In-system course — '+S.ships.sys}:{m:'x',d:'Requires: '+tv.same_sector.requires};
+if(f.g.id===t.g.id)return S.ships.warp?{m:'s',p:tv.cross_sector_same_segmentum.posts,c:0,d:'Warp jump'}:{m:'c',p:tv.cross_sector_same_segmentum.posts,c:tv.cross_sector_same_segmentum.charter_cost,d:'Chartered warp passage — cross-sector'};
+return S.ships.warp?{m:'s',p:tv.cross_segmentum.posts,c:tv.cross_segmentum.own_vessel_toll,d:'Warp crossing + Segmentum toll'}:{m:'c',p:tv.cross_segmentum.posts,c:tv.cross_segmentum.charter_cost,d:'Chartered warp crossing + Segmentum toll'}}
+function arrTxt(p){if(!p.ruler)return null;var a=D.travel.arrival_at_controlled_planet;
+if(p.ruler.allegiance===S.player.allegiance)return{k:'f',t:'CONTROLLED — '+p.ruler.faction+'. '+a.friendly};
+return{k:'h',t:'CONTROLLED — '+p.ruler.faction+'. '+a.hostile}}
+function travel(pl,sp){var r=route(pl,sp);if(!r||r.m==='x'){T(r?r.d:'Already there.');return}
+if(S.tr){T('Already in transit.');return}
+if(r.c){if(S.cur<r.c){T('Not enough '+curName()+'.');return}S.cur-=r.c}
+S.tr={m:r.m==='c'?'c':(r.m==='g'?'g':'s'),pl:pl,sp:sp,left:r.p,arr:arrTxt(fPl(pl).p)};
+T('Travel Thread spawned — '+r.p+' post(s).');rMap();rHQ();rW()}
+function rTrans(){var b=document.getElementById('tb');if(!S.tr){b.innerHTML='';return}
+var t=S.tr;b.innerHTML='';
+var d=E('div','transit','<div><b>'+({g:'OVERLAND MARCH',s:'IN-SYSTEM TRANSIT',c:'CHARTERED WARP PASSAGE'})[t.m]+'</b><div style="font-size:11.5px;color:var(--dim)">→ '+fLoc(t.pl,t.sp).name+', '+fPl(t.pl).p.name+' · '+t.left+' post(s) left</div>'+(t.arr?'<div style="font-size:11.5px;margin-top:3px;color:'+(t.arr.k==='h'?'var(--blh)':'var(--vdh)')+'">'+t.arr.t+'</div>':'')+'</div>');
+var bt=E('button','btn bl','Write travel post');
+bt.onclick=function(){t.left--;if(t.left<=0){S.pos={pl:t.pl,sp:t.sp};S.tr=null;var f=fPl(S.pos.pl);MV.pl=S.pos.pl;MV.sec=f.s.id;MV.seg=f.g.id;T('Arrived: '+fLoc(S.pos.pl,S.pos.sp).name+'.')}else T('Travel post written. '+t.left+' left.');rMap();rHQ();rW()};
+d.appendChild(bt);b.appendChild(d)}
+function cb(l,f){var b=E('button',null,l);b.onclick=f;return b}
+function rMap(){rTrans();
+var cr=document.getElementById('mcr'),z=document.getElementById('mz'),p=document.getElementById('mp');
+cr.innerHTML='';z.innerHTML='';p.innerHTML='';
+if(MV.lv==='galaxy'){cr.append('GALAXY');var g2=E('div','mg');
+D.galaxy.segmentums.forEach(function(g){var h=fPl(S.pos.pl).g.id===g.id&&!S.tr;
+var d=E('div','mn'+(g.id===MV.seg?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+g.name+'</div><div class="pt">'+g.zones.map(function(x){return x.name}).join(' · ')+'</div>');
+d.onclick=function(){MV.seg=g.id;MV.lv='segment';rMap()};g2.appendChild(d)});z.appendChild(g2);
+p.innerHTML='<h3>The Galaxy</h3><div style="font-size:12.5px;color:var(--dim)">'+D.galaxy.structure+'</div>';return}
+if(MV.lv==='segment'){var g=fSeg(MV.seg);
+cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ');var s0=E('span',null,g.name.toUpperCase());s0.style.color='var(--brh)';cr.appendChild(s0);
+g.zones.forEach(function(zn){z.appendChild(E('div','zh',zn.kind==='core'?'CORE':'EXPANSE — '+zn.name));
+var g3=E('div','mg');
+zn.sectors.forEach(function(sc){var h=fPl(S.pos.pl).s.id===sc.id&&!S.tr;
+var d=E('div','mn'+(sc.sealed?' lk':'')+(sc.id===MV.sec?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+sc.name+'</div><div class="pt">'+sc.owner+'</div><div style="margin-top:5px"><span class="stt '+sc.status+'">'+sc.status+'</span></div>');
+d.onclick=function(){if(sc.sealed){T('Sealed — beyond alpha space.');return}MV.sec=sc.id;MV.lv='sector';rMap()};g3.appendChild(d)});z.appendChild(g3)});
+p.innerHTML='<h3>'+g.name+'</h3><div style="font-size:12.5px;color:var(--dim)">Sector ownership: '+D.galaxy.sector_ownership+'.</div>';return}
+if(MV.lv==='sector'){var f=fSec(MV.sec);
+cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ',cb(f.g.name.toUpperCase(),function(){MV.lv='segment';rMap()}),' › ');
+var s1=E('span',null,f.s.name.toUpperCase());s1.style.color='var(--brh)';cr.appendChild(s1);
+z.appendChild(E('div','zh',(f.z.kind==='core'?'CORE':'EXPANSE — '+f.z.name)+' · STATUS: '+f.s.status+' · '+f.s.owner));
+var g4=E('div','mg');
+(f.s.planets||[]).forEach(function(pl){var h=S.pos.pl===pl.id&&!S.tr;var r=route(pl.id,pl.locations[0].id);
+var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(!h&&r&&r.p?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+r.p+'p'+(r.c?' · '+r.c+'⛁':'')+'</div>':''));
+d.onclick=function(){MV.pl=pl.id;MV.lc=pl.locations[0].id;MV.lv='planet';rMap()};g4.appendChild(d)});
+z.appendChild(g4);
+p.innerHTML='<h3>'+f.s.name+'</h3><div style="font-size:12.5px;color:var(--dim)">Select a world for its surface, orbit, and the Forces standing on it.</div>';return}
+var f2=fPl(MV.pl),pl=f2.p;
+cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ',cb(f2.g.name.toUpperCase(),function(){MV.lv='segment';rMap()}),' › ',cb(f2.s.name.toUpperCase(),function(){MV.lv='sector';rMap()}),' › ');
+var s2=E('span',null,pl.name.toUpperCase());s2.style.color='var(--brh)';cr.appendChild(s2);
+z.appendChild(E('div','zh','SURFACE — NAMED LOCATIONS'));
+var g5=E('div','mg');
+pl.locations.forEach(function(l){var h=S.pos.pl===pl.id&&S.pos.sp===l.id&&!S.tr;
+var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+l.desc_type+'</div>'+(S.pos.pl===pl.id&&!h&&!S.tr?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
+d.onclick=function(){MV.lc=l.id;rMap()};g5.appendChild(d)});
+z.appendChild(g5);
+var l=fLoc(pl.id,MV.lc);
+var fr=forcesAt(pl.id),hi=histAt(pl.id,l.id),np=npcsAt(pl.id,l.id);
+var h2='<h3>'+pl.name+' — '+pl.type+'</h3><div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pl.ruler?(pl.ruler.allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pl.ruler?'RULED: '+pl.ruler.faction:'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+f2.s.status+'</span></div><div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">'+pl.desc+'</div><div class="grid g3" style="font-size:12px">';
+h2+='<div><b style="color:var(--br)">ORBIT</b><br>'+(pl.orbit.length?pl.orbit.map(function(o){return '· '+o}).join('<br>'):'· empty')+'</div>';
+h2+='<div><b style="color:var(--br)">FORCES PRESENT</b><br>'+(fr.length?fr.map(function(x){return '· <b>'+x[0]+'</b> — '+x[1]+' · '+x[2]}).join('<br>'):'· none known')+'</div>';
+h2+='<div><b style="color:var(--br)">'+l.name.toUpperCase()+' — '+l.desc_type.toUpperCase()+'</b><br>'+(l.stations.length?l.stations.map(function(s){return '· '+s.name+(s.tiers?' (forge '+s.tiers+')':'')}).join('<br>')+'<br>':'')+(hi.length?'<span style="color:var(--dim)">Thread history:</span><br>'+hi.map(function(t){return '· '+t}).join('<br>')+'<br>':'<span style="color:var(--dim)">No threads recorded yet.</span><br>')+(np.length?'<span style="color:var(--dim)">Known here:</span><br>'+np.map(function(n){return '· '+n}).join('<br>'):'')+'</div></div>';
+p.innerHTML=h2;
+var r=route(pl.id,l.id);
+if(r&&!S.tr){p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(r.p?' · <span class="mono">'+r.p+' post(s)</span>':'')+(r.c?' · <span class="mono">'+r.c+' '+curName()+'</span>':'')+'</div>');
+var at=arrTxt(pl);if(at&&S.pos.pl!==pl.id)p.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;margin-top:5px;color:'+(at.k==='h'?'var(--blh)':'var(--vdh)')+'">'+at.t+'</div>');
+var bx=E('div');bx.style.cssText='display:flex;gap:8px;margin-top:10px';
+if(r.m==='x'){var nb=E('button','btn',r.d);nb.disabled=true;bx.appendChild(nb)}
+else{var gb=E('button','btn'+(r.m==='c'?' bl':''),'Move here — '+(r.m==='g'?'march':r.m==='c'?'charter passage':'set course'));gb.onclick=function(){travel(pl.id,l.id)};bx.appendChild(gb)}
+p.appendChild(bx)}
+else if(!S.tr){var bx2=E('div');bx2.style.cssText='display:flex;gap:8px;margin-top:10px';
+if(hi.some(function(x){return x.indexOf('ACTIVE')>=0})){var b1=E('button','btn','Open thread here');b1.onclick=function(){go('threads')};bx2.appendChild(b1)}
+if(l.stations.length){var b2=E('button','btn gh','Enter station');b2.onclick=function(){go('shop')};bx2.appendChild(b2)}
+p.appendChild(bx2)}}
+/* ---- threads ---- */
+function rTL(){var L=document.getElementById('tl'),V=document.getElementById('tv');
+V.style.display='none';L.style.display='block';L.innerHTML='';
+var all=S.threads.slice();if(S.tr)all.push({id:'tr',type:'TRAVEL',n:'Transit — '+fLoc(S.tr.pl,S.tr.sp).name,loc:'The void between',turn:'you'});
+all.forEach(function(t){var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b><div style="font-size:11.5px;color:var(--dim);margin-top:2px">'+t.loc+'</div></div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'OPEN — join at location')+'</span>');
+d.onclick=function(){if(t.turn!=='you'){T('Open thread — bring a Force to the location and post to join.');return}openT(t.id)};L.appendChild(d)})}
+function openT(id){var L=document.getElementById('tl'),V=document.getElementById('tv');
+L.style.display='none';V.style.display='block';V.innerHTML='';
+var bk=E('button','btn gh sm','← All threads');bk.onclick=rTL;V.appendChild(bk);
+if(id==='ash')bBattle(V);else if(id==='bar')bDiplo(V);else bTravel(V)}
+function tools(){var t=E('div','ft');[['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],['strikeThrough','<s>S</s>']].forEach(function(x){var b=E('button',null,x[1]);b.onmousedown=function(e){e.preventDefault();document.execCommand(x[0])};t.appendChild(b)});return t}
+var pool=26,blk=[];
+var EN=['Threshjaw (Carnifex)','Termagant brood','Sskarith'];
+var ABM=[{n:'Vexos Kane',ap:3,ac:3,o:[{n:'Attack — Whisper of the Seventh Sore',t:'Combat',x:1,g:'e'},{n:'Attack — Plague Knife (Effortless)',t:'Combat',x:0,g:'e'},{n:'Special — Cast: Curse of the Leper',t:'Special',x:3,g:'a'},{n:'Special — Miasma of Pestilence',t:'Special',x:2,g:'y'},{n:'Move',t:'Move',x:0,g:'b'}]},
+{n:'Gharn',ap:4,ac:3,o:[{n:'Attack — Reaper Autocannon',t:'Combat',x:2,g:'e'},{n:'Attack — Bubotic Axe',t:'Combat',x:1,g:'e'},{n:'Move',t:'Move',x:0,g:'b'}]},
+{n:'Poxwalker Alpha',ap:1,ac:1,o:[{n:'Attack — Rusted Claws (Effortless)',t:'Combat',x:0,g:'e'},{n:'Move',t:'Move',x:0,g:'b'}]}];
+function tgs(g,self){if(g==='e')return EN;if(g==='y')return['Self ('+self+')','The Rotward (Force)','Morvax','Gharn'];if(g==='a')return EN.concat(['Self ('+self+')','Morvax','Gharn']);return['Advance 1 step','Retreat 1 step','Disengage']}
+function bBattle(V){var w=E('div','tw');var lf=E('div');
+var st=E('div');
+st.appendChild(E('div','post','<div class="ph"><span class="who en">Brood-Tyrant Sskarith</span><span class="mono" style="color:var(--dim)">Post 6 · Tyranids</span></div><div class="body">The ravine walls wept ash as the brood came on — Threshjaw first, chitin grinding like tectonic sin, gaunts spilling around its legs…</div><div class="ab"><div class="ah">Action Block · Sskarith\'s Brood · 14 AP</div><ul><li><b>Threshjaw</b> — Move: Medium→Short (0) · Crushing Claws → <b>Gharn</b>, 4 dmg (9)</li><li><b>Termagants</b> — Fleshborers → <b>Poxwalkers Epsilon &amp; Zeta</b>: slain, intact (Desperation)</li><li><b>Sskarith</b> — Cast: Catalyst → <b>Threshjaw</b>, Regen II (5)</li></ul></div>'));
+lf.appendChild(st);
+var cp=E('div','comp','<div class="ch">Your post — '+S.player.name.split(',')[0]+' · The Rotward · Post 7 · <span class="tp SKIRMISH" style="margin:0">SKIRMISH</span></div>');
+cp.appendChild(tools());
+var fic=E('div','fic');fic.contentEditable=true;fic.setAttribute('data-ph','Write your fiction — bold it, slant it, underline the doom…');
+cp.appendChild(fic);
+var ab=E('div','abld','<div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--br);margin-bottom:7px">Action Block</div>');
+var row=E('div','arow');var m=E('select'),a=E('select'),tg=E('select');
+ABM.forEach(function(x,i){m.add(new Option(x.n+' — AP '+x.ap+' · '+x.ac+' act'+(x.ac>1?'s':''),i))});
+function fa(){var x=ABM[m.value];a.innerHTML='';x.o.forEach(function(o,i){a.add(new Option(o.n+' — '+(o.t==='Move'?0:x.ap+o.x)+' AP',i))});ftg()}
+function ftg(){var x=ABM[m.value],o=x.o[a.value];tg.innerHTML='';tgs(o.g,x.n).forEach(function(t,i){tg.add(new Option((o.g==='b'?'':'→ ')+t,i))})}
+m.onchange=fa;a.onchange=ftg;fa();
+var add=E('button','btn gh sm','Add');
+row.appendChild(m);row.appendChild(a);row.appendChild(tg);row.appendChild(add);ab.appendChild(row);
+var cbx=E('div');ab.appendChild(cbx);var wr=E('div','warn');ab.appendChild(wr);
+ab.insertAdjacentHTML('beforeend','<div class="apt"><span style="font-size:11px;color:var(--dim)">AP total · pool: <span class="mono" id="pp">'+pool+'</span></span><span class="n" id="tt">0 AP</span></div>');
+var pb2=E('button','btn bl','ATTACH BLOCK & POST');pb2.style.cssText='width:100%;margin-top:9px';ab.appendChild(pb2);
+cp.appendChild(ab);lf.appendChild(cp);
+function rB(){cbx.innerHTML='';var t=0;
+blk.forEach(function(b,i){t+=b.ap;var c=E('span','chip','<b style="color:var(--brh)">'+b.m.split(' ')[0]+'</b> '+b.s+(b.tg?' → '+b.tg:'')+' · '+b.ap+' AP <button>✕</button>');
+c.querySelector('button').onclick=function(){blk.splice(i,1);rB()};cbx.appendChild(c)});
+document.getElementById('tt').textContent=t+' AP';document.getElementById('pp').textContent=pool;
+if(t>pool)wr.textContent='Exceeds pool — '+D.rules.combat.desperation_action}
+add.onclick=function(){var x=ABM[m.value],o=x.o[a.value],tx=tg.selectedOptions[0]?tg.selectedOptions[0].text.replace('→ ',''):'';
+if(blk.filter(function(b){return b.m===x.n}).length>=x.ac){wr.textContent=x.n+': '+x.ac+' action'+(x.ac>1?'s':'')+' — wounds are actions.';return}
+if(blk.some(function(b){return b.m===x.n&&b.o===o.n&&o.t!=='Move'})){wr.textContent='Once per post: '+o.n;return}
+wr.textContent='';blk.push({m:x.n,o:o.n,s:o.n.split(' — ')[1]||o.n,tg:tx,ap:o.t==='Move'?0:x.ap+o.x});rB()};
+pb2.onclick=function(){var t=blk.reduce(function(a,b){return a+b.ap},0);
+if(!blk.length){wr.textContent='Attach at least one action.';return}
+if(t>pool){wr.textContent='Exceeds pool.';return}
+pool-=t;
+var post=E('div','post','<div class="ph"><span class="who you">'+S.player.name.split(',')[0]+'</span><span class="mono" style="color:var(--dim)">Post 7 · '+FAC(S.player.faction).name+'</span></div><div class="body">'+(fic.innerHTML||'…')+'</div><div class="ab"><div class="ah">Action Block · The Rotward · '+t+' AP</div><ul>'+blk.map(function(b){return '<li><b>'+b.m+'</b> — '+b.o+(b.tg?' → <b>'+b.tg+'</b>':'')+' ('+b.ap+' AP)</li>'}).join('')+'</ul></div>');
+st.appendChild(post);document.getElementById('sp').textContent=pool;
+blk=[];rB();fic.innerHTML='';T('Posted. Sskarith is notified — their turn.');post.scrollIntoView({behavior:'smooth'})};
+w.appendChild(lf);
+w.insertAdjacentHTML('beforeend','<div class="card"><h3>Battle state</h3><div class="fg you"><h4>The Rotward (you) · <span id="sp">'+pool+'</span> AP</h4><div class="mr"><div class="n"><span>Vexos Kane</span><span class="a">9/9 W · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT vs brood</div></div><div class="mr"><div class="n"><span>Morvax (Leader)</span><span class="a">7/7 · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div><div class="mr"><div class="n"><span>Gharn</span><span class="a">4/8 · 3 acts</span></div><div class="hp lo"><i style="width:50%"></i></div><div class="band">MELEE vs Threshjaw</div></div><div class="mr"><div class="n"><span>Poxwalkers α–δ</span><span class="a">1 W · 1 act each</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div></div><div class="fg en"><h4>Sskarith\'s Brood · pool low</h4><div class="mr"><div class="n"><span>Threshjaw — Carnifex R2</span><span class="a">7/10 · Regen II</span></div><div class="hp"><i style="width:70%"></i></div><div class="band">MELEE vs Gharn</div></div><div class="mr"><div class="n"><span>Termagants ×6</span><span class="a">1 W each</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div><div class="mr"><div class="n"><span>Sskarith (Cmdr)</span><span class="a">8/8 · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">MEDIUM</div></div></div><div style="font-size:11.5px;color:var(--dim);border-top:1px solid var(--ln);padding-top:7px">Field: Poxwalkers Epsilon &amp; Zeta — intact</div></div>');
+V.appendChild(w)}
+function bDiplo(V){var w=E('div','tw solo');var lf=E('div');
+var st=E('div');
+st.appendChild(E('div','post','<div class="ph"><span class="who en">Vess the Carrion-Broker</span><span class="mono" style="color:var(--dim)">Post 3 · Wild Named · Drukhari</span></div><div class="body">"You want my toxin-craft on your forge list, rot-lord? My price: 300, and one intact Tyranid body. <i>Intact</i>, mind — no flame, no acid."</div>'));
+st.appendChild(E('div','post','<div class="ph"><span class="who you">'+S.player.name.split(',')[0]+'</span><span class="mono" style="color:var(--dim)">Post 4</span></div><div class="body">"200, and two bodies. The Rotward holds the Ash Ravine by week\'s end."</div>'));
+st.appendChild(E('div','post','<div class="ph"><span class="who en">Vess</span><span class="mono" style="color:var(--dim)">Post 5</span></div><div class="body">"250. And if your Commander dies before delivery… I negotiate with your successor at double."</div>'));
+lf.appendChild(st);
+var cp=E('div','comp','<div class="ch">Your post — The Carrion Bargain · <span class="tp DIPLOMACY" style="margin:0">DIPLOMACY</span></div>');
+cp.appendChild(tools());
+var fic=E('div','fic');fic.contentEditable=true;fic.setAttribute('data-ph','Speak, rot-lord…');cp.appendChild(fic);
+var ab=E('div','abld');
+if(S.vess)ab.innerHTML='<div style="font-size:12px;color:var(--vdh)">Terms struck: 250 '+curName()+' + 2 intact bodies. Drukhari forge access unlocked.</div>';
+else{var r=E('div');r.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+var a1=E('button','btn','Accept — 250 + 2 bodies');
+a1.onclick=function(){if(S.cur<250){T('Not enough '+curName()+'.');return}S.cur-=250;S.dru=true;S.vess=true;rW();T('Deal struck. Ambush now forgeable at your stations.');openT('bar')};
+var a2=E('button','btn gh','Post counter');
+a2.onclick=function(){if(!fic.textContent.trim()){T('Write your counter first.');return}
+st.appendChild(E('div','post','<div class="ph"><span class="who you">'+S.player.name.split(',')[0]+'</span><span class="mono" style="color:var(--dim)">Post 6</span></div><div class="body">'+fic.innerHTML+'</div>'));fic.innerHTML='';T('Posted. Vess is notified.')};
+var a3=E('button','btn bl','Walk away');r.appendChild(a1);r.appendChild(a2);r.appendChild(a3);ab.appendChild(r)}
+cp.appendChild(ab);lf.appendChild(cp);w.appendChild(lf);V.appendChild(w)}
+function bTravel(V){if(!S.tr){V.insertAdjacentHTML('beforeend','<div class="empty">No transit underway.</div>');return}
+var t=S.tr;
+V.insertAdjacentHTML('beforeend','<div class="card" style="margin-top:12px"><h3><span class="tp TRAVEL" style="margin-right:8px">TRAVEL</span>Transit — '+fLoc(t.pl,t.sp).name+', '+fPl(t.pl).p.name+'</h3><div style="font-size:12.5px;color:var(--dim)">'+t.left+' post(s) remaining.'+(t.arr?'<br><span style="color:'+(t.arr.k==='h'?'var(--blh)':'var(--vdh)')+'">'+t.arr.t+'</span>':'')+'</div></div>');
+var b=E('button','btn bl','Write travel post');
+b.onclick=function(){t.left--;if(t.left<=0){S.pos={pl:t.pl,sp:t.sp};S.tr=null;T('Arrived: '+fLoc(S.pos.pl,S.pos.sp).name+'.');rTL()}else{T('Travel post written. '+t.left+' left.');openT('tr')}rHQ();rW()};
+V.appendChild(b)}
+/* ---- comms ---- */
+var cSel='herald';
+function rComms(){var f=fPl(S.pos.pl);
+document.getElementById('cc').textContent=f.g.name+' · '+f.s.name+' · '+(S.tr?'In transit':fLoc(S.pos.pl,S.pos.sp).name);
+document.getElementById('commsrule').textContent=D.rules.comms;
+var L=document.getElementById('cl');L.innerHTML='';
+S.convos.forEach(function(c){var remote=c.pl!==S.pos.pl&&!S.tr;
+var d=E('div','cv'+(c.id===cSel?' sel':'')+(remote?'':' dis'),'<div class="cn">'+c.n+' <span class="npct"'+(c.pc?' style="color:var(--blh);border-color:var(--bl)"':'')+'>'+(c.pc?'PC':'NPC')+'</span></div><div class="cl">'+(remote?c.l:(S.tr?'No vox mid-transit':'On your planet — march to them, open a Thread'))+'</div>');
+if(remote)d.onclick=function(){cSel=c.id;rComms()};L.appendChild(d)});
+var P2=document.getElementById('cp');var c=S.convos.filter(function(x){return x.id===cSel})[0];
+if(!c||c.pl===S.pos.pl||S.tr){P2.innerHTML='<div class="empty">No relay open.<br><b>Those near you are met in person — in a Thread.</b></div>';return}
+P2.innerHTML='<h3>'+c.n+' — astropathic relay</h3>';
+c.ms.forEach(function(m){P2.insertAdjacentHTML('beforeend','<div class="msg '+(m[0]==='me'?'me':'them')+'"><div class="who">'+(m[0]==='me'?'YOU':c.n.toUpperCase())+'</div>'+m[1]+'</div>')});
+var row=E('div');row.style.cssText='display:flex;gap:7px;margin-top:10px';
+var inp=E('input');inp.type='text';inp.placeholder='Compose a message…';
+var b=E('button','btn sm','Send');
+b.onclick=function(){var v=inp.value.trim();if(!v)return;c.ms.push(['me',v]);rComms();T('Message sent across the void.')};
+row.appendChild(inp);row.appendChild(b);P2.appendChild(row)}
+/* ---- rites (fully data-driven) ---- */
+var RB=null,RS=null,AK=['chaos','imperial','xenos'];
+var FS=[{e:'RITE I',t:'Choose your Allegiance',s:'The banners burn over the galaxy.'},{e:'RITE II',t:'Choose your Faction',s:'The banner has many hands.'},{e:'RITE III',t:'Choose your Background',s:'The road that brought you to command — or write your own.'},{e:'RITE IV',t:'Choose your Model',s:'The body you will wear through every war.'},{e:'RITE V',t:'Choose two Origins',s:'What you were decides what you begin with.'},{e:'RITE VI',t:'Your Reflection',s:'What the enemy sees before the end — or describe it.'},{e:'RITE VII',t:'Speak the Name',s:'Once spoken, it is spoken forever.'}];
+var NS=[{e:'THE NAMING · I',t:'The Chosen',s:'Only a veteran of five ranks may rise.'},{e:'THE NAMING · II',t:'The Rising',s:'The Named delta of their class — granted, not chosen.'},{e:'THE NAMING · III',t:'Their Origins',s:'The choice made once at Founding, made again for them.'},{e:'THE NAMING · IV',t:'Speak the Name',s:'The ranks fall away.'}];
+function mkRite(){RB=E('div','rb2','<button class="rx" id="rx">✕</button><div class="rite"><div class="gl" id="rg"></div><div class="eb" id="re"></div><h1 id="rt2"></h1><div class="sb" id="rs"></div><div id="rbdy"></div><div style="display:flex;justify-content:center;gap:10px"><button class="btn gh" id="rbk">Back</button><button class="btn bl" id="rnx">Continue</button></div></div>');
+document.body.appendChild(RB);document.getElementById('rx').onclick=function(){RB.classList.remove('on')};
+document.getElementById('rnx').onclick=rNext;
+document.getElementById('rbk').onclick=function(){if(RS.st){RS.st--;rRite()}};
+document.getElementById('r-found').onclick=function(){RS={mode:'f',st:0,cc:{al:null,fa:null,bg:null,bgT:'',md:null,pk:[],ap:null,apT:'',nm:''}};RB.classList.add('on');rRite()};
+document.getElementById('r-name').onclick=function(){RS={mode:'n',st:0,nm:{md:null,pk:[],name:''}};RB.classList.add('on');rRite()}}
+function grid(b,arr,get,set,multi,max){var g=E('div','chs');
+arr.forEach(function(o,i){var s=multi?get().indexOf(i)>=0:get()===i;
+var d=E('div','choice'+(s?' sel':'')+(o.lk?' dim':''),'<div class="cn">'+o.n+'</div><div class="cd">'+o.d+'</div>'+(o.tb||''));
+if(!o.lk)d.onclick=function(){if(multi){var a=get(),at=a.indexOf(i);if(at>=0)a.splice(at,1);else if(a.length<max)a.push(i);else{T(max+' only.');return}}else set(i);rRite()};
+g.appendChild(d)});b.appendChild(g)}
+function mtb(m){return '<table class="mt"><tr><th>Class</th><th>PC</th><th>AP</th><th>W</th><th>Spd</th><th>Slots</th></tr><tr><td>'+m.cls+'</td><td>'+m.pc+'</td><td>'+AP(m.pc)+'</td><td>'+m.w+'</td><td>'+m.sp+'</td><td>'+m.sl+'</td></tr></table>'}
+function cust(b,show,get,set,ph){if(!show)return;var t=E('textarea');t.placeholder=ph;t.value=get();t.style.marginTop='4px';t.oninput=function(){set(t.value)};b.appendChild(t)}
+function rRite(){var steps=RS.mode==='f'?FS:NS,st=steps[RS.st];
+var g=document.getElementById('rg');g.innerHTML='';
+steps.forEach(function(_,i){var s=E('span',null,['I','II','III','IV','V','VI','VII'][i]);s.className=i<RS.st?'dn':i===RS.st?'on':'';g.appendChild(s)});
+document.getElementById('re').textContent=st.e;document.getElementById('rt2').textContent=st.t;document.getElementById('rs').textContent=st.s;
+var b=document.getElementById('rbdy');b.innerHTML='';
+var nx=document.getElementById('rnx');nx.textContent='Continue';
+document.getElementById('rbk').style.visibility=RS.st?'visible':'hidden';
+if(RS.mode==='f'){var A=RS.cc.al!==null?AK[RS.cc.al]:null,fl=A?FACS(A):null,F=fl&&RS.cc.fa!==null?fl[RS.cc.fa]:null;
+if(RS.st===0)grid(b,AK.map(function(k){return{n:D.allegiances[k].name,d:FACS(k).length+' factions · wallets: '+(typeof D.allegiances[k].wallets==='string'?'per faction':D.allegiances[k].wallets.join(' / '))}}),function(){return RS.cc.al},function(v){if(RS.cc.al!==v){RS.cc.fa=null;RS.cc.bg=null;RS.cc.md=null;RS.cc.ap=null;RS.cc.pk=[]}RS.cc.al=v});
+if(RS.st===1)grid(b,fl.map(function(f){return{n:f.name,d:f.tagline+' · Currency: '+f.currency}}),function(){return RS.cc.fa},function(v){if(RS.cc.fa!==v){RS.cc.bg=null;RS.cc.md=null;RS.cc.pk=[]}RS.cc.fa=v});
+if(RS.st===2){grid(b,F.backgrounds.map(function(x){return{n:x[0],d:x[1]}}).concat([{n:'Write your own',d:'Your road, in your words. Moderated.'}]),function(){return RS.cc.bg},function(v){RS.cc.bg=v});cust(b,RS.cc.bg===F.backgrounds.length,function(){return RS.cc.bgT},function(v){RS.cc.bgT=v},'The road that brought you to command…')}
+if(RS.st===3)grid(b,F.models.map(function(m){return{n:m.n,d:'',tb:mtb(m)}}),function(){return RS.cc.md},function(v){RS.cc.md=v});
+if(RS.st===4){b.appendChild(E('div','mono','<span style="color:var(--dim)">'+RS.cc.pk.length+' / 2 chosen — '+F.name+' origins</span>'));
+grid(b,F.origin_perks.map(function(p){return{n:p[0],d:D.perk_effects[p[1]],lk:p[1]==='dem'&&A!=='chaos'}}),function(){return RS.cc.pk},null,true,2)}
+if(RS.st===5){grid(b,F.appearances.map(function(x){return{n:x[0],d:x[1]}}).concat([{n:'Describe yourself',d:'Your reflection, in your words.'}]),function(){return RS.cc.ap},function(v){RS.cc.ap=v});cust(b,RS.cc.ap===F.appearances.length,function(){return RS.cc.apT},function(v){RS.cc.apT=v},'What the enemy sees before the end…')}
+if(RS.st===6){var m=F.models[RS.cc.md],cd=D.rules.deltas.commander[m.cls]||{w:0,sp:0,sl:0};
+var w=m.w+cd.w,sp=m.sp+cd.sp,sl2=m.sl+cd.sl,eco=D.rules.economy.founding_start,cur=eco.currency,tags=['Leader','Commander'];
+RS.cc.pk.forEach(function(i){var fx=F.origin_perks[i][1];if(fx==='w')w++;if(fx==='sp')sp++;if(fx==='sl')sl2++;if(fx==='cur')cur+=250;if(fx==='psy')tags.push('Psyker');if(fx==='dem')tags.push('DEMON')});
+var bg=RS.cc.bg===F.backgrounds.length?(RS.cc.bgT.trim()||'Unwritten'):F.backgrounds[RS.cc.bg][0];
+var ap2=RS.cc.ap===F.appearances.length?'Self-described':F.appearances[RS.cc.ap][0];
+var mult=D.rules.premiums.commander_pc_multiplier;
+b.insertAdjacentHTML('beforeend','<div class="ov"><table><tr><th colspan="2">Identity</th></tr><tr><td style="color:var(--dim)">Allegiance / Faction</td><td>'+D.allegiances[A].name+' — '+F.name+'</td></tr><tr><td style="color:var(--dim)">Model</td><td>'+m.n+' ('+m.cls+') · Rank 1</td></tr><tr><td style="color:var(--dim)">Background</td><td>'+bg+'</td></tr><tr><td style="color:var(--dim)">Bearing</td><td>'+ap2+'</td></tr><tr><td style="color:var(--dim)">Origins</td><td>'+RS.cc.pk.map(function(i){return F.origin_perks[i][0]}).join(' · ')+'</td></tr><tr><th colspan="2">Profile</th></tr><tr><td style="color:var(--dim)">PC</td><td class="mono">'+Math.round(m.pc*mult)+' ('+m.pc+' ×'+mult+' Commander)</td></tr><tr><td style="color:var(--dim)">AP / Actions</td><td class="mono">'+AP(m.pc)+' AP · '+Math.min(3,w)+' actions</td></tr><tr><td style="color:var(--dim)">Wounds</td><td class="mono">'+w+' ('+m.w+' +'+cd.w+' Cmdr'+(RS.cc.pk.some(function(i){return F.origin_perks[i][1]==='w'})?' +1 origin':'')+')</td></tr><tr><td style="color:var(--dim)">Speed / Slots</td><td class="mono">'+sp+' · '+sl2+' ('+m.sl+' +'+cd.sl+' Cmdr'+(RS.cc.pk.some(function(i){return F.origin_perks[i][1]==='sl'})?' +1':'')+')</td></tr><tr><th colspan="2">Resources</th></tr><tr><td style="color:var(--dim)">Currency ('+F.currency+')</td><td class="mono">'+cur+'</td></tr><tr><td style="color:var(--dim)">Dominance / Influence</td><td class="mono">'+eco.dominance+' AP · '+eco.influence+'</td></tr><tr><td style="color:var(--dim)">Tags</td><td>'+tags.join(', ')+'</td></tr></table></div>');
+var nm=E('input');nm.type='text';nm.placeholder='Speak the name';nm.value=RS.cc.nm;nm.oninput=function(){RS.cc.nm=nm.value};b.appendChild(nm);
+nx.textContent='FOUND THE LINEAGE'}}
+else{var PF=FAC(S.player.faction);
+if(RS.st===0)grid(b,S.roster.map(function(m){return{n:m.n,d:m.tag?m.tag+' — already risen':'Rank '+m.rk+(m.rk>=5?' · eligible':' · must reach Rank 5'),lk:!!m.tag||m.rk<5}}),function(){return RS.nm.md},function(v){RS.nm.md=v});
+if(RS.st===1){var mm=S.roster[RS.nm.md],dl=D.rules.deltas.named[mm.cls]||{w:0,sp:0,sl:1};
+b.insertAdjacentHTML('beforeend','<div class="ov"><table><tr><th colspan="2">'+mm.n+' — '+mm.cls+' class</th></tr><tr><td style="color:var(--dim)">Named delta (automatic)</td><td class="mono">'+(dl.w?'+'+dl.w+' W ':'')+(dl.sp?'+'+dl.sp+' Spd ':'')+'+'+dl.sl+' Slot</td></tr><tr><td style="color:var(--dim)">PC premium</td><td class="mono">'+mm.pc+' → '+Math.round(mm.pc*D.rules.premiums.named_pc_multiplier)+' (×'+D.rules.premiums.named_pc_multiplier+' Named)</td></tr><tr><td style="color:var(--dim)">Gains</td><td>Leader tag — may hold dispatched AP and lead a Force</td></tr></table></div>')}
+if(RS.st===2){b.appendChild(E('div','mono','<span style="color:var(--dim)">'+RS.nm.pk.length+' / 2 chosen — '+PF.name+' origins</span>'));
+grid(b,PF.origin_perks.map(function(p){return{n:p[0],d:D.perk_effects[p[1]]}}),function(){return RS.nm.pk},null,true,2)}
+if(RS.st===3){var nm2=E('input');nm2.type='text';nm2.placeholder='Speak the name';nm2.value=RS.nm.name;nm2.oninput=function(){RS.nm.name=nm2.value};b.appendChild(nm2);nx.textContent='RAISE THEM'}}}
+function rNext(){var last=RS.mode==='f'?6:3;
+if(RS.mode==='f'){var c=RS.cc;var fl=c.al!==null?FACS(AK[c.al]):null;var F=fl&&c.fa!==null?fl[c.fa]:null;
+if(RS.st===0&&c.al===null){T('Choose an allegiance.');return}
+if(RS.st===1&&c.fa===null){T('Choose a faction.');return}
+if(RS.st===2){if(c.bg===null){T('Choose a background.');return}if(c.bg===F.backgrounds.length&&!c.bgT.trim()){T('Write your road, or choose one.');return}}
+if(RS.st===3&&c.md===null){T('Choose a model.');return}
+if(RS.st===4&&c.pk.length<2){T('Choose two origins.');return}
+if(RS.st===5){if(c.ap===null){T('Choose your reflection.');return}if(c.ap===F.appearances.length&&!c.apT.trim()){T('Describe yourself, or choose.');return}}
+if(RS.st===last){if(!c.nm.trim()){T('The name must be spoken.');return}
+RB.classList.remove('on');T(c.nm.trim()+' awakens. The first thread begins.');go('threads');return}}
+else{if(RS.st===0&&RS.nm.md===null){T('Choose the one who rises.');return}
+if(RS.st===last){if(!RS.nm.name.trim()){T('The name must be spoken.');return}
+if(RS.nm.pk.length<2){T('Choose two origins.');return}
+var m=S.roster[RS.nm.md];if(!m||m.tag||m.rk<5){T('Not eligible.');return}
+var PF=FAC(S.player.faction),dl=D.rules.deltas.named[m.cls]||{sl:1};
+m.tag='Named';m.n=RS.nm.name.trim();m.pc=Math.round(m.pc*D.rules.premiums.named_pc_multiplier);
+for(var i=0;i<dl.sl;i++)m.sl.push({k:'NAMED',it:null});
+RS.nm.pk.forEach(function(i){var fx=PF.origin_perks[i][1];if(fx==='psy')m.sl.push({k:'WARP CAST',it:null});if(fx==='cur')S.cur+=250});
+m.sub='Named '+m.sub+' - '+RS.nm.pk.map(function(i){return PF.origin_perks[i][0]}).join(', ');
+S.succ.push({n:m.n,fid:null});
+RB.classList.remove('on');rRos();rW();T(m.n+' rises from the ranks. The Leader tag is theirs.');go('barracks');return}}
+RS.st++;rRite()}
+/* ---- boot ---- */
+function init(){S=demoSave();
+var f=fPl(S.pos.pl);MV={lv:'sector',seg:f.g.id,sec:f.s.id,pl:S.pos.pl,lc:S.pos.sp};
+document.getElementById('rname').textContent=S.player.name.split(',')[0];
+document.getElementById('rdata').textContent='Canon: '+D.meta.format+' v'+D.meta.version;
+CLASSES().forEach(function(c){document.getElementById('fc').add(new Option(c,c))});
+var ff=document.getElementById('ff');S.forces.forEach(function(fo){ff.add(new Option(fo.n,fo.n))});ff.add(new Option('— direct command','—'));
+['fq','fc','fs','ff'].forEach(function(i){document.getElementById(i).addEventListener('input',rRos)});
+document.querySelectorAll('.navbtn').forEach(function(b){b.onclick=function(){go(b.dataset.s)}});
+document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on',x===b)});document.querySelectorAll('.sub').forEach(function(v){v.classList.remove('on')});document.getElementById('b-'+b.dataset.b).classList.add('on');if(b.dataset.b==='forces')rF()}});
+mkPicker();mkRite();
+document.getElementById('boot').style.display='none';
+document.getElementById('shell').style.display='flex';
+rHQ();rRos();rLoad();rMap();rTL();rComms();rShop()}
+fetch('./heretics-40k-data-v1.json').then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(d){D=d;init()}).catch(function(e){
+document.getElementById('bootmsg').innerHTML='<span style="color:var(--blh)">Could not load canon (heretics-40k-data-v1.json).</span><br><br>The engine and data file must sit in the same folder and be served over HTTP —<br>opening this file directly (file://) blocks the data fetch.<br><br><span class="mono" style="color:var(--dim)">Quick local test: run &nbsp;python -m http.server&nbsp; in the folder, open localhost:8000<br>Deploy: upload both files to GitHub Pages / Netlify / itch.io</span>'});
+</script></body></html>

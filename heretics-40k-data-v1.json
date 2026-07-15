@@ -1,0 +1,300 @@
+{
+  "meta": {
+    "name": "Heretics 40K",
+    "format": "heretics-data",
+    "version": "1.0",
+    "updated": "2026-07-15",
+    "notes": [
+      "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
+      "Terminology law: always 'model', never 'chassis'.",
+      "Scope v1.0: full rules constants + all 20 factions with creation content and alpha model subsets (3/faction) + alpha galaxy. Full 5-model rosters, ~100 weapons, 75 items, 55 abilities, 71 casts migrate from Notion in v1.1-v1.4 (see migration block)."
+    ],
+    "migration": {
+      "done": ["rules constants", "factions + creation content", "alpha models (3 per faction)", "alpha galaxy + travel", "thread types", "alpha equipment + forge tags", "alpha NPCs"],
+      "next": [
+        {"v": "1.1", "task": "Full statted rosters: 5 models x 20 factions from 'Base Model Rosters' page"},
+        {"v": "1.2", "task": "Full weapons: Tag Registry + Standard Weapons + Named/Legendary from Tags/Basic Weapons/Named Weapons pages"},
+        {"v": "1.3", "task": "Full items + abilities from Basic Items / Named & Legendary Items / Abilities pages"},
+        {"v": "1.4", "task": "Full casts (8 families) from Warp Casting page"},
+        {"v": "1.5", "task": "Minted planets, populated map, territory ownership per Galaxy & Territory v1"}
+      ]
+    }
+  },
+  "rules": {
+    "ap_bands": [
+      {"pc_max": 9, "ap": 1}, {"pc_max": 15, "ap": 2}, {"pc_max": 35, "ap": 3}, {"pc_max": 63, "ap": 4},
+      {"pc_max": 99, "ap": 5}, {"pc_max": 143, "ap": 6}, {"pc_max": 195, "ap": 7}, {"pc_max": 255, "ap": 8}
+    ],
+    "premiums": {"named_pc_multiplier": 1.25, "commander_pc_multiplier": 1.5},
+    "deltas": {
+      "named": {
+        "Core": {"w": 1, "sp": 1, "sl": 1},
+        "Assault": {"w": 3, "sp": 0, "sl": 1},
+        "Flying": {"w": 0, "sp": 3, "sl": 1},
+        "Armament": {"w": 2, "sp": 0, "sl": 2}
+      },
+      "commander": {
+        "Core": {"w": 2, "sp": 2, "sl": 2},
+        "Assault": {"w": 5, "sp": 0, "sl": 2},
+        "Flying": {"w": 0, "sp": 4, "sl": 2},
+        "Armament": {"w": 3, "sp": 0, "sl": 3}
+      }
+    },
+    "growth": {
+      "pc_curve_by_rank": [1.0, 1.4, 1.9, 2.5, 3.2],
+      "pc_rounding": "nearest 5",
+      "wounds_pct_of_baseline_per_rankup": {"Core": 0.15, "Assault": 0.25, "Flying": 0.10, "Armament": 0.15},
+      "speed_gains": {"Core": "+1 at R3 and R5", "Assault": "flat", "Flying": "+1 per rank", "Armament": "flat"},
+      "slot_gains": {"Core": "+1 at R2 and R4", "Assault": "+1 at R2 and R4", "Flying": "+1 at R2 and R4", "Armament": "+1 every rank"},
+      "xp_to_rank_up": "equal to model's current PC",
+      "force_xp": "Forces earn and rank together; requirement = average of members; joining only at Force's current rank"
+    },
+    "combat": {
+      "action_types": ["Combat", "Movement", "Special"],
+      "actions_per_post": "min(current_wounds, 3)",
+      "equipment_once_per_post": true,
+      "ap_cost": "model AP + equipment AP modifier (additive); Effortless = model AP only",
+      "movement_ap": 0,
+      "desperation_action": "When Force AP pool is empty: 1 action per model per post, limited to Movement or Effortless-tagged use",
+      "distance_bands": ["MELEE", "SHORT", "MEDIUM", "LONG"],
+      "health_states": [
+        {"tag": "Healthy", "above_pct": 0.5, "damage_dealt": 1.0},
+        {"tag": "Injured", "above_pct": 0.25, "damage_dealt": 0.5},
+        {"tag": "Vulnerable", "above_pct": 0.0, "damage_dealt": 0.25}
+      ],
+      "elements": ["Physical", "Heat", "Warp", "Corrosive", "Plasma", "Energy"],
+      "anti_warp_counters_affect": ["Warp", "Bloodrage"]
+    },
+    "death": {
+      "trigger": "0 wounds",
+      "body_state_rule": "element of the final point of damage decides the body's state; DoT ticks count",
+      "revivable_elements": ["Physical", "Energy"],
+      "denied_elements": ["Heat", "Corrosive", "Plasma", "Warp"],
+      "commander": "permadeath (ascension excepted)",
+      "succession": {
+        "heir": "AP-holding Named leader, per declared Succession Order",
+        "inherits": ["Commander layer", "33% of Currency", "33% of Influence"]
+      },
+      "field_recovery": "victor recovers 50% of their own revivable dead"
+    },
+    "economy": {
+      "currency": "buys equipment, models, vehicles, infrastructure",
+      "dominance": "Commander's total AP; dispatchable to Named models, granting the Leader tag; a Force without AP takes no actions",
+      "influence": "ownership ceiling: total PC of all controlled models may never exceed Influence, even split across Forces",
+      "founding_start": {"currency": 300, "dominance": 30, "influence": 350}
+    },
+    "force_size_tags": [
+      {"tag": "SQUAD", "pc_max": 250}, {"tag": "WARBAND", "pc_max": 750}, {"tag": "COMPANY", "pc_max": 1500},
+      {"tag": "BATTLEGROUP", "pc_max": 3000}, {"tag": "HOST", "pc_max": 6000}, {"tag": "LEGION", "pc_max": 12000},
+      {"tag": "CRUSADE", "pc_max": null}
+    ],
+    "thread_types": [
+      {"type": "Diplomacy", "desc": "Non-combat interactions between PCs", "subtypes": ["Trade"], "rewards": ["Influence"]},
+      {"type": "Mission", "desc": "Objective-based, allies and opponents", "subtypes": [], "rewards": ["Currency", "(Dominance & Influence)"]},
+      {"type": "Skirmish", "desc": "Battle between combatants", "subtypes": ["Duel (1v1)", "Raid (loot a named owned location)"], "rewards": ["Currency", "Dominance", "(Influence)"]},
+      {"type": "Invasion", "desc": "Take over land/planet", "subtypes": ["Invasion (PVP)", "Expansion (PVE)", "Domination (PVPVE)", "Exterminatus (planet destruction)"], "rewards": ["Currency", "Dominance", "Influence"]},
+      {"type": "Events", "desc": "Moderator-run", "subtypes": [], "rewards": []},
+      {"type": "Travel", "desc": "Spawned by movement; arrival procedures resolve here", "subtypes": [], "rewards": []}
+    ],
+    "comms": "In-character remote messaging (vox/astropathic) for NPCs/PCs NOT on the same planet/sector. All face-to-face interaction, including Diplomacy, happens in Threads.",
+    "naming_rite": {
+      "eligibility": "Rank 5 unnamed model under a Commander",
+      "grants": ["name", "automatic Named delta for its class (see rules.deltas.named)", "+25% PC", "Leader tag eligibility", "repeat of the faction Origin Perk choice from Character Creation (choose 2)"],
+      "cost": 0,
+      "forbidden": ["no freeform ability", "no Psyker tag purchase"]
+    },
+    "founding_rite": {
+      "steps": ["Allegiance", "Faction", "Background (3 presets + write-your-own, moderated)", "Model (stat table shown)", "Origins (choose 2 faction perks)", "Reflection (3 faction presets + describe-yourself)", "Name + full overview"],
+      "commander_gets": ["+50% PC premium", "Commander delta for class (rules.deltas.commander)", "Leader tag", "starting wallets (rules.economy.founding_start)"]
+    }
+  },
+  "perk_effects": {
+    "w": "+1 Wound", "sp": "+1 Speed", "sl": "+1 Slot", "cur": "+250 Currency",
+    "psy": "Psyker tag - Warp Cast slot opens", "dem": "DEMON tag (Chaos only)"
+  },
+  "allegiances": {
+    "chaos": {"name": "CHAOS", "wallets": ["Corruption", "Subjugation", "Control"]},
+    "imperial": {"name": "IMPERIAL", "wallets": ["Thrones", "Command", "Rank"]},
+    "xenos": {"name": "XENOS", "wallets": "per-faction currency; Dominance/Influence names TBD per faction"}
+  },
+  "factions": [
+    {"id": "black_legion", "allegiance": "chaos", "name": "Black Legion", "currency": "Corruption", "tagline": "Ascendancy through merit and murder.",
+     "backgrounds": [["Cadia-Breaker", "You led a claw when the fortress-world died."], ["Hound of Horus", "Your gene-line remembers the Warmaster."], ["Despoiler's Debt", "Abaddon spared you once. Unpaid."]],
+     "appearances": [["Trophy-Hung", "Black-and-gold strung with taken icons."], ["Topknot Veteran", "The old Legion cut, murder-scarred."], ["Eye-Branded", "The Eye seared across the faceplate."]],
+     "origin_perks": [["Merit of Murder", "w"], ["Warband Tithes", "cur"], ["Eye-Marked", "psy"], ["Spoils of the Long War", "sl"]],
+     "models": [{"n": "Legionnaire", "cls": "Core", "pc": 24, "w": 4, "sp": 5, "sl": 2}, {"n": "Chosen Terminator", "cls": "Assault", "pc": 52, "w": 6, "sp": 3, "sl": 3}, {"n": "Warp Talon", "cls": "Flying", "pc": 36, "w": 4, "sp": 9, "sl": 2}]},
+    {"id": "death_guard", "allegiance": "chaos", "name": "Death Guard", "currency": "Corruption", "tagline": "Endure everything. Affinity: DoT, Suppressing.",
+     "backgrounds": [["Bell-Tolled", "The Seventh Bell tolled for you alone."], ["Fleet Remnant", "A plague-hulk's last officer; the crew obeys."], ["Garden-Sworn", "Given a seed to plant among the stars."]],
+     "appearances": [["Rot-Bloomed", "Split plate parted by patient flesh."], ["Censer-Hung", "Chained censers, droning flies."], ["Rust-Green", "Ceramite the color of old sickness."]],
+     "origin_perks": [["Bell-Marked", "w"], ["Fly-Blown Patronage", "cur"], ["Warp-Rotted", "psy"], ["Pack-Mule of Nurgle", "sl"]],
+     "models": [{"n": "Plague Marine", "cls": "Core", "pc": 24, "w": 4, "sp": 5, "sl": 2}, {"n": "Blightlord Terminator", "cls": "Assault", "pc": 50, "w": 6, "sp": 3, "sl": 3}, {"n": "Foetid Bloat-Drone", "cls": "Flying", "pc": 90, "w": 6, "sp": 8, "sl": 2}]},
+    {"id": "world_eaters", "allegiance": "chaos", "name": "World Eaters", "currency": "Corruption", "tagline": "Blood pays for power.",
+     "backgrounds": [["Pit-Crowned", "Eight hundred bouts unbeaten."], ["The Quiet One", "The Nails fell silent once. You hunt that hour."], ["Skull-Debtor", "A tally you cannot count."]],
+     "appearances": [["Blood-Lacquered", "Red plate that never dries."], ["Nails-Scarred", "Cabled temples, grinding jaw."], ["Brass-Bound", "Trophy skulls worn like rank."]],
+     "origin_perks": [["Butcher's Vigor", "w"], ["Arena Purse", "cur"], ["Nails' Momentum", "sp"], ["Chain-Harness", "sl"]],
+     "models": [{"n": "Khorne Berzerker", "cls": "Core", "pc": 22, "w": 4, "sp": 6, "sl": 2}, {"n": "Exalted Eightbound", "cls": "Assault", "pc": 58, "w": 7, "sp": 5, "sl": 3}, {"n": "Chaos Raptor", "cls": "Flying", "pc": 34, "w": 4, "sp": 9, "sl": 2}]},
+    {"id": "thousand_sons", "allegiance": "chaos", "name": "Thousand Sons", "currency": "Corruption", "tagline": "Dust and sorcery.",
+     "backgrounds": [["The Ninth Cabal", "Sole survivor of one page too far."], ["Dust-Keeper", "Nine urns that counsel you in dreams."], ["Oathbound Seeker", "A relic scattered across the Segmentum."]],
+     "appearances": [["Dust-Sealed", "Sapphire and gilt, nothing inside but purpose."], ["Prism-Eyed", "Horned helm, witch-fire eyes."], ["Scripture-Etched", "Armor that whispers its writing."]],
+     "origin_perks": [["Rubricae Bond", "w"], ["Cabal Coffers", "cur"], ["Sorcerer-Born", "psy"], ["Reliquary Rings", "sl"]],
+     "models": [{"n": "Rubric Marine", "cls": "Core", "pc": 26, "w": 4, "sp": 4, "sl": 2}, {"n": "Scarab Occult Terminator", "cls": "Assault", "pc": 55, "w": 6, "sp": 3, "sl": 3}, {"n": "Tzaangor Skyflock Alpha", "cls": "Flying", "pc": 30, "w": 4, "sp": 8, "sl": 2}]},
+    {"id": "emperors_children", "allegiance": "chaos", "name": "Emperor's Children", "currency": "Corruption", "tagline": "Perfection, at any volume.",
+     "backgrounds": [["The Last Perfect Note", "You heard the chord and survived."], ["Palatine Duelist", "Undefeated in six pits."], ["Flesh-Sculptor's Muse", "Rebuilt by a mad chirurgeon. You approve."]],
+     "appearances": [["Violet and Gold", "Mirror ceramite, sensor-quills."], ["Chem-Glanded", "Pupils blown wide, all felt twice."], ["Flayed-Silk", "A cloak that used to sing."]],
+     "origin_perks": [["Sensory Overdrive", "sp"], ["Decadent Patron", "cur"], ["Chorus-Touched", "psy"], ["Perfection's Panoply", "sl"]],
+     "models": [{"n": "Noise Marine", "cls": "Core", "pc": 26, "w": 4, "sp": 5, "sl": 2}, {"n": "Flawless Terminator", "cls": "Assault", "pc": 50, "w": 6, "sp": 3, "sl": 3}, {"n": "Sonancer", "cls": "Flying", "pc": 32, "w": 4, "sp": 9, "sl": 2}]},
+    {"id": "daemons", "allegiance": "chaos", "name": "Daemons", "currency": "Corruption", "tagline": "The warp given claws.",
+     "backgrounds": [["Neverborn Ascendant", "Clawed free of a greater shadow."], ["The Broken Seal", "A ward failed. You remember the binder."], ["Herald of the Four", "All four thrones. None minds. Yet."]],
+     "appearances": [["Shape-Forgetting", "Flesh deciding its form one moment late."], ["Four-Marked", "Brass, rot, silk and fire in one hide."], ["The Wrong Smile", "Too wide, in a wrong place."]],
+     "origin_perks": [["Warpflesh", "w"], ["Tribute of Souls", "cur"], ["Daemonheart", "dem"], ["Unbound Stride", "sp"]],
+     "models": [{"n": "Bloodletter", "cls": "Core", "pc": 20, "w": 4, "sp": 6, "sl": 2}, {"n": "Great Beast of Nurgle", "cls": "Assault", "pc": 56, "w": 7, "sp": 3, "sl": 3}, {"n": "Screamer of Tzeentch", "cls": "Flying", "pc": 30, "w": 4, "sp": 10, "sl": 2}]},
+    {"id": "astartes", "allegiance": "imperial", "name": "Adeptus Astartes", "currency": "Thrones", "tagline": "The Angels of Death.",
+     "backgrounds": [["Last of the Company", "The gate held. You carry its banner."], ["Crusade-Sworn", "Home is a ship you may never see again."], ["The Reborn", "You crossed the Rubicon. The Chapter watches."]],
+     "appearances": [["Parade-Perfect", "Chapter plate immaculate between wars."], ["Battle-Worn", "Ceramite scarred to bare metal."], ["Crusader-Cloaked", "Blackened armor, oathbound cloak."]],
+     "origin_perks": [["Gene-Wrought", "w"], ["Chapter Tithe", "cur"], ["Librarius-Tested", "psy"], ["Chapter Armoury", "sl"]],
+     "models": [{"n": "Intercessor", "cls": "Core", "pc": 20, "w": 4, "sp": 5, "sl": 2}, {"n": "Aggressor", "cls": "Assault", "pc": 45, "w": 6, "sp": 3, "sl": 3}, {"n": "Inceptor", "cls": "Flying", "pc": 60, "w": 5, "sp": 9, "sl": 2}]},
+    {"id": "militarum", "allegiance": "imperial", "name": "Astra Militarum", "currency": "Thrones", "tagline": "The Hammer of the Emperor.",
+     "backgrounds": [["Field Commission", "Every officer above you died in one hour."], ["Death World Veteran", "Home tried to kill you first."], ["Scholar-Officer", "You read every lost campaign, to repeat none."]],
+     "appearances": [["Parade-Ground", "Honors in exact order, none unearned."], ["Front-Line Grey", "Flak worn colorless."], ["Regimental Colors", "A saint's ribbon, for luck."]],
+     "origin_perks": [["Hard as Cadia", "w"], ["Requisition Papers", "cur"], ["Double-Time", "sp"], ["Kit-Rat", "sl"]],
+     "models": [{"n": "Tempestus Scion", "cls": "Core", "pc": 9, "w": 2, "sp": 5, "sl": 2}, {"n": "Bullgryn", "cls": "Assault", "pc": 28, "w": 6, "sp": 4, "sl": 3}, {"n": "Skyhammer Exo-Rig", "cls": "Flying", "pc": 36, "w": 4, "sp": 8, "sl": 2}]},
+    {"id": "mechanicus", "allegiance": "imperial", "name": "Adeptus Mechanicus", "currency": "Thrones", "tagline": "Flesh is a rough draft.",
+     "backgrounds": [["Forge-Orphan", "Raised in a dying forge world's cooling halls."], ["The Quested", "One lost STC; your life its footnote."], ["Excommunicated Savant", "Too curious for Mars."]],
+     "appearances": [["Red-Robed", "Crimson over chrome and hydraulics."], ["Dendrite-Haloed", "A crown of resting questions."], ["More Machine", "The birth-flesh is ceremonial."]],
+     "origin_perks": [["Reinforced Frame", "w"], ["Forge Stipend", "cur"], ["Overclocked Actuators", "sp"], ["Servo-Harness", "sl"]],
+     "models": [{"n": "Skitarii Ranger", "cls": "Core", "pc": 12, "w": 3, "sp": 5, "sl": 2}, {"n": "Kastelan Punisher", "cls": "Assault", "pc": 46, "w": 7, "sp": 3, "sl": 3}, {"n": "Pteraxii Sterylizor", "cls": "Flying", "pc": 24, "w": 3, "sp": 9, "sl": 2}]},
+    {"id": "sororitas", "allegiance": "imperial", "name": "Adepta Sororitas", "currency": "Thrones", "tagline": "Faith made manifest.",
+     "backgrounds": [["Shrine-Ward", "Ten sieges unbroken. You are the eleventh wall."], ["Penitent Risen", "You returned from the Repentia path."], ["Voice of the Saint", "A saint spoke through you once."]],
+     "appearances": [["Consecrated Plate", "Power armor and blessed silk."], ["Fleur-Branded", "The lily seared over the heart."], ["Candle-Scarred", "Wax on the pauldrons, relic chains."]],
+     "origin_perks": [["Shield of Faith", "w"], ["Ecclesiarchy Purse", "cur"], ["Zealot's Pace", "sp"], ["Reliquary Bearer", "sl"]],
+     "models": [{"n": "Battle Sister", "cls": "Core", "pc": 12, "w": 3, "sp": 5, "sl": 2}, {"n": "Celestian Sacresant", "cls": "Assault", "pc": 26, "w": 5, "sp": 4, "sl": 3}, {"n": "Zephyrim", "cls": "Flying", "pc": 30, "w": 4, "sp": 9, "sl": 2}]},
+    {"id": "custodes", "allegiance": "imperial", "name": "Adeptus Custodes", "currency": "Thrones", "tagline": "Ten thousand years sharp.",
+     "backgrounds": [["The Long Watch Ended", "You left the Palace. The galaxy disappoints."], ["Blade of the Ordo", "Seconded to the Inquisition."], ["Shadowkeeper's Vigil", "You guarded a thing best forgotten."]],
+     "appearances": [["Auramite and Crimson", "Gold plate, a plume like spilled blood."], ["Eagle-Worked", "Lightning and aquilae in every surface."], ["Grey-Cloaked", "A watcher's drab over glory."]],
+     "origin_perks": [["Auric Physique", "w"], ["Throne's Treasury", "cur"], ["Aquilon Stride", "sp"], ["Panoply of the Palace", "sl"]],
+     "models": [{"n": "Custodian Guard", "cls": "Core", "pc": 60, "w": 6, "sp": 5, "sl": 2}, {"n": "Allarus Terminator", "cls": "Assault", "pc": 88, "w": 8, "sp": 4, "sl": 3}, {"n": "Vertus Praetor", "cls": "Flying", "pc": 92, "w": 6, "sp": 10, "sl": 2}]},
+    {"id": "tyranids", "allegiance": "xenos", "name": "Tyranids", "currency": "Biomass", "tagline": "Biomass in, horror out.",
+     "backgrounds": [["Severed Node", "Cut from the Hive Mind; kept the hunger, gained a self."], ["Vanguard Strain", "A decade ahead of the fleet."], ["The Adapted", "Your carapace remembers a world-killer."]],
+     "appearances": [["Apex Chitin", "Plates scarred by a dead world's weapon."], ["Crest-Marked", "An oversized synapse crest, listening."], ["Strange-Patterned", "Colors no fleet carries."]],
+     "origin_perks": [["Dense Chitin", "w"], ["Biomass Hoard", "cur"], ["Hyper-Metabolism", "sp"], ["Adaptive Glands", "sl"]],
+     "models": [{"n": "Tyranid Warrior", "cls": "Core", "pc": 30, "w": 5, "sp": 6, "sl": 2}, {"n": "Tyrant Guard", "cls": "Assault", "pc": 48, "w": 7, "sp": 4, "sl": 3}, {"n": "Winged Prime", "cls": "Flying", "pc": 52, "w": 5, "sp": 9, "sl": 2}]},
+    {"id": "orks", "allegiance": "xenos", "name": "Orks", "currency": "Teeth", "tagline": "Might makes right, an' you'z da biggest.",
+     "backgrounds": [["Da Last Boss Fell", "Krumped 'im fair an' square."], ["Speed-Blessed", "Everyfing you ride goes fasta."], ["Loot-King", "A shiny bit from every warzone."]],
+     "appearances": [["Da Biggest", "Shoulders that fill tank doorways."], ["Iron-Jawed", "Glyph plates an' a bayonet-biting jaw."], ["Checkered Menace", "Warpaint wot means business."]],
+     "origin_perks": [["'Ard as Nails", "w"], ["Stash o' Teef", "cur"], ["Red Wunz Go Fasta", "sp"], ["Lootin' Rig", "sl"]],
+     "models": [{"n": "Ork Nob", "cls": "Core", "pc": 18, "w": 5, "sp": 5, "sl": 2}, {"n": "Meganob", "cls": "Assault", "pc": 42, "w": 7, "sp": 3, "sl": 3}, {"n": "Stormboy Nob", "cls": "Flying", "pc": 26, "w": 4, "sp": 9, "sl": 2}]},
+    {"id": "necrons", "allegiance": "xenos", "name": "Necrons", "currency": "Tesserae", "tagline": "Death is a malfunction. You have the patch.",
+     "backgrounds": [["Flawed Awakening", "One memory survived: a face."], ["Tomb-Regent", "A dust crownworld; protocols answer you."], ["The Curious Engine", "Something still wonders."]],
+     "appearances": [["Glyph-Etched", "A dynasty's history in necrodermis."], ["Verdigris-Worn", "One eye that flickers."], ["Death-Masked", "Unchanged expression, sixty million years."]],
+     "origin_perks": [["Living Metal", "w"], ["Tomb Vaults", "cur"], ["Phase-Tuned", "sp"], ["Dimensional Cache", "sl"]],
+     "models": [{"n": "Immortal", "cls": "Core", "pc": 16, "w": 4, "sp": 4, "sl": 2}, {"n": "Lychguard", "cls": "Assault", "pc": 38, "w": 6, "sp": 4, "sl": 3}, {"n": "Canoptek Skyrender", "cls": "Flying", "pc": 44, "w": 5, "sp": 9, "sl": 2}]},
+    {"id": "aeldari", "allegiance": "xenos", "name": "Aeldari", "currency": "Souls", "tagline": "A dying people, faster than fate.",
+     "backgrounds": [["Path of the Outcast", "You walked from the craftworld."], ["Seer's Gambit", "A farseer spent your fate like coin."], ["Shrine-Sworn", "An Aspect temple's last candidate."]],
+     "appearances": [["Wraithbone-Pale", "Grown armor, soulstone glow."], ["Aspect-Masked", "A war-mask not entirely a mask."], ["Rune-Robed", "Trailing spirit-light and grief."]],
+     "origin_perks": [["Fleet of Foot", "sp"], ["Soulstone Tithe", "cur"], ["Witch-Path", "psy"], ["Aspect Panoply", "sl"]],
+     "models": [{"n": "Guardian Storm-Lead", "cls": "Core", "pc": 14, "w": 3, "sp": 6, "sl": 2}, {"n": "Wraithblade", "cls": "Assault", "pc": 44, "w": 6, "sp": 4, "sl": 3}, {"n": "Swooping Hawk Exarch", "cls": "Flying", "pc": 30, "w": 4, "sp": 10, "sl": 2}]},
+    {"id": "drukhari", "allegiance": "xenos", "name": "Drukhari", "currency": "Souls", "tagline": "Pain is a currency. You are rich.",
+     "backgrounds": [["Kabal Cast-Out", "You survived your own succession."], ["Arena Beloved", "The Wych cults chant your name."], ["Haemonculus' Debt", "You died once. The bill is due."]],
+     "appearances": [["Splinter-Sleek", "Barbed black, made to be seen last."], ["Surgical Grace", "Movements like scalpels."], ["Trophy-Hooked", "A shadowfield over hooks best unstudied."]],
+     "origin_perks": [["Painbound Vigor", "w"], ["Soul-Tithe", "cur"], ["Hyperstimm Reflexes", "sp"], ["Raider's Racks", "sl"]],
+     "models": [{"n": "Kabalite Warrior", "cls": "Core", "pc": 12, "w": 3, "sp": 6, "sl": 2}, {"n": "Incubus", "cls": "Assault", "pc": 30, "w": 5, "sp": 5, "sl": 3}, {"n": "Scourge", "cls": "Flying", "pc": 26, "w": 4, "sp": 10, "sl": 2}]},
+    {"id": "tau", "allegiance": "xenos", "name": "T'au", "currency": "Credit", "tagline": "The Greater Good has a place for you.",
+     "backgrounds": [["Cadre Prodigy", "Youngest shas'el of your sept."], ["Farsight's Shadow", "You read the forbidden treatises. Twice."], ["Gue'val Diplomat", "Aliens follow you. Stranger things."]],
+     "appearances": [["Sept-Marked", "A battlesuit sleek as doctrine."], ["Drone-Haloed", "A quiet orbit of drones."], ["Sash of Office", "Ceremony over a used combat rig."]],
+     "origin_perks": [["Composite Plating", "w"], ["Sept Funding", "cur"], ["Thruster Calibration", "sp"], ["Hardpoint Matrix", "sl"]],
+     "models": [{"n": "Fire Warrior", "cls": "Core", "pc": 10, "w": 2, "sp": 5, "sl": 2}, {"n": "Crisis Battlesuit", "cls": "Assault", "pc": 40, "w": 5, "sp": 5, "sl": 3}, {"n": "Stealth Suit VX", "cls": "Flying", "pc": 28, "w": 4, "sp": 8, "sl": 2}]},
+    {"id": "gsc", "allegiance": "xenos", "name": "Genestealer Cults", "currency": "Devotion", "tagline": "Four arms to embrace the family.",
+     "backgrounds": [["First-Curse Child", "Born of the founding brood."], ["The Risen Miner", "Led the day-shift into revolution."], ["Star Children Prophet", "You have seen them coming."]],
+     "appearances": [["Hooded Wrongness", "Work-clothes over a wrong silhouette."], ["Politely Folded", "The third arm tucked, courteously."], ["Foreman's Coat", "Cult ink beneath honest cloth."]],
+     "origin_perks": [["Cult Vigor", "w"], ["Tithes of the Faithful", "cur"], ["Tunnel-Born", "sp"], ["Wyrm-Touched", "psy"]],
+     "models": [{"n": "Acolyte Hybrid", "cls": "Core", "pc": 10, "w": 2, "sp": 5, "sl": 2}, {"n": "Aberrant", "cls": "Assault", "pc": 26, "w": 6, "sp": 4, "sl": 3}, {"n": "Chiropteran Hybrid", "cls": "Flying", "pc": 24, "w": 3, "sp": 9, "sl": 2}]},
+    {"id": "votann", "allegiance": "xenos", "name": "Leagues of Votann", "currency": "Shares", "tagline": "The Kin remember every debt.",
+     "backgrounds": [["Grudge-Keeper", "You carry the oldest ledger, unclosed."], ["Void-Prospector", "You found a stratum worth a war."], ["Cloneskein Anomaly", "The Votann made you different."]],
+     "appearances": [["League-Stamped", "A hold's whole heraldry in exo-plate."], ["Miner's Squint", "Eyes that price everything."], ["Ancestor-Runed", "One rune per debt repaid."]],
+     "origin_perks": [["Stone-Kin Frame", "w"], ["League Shares", "cur"], ["COGV-Blessed", "sp"], ["Grav-Rig", "sl"]],
+     "models": [{"n": "Hearthkyn Warrior", "cls": "Core", "pc": 12, "w": 3, "sp": 4, "sl": 2}, {"n": "Einhyr Champion", "cls": "Assault", "pc": 44, "w": 6, "sp": 3, "sl": 3}, {"n": "Hernkyn Sky-Jager", "cls": "Flying", "pc": 28, "w": 4, "sp": 9, "sl": 2}]},
+    {"id": "harlequins", "allegiance": "xenos", "name": "Harlequins", "currency": "Masques", "tagline": "The Laughing God's knives dance.",
+     "backgrounds": [["Solitaire's Shadow", "You played the role none survive."], ["Troupe Master's Heir", "Bequeathed a story mid-performance."], ["Webway Cartographer", "You know doors that don't exist."]],
+     "appearances": [["Dathedi-Diamonded", "Colors a half-step ahead of the eye."], ["Weeping Grin", "The mask laughs; the paint cries."], ["Motley Murder", "Silk, bells, edges everywhere."]],
+     "origin_perks": [["Flip-Belt", "sp"], ["Masque Treasury", "cur"], ["Shadowseer's Pupil", "psy"], ["Prismatic Cache", "sl"]],
+     "models": [{"n": "Player of the Troupe", "cls": "Core", "pc": 22, "w": 3, "sp": 8, "sl": 2}, {"n": "Solitaire", "cls": "Assault", "pc": 60, "w": 4, "sp": 10, "sl": 3}, {"n": "Skyweaver Rider", "cls": "Flying", "pc": 34, "w": 4, "sp": 10, "sl": 2}]}
+  ],
+  "galaxy": {
+    "structure": "Segmentum > (Core | Expanse zones) > Sector > Planet > Named Locations. Planets ALWAYS sit within a Sector; Expanse zones contain their own Sectors.",
+    "location_tags": ["Nihilus|Sanctus (traits TBD)", "Canon|Custom", "Ruling Allegiance & Faction (traits TBD)"],
+    "location_desc_types": ["City", "Bulwark", "Space Station"],
+    "sector_statuses": ["Peace", "Warring", "Thriving", "Famine", "Corrupted"],
+    "sector_ownership": "absolute majority; independent of status",
+    "segmentums": [
+      {"id": "solar", "name": "Segmentum Solar", "zones": [{"name": "Core", "kind": "core", "sectors": [{"id": "sol", "name": "Sol Sector", "status": "Peace", "owner": "Imperial - Custodes", "sealed": true}]}]},
+      {"id": "obscurus", "name": "Segmentum Obscurus", "zones": [
+        {"name": "Core", "kind": "core", "sectors": [{"id": "vigsec", "name": "Vigilus Sector", "status": "Warring", "owner": "Contested - Imperial plurality", "planets": [
+          {"id": "vigilus", "name": "Vigilus", "type": "War World", "rift": "Nihilus", "canon": true, "ruler": null,
+           "desc": "War-world of the Nachmund Gauntlet. Everyone is here; no one holds it.",
+           "orbit": ["The Pale Barge - player vessel, system-capable", "Iron Ruin - Warsmith Dravok (PC), warp-capable"],
+           "locations": [
+             {"id": "ashravine", "name": "The Ash Ravine", "desc_type": "Warzone", "stations": []},
+             {"id": "carrion", "name": "The Carrion Market", "desc_type": "City", "stations": [{"name": "The Carrion Market", "kind": "shop"}]},
+             {"id": "rotforge", "name": "Rotforge Bastion", "desc_type": "Bulwark", "stations": [{"name": "Rotforge of Vigilus", "kind": "forge", "tiers": "I-II"}]},
+             {"id": "voxbastion", "name": "Sunken Vox-Bastion", "desc_type": "Bulwark - ruined", "stations": []}]},
+          {"id": "sangua", "name": "Sangua Tertius", "type": "Hive World", "rift": "Nihilus", "canon": false, "ruler": {"allegiance": "imperial", "faction": "Astra Militarum"},
+           "desc": "Fortress-hive garrisoned to the teeth.",
+           "orbit": ["System Defence Flotilla - Astra Militarum"],
+           "locations": [
+             {"id": "hiveprimus", "name": "Hive Primus", "desc_type": "City", "stations": []},
+             {"id": "docksigma", "name": "Orbital Dock Sigma", "desc_type": "Space Station", "stations": [{"name": "Dockside Requisition", "kind": "shop"}]}]}]}]},
+        {"name": "The Ghost Stars", "kind": "expanse", "sectors": [{"id": "pallid", "name": "Pallid Reach", "status": "Corrupted", "owner": "Chaos - Death Guard", "planets": [
+          {"id": "nurth", "name": "Nurth", "type": "Death World", "rift": "Nihilus", "canon": false, "ruler": {"allegiance": "chaos", "faction": "Death Guard"},
+           "desc": "Death Guard staging world under a jaundiced sky.",
+           "orbit": ["The Grave Wake - Death Guard picket"],
+           "locations": [
+             {"id": "garden", "name": "The Plague Garden", "desc_type": "Bulwark", "stations": [{"name": "The Plague Garden", "kind": "forge", "tiers": "I-III"}, {"name": "Garrison Requisition", "kind": "shop"}]},
+             {"id": "court", "name": "The Pallid Court", "desc_type": "City", "stations": []}]}]}]},
+        {"name": "The Halo Stars", "kind": "expanse", "sectors": [{"id": "kraith", "name": "Kraith Drift", "status": "Famine", "owner": "Xenos - Tyranids", "planets": [
+          {"id": "kraithv", "name": "Kraith Verge", "type": "Dead World - splinter-touched", "rift": "Nihilus", "canon": false, "ruler": {"allegiance": "xenos", "faction": "Tyranids"},
+           "desc": "Sskarith's brood-nest. Something legendary gestates below.",
+           "orbit": ["Chitin Reef - drifting bio-hulk"],
+           "locations": [
+             {"id": "vault", "name": "The Gestation Vault", "desc_type": "Bulwark", "stations": []},
+             {"id": "reef", "name": "Chitin Reef Orbital", "desc_type": "Space Station - drifting", "stations": []}]}]}]}]},
+      {"id": "tempestus", "name": "Segmentum Tempestus", "zones": [{"name": "Core", "kind": "core", "sectors": [{"id": "bakka", "name": "Bakka Sector", "status": "Peace", "owner": "Imperial - Navy", "sealed": true}]}, {"name": "The Veiled Region", "kind": "expanse", "sectors": [{"id": "veil", "name": "Veil Reach", "status": "Warring", "owner": "Unknown", "sealed": true}]}]},
+      {"id": "pacificus", "name": "Segmentum Pacificus", "zones": [{"name": "Core", "kind": "core", "sectors": [{"id": "hydra", "name": "Hydraphur Sector", "status": "Thriving", "owner": "Imperial - Navy", "sealed": true}]}, {"name": "The Halo Zone", "kind": "expanse", "sectors": [{"id": "haloz", "name": "Halo Marches", "status": "Corrupted", "owner": "Unknown", "sealed": true}]}]},
+      {"id": "ultima", "name": "Ultima Segmentum", "zones": [{"name": "Core", "kind": "core", "sectors": [{"id": "ultra", "name": "Ultramar Sector", "status": "Thriving", "owner": "Imperial - Astartes", "sealed": true}]}, {"name": "The Ghoul Stars", "kind": "expanse", "sectors": [{"id": "ghoul", "name": "Ghoul Fringe", "status": "Famine", "owner": "Unknown", "sealed": true}]}, {"name": "The Eastern Fringe", "kind": "expanse", "sectors": [{"id": "efr", "name": "Fringe March", "status": "Warring", "owner": "Xenos - T'au", "sealed": true}]}]}
+    ]
+  },
+  "travel": {
+    "same_planet": {"mode": "ground", "posts": 1, "cost": 0},
+    "same_sector": {"mode": "system vessel", "posts": 2, "cost": 0, "requires": "system-capable vessel"},
+    "cross_sector_same_segmentum": {"mode": "warp", "posts": 3, "charter_cost": 350, "requires": "warp vessel or charter"},
+    "cross_segmentum": {"mode": "warp", "posts": 5, "charter_cost": 550, "own_vessel_toll": 200, "note": "Segmentum toll amount is placeholder - canon TBD"},
+    "arrival_at_controlled_planet": {
+      "rule": "opens a Travel Thread with entry procedures",
+      "friendly": "allied colors recognized: land at any location, draw garrison resupply",
+      "hostile": "enemy colors: interception by garrison on approach; ruling faction alerted"
+    },
+    "forces_tag": "every Force carries a location tag, updated on enter/exit",
+    "location_thread_history": "locations keep thread pages of all activity; movable locations (ships, stations) carry their history with them"
+  },
+  "equipment_alpha": {
+    "shop_catalog": [
+      {"n": "Boltgun", "cat": "WEAPON", "d": "Phys 2 - Med - 1 AP", "pc": 6},
+      {"n": "Plasma Gun", "cat": "WEAPON", "d": "Plasma 3 - Med - 2 AP - Venting 1", "pc": 14},
+      {"n": "Blight Grenade", "cat": "ITEM", "d": "Phys 2 - Multihit II - DoT I - Consumable", "pc": 6},
+      {"n": "Putrescent Hide", "cat": "ITEM", "d": "+2 W, -1 Spd", "pc": 8},
+      {"n": "Miasma of Pestilence", "cat": "ABILITY", "d": "Force: -1 dmg from Ranged, 2 posts", "pc": 12},
+      {"n": "Curse of the Leper", "cat": "CAST", "d": "Warp R3 - Multihit II + DoT II", "pc": 14}
+    ],
+    "forge_rules": {"base": "any weapon in inventory (weapons travel, knowledge doesn't)", "adds": "one affinity-legal tag (tier limited by station) + a name", "base_cost": 10},
+    "forge_tags_alpha": [
+      {"tag": "DoT", "cost": 10, "d": "1 dmg/post, stacks", "access": "open"},
+      {"tag": "Suppressing", "cost": 10, "d": "target's next action +1 AP", "access": "open"},
+      {"tag": "Ambush", "cost": 12, "d": "+dmg from Stealth", "access": "Drukhari forge access"},
+      {"tag": "Guided", "cost": 12, "d": "ignores Stealth", "access": "Aeldari or T'au forge access"}
+    ]
+  },
+  "npcs_alpha": [
+    {"id": "vess", "name": "Vess the Carrion-Broker", "kind": "Wild Named", "faction": "Drukhari", "location": "vigilus/carrion", "hook": "trades Drukhari forge access for 250 Currency + 2 intact Tyranid bodies"},
+    {"id": "herald", "name": "Herald of the Pallid Court", "kind": "Faction Broker", "faction": "Death Guard", "location": "nurth/garden", "hook": "gateway to Death Guard faction dealings"},
+    {"id": "sskarith", "name": "Brood-Tyrant Sskarith", "kind": "NPC Commander", "faction": "Tyranids", "location": "vigilus/ashravine", "hook": "active Skirmish opponent; broods gestating on Kraith Verge"}
+  ]
+}
