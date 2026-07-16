@@ -195,6 +195,9 @@ input[type=range]{width:100%;accent-color:var(--br)}
 .movbody .thl div,.movbody .sll div{font-size:12.5px;color:var(--ink);padding:5px 0;border-bottom:1px solid var(--ln)}
 .movbody .thl div:last-child,.movbody .sll div:last-child{border:none}
 .movbody .sll .sk{font-family:var(--mono,monospace);font-size:9px;color:var(--dim);letter-spacing:.1em}
+.ovslot{cursor:pointer;padding:6px 8px;margin:0 -8px}
+.ovslot:hover{background:rgba(176,141,62,.08)}
+.locacts{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid var(--ln)}
 @media(max-width:640px){.movbody{grid-template-columns:1fr}.movh{flex-wrap:wrap}}
 /* leader switcher */
 .lsw{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
@@ -257,10 +260,10 @@ canvas.smap{display:block;width:100%;height:auto}
 <div class="card"><h3>Your Leaders</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:9px">Switch the figure you command. Each may stand in a different location.</div><div class="lsw" id="hqlead"></div></div>
 </div></section>
 <section class="screen" id="s-barracks"><div class="crumb">Army management</div><h2>The Barracks</h2>
-<div class="tabs"><button class="tab on" data-b="roster">Roster</button><button class="tab" data-b="loadout">Loadout</button><button class="tab" data-b="forces">Forces</button></div>
+<div class="tabs"><button class="tab on" data-b="roster">Roster</button><button class="tab" data-b="forces">Forces</button></div>
 <div class="sub on" id="b-roster"><div class="card"><h3 id="rh"></h3>
 <div class="fbar"><input type="text" id="fq" placeholder="Search…"><select id="fc"><option value="">Class — all</option></select><select id="fs"><option value="">Status — all</option><option>DEPLOYED</option><option>GARRISON</option><option>DEAD</option></select><select id="ff"><option value="">Force — all</option></select></div>
-<table id="rt"><thead><tr><th>Name</th><th>Model</th><th>Class</th><th>Rk</th><th>AP</th><th>W</th><th>Force</th><th>Location</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
+<table id="rt"><thead><tr><th>Name</th><th>Model</th><th>Class</th><th>Rk</th><th>AP</th><th>Spd</th><th>Slots</th><th>W</th><th>Force</th><th>Location</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
 <div class="sub" id="b-loadout"><div class="card"><h3 id="lt"></h3><div style="font-size:12px;color:var(--dim)" id="ls"></div><div class="slotg" id="sg"></div><h3 style="margin-top:18px">Inventory — unequipped</h3><div id="il"></div></div></div>
 <div class="sub" id="b-forces"><div id="fw"></div></div></section>
 <section class="screen" id="s-shop"><div class="crumb" id="shc"></div><h2>Requisition</h2><div id="shb"></div></section>
@@ -390,7 +393,17 @@ convos:[{id:'herald',pc:false,pl:'nurth',l:'Faction broker · Nurth, Pallid Reac
 function go(s){document.querySelectorAll('.screen').forEach(function(e){e.classList.remove('on')});document.getElementById('s-'+s).classList.add('on');document.querySelectorAll('.navbtn').forEach(function(b){b.classList.toggle('active',b.dataset.s===s)});
 if(s==='shop')rShop();if(s==='comms')rComms();if(s==='hq')rHQ();if(s==='map')rMap();if(s==='threads')rTL();window.scrollTo(0,0)}
 /* ---- HQ ---- */
-function posTxt(){if(S.tr)return({g:'Overland',s:'In-system',c:'Warp'})[S.tr.m]+' → '+fLoc(S.tr.pl,S.tr.sp).name;return fPl(S.pos.pl).p.name+' · '+fLoc(S.pos.pl,S.pos.sp).name}
+function voidName(sid){var n=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){if(s.id===sid&&s.space)n=s.space.name})})});return n||'the void'}
+/* start a thread at a location; a public thread enters the location's history */
+function startThread(pid,l,type){var loc=fPl(pid).p.name+' · '+l.name;
+ var id=type.toLowerCase().slice(0,3)+'_'+l.id+'_'+S.threads.length;
+ S.threads.push({id:id,type:type.toUpperCase(),n:type+' at '+l.name,loc:loc,turn:'you',vis:'public'});
+ var key=pid+'/'+l.id;if(!S.world.history[key])S.world.history[key]=[];
+ S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
+ T(type+' thread opened at '+l.name+' — now in the location\'s public history.');
+ go('threads');rTL();}
+function travelSpace(sid){if(S.pos.void===sid){T('Already adrift in '+voidName(sid)+'.');return}if(S.tr){T('Already in transit.');return}S.pos.void=sid;T('Translated to the void — '+voidName(sid)+'.');rMap();rHQ();rW()}
+function posTxt(){if(S.pos.void)return 'Deep Space · '+voidName(S.pos.void);if(S.tr)return({g:'Overland',s:'In-system',c:'Warp'})[S.tr.m]+' → '+fLoc(S.tr.pl,S.tr.sp).name;return fPl(S.pos.pl).p.name+' · '+fLoc(S.pos.pl,S.pos.sp).name}
 function rW(){var w=wallets();
 document.getElementById('lc').textContent=w[0];document.getElementById('ld').innerHTML=w[1]+' <small>(AP)</small>';document.getElementById('li').innerHTML=w[2]+' <small>(ceiling)</small>';
 document.getElementById('wc').textContent=S.cur.toLocaleString();
@@ -420,7 +433,7 @@ function rRos(){var tb=document.querySelector('#rt tbody');tb.innerHTML='';
 document.getElementById('rh').textContent='Owned models — '+S.army+' / '+S.infl+' PC';
 var q=(document.getElementById('fq').value||'').toLowerCase(),c=document.getElementById('fc').value,s=document.getElementById('fs').value,f=document.getElementById('ff').value;
 S.roster.forEach(function(m){if(q&&m.n.toLowerCase().indexOf(q)<0)return;if(c&&m.cls!==c)return;if(s&&m.st!==s)return;if(f&&m.fo!==f)return;
-var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b> '+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</td><td style="color:var(--dim)">'+baseModel(m)+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.w+'</td><td style="font-size:11px">'+(m.fo==='—'?'<span style="color:var(--dim)">—</span>':m.fo)+'</td><td style="font-size:11px;color:var(--dim)">'+m.loc+'</td><td>'+chips(m)+'</td>');
+var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b> '+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</td><td style="color:var(--dim)">'+baseModel(m)+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.spd+'</td><td class="mono">'+m.slots+'</td><td class="mono">'+m.w+'</td><td style="font-size:11px">'+(m.fo==='—'?'<span style="color:var(--dim)">—</span>':m.fo)+'</td><td style="font-size:11px;color:var(--dim)">'+m.loc+'</td><td>'+chips(m)+'</td>');
 tr.onclick=function(){sel=m;rRos();rLoad();openModel(m.id)};tb.appendChild(tr)})}
 function rLoad(){if(!sel)sel=S.roster[0];
 document.getElementById('lt').textContent='Loadout — '+sel.n;document.getElementById('ls').textContent=sel.sub;
@@ -434,13 +447,14 @@ document.body.appendChild(PB);document.getElementById('pkc').onclick=function(){
 PB.onclick=function(e){if(e.target===PB)PB.classList.remove('on')}}
 function pick(i){var s=sel.sl[i];document.getElementById('pkh').textContent=sel.n+' — '+s.k+' slot';
 var L=document.getElementById('pkl');L.innerHTML='';
-if(s.it){var r=E('div','pki','<div><b>'+s.it.n+'</b><div class="d">'+s.it.d+'</div></div>');var b=E('button','btn gh sm','Unequip');b.onclick=function(){S.inv.push(s.it);s.it=null;PB.classList.remove('on');rLoad();T('Unequipped.')};r.appendChild(b);L.appendChild(r)}
+if(s.it){var r=E('div','pki','<div><b>'+s.it.n+'</b><div class="d">'+s.it.d+'</div></div>');var b=E('button','btn gh sm','Unequip');b.onclick=function(){S.inv.push(s.it);s.it=null;PB.classList.remove('on');afterEquip();T('Unequipped.')};r.appendChild(b);L.appendChild(r)}
 var cat=s.k==='WARP CAST'?'CAST':s.k==='NAMED'?null:s.k;
 var lg=S.inv.filter(function(it){return cat===null||it.cat===cat});
 if(!lg.length&&!s.it)L.innerHTML='<div class="empty">Nothing legal in inventory for this slot.</div>';
 lg.forEach(function(it){var r=E('div','pki','<div><b>'+it.n+'</b><div class="d">'+it.d+'</div></div>');var b=E('button','btn sm','Equip');
-b.onclick=function(){if(s.it)S.inv.push(s.it);s.it=it;S.inv.splice(S.inv.indexOf(it),1);PB.classList.remove('on');rLoad();T(it.n+' equipped.')};r.appendChild(b);L.appendChild(r)});
+b.onclick=function(){if(s.it)S.inv.push(s.it);s.it=it;S.inv.splice(S.inv.indexOf(it),1);PB.classList.remove('on');afterEquip();T(it.n+' equipped.')};r.appendChild(b);L.appendChild(r)});
 PB.classList.add('on')}
+function afterEquip(){if(document.getElementById('b-loadout'))rLoad();if(MOV&&MOV.classList.contains('on')&&sel)openModel(sel.id)}
 function fpc(f){var t=0;S.roster.forEach(function(m){if(m.fo===f.n)t+=m.pc});return t}
 var fcOpen=false;
 /* any free Named or Commander model may raise a Force (canon: Named/Legendary lead) */
@@ -516,6 +530,7 @@ mv.appendChild(u);mv.appendChild(dn);d.appendChild(mv);x.appendChild(d)})}
 function rShop(){var f=fPl(S.pos.pl),h=fLoc(S.pos.pl,S.pos.sp);
 document.getElementById('shc').textContent=f.s.name+' · '+f.p.name+' · '+(S.tr?'In transit':h.name);
 var b=document.getElementById('shb');
+if(S.pos.void){b.innerHTML='<div class="empty">Adrift in '+voidName(S.pos.void)+' — no requisition among the stars. Make planetfall to trade.</div>';return}
 if(S.tr){b.innerHTML='<div class="empty">In transit — no requisition on the move.</div>';return}
 b.innerHTML='';
 /* demo toggle — preview every door type, ignoring location gating */
@@ -584,13 +599,14 @@ function cb(l,f){var b=E('button',null,l);b.onclick=f;return b}
 function rMap(){rTrans();
 var cr=document.getElementById('mcr'),z=document.getElementById('mz'),p=document.getElementById('mp');
 cr.innerHTML='';z.innerHTML='';p.innerHTML='';
-if(MV.lv==='galaxy'){cr.append('GALAXY');var g2=E('div','mg');
+if(MV.lv==='galaxy'){cr.append('GALAXY');z.appendChild(galaxyChart());var g2=E('div','mg');
 D.galaxy.segmentums.forEach(function(g){var h=fPl(S.pos.pl).g.id===g.id&&!S.tr;
 var d=E('div','mn'+(g.id===MV.seg?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+g.name+'</div><div class="pt">'+g.zones.map(function(x){return x.name}).join(' · ')+'</div>');
 d.onclick=function(){MV.seg=g.id;MV.lv='segment';rMap()};g2.appendChild(d)});z.appendChild(g2);
 p.innerHTML='<h3>The Galaxy</h3><div style="font-size:12.5px;color:var(--dim)">'+D.galaxy.structure+'</div>';return}
 if(MV.lv==='segment'){var g=fSeg(MV.seg);
 cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ');var s0=E('span',null,g.name.toUpperCase());s0.style.color='var(--brh)';cr.appendChild(s0);
+z.appendChild(segmentChart(g));
 g.zones.forEach(function(zn){z.appendChild(E('div','zh',zn.kind==='core'?'CORE':'EXPANSE — '+zn.name));
 var g3=E('div','mg');
 zn.sectors.forEach(function(sc){var h=fPl(S.pos.pl).s.id===sc.id&&!S.tr;
@@ -608,13 +624,16 @@ var g4=E('div','mg');
 var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(!h&&r&&r.p?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+r.p+'p'+(r.c?' · '+r.c+'⛁':'')+'</div>':''));
 d.onclick=function(){MV.pl=pl.id;MV.lc=pl.locations[0].id;MV.lv='planet';rMap()};g4.appendChild(d)});
 z.appendChild(g4);
-var sp=f.s.space,sph='<h3>'+f.s.name+'</h3><div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">Select a world for its surface, orbit, and the Forces standing on it — or read the Space layer below.</div>';
+var sp=f.s.space,inVoid=(S.pos.void===f.s.id),sph='<h3>'+f.s.name+'</h3><div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">Select a world for its surface, orbit, and the Forces standing on it — or translate into the Space layer below.</div>';
 if(sp){sph+='<div class="locpage"><div class="locimg">'+sp.name+'<span>space image — art slot</span></div><div class="locbody">'
-+'<div class="locttl">'+sp.name.toUpperCase()+' <span class="pill">DEEP SPACE</span></div>'
++'<div class="locttl">'+sp.name.toUpperCase()+' <span class="pill">DEEP SPACE</span>'+(inVoid?' <span class="pill bl">YOU ARE HERE</span>':'')+'</div>'
 +'<div class="d" style="margin:4px 0 8px">'+(sp.desc||'')+'</div>'
 +'<div class="lsec"><h5>Fleets in the void</h5>'+(sp.forces&&sp.forces.length?sp.forces.map(function(x){return '· <b>'+x[0]+'</b> — '+x[1]+' · '+x[2]}).join('<br>'):'<span style="color:var(--dim)">· none translating</span>')+'</div>'
++'<div class="locacts">'+(inVoid?'<span style="font-size:12px;color:var(--vdh)">Your fleet holds station here.</span>':'<button class="btn bl" id="voidgo">Translate to the void — set course</button>')+'</div>'
 +'</div></div>';}
-p.innerHTML=sph;return}
+p.innerHTML=sph;
+var vg=document.getElementById('voidgo');if(vg)vg.onclick=function(){travelSpace(f.s.id)};
+return}
 var f2=fPl(MV.pl),pl=f2.p;
 cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ',cb(f2.g.name.toUpperCase(),function(){MV.lv='segment';rMap()}),' › ',cb(f2.s.name.toUpperCase(),function(){MV.lv='sector';rMap()}),' › ');
 var s2=E('span',null,pl.name.toUpperCase());s2.style.color='var(--brh)';cr.appendChild(s2);
@@ -644,8 +663,20 @@ if(_dz.length)h2+='<div class="lsec"><h5>Doors</h5>'+_dz.map(function(s){return 
 h2+='<div class="lsec"><h5>Forces present</h5>'+(frLoc.length?frLoc.map(function(x){return '· <b>'+x[0]+'</b> — '+x[1]}).join('<br>'):'<span style="color:var(--dim)">· none known</span>')+'</div>';
 h2+='<div class="lsec"><h5>Thread history</h5>'+(hi.length?hi.map(function(t){return '· '+t}).join('<br>'):'<span style="color:var(--dim)">No threads recorded yet.</span>')+'</div>';
 if(np.length)h2+='<div class="lsec"><h5>Known here</h5>'+np.map(function(n){return '· '+n}).join('<br>')+'</div>';
+var atHere=(S.pos.pl===pl.id&&S.pos.sp===l.id&&!S.tr&&!S.pos.void),openDoors=_dz.filter(function(x){return x.open});
+if(atHere){h2+='<div class="locacts">';
+ if(openDoors.length)h2+='<button class="btn" id="locreq">Enter Requisition ('+openDoors.length+' door'+(openDoors.length>1?'s':'')+')</button>';
+ h2+='<button class="btn gh" id="locthr">Start a thread here</button></div>';
+ h2+='<div id="loctm"></div>';}
 h2+='</div></div>';
 p.innerHTML=h2;
+if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){go('shop')};
+ var tb=document.getElementById('locthr');if(tb)tb.onclick=function(){var tm=document.getElementById('loctm');
+  if(tm.innerHTML){tm.innerHTML='';return}
+  tm.innerHTML='<div class="lsec"><h5>Start which thread?</h5></div>';
+  var row=E('div');row.style.cssText='display:flex;flex-wrap:wrap;gap:6px';
+  ['Diplomacy','Mission','Skirmish','Invasion'].forEach(function(ty){var bn=E('button','btn gh sm',ty);bn.onclick=function(){startThread(pl.id,l,ty)};row.appendChild(bn)});
+  tm.appendChild(row)};}
 var r=route(pl.id,l.id);
 if(r&&!S.tr){p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(r.p?' · <span class="mono">'+r.p+' post(s)</span>':'')+(r.c?' · <span class="mono">'+r.c+' '+curName()+'</span>':'')+'</div>');
 var at=arrTxt(pl);if(at&&S.pos.pl!==pl.id)p.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;margin-top:5px;color:'+(at.k==='h'?'var(--blh)':'var(--vdh)')+'">'+at.t+'</div>');
@@ -877,7 +908,10 @@ function enrichRoster(){var lore={
  kane:'Rotted from the inside out on the black sand of Vigilus and called it a blessing. Kane the Rotforged commands not from a throne but from the front rank, where the Grandfather can see him work.',
  morvax:'Seven campaigns, seven wounds that would not close. Morvax stopped counting his deaths after the third and now leads The Rotward as its unkillable edge.',
  gharn:'A Blightlord who wears his afflictions like medals. Slow, patient, and utterly certain that time is on Nurgle\'s side.'};
+ var spdByClass={Core:2,Flying:4,Assault:2,Armament:3};
  S.roster.forEach(function(m){
+  if(m.spd===undefined)m.spd=spdByClass[m.cls]||2;
+  if(m.slots===undefined)m.slots=(m.sl||[]).length;
   if(m.xp===undefined)m.xp=isLeader(m)?(m.rk*10+18)+'/'+(m.rk*10+40):'—';
   if(m.lore===undefined)m.lore=lore[m.id]||'A rank-and-file servant of the Plague God. No saga recorded — yet.';
   if(m.th===undefined){m.th=[];
@@ -894,7 +928,7 @@ function factionFrame(m,big){var col=frameColor(),rk=m.rk||1;
  return '<div class="mframe" style="--fr:'+col+(big?'':';width:64px;height:76px;flex-basis:64px')+'"><div class="rankpips">'+pips+'</div><span class="sig">'+sig+'</span><div class="ph">portrait</div></div>';}
 function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];if(!m)return;
  var stcol=m.st==='DEAD'?'var(--blh)':m.st==='DEPLOYED'?'var(--brh)':'var(--dim)';
- var loadout=m.sl.map(function(s){return '<div><span class="sk">'+s.k+'</span><br>'+(s.it?'<b>'+s.it.n+'</b> — '+s.it.d:'<span style="color:var(--dim)">empty</span>')+'</div>'}).join('');
+ var loadout=m.sl.map(function(s,i){return '<div class="ovslot clk" data-si="'+i+'"><span class="sk">'+s.k+'</span><br>'+(s.it?'<b>'+s.it.n+'</b> — '+s.it.d:'<span style="color:var(--dim)">empty — click to equip</span>')+'</div>'}).join('');
  var threads=(m.th&&m.th.length)?m.th.map(function(t){return '<div>'+t+'</div>'}).join(''):'<div style="color:var(--dim)">No threads recorded.</div>';
  MOV.innerHTML='<div class="movc"><div class="movh">'
  +'<div style="display:flex;flex-direction:column;gap:8px"><button class="movbk" id="movx">← Back</button>'+factionFrame(m,true)+'</div>'
@@ -910,15 +944,50 @@ function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];i
  +'</div><div style="font-size:11px;color:var(--dim);margin-top:6px">'+m.sub+' · '+m.loc+'</div></div></div>'
  +'<div class="movbody"><div><h4>Lore</h4><div class="lore">'+m.lore+'</div>'
  +'<h4 style="margin-top:16px">Threads fought</h4><div class="thl">'+threads+'</div></div>'
- +'<div><h4>Loadout</h4><div class="sll">'+loadout+'</div><button class="movbk" id="moved" style="margin-top:12px">Edit loadout →</button></div></div></div>';
+ +'<div><h4>Loadout <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— click a slot to change it</span></h4><div class="sll">'+loadout+'</div></div></div></div>';
  document.getElementById('movx').onclick=function(){MOV.classList.remove('on')};
- document.getElementById('moved').onclick=function(){MOV.classList.remove('on');sel=m;rLoad();go('barracks');document.querySelector('[data-b=loadout]').click()};
+ sel=m;
+ MOV.querySelectorAll('.ovslot').forEach(function(el){el.onclick=function(){sel=m;pick(+el.dataset.si)}});
  MOV.classList.add('on');}
 /* leader switcher — swap the active playable figure */
 function switchTo(id){S.active=id;rHQ();T('Now commanding: '+S.roster.filter(function(m){return m.id===id})[0].n.split(',')[0]);}
 function activeModel(){return S.roster.filter(function(m){return m.id===S.active})[0]||S.roster[0];}
 /* ─── v8: procedural sector chart (first real map visual) ─── */
 var ALCOL={imperial:'#D8B45E',chaos:'#C4503F',xenos:'#6FA893',con:'#8F8674'};
+var STCOL={Thriving:'#D8B45E',Peace:'#6f8fa3',Warring:'#C4503F',Famine:'#9c7b2e',Corrupted:'#6d8339'};
+/* shared canvas + starfield (no RNG — seeded by index) */
+function chartBase(legend){var wrap=E('div','smapwrap');var cv=document.createElement('canvas');cv.className='smap';
+ var W=880,H=300;cv.width=W;cv.height=H;wrap.appendChild(cv);
+ if(legend)wrap.insertAdjacentHTML('beforeend','<div class="smaplegend">'+legend+'</div>');
+ var ctx=cv.getContext('2d');ctx.fillStyle='#0D0B09';ctx.fillRect(0,0,W,H);
+ for(var i=0;i<140;i++){var sx=(i*97.13)%W,sy=(i*57.31)%H,a=0.08+((i*13)%40)/200;ctx.fillStyle='rgba(216,205,184,'+a+')';ctx.fillRect(sx,sy,1,1)}
+ return {wrap:wrap,cv:cv,ctx:ctx,W:W,H:H};}
+function nodeDot(ctx,x,y,col,here,label,sub){
+ if(here){ctx.beginPath();ctx.arc(x,y,15,0,Math.PI*2);ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();ctx.lineWidth=1}
+ ctx.beginPath();ctx.arc(x,y,here?13:9,0,Math.PI*2);ctx.fillStyle=col+'22';ctx.fill();
+ ctx.beginPath();ctx.arc(x,y,here?8:6,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+ ctx.textAlign='center';ctx.fillStyle='#D8CDB8';ctx.font='11px ui-sans-serif,sans-serif';ctx.fillText(label,x,y+26);
+ if(sub){ctx.fillStyle='rgba(143,134,116,.9)';ctx.font='9px ui-monospace,monospace';ctx.fillText(sub,x,y+37)}}
+function galaxyChart(){var b=chartBase('◉ your Segmentum'),cx=b.W/2,cy=b.H/2;
+ var segs=D.galaxy.segmentums,hereSeg=fPl(S.pos.pl).g.id;
+ var nodes=segs.map(function(g,i){if(g.id==='sol')return{g:g,x:cx,y:cy};
+  var others=segs.filter(function(z){return z.id!=='sol'}),k=others.indexOf(g),ang=-Math.PI/2+k*(Math.PI*2/others.length);
+  return{g:g,x:cx+Math.cos(ang)*115,y:cy+Math.sin(ang)*95}});
+ b.ctx.strokeStyle='rgba(51,44,36,.7)';nodes.forEach(function(n){if(n.g.id==='sol')return;b.ctx.beginPath();b.ctx.moveTo(cx,cy);b.ctx.lineTo(n.x,n.y);b.ctx.stroke()});
+ nodes.forEach(function(n){nodeDot(b.ctx,n.x,n.y,n.g.id==='sol'?'#D8B45E':'#8F8674',n.g.id===hereSeg,n.g.name.replace('Segmentum ','').replace(' Segmentum',''),n.g.zones[0].kind==='core'?'':'EXPANSE')});
+ b.cv.style.cursor='pointer';b.cv.onclick=function(e){var r=b.cv.getBoundingClientRect(),sc=b.W/r.width,mx=(e.clientX-r.left)*sc,my=(e.clientY-r.top)*sc;
+  nodes.forEach(function(n){if(Math.hypot(mx-n.x,my-n.y)<22){MV.seg=n.g.id;MV.lv='segment';rMap()}})};
+ return b.wrap;}
+function segmentChart(seg){var b=chartBase('◉ your position · colour = status'),cx=b.W/2,cy=b.H/2;
+ var secs=[];seg.zones.forEach(function(zn){zn.sectors.forEach(function(s){secs.push(s)})});
+ var hereSec=fPl(S.pos.pl).s.id;
+ var nodes=secs.map(function(s,i){var ang=-Math.PI/2+i*(Math.PI*2/Math.max(secs.length,1));return{s:s,x:cx+Math.cos(ang)*110,y:cy+Math.sin(ang)*95}});
+ b.ctx.fillStyle='rgba(176,141,62,.4)';b.ctx.font='11px ui-monospace,monospace';b.ctx.textAlign='center';b.ctx.fillText(seg.name.toUpperCase().replace('SEGMENTUM ',''),cx,cy+4);
+ nodes.forEach(function(n){var col=n.s.sealed?'#4a4438':(STCOL[n.s.status]||'#8F8674');
+  nodeDot(b.ctx,n.x,n.y,col,n.s.id===hereSec,n.s.name.replace(' Sector',''),n.s.sealed?'SEALED':n.s.status.toUpperCase())});
+ b.cv.style.cursor='pointer';b.cv.onclick=function(e){var r=b.cv.getBoundingClientRect(),sc=b.W/r.width,mx=(e.clientX-r.left)*sc,my=(e.clientY-r.top)*sc;
+  nodes.forEach(function(n){if(Math.hypot(mx-n.x,my-n.y)<22){if(n.s.sealed){T('Sealed — beyond alpha space.');return}MV.sec=n.s.id;MV.lv='sector';rMap()}})};
+ return b.wrap;}
 function sectorChart(sec){
  var wrap=E('div','smapwrap');var cv=document.createElement('canvas');cv.className='smap';
  var W=880,H=300;cv.width=W;cv.height=H;wrap.appendChild(cv);
