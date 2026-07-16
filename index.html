@@ -165,6 +165,52 @@ input[type=range]{width:100%;accent-color:var(--br)}
 .mem div{padding:3px 0;border-bottom:1px solid rgba(51,44,36,.4);display:flex;justify-content:space-between;font-size:12px}
 #boot{position:fixed;inset:0;background:var(--void);display:flex;align-items:center;justify-content:center;z-index:100;text-align:center;padding:20px}
 @media(max-width:900px){.shell{flex-direction:column}.rail{width:100%;height:auto;position:static}.rail .foot{display:none}.tw,.cw{grid-template-columns:1fr}.g2,.g3{grid-template-columns:1fr}}
+/* ─── v8: model overview, faction frames, leader switch, map ─── */
+.mov{position:fixed;inset:0;background:rgba(8,7,5,.86);z-index:60;display:none;overflow:auto;padding:34px 20px}
+.mov.on{display:block}
+.movc{max-width:900px;margin:0 auto;background:var(--void);border:1px solid var(--ln);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.movh{display:flex;gap:20px;padding:22px;border-bottom:1px solid var(--ln);align-items:flex-start}
+.movbk{font-family:var(--mono,monospace);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);cursor:pointer;background:none;border:1px solid var(--ln);padding:6px 12px}
+.movbk:hover{color:var(--brh);border-color:var(--br)}
+/* faction level frame — the wireframe slot a portrait will fill */
+.mframe{width:112px;height:132px;flex:0 0 112px;position:relative;border:2px solid var(--fr,var(--br));background:linear-gradient(160deg,rgba(255,255,255,.03),rgba(0,0,0,.25));display:flex;align-items:center;justify-content:center}
+.mframe::before,.mframe::after{content:"";position:absolute;width:11px;height:11px;border:2px solid var(--fr,var(--br))}
+.mframe::before{top:-2px;left:-2px;border-right:0;border-bottom:0}
+.mframe::after{bottom:-2px;right:-2px;border-left:0;border-top:0}
+.mframe .sig{font-family:var(--serif,Georgia,serif);font-size:34px;color:var(--fr,var(--br));opacity:.55}
+.mframe .ph{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-family:var(--mono,monospace);font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);opacity:.7}
+.mframe .rankpips{position:absolute;top:4px;left:0;right:0;display:flex;gap:3px;justify-content:center}
+.mframe .rankpips i{width:5px;height:5px;background:var(--fr,var(--br))}
+.mframe .rankpips i.off{background:none;border:1px solid var(--fr,var(--br));opacity:.4}
+.movtitle h2{margin:0 0 4px;font-family:var(--serif,Georgia,serif);color:var(--brh)}
+.movtitle .sub{font-size:12.5px;color:var(--dim);margin-bottom:9px}
+.ovstats{display:grid;grid-template-columns:repeat(auto-fit,minmax(74px,1fr));gap:1px;background:var(--ln);border:1px solid var(--ln);margin-top:4px}
+.ovstats>div{background:var(--void);padding:8px 10px}
+.ovstats .k{font-family:var(--mono,monospace);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.ovstats .v{font-family:var(--mono,monospace);font-size:16px;color:var(--brh)}
+.movbody{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--ln)}
+.movbody>div{background:var(--void);padding:18px 22px}
+.movbody h4{margin:0 0 10px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--br)}
+.movbody .lore{font-size:13.5px;line-height:1.6;color:var(--ink)}
+.movbody .thl div,.movbody .sll div{font-size:12.5px;color:var(--ink);padding:5px 0;border-bottom:1px solid var(--ln)}
+.movbody .thl div:last-child,.movbody .sll div:last-child{border:none}
+.movbody .sll .sk{font-family:var(--mono,monospace);font-size:9px;color:var(--dim);letter-spacing:.1em}
+@media(max-width:640px){.movbody{grid-template-columns:1fr}.movh{flex-wrap:wrap}}
+/* leader switcher */
+.lsw{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.lsc{border:1px solid var(--ln);background:var(--void);padding:7px 11px;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:120px}
+.lsc:hover{border-color:var(--br)}
+.lsc.act{border-color:var(--brh);background:rgba(176,141,62,.08)}
+.lsc .nm{font-size:12.5px;color:var(--ink)}
+.lsc .lo{font-family:var(--mono,monospace);font-size:10px;color:var(--dim)}
+.clk{cursor:pointer}.clk:hover{color:var(--brh)}
+/* procedural sector chart */
+.smapwrap{border:1px solid var(--ln);background:radial-gradient(ellipse at 50% 40%,rgba(40,34,26,.5),var(--void));margin-bottom:12px;position:relative}
+canvas.smap{display:block;width:100%;height:auto}
+.smaplegend{position:absolute;bottom:6px;right:8px;font-family:var(--mono,monospace);font-size:9px;color:var(--dim);letter-spacing:.08em}
+/* action descriptions in threads */
+.actd{font-size:11px;color:var(--dim);line-height:1.4;margin-top:2px;padding:4px 8px;background:rgba(255,255,255,.02);border-left:2px solid var(--ln)}
+.actd b{color:var(--brh)}
 </style></head><body>
 <div id="boot"><div><h1 style="color:var(--brh);font-size:22px;margin-bottom:10px">HERETICS 40K</h1><div id="bootmsg" style="color:var(--dim);font-size:14px">Loading canon…</div></div></div>
 <div class="shell" style="display:none" id="shell">
@@ -198,13 +244,13 @@ input[type=range]{width:100%;accent-color:var(--br)}
 <div class="stat"><div class="k" id="ld"></div><div class="v" id="wd"></div></div>
 <div class="stat"><div class="k" id="li"></div><div class="v" id="wi"></div></div></div>
 <div style="margin-top:9px;font-size:12px;color:var(--dim)" id="hqa"></div></div>
-<div class="card"><h3>Awaiting your post</h3><div id="hqq"></div></div>
+<div class="card"><h3>Your Leaders</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:9px">Switch the figure you command. Each may stand in a different location.</div><div class="lsw" id="hqlead"></div></div>
 </div></section>
 <section class="screen" id="s-barracks"><div class="crumb">Army management</div><h2>The Barracks</h2>
 <div class="tabs"><button class="tab on" data-b="roster">Roster</button><button class="tab" data-b="loadout">Loadout</button><button class="tab" data-b="forces">Forces</button></div>
 <div class="sub on" id="b-roster"><div class="card"><h3 id="rh"></h3>
 <div class="fbar"><input type="text" id="fq" placeholder="Search…"><select id="fc"><option value="">Class — all</option></select><select id="fs"><option value="">Status — all</option><option>DEPLOYED</option><option>GARRISON</option><option>DEAD</option></select><select id="ff"><option value="">Force — all</option></select></div>
-<table id="rt"><thead><tr><th>Model</th><th>Class</th><th>Rank</th><th>PC</th><th>AP</th><th>W</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
+<table id="rt"><thead><tr><th>Model</th><th>Class</th><th>Rank</th><th>AP</th><th>W</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
 <div class="sub" id="b-loadout"><div class="card"><h3 id="lt"></h3><div style="font-size:12px;color:var(--dim)" id="ls"></div><div class="slotg" id="sg"></div><h3 style="margin-top:18px">Inventory — unequipped</h3><div id="il"></div></div></div>
 <div class="sub" id="b-forces"><div id="fw"></div></div></section>
 <section class="screen" id="s-shop"><div class="crumb" id="shc"></div><h2>Requisition</h2><div id="shb"></div></section>
@@ -345,15 +391,17 @@ document.getElementById('rloc').textContent=posTxt();
 document.getElementById('rship').textContent='Vessel: '+S.ships.sys+(S.ships.warp?' · '+S.ships.warp:' · no warp drive');
 var f=fPl(S.pos.pl);document.getElementById('hqc').textContent=f.g.name+' · '+f.s.name+' · '+posTxt()}
 function rHQ(){rW();
-document.getElementById('hqname').textContent=S.player.name;
-document.getElementById('sigil').textContent=S.player.name.split(' ').map(function(x){return x[0]}).slice(0,2).join('');
-document.getElementById('hqrank').textContent='Commander R'+S.player.cmdRank;
-document.getElementById('hqsub').textContent=FAC(S.player.faction).name+' · '+S.player.model+' · Model Rank '+S.player.mdlRank;
-document.getElementById('hqw').innerHTML='Wounds '+S.player.w+' · 3 actions · XP: <span class="mono" style="color:var(--brh)">'+S.player.xp+'</span>';
-var q=document.getElementById('hqq');q.innerHTML='';
-var it=S.threads.filter(function(t){return t.turn==='you'}).map(function(t){return{a:t.type+' — '+t.n,b:t.loc,f:function(){go('threads');openT(t.id)}}});
-if(S.tr)it.push({a:'TRAVEL — '+fLoc(S.tr.pl,S.tr.sp).name,b:S.tr.left+' post(s) to arrival',f:function(){go('threads');openT('tr')}});
-it.forEach(function(i){var d=E('div','qi','<div><div class="t">'+i.a+'</div><div class="m">'+i.b+'</div></div><span class="mono" style="color:var(--blh)">YOUR TURN</span>');d.onclick=i.f;q.appendChild(d)})}
+var am=activeModel();
+document.getElementById('hqname').textContent=am.n;
+document.getElementById('hqname').className='clk';document.getElementById('hqname').onclick=function(){openModel(am.id)};
+document.getElementById('sigil').textContent=am.n.split(' ').map(function(x){return x[0]}).slice(0,2).join('');
+document.getElementById('sigil').className='clk';document.getElementById('sigil').style.cursor='pointer';document.getElementById('sigil').onclick=function(){openModel(am.id)};
+document.getElementById('hqrank').textContent=(am.id==='kane'?'Commander R'+S.player.cmdRank:am.tag||('Rank '+am.rk));
+document.getElementById('hqsub').textContent=FAC(S.player.faction).name+' · '+am.cls+' · Model Rank '+am.rk;
+document.getElementById('hqw').innerHTML='Wounds '+am.w+' · '+acts(am)+' actions · AP '+AP(am.pc)+' · XP: <span class="mono" style="color:var(--brh)">'+am.xp+'</span>';
+var L=document.getElementById('hqlead');L.innerHTML='';
+leaders().forEach(function(m){var d=E('div','lsc'+(m.id===S.active?' act':''),'<span class="nm">'+m.n.split(',')[0]+(m.id===S.active?' ●':'')+'</span><span class="lo">'+m.loc+'</span>');
+d.onclick=function(){if(m.id===S.active){openModel(m.id)}else{switchTo(m.id)}};L.appendChild(d)})}
 /* ---- barracks ---- */
 var sel=null;
 function chips(m){var c=m.st==='DEAD'?'dead':m.st==='DEPLOYED'?'dep':'';var h='<span class="tc '+c+'">'+m.st+(m.st==='DEAD'?' · recoverable':'')+'</span><span class="tc loc">'+m.loc+'</span>';if(m.fo!=='—')h+='<span class="tc">FORCE: '+m.fo+'</span>';return h}
@@ -361,8 +409,8 @@ function rRos(){var tb=document.querySelector('#rt tbody');tb.innerHTML='';
 document.getElementById('rh').textContent='Owned models — '+S.army+' / '+S.infl+' PC';
 var q=(document.getElementById('fq').value||'').toLowerCase(),c=document.getElementById('fc').value,s=document.getElementById('fs').value,f=document.getElementById('ff').value;
 S.roster.forEach(function(m){if(q&&m.n.toLowerCase().indexOf(q)<0)return;if(c&&m.cls!==c)return;if(s&&m.st!==s)return;if(f&&m.fo!==f)return;
-var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b> '+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+m.pc+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.w+'</td><td>'+chips(m)+'</td>');
-tr.onclick=function(){sel=m;rRos();rLoad();document.querySelector('[data-b=loadout]').click()};tb.appendChild(tr)})}
+var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b> '+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.w+'</td><td>'+chips(m)+'</td>');
+tr.onclick=function(){sel=m;rRos();rLoad();openModel(m.id)};tb.appendChild(tr)})}
 function rLoad(){if(!sel)sel=S.roster[0];
 document.getElementById('lt').textContent='Loadout — '+sel.n;document.getElementById('ls').textContent=sel.sub;
 var g=document.getElementById('sg');g.innerHTML='';
@@ -411,8 +459,12 @@ function rShop(){var f=fPl(S.pos.pl),h=fLoc(S.pos.pl,S.pos.sp);
 document.getElementById('shc').textContent=f.s.name+' · '+f.p.name+' · '+(S.tr?'In transit':h.name);
 var b=document.getElementById('shb');
 if(S.tr){b.innerHTML='<div class="empty">In transit — no requisition on the move.</div>';return}
-var dz=doorsAt(h),lt=LT(h.type)||{name:h.type};
 b.innerHTML='';
+/* demo toggle — preview every door type, ignoring location gating */
+var tgl=E('button','movbk','◈ '+(S.shopDemo?'Exit door demo':'Door demo — preview every door'));
+tgl.style.marginBottom='12px';tgl.onclick=function(){S.shopDemo=!S.shopDemo;rShop()};b.appendChild(tgl);
+if(S.shopDemo){shopDemo(b);return}
+var dz=doorsAt(h),lt=LT(h.type)||{name:h.type};
 /* the world tells you where you are and why — an empty screen teaches nothing */
 var st=statusOf(S.pos.pl),hd=E('div','card');
 hd.innerHTML='<h3>'+h.name+' <span class="pill">'+lt.name+'</span></h3>'
@@ -492,6 +544,7 @@ cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ',cb(f.g.name.toU
 var s1=E('span',null,f.s.name.toUpperCase());s1.style.color='var(--brh)';cr.appendChild(s1);
 var _zh=E('div','zh');_zh.innerHTML=(f.z.kind==='core'?'CORE':'EXPANSE — '+f.z.name)+' · STATUS: '+readStatus(f.s.status).toUpperCase()+scoreBar(f.s.id)+' · '+f.s.owner;
 z.appendChild(_zh);
+z.appendChild(sectorChart(f.s));
 var g4=E('div','mg');
 (f.s.planets||[]).forEach(function(pl){var h=S.pos.pl===pl.id&&!S.tr;var r=route(pl.id,pl.locations[0].id);
 var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(!h&&r&&r.p?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+r.p+'p'+(r.c?' · '+r.c+'⛁':'')+'</div>':''));
@@ -554,11 +607,18 @@ cp.appendChild(fic);
 var ab=E('div','abld','<div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--br);margin-bottom:7px">Action Block</div>');
 var row=E('div','arow');var m=E('select'),a=E('select'),tg=E('select');
 ABM.forEach(function(x,i){m.add(new Option(x.n+' — AP '+x.ap+' · '+x.ac+' act'+(x.ac>1?'s':''),i))});
+var dsc=E('div','actd');
+function adesc(x,o){var eff='',nm=(o.n.split(' — ')[1]||'').replace(' (Effortless)','');
+ var mdl=S.roster.filter(function(z){return z.n.toLowerCase().indexOf(x.n.split(' ')[0].toLowerCase())>=0})[0];
+ if(mdl){var sl=mdl.sl.filter(function(s){return s.it&&s.it.n.indexOf(nm)>=0})[0];if(sl)eff=sl.it.d}
+ var gt={e:'targets an enemy',a:'area / self-cast',y:'buffs your force',b:'reposition, no target'}[o.g]||'';
+ var ap=o.t==='Move'?0:x.ap+o.x;
+ return '<b>'+o.t+'</b> · '+ap+' AP'+(o.t==='Move'?' (Movement is always 0 AP)':'')+' · '+gt+(eff?'<br><b>Effect:</b> '+eff:'')}
 function fa(){var x=ABM[m.value];a.innerHTML='';x.o.forEach(function(o,i){a.add(new Option(o.n+' — '+(o.t==='Move'?0:x.ap+o.x)+' AP',i))});ftg()}
-function ftg(){var x=ABM[m.value],o=x.o[a.value];tg.innerHTML='';tgs(o.g,x.n).forEach(function(t,i){tg.add(new Option((o.g==='b'?'':'→ ')+t,i))})}
+function ftg(){var x=ABM[m.value],o=x.o[a.value];tg.innerHTML='';tgs(o.g,x.n).forEach(function(t,i){tg.add(new Option((o.g==='b'?'':'→ ')+t,i))});dsc.innerHTML=adesc(x,o)}
 m.onchange=fa;a.onchange=ftg;fa();
 var add=E('button','btn gh sm','Add');
-row.appendChild(m);row.appendChild(a);row.appendChild(tg);row.appendChild(add);ab.appendChild(row);
+row.appendChild(m);row.appendChild(a);row.appendChild(tg);row.appendChild(add);ab.appendChild(row);ab.appendChild(dsc);
 var cbx=E('div');ab.appendChild(cbx);var wr=E('div','warn');ab.appendChild(wr);
 ab.insertAdjacentHTML('beforeend','<div class="apt"><span style="font-size:11px;color:var(--dim)">AP total · pool: <span class="mono" id="pp">'+pool+'</span></span><span class="n" id="tt">0 AP</span></div>');
 var pb2=E('button','btn bl','ATTACH BLOCK & POST');pb2.style.cssText='width:100%;margin-top:9px';ab.appendChild(pb2);
@@ -581,6 +641,11 @@ st.appendChild(post);document.getElementById('sp').textContent=pool;
 blk=[];rB();fic.innerHTML='';T('Posted. Sskarith is notified — their turn.');post.scrollIntoView({behavior:'smooth'})};
 w.appendChild(lf);
 w.insertAdjacentHTML('beforeend','<div class="card"><h3>Battle state</h3><div class="fg you"><h4>The Rotward (you) · <span id="sp">'+pool+'</span> AP</h4><div class="mr"><div class="n"><span>Vexos Kane</span><span class="a">9/9 W · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT vs brood</div></div><div class="mr"><div class="n"><span>Morvax (Leader)</span><span class="a">7/7 · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div><div class="mr"><div class="n"><span>Gharn</span><span class="a">4/8 · 3 acts</span></div><div class="hp lo"><i style="width:50%"></i></div><div class="band">MELEE vs Threshjaw</div></div><div class="mr"><div class="n"><span>Poxwalkers α–δ</span><span class="a">1 W · 1 act each</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div></div><div class="fg en"><h4>Sskarith\'s Brood · pool low</h4><div class="mr"><div class="n"><span>Threshjaw — Carnifex R2</span><span class="a">7/10 · Regen II</span></div><div class="hp"><i style="width:70%"></i></div><div class="band">MELEE vs Gharn</div></div><div class="mr"><div class="n"><span>Termagants ×6</span><span class="a">1 W each</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div><div class="mr"><div class="n"><span>Sskarith (Cmdr)</span><span class="a">8/8 · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">MEDIUM</div></div></div><div style="font-size:11.5px;color:var(--dim);border-top:1px solid var(--ln);padding-top:7px">Field: Poxwalkers Epsilon &amp; Zeta — intact</div></div>');
+/* click a friendly combatant → its model overview */
+w.querySelectorAll('.fg.you .mr .n span:first-child').forEach(function(sp){
+ var first=sp.textContent.split(/[ (—–]/)[0].toLowerCase();
+ var m=S.roster.filter(function(x){return x.n.toLowerCase().indexOf(first)>=0})[0];
+ if(m){sp.className='clk';sp.onclick=function(){openModel(m.id)}}});
 V.appendChild(w)}
 function bDiplo(V){var w=E('div','tw solo');var lf=E('div');
 var st=E('div');
@@ -696,7 +761,8 @@ S.succ.push({n:m.n,fid:null});
 RB.classList.remove('on');rRos();rW();T(m.n+' rises from the ranks. The Leader tag is theirs.');go('barracks');return}}
 RS.st++;rRite()}
 /* ---- boot ---- */
-function init(){S=demoSave();
+function init(){S=demoSave();enrichRoster();mkOverview();
+S.active=S.active||'kane';
 var f=fPl(S.pos.pl);MV={lv:'sector',seg:f.g.id,sec:f.s.id,pl:S.pos.pl,lc:S.pos.sp};
 document.getElementById('rname').textContent=S.player.name.split(',')[0];
 document.getElementById('rdata').textContent='Canon: '+D.meta.format+' v'+D.meta.version;
@@ -709,6 +775,115 @@ mkPicker();mkRite();
 document.getElementById('boot').style.display='none';
 document.getElementById('shell').style.display='flex';
 rHQ();rRos();rLoad();rMap();rTL();rComms();rShop()}
+
+/* ─── v8: the Model as a first-class entity ─── */
+function acts(m){var w=parseInt((m.w||'0/0').split('/')[0],10)||0;return Math.min(w,3)}
+function isLeader(m){return m.tag&&(m.tag.indexOf('Comm')>=0||m.tag.indexOf('Leader')>=0)}
+function leaders(){return S.roster.filter(function(m){return isLeader(m)&&m.st!=='DEAD'})}
+function frameColor(){var al=S.player.allegiance;return al==='chaos'?'var(--blh)':al==='xenos'?'var(--vdh)':'var(--brh)'}
+/* lore + history the overview needs; most models get sensible defaults */
+function enrichRoster(){var lore={
+ kane:'Rotted from the inside out on the black sand of Vigilus and called it a blessing. Kane the Rotforged commands not from a throne but from the front rank, where the Grandfather can see him work.',
+ morvax:'Seven campaigns, seven wounds that would not close. Morvax stopped counting his deaths after the third and now leads The Rotward as its unkillable edge.',
+ gharn:'A Blightlord who wears his afflictions like medals. Slow, patient, and utterly certain that time is on Nurgle\'s side.'};
+ S.roster.forEach(function(m){
+  if(m.xp===undefined)m.xp=isLeader(m)?(m.rk*10+18)+'/'+(m.rk*10+40):'—';
+  if(m.lore===undefined)m.lore=lore[m.id]||'A rank-and-file servant of the Plague God. No saga recorded — yet.';
+  if(m.th===undefined){m.th=[];
+   if(m.st!=='GARRISON'){m.th.push('SKIRMISH — Ash Ravine · active, post 7');}
+   if(isLeader(m))m.th.push('MISSION — The First Landing · victory');}
+ });}
+/* one overlay, reused from every screen */
+var MOV=null;
+function mkOverview(){if(MOV)return;MOV=E('div','mov');document.body.appendChild(MOV);
+ MOV.onclick=function(e){if(e.target===MOV)MOV.classList.remove('on')}}
+function factionFrame(m,big){var col=frameColor(),rk=m.rk||1;
+ var pips='';for(var i=1;i<=5;i++)pips+='<i class="'+(i<=rk?'':'off')+'"></i>';
+ var sig=m.n.split(' ').map(function(x){return x[0]}).filter(function(c){return /[A-Za-z]/.test(c)}).slice(0,2).join('');
+ return '<div class="mframe" style="--fr:'+col+(big?'':';width:64px;height:76px;flex-basis:64px')+'"><div class="rankpips">'+pips+'</div><span class="sig">'+sig+'</span><div class="ph">portrait</div></div>';}
+function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];if(!m)return;
+ var stcol=m.st==='DEAD'?'var(--blh)':m.st==='DEPLOYED'?'var(--brh)':'var(--dim)';
+ var loadout=m.sl.map(function(s){return '<div><span class="sk">'+s.k+'</span><br>'+(s.it?'<b>'+s.it.n+'</b> — '+s.it.d:'<span style="color:var(--dim)">empty</span>')+'</div>'}).join('');
+ var threads=(m.th&&m.th.length)?m.th.map(function(t){return '<div>'+t+'</div>'}).join(''):'<div style="color:var(--dim)">No threads recorded.</div>';
+ MOV.innerHTML='<div class="movc"><div class="movh">'
+ +'<div style="display:flex;flex-direction:column;gap:8px"><button class="movbk" id="movx">← Back</button>'+factionFrame(m,true)+'</div>'
+ +'<div class="movtitle" style="flex:1"><h2>'+m.n+'</h2>'
+ +'<div class="sub">'+(m.tag?m.tag+' · ':'')+FAC(S.player.faction).name+' · '+m.cls+' · Rank '+m.rk+'</div>'
+ +'<div class="ovstats">'
+ +'<div><div class="k">Status</div><div class="v" style="color:'+stcol+';font-size:12px">'+m.st+'</div></div>'
+ +'<div><div class="k">AP</div><div class="v">'+AP(m.pc)+'</div></div>'
+ +'<div><div class="k">Actions</div><div class="v">'+acts(m)+'</div></div>'
+ +'<div><div class="k">Wounds</div><div class="v">'+m.w+'</div></div>'
+ +'<div><div class="k">XP</div><div class="v" style="font-size:12px">'+m.xp+'</div></div>'
+ +'<div><div class="k">Force</div><div class="v" style="font-size:12px">'+(m.fo==='—'?'Direct':m.fo)+'</div></div>'
+ +'</div><div style="font-size:11px;color:var(--dim);margin-top:6px">'+m.sub+' · '+m.loc+'</div></div></div>'
+ +'<div class="movbody"><div><h4>Lore</h4><div class="lore">'+m.lore+'</div>'
+ +'<h4 style="margin-top:16px">Threads fought</h4><div class="thl">'+threads+'</div></div>'
+ +'<div><h4>Loadout</h4><div class="sll">'+loadout+'</div><button class="movbk" id="moved" style="margin-top:12px">Edit loadout →</button></div></div></div>';
+ document.getElementById('movx').onclick=function(){MOV.classList.remove('on')};
+ document.getElementById('moved').onclick=function(){MOV.classList.remove('on');sel=m;rLoad();go('barracks');document.querySelector('[data-b=loadout]').click()};
+ MOV.classList.add('on');}
+/* leader switcher — swap the active playable figure */
+function switchTo(id){S.active=id;rHQ();T('Now commanding: '+S.roster.filter(function(m){return m.id===id})[0].n.split(',')[0]);}
+function activeModel(){return S.roster.filter(function(m){return m.id===S.active})[0]||S.roster[0];}
+/* ─── v8: procedural sector chart (first real map visual) ─── */
+var ALCOL={imperial:'#D8B45E',chaos:'#C4503F',xenos:'#6FA893',con:'#8F8674'};
+function sectorChart(sec){
+ var wrap=E('div','smapwrap');var cv=document.createElement('canvas');cv.className='smap';
+ var W=880,H=300;cv.width=W;cv.height=H;wrap.appendChild(cv);
+ wrap.insertAdjacentHTML('beforeend','<div class="smaplegend">◉ your position · ring = travel tier</div>');
+ var ctx=cv.getContext('2d');
+ /* starfield — deterministic, no RNG (seeded by index) */
+ ctx.fillStyle='#0D0B09';ctx.fillRect(0,0,W,H);
+ for(var i=0;i<140;i++){var sx=(i*97.13)%W,sy=(i*57.31)%H,a=0.08+((i*13)%40)/200;
+  ctx.fillStyle='rgba(216,205,184,'+a+')';ctx.fillRect(sx,sy,1,1)}
+ var pls=sec.planets||[],cx=W/2,cy=H/2;
+ /* orbital rings for reference */
+ [90,130].forEach(function(rr){ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);ctx.strokeStyle='rgba(51,44,36,.7)';ctx.stroke()});
+ var nodes=pls.map(function(pl,i){var ang=-Math.PI/2+i*(Math.PI*2/Math.max(pls.length,1));
+  var rad=110;return{pl:pl,x:cx+Math.cos(ang)*rad,y:cy+Math.sin(ang)*rad}});
+ /* travel links from your world */
+ var hereN=nodes.filter(function(n){return n.pl.id===S.pos.pl})[0];
+ if(hereN)nodes.forEach(function(n){if(n===hereN)return;
+  ctx.beginPath();ctx.moveTo(hereN.x,hereN.y);ctx.lineTo(n.x,n.y);
+  ctx.strokeStyle='rgba(176,141,62,.18)';ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([])});
+ /* central sector marker */
+ ctx.fillStyle='rgba(176,141,62,.5)';ctx.font='11px ui-monospace,monospace';ctx.textAlign='center';
+ ctx.fillText(sec.name.toUpperCase(),cx,cy+4);
+ /* planet nodes */
+ nodes.forEach(function(n){var col=ALCOL[n.pl.ruler?n.pl.ruler.allegiance:'con'];
+  var here=n.pl.id===S.pos.pl;
+  ctx.beginPath();ctx.arc(n.x,n.y,here?13:9,0,Math.PI*2);
+  ctx.fillStyle=col+'22';ctx.fill();
+  ctx.beginPath();ctx.arc(n.x,n.y,here?8:6,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();
+  if(here){ctx.beginPath();ctx.arc(n.x,n.y,15,0,Math.PI*2);ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.stroke();ctx.lineWidth=1}
+  ctx.fillStyle='#D8CDB8';ctx.font='11px ui-sans-serif,sans-serif';
+  var ty=n.y>cy?n.y+24:n.y-16;ctx.fillText(n.pl.name,n.x,ty);
+  ctx.fillStyle='rgba(143,134,116,.9)';ctx.font='9px ui-monospace,monospace';
+  ctx.fillText((n.pl.type||'').toUpperCase(),n.x,ty+11)});
+ /* click a node → drill into that planet */
+ cv.style.cursor='pointer';
+ cv.onclick=function(e){var rect=cv.getBoundingClientRect(),scale=W/rect.width;
+  var mx=(e.clientX-rect.left)*scale,my=(e.clientY-rect.top)*scale;
+  nodes.forEach(function(n){if(Math.hypot(mx-n.x,my-n.y)<20){MV.pl=n.pl.id;MV.lc=n.pl.locations[0].id;MV.lv='planet';rMap()}})};
+ return wrap;}
+/* Requisition demo — every door, ignoring location gating */
+function shopDemo(b){
+ b.insertAdjacentHTML('beforeend','<div class="card" style="border-color:var(--br)"><h3>Door demo</h3><div class="d">Every door type, skinned for '+FAC(S.player.faction).name+', ignoring where you stand. This is a sandbox to feel the requisition surface — not your real location.</div></div>');
+ var w=E('div','grid g2');
+ (D.galaxy.doors||[]).forEach(function(dr){
+  var nm=dr.skins&&(dr.skins[S.player.faction]||dr.skins[S.player.allegiance])||dr.name;
+  if(nm==='—')nm=dr.name+' (n/a for faction)';
+  var c=E('div','card','<h3>'+nm+' <span class="pill">'+dr.kind.toUpperCase()+'</span></h3><div class="d" style="margin-bottom:4px">'+dr.does+'</div><div class="mono" style="font-size:10px;color:var(--dim)">rarity: '+dr.rarity+'</div>');
+  if(dr.kind==='shop'){var g=E('div',null);g.style.marginTop='8px';
+   D.equipment_alpha.shop_catalog.forEach(function(it){var r=E('div','shopc','<b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+it.d+'</div>');
+   var rr=E('div',null,'<span class="price">'+it.pc+' PC</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center';
+   var bt=E('button','btn gh sm','Buy');bt.onclick=(function(it){return function(){if(S.cur<it.pc){T('Not enough '+curName()+'.');return}S.cur-=it.pc;S.inv.push({n:it.n,cat:it.cat,d:it.d});rW();T(it.n+' purchased.')}})(it);
+   rr.appendChild(bt);r.appendChild(rr);g.appendChild(r)});c.appendChild(g)}
+  else if(dr.kind==='forge'){var fl=E('div',null,'<div class="mono" style="font-size:10px;color:var(--dim);margin-top:8px">FORGE TAGS</div>');
+   D.equipment_alpha.forge_tags_alpha.forEach(function(t){fl.insertAdjacentHTML('beforeend','<div style="font-size:12px;padding:3px 0">· <b>'+t.tag+'</b> — '+t.d+' <span class="mono" style="color:var(--dim)">+'+t.cost+'</span></div>')});c.appendChild(fl)}
+  w.appendChild(c)});
+ b.appendChild(w);}
 fetch('./heretics-40k-data-v1.json').then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(d){D=d;init()}).catch(function(e){
 document.getElementById('bootmsg').innerHTML='<span style="color:var(--blh)">Could not load canon (heretics-40k-data-v1.json).</span><br><br>The engine and data file must sit in the same folder and be served over HTTP —<br>opening this file directly (file://) blocks the data fetch.<br><br><span class="mono" style="color:var(--dim)">Quick local test: run &nbsp;python -m http.server&nbsp; in the folder, open localhost:8000<br>Deploy: upload both files to GitHub Pages / Netlify / itch.io</span>'});
 </script></body></html>
