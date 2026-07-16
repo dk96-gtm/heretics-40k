@@ -211,6 +211,16 @@ canvas.smap{display:block;width:100%;height:auto}
 /* action descriptions in threads */
 .actd{font-size:11px;color:var(--dim);line-height:1.4;margin-top:2px;padding:4px 8px;background:rgba(255,255,255,.02);border-left:2px solid var(--ln)}
 .actd b{color:var(--brh)}
+/* v10: restructured named-location page */
+.locpage{border:1px solid var(--ln);background:var(--void);margin-top:4px}
+.locimg{height:96px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.015),rgba(255,255,255,.015) 8px,transparent 8px,transparent 16px);border-bottom:1px solid var(--ln);font-family:var(--serif,Georgia,serif);color:var(--dim);font-size:14px}
+.locimg span{font-family:var(--mono,monospace);font-size:8px;letter-spacing:.14em;text-transform:uppercase;opacity:.6}
+.locbody{padding:14px 16px}
+.locttl{font-family:var(--serif,Georgia,serif);font-size:15px;color:var(--brh)}
+.statusbar{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0;padding:7px 10px;background:var(--panel,#1f1913);border:1px solid var(--ln);font-family:var(--mono,monospace);font-size:11px;color:var(--dim)}
+.statusbar b{color:var(--ink)}
+.lsec{margin-top:10px;font-size:12px}
+.lsec h5{margin:0 0 3px;font-family:var(--mono,monospace);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--br)}
 </style></head><body>
 <div id="boot"><div><h1 style="color:var(--brh);font-size:22px;margin-bottom:10px">HERETICS 40K</h1><div id="bootmsg" style="color:var(--dim);font-size:14px">Loading canon…</div></div></div>
 <div class="shell" style="display:none" id="shell">
@@ -598,23 +608,43 @@ var g4=E('div','mg');
 var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(!h&&r&&r.p?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+r.p+'p'+(r.c?' · '+r.c+'⛁':'')+'</div>':''));
 d.onclick=function(){MV.pl=pl.id;MV.lc=pl.locations[0].id;MV.lv='planet';rMap()};g4.appendChild(d)});
 z.appendChild(g4);
-p.innerHTML='<h3>'+f.s.name+'</h3><div style="font-size:12.5px;color:var(--dim)">Select a world for its surface, orbit, and the Forces standing on it.</div>';return}
+var sp=f.s.space,sph='<h3>'+f.s.name+'</h3><div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">Select a world for its surface, orbit, and the Forces standing on it — or read the Space layer below.</div>';
+if(sp){sph+='<div class="locpage"><div class="locimg">'+sp.name+'<span>space image — art slot</span></div><div class="locbody">'
++'<div class="locttl">'+sp.name.toUpperCase()+' <span class="pill">DEEP SPACE</span></div>'
++'<div class="d" style="margin:4px 0 8px">'+(sp.desc||'')+'</div>'
++'<div class="lsec"><h5>Fleets in the void</h5>'+(sp.forces&&sp.forces.length?sp.forces.map(function(x){return '· <b>'+x[0]+'</b> — '+x[1]+' · '+x[2]}).join('<br>'):'<span style="color:var(--dim)">· none translating</span>')+'</div>'
++'</div></div>';}
+p.innerHTML=sph;return}
 var f2=fPl(MV.pl),pl=f2.p;
 cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ',cb(f2.g.name.toUpperCase(),function(){MV.lv='segment';rMap()}),' › ',cb(f2.s.name.toUpperCase(),function(){MV.lv='sector';rMap()}),' › ');
 var s2=E('span',null,pl.name.toUpperCase());s2.style.color='var(--brh)';cr.appendChild(s2);
-z.appendChild(E('div','zh','SURFACE — NAMED LOCATIONS'));
-var g5=E('div','mg');
-pl.locations.forEach(function(l){var h=S.pos.pl===pl.id&&S.pos.sp===l.id&&!S.tr;
+[['orbit','ORBIT'],['surface','SURFACE — NAMED LOCATIONS']].forEach(function(tg){
+var locs=pl.locations.filter(function(l){return (l.tier||'surface')===tg[0]});
+if(!locs.length)return;
+z.appendChild(E('div','zh',tg[1]));
+var gg=E('div','mg');
+locs.forEach(function(l){var h=S.pos.pl===pl.id&&S.pos.sp===l.id&&!S.tr;
 var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+((LT(l.type)||{}).name||l.type)+(l.condition!=='intact'?' · '+((CD(l.condition)||{}).name||l.condition):'')+'</div>'+(S.pos.pl===pl.id&&!h&&!S.tr?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
-d.onclick=function(){MV.lc=l.id;rMap()};g5.appendChild(d)});
-z.appendChild(g5);
+d.onclick=function(){MV.lc=l.id;rMap()};gg.appendChild(d)});
+z.appendChild(gg)});
 var l=fLoc(pl.id,MV.lc);
 var fr=forcesAt(pl.id),hi=histAt(pl.id,l.id),np=npcsAt(pl.id,l.id);
-var h2='<h3>'+pl.name+' — '+pl.type+'</h3><div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pl.ruler?(pl.ruler.allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pl.ruler?'RULED: '+pl.ruler.faction:'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+f2.s.status+'</span></div><div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">'+pl.desc+'</div><div class="grid g3" style="font-size:12px">';
-h2+='<div><b style="color:var(--br)">ORBIT</b><br>'+(pl.orbit.length?pl.orbit.map(function(o){return '· '+o}).join('<br>'):'· empty')+'</div>';
-h2+='<div><b style="color:var(--br)">FORCES PRESENT</b><br>'+(fr.length?fr.map(function(x){return '· <b>'+x[0]+'</b> — '+x[1]+' · '+x[2]}).join('<br>'):'· none known')+'</div>';
-var _lt=LT(l.type)||{name:l.type},_dz=doorsAt(l),_cd=CD(l.condition)||{};
-h2+='<div><b style="color:var(--br)">'+l.name.toUpperCase()+' — '+(_lt.name||'').toUpperCase()+(l.condition!=='intact'?' <span style="color:var(--blh)">('+(_cd.name||l.condition)+')</span>':'')+'</b><br>'+(_dz.length?_dz.map(function(s){return '· '+s.name+(s.kind==='forge'&&s.open?' (forge '+(s.tiers||'I')+')':'')+(s.open?'':' <span style="color:var(--blh)">— closed</span>')}).join('<br>')+'<br>':'')+(hi.length?'<span style="color:var(--dim)">Thread history:</span><br>'+hi.map(function(t){return '· '+t}).join('<br>')+'<br>':'<span style="color:var(--dim)">No threads recorded yet.</span><br>')+(np.length?'<span style="color:var(--dim)">Known here:</span><br>'+np.map(function(n){return '· '+n}).join('<br>'):'')+'</div></div>';
+var _lt=LT(l.type)||{name:l.type},_dz=doorsAt(l),_cd=CD(l.condition)||{},isOrbit=(l.tier==='orbit');
+var frLoc=fr.filter(function(x){return x[2]===l.name});
+var h2='<h3>'+pl.name+' — '+pl.type+'</h3>';
+h2+='<div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pl.ruler?(pl.ruler.allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pl.ruler?'RULED: '+pl.ruler.faction:'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+readStatus(f2.s.status)+'</span></div>';
+h2+='<div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">'+pl.desc+'</div>';
+/* the named-location page — broken into sections */
+h2+='<div class="locpage"><div class="locimg">'+l.name+'<span>location image — art slot</span></div><div class="locbody">';
+h2+='<div class="locttl">'+l.name.toUpperCase()+' <span class="pill">'+(_lt.name||'')+'</span>'+(l.condition&&l.condition!=='intact'?' <span class="pill bl">'+(_cd.name||l.condition)+'</span>':'')+'</div>';
+h2+='<div class="d" style="margin:4px 0 8px">'+(l.desc||_lt.effect||'')+'</div>';
+if(!isOrbit&&l.tier!=='space')h2+='<div class="statusbar"><span>Population <b>'+popRank(effPop(l,pl.id))+'</b></span><span>Condition <b>'+((_cd.name)||l.condition||'Intact')+'</b></span><span>Level <b>'+(l.level||1)+'</b></span><span>Sector <b>'+readStatus(f2.s.status)+'</b></span></div>';
+if(isOrbit)h2+='<div class="lsec"><h5>Ships in orbit</h5>'+(l.ships&&l.ships.length?l.ships.map(function(o){return '· '+o}).join('<br>'):'<span style="color:var(--dim)">· empty</span>')+'</div>';
+if(_dz.length)h2+='<div class="lsec"><h5>Doors</h5>'+_dz.map(function(s){return '· '+s.name+(s.kind==='forge'&&s.open?' (forge '+(s.tiers||'I')+')':'')+(s.open?'':' <span style="color:var(--blh)">— closed</span>')}).join('<br>')+'</div>';
+h2+='<div class="lsec"><h5>Forces present</h5>'+(frLoc.length?frLoc.map(function(x){return '· <b>'+x[0]+'</b> — '+x[1]}).join('<br>'):'<span style="color:var(--dim)">· none known</span>')+'</div>';
+h2+='<div class="lsec"><h5>Thread history</h5>'+(hi.length?hi.map(function(t){return '· '+t}).join('<br>'):'<span style="color:var(--dim)">No threads recorded yet.</span>')+'</div>';
+if(np.length)h2+='<div class="lsec"><h5>Known here</h5>'+np.map(function(n){return '· '+n}).join('<br>')+'</div>';
+h2+='</div></div>';
 p.innerHTML=h2;
 var r=route(pl.id,l.id);
 if(r&&!S.tr){p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(r.p?' · <span class="mono">'+r.p+' post(s)</span>':'')+(r.c?' · <span class="mono">'+r.c+' '+curName()+'</span>':'')+'</div>');
@@ -640,11 +670,23 @@ if(id==='ash')bBattle(V);else if(id==='bar')bDiplo(V);else bTravel(V)}
 function tools(){var t=E('div','ft');[['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],['strikeThrough','<s>S</s>']].forEach(function(x){var b=E('button',null,x[1]);b.onmousedown=function(e){e.preventDefault();document.execCommand(x[0])};t.appendChild(b)});return t}
 var pool=26,blk=[];
 var EN=['Threshjaw (Carnifex)','Termagant brood','Sskarith'];
-var ABM=[{n:'Vexos Kane',ap:3,ac:3,o:[{n:'Attack — Whisper of the Seventh Sore',t:'Combat',x:1,g:'e'},{n:'Attack — Plague Knife (Effortless)',t:'Combat',x:0,g:'e'},{n:'Special — Cast: Curse of the Leper',t:'Special',x:3,g:'a'},{n:'Special — Miasma of Pestilence',t:'Special',x:2,g:'y'},{n:'Move',t:'Move',x:0,g:'b'}]},
-{n:'Gharn',ap:4,ac:3,o:[{n:'Attack — Reaper Autocannon',t:'Combat',x:2,g:'e'},{n:'Attack — Bubotic Axe',t:'Combat',x:1,g:'e'},{n:'Move',t:'Move',x:0,g:'b'}]},
-{n:'Poxwalker Alpha',ap:1,ac:1,o:[{n:'Attack — Rusted Claws (Effortless)',t:'Combat',x:0,g:'e'},{n:'Move',t:'Move',x:0,g:'b'}]}];
+/* action AP modifier read from the item's own text (canon: model AP + equipment modifier) */
+function apMod(it){var s=it.d||'';if(/effortless/i.test(s))return 0;var m=s.match(/(\d+)\s*AP/);if(m)return parseInt(m[1],10);return it.cat==='CAST'?2:it.cat==='ABILITY'?1:it.cat==='ITEM'?0:1}
+/* actions a model can take ARE its equipped slots — pre-set from the loadout */
+function abmFor(m){var o=[];
+ m.sl.forEach(function(s){if(!s.it)return;var it=s.it;
+  if(s.k==='WEAPON')o.push({n:'Attack — '+it.n,t:'Combat',x:apMod(it),g:'e',eff:it.d});
+  else if(s.k==='ABILITY')o.push({n:it.n,t:'Special',x:apMod(it),g:'y',eff:it.d});
+  else if(s.k==='WARP CAST')o.push({n:'Cast: '+it.n,t:'Special',x:apMod(it),g:'a',eff:it.d});
+  else if(s.k==='ITEM'&&/consumable|stimm|grenade/i.test(it.d||''))o.push({n:'Use '+it.n,t:'Special',x:apMod(it),g:'a',eff:it.d});});
+ o.push({n:'Move',t:'Move',x:0,g:'b',eff:'Reposition one distance band. Movement is always 0 AP.'});
+ return{n:m.n,id:m.id,ap:AP(m.pc),ac:acts(m),o:o}}
+function buildABM(){var here=S.roster.filter(function(m){return m.st==='DEPLOYED'&&m.loc&&m.loc.indexOf('Ash Ravine')>=0});
+ if(!here.length)here=S.roster.filter(function(m){return m.st==='DEPLOYED'});
+ return here.map(abmFor)}
+var ABM=[];
 function tgs(g,self){if(g==='e')return EN;if(g==='y')return['Self ('+self+')','The Rotward (Force)','Morvax','Gharn'];if(g==='a')return EN.concat(['Self ('+self+')','Morvax','Gharn']);return['Advance 1 step','Retreat 1 step','Disengage']}
-function bBattle(V){var w=E('div','tw');var lf=E('div');
+function bBattle(V){ABM=buildABM();var w=E('div','tw');var lf=E('div');
 var st=E('div');
 st.appendChild(E('div','post','<div class="ph"><span class="who en">Brood-Tyrant Sskarith</span><span class="mono" style="color:var(--dim)">Post 6 · Tyranids</span></div><div class="body">The ravine walls wept ash as the brood came on — Threshjaw first, chitin grinding like tectonic sin, gaunts spilling around its legs…</div><div class="ab"><div class="ah">Action Block · Sskarith\'s Brood · 14 AP</div><ul><li><b>Threshjaw</b> — Move: Medium→Short (0) · Crushing Claws → <b>Gharn</b>, 4 dmg (9)</li><li><b>Termagants</b> — Fleshborers → <b>Poxwalkers Epsilon &amp; Zeta</b>: slain, intact (Desperation)</li><li><b>Sskarith</b> — Cast: Catalyst → <b>Threshjaw</b>, Regen II (5)</li></ul></div>'));
 lf.appendChild(st);
@@ -656,9 +698,7 @@ var ab=E('div','abld','<div style="font-size:10.5px;letter-spacing:.14em;text-tr
 var row=E('div','arow');var m=E('select'),a=E('select'),tg=E('select');
 ABM.forEach(function(x,i){m.add(new Option(x.n+' — AP '+x.ap+' · '+x.ac+' act'+(x.ac>1?'s':''),i))});
 var dsc=E('div','actd');
-function adesc(x,o){var eff='',nm=(o.n.split(' — ')[1]||'').replace(' (Effortless)','');
- var mdl=S.roster.filter(function(z){return z.n.toLowerCase().indexOf(x.n.split(' ')[0].toLowerCase())>=0})[0];
- if(mdl){var sl=mdl.sl.filter(function(s){return s.it&&s.it.n.indexOf(nm)>=0})[0];if(sl)eff=sl.it.d}
+function adesc(x,o){var eff=o.eff||'';
  var gt={e:'targets an enemy',a:'area / self-cast',y:'buffs your force',b:'reposition, no target'}[o.g]||'';
  var ap=o.t==='Move'?0:x.ap+o.x;
  return '<b>'+o.t+'</b> · '+ap+' AP'+(o.t==='Move'?' (Movement is always 0 AP)':'')+' · '+gt+(eff?'<br><b>Effect:</b> '+eff:'')}

@@ -2,12 +2,12 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.1",
+  "version": "1.2",
   "updated": "2026-07-16",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
-   "Scope v1.1: adds the location-type library, doors (stations) with faction skins, conditions, planet-type effects, population ladders, status readings, thread scales, world-enders, and the death revival window.",
+   "Scope v1.2: Orbit is now a real named location on every planet (tier 'orbit', holds the ships that used to live on planet.orbit); every Sector gains a Space layer (sector.space). Travel Threads, fleets, and orbital actions attach to these. Location types 'orbit' and 'space' added.",
    "Doors are GRANTED BY location type, not stored per location. Conditions take them away. Access is allegiance-gated.",
    "Filename stays heretics-40k-data-v1.json across the v1.x series; meta.version carries the real version. Git carries the history.",
    "Scores / production / resources are specced here but require persistence (Stage 2) to run. Static demo reads them as constants."
@@ -29,7 +29,8 @@
     "status readings per allegiance",
     "thread scales (location/planet/sector)",
     "world-enders per allegiance",
-    "death revival window"
+    "death revival window",
+    "orbit-as-location + sector Space layer (v1.2)"
    ],
    "next": [
     {
@@ -2068,17 +2069,27 @@
           "canon": true,
           "ruler": null,
           "desc": "War-world of the Nachmund Gauntlet. Everyone is here; no one holds it.",
-          "orbit": [
-           "The Pale Barge - player vessel, system-capable",
-           "Iron Ruin - Warsmith Dravok (PC), warp-capable"
-          ],
           "locations": [
+           {
+            "id": "vigilusorbit",
+            "name": "Vigilus — High Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "The Pale Barge - player vessel, system-capable",
+             "Iron Ruin - Warsmith Dravok (PC), warp-capable"
+            ],
+            "desc": "High orbit over Vigilus. Ships arrive here first; descent to the surface is a separate move."
+           },
            {
             "id": "ashravine",
             "name": "The Ash Ravine",
             "type": "warzone",
             "condition": "intact",
-            "level": 1
+            "level": 1,
+            "tier": "surface"
            },
            {
             "id": "carrion",
@@ -2088,7 +2099,8 @@
             "level": 2,
             "door_names": {
              "shop": "The Carrion Market"
-            }
+            },
+            "tier": "surface"
            },
            {
             "id": "rotforge",
@@ -2098,14 +2110,16 @@
             "level": 3,
             "door_names": {
              "forge": "Rotforge of Vigilus"
-            }
+            },
+            "tier": "surface"
            },
            {
             "id": "voxbastion",
             "name": "Sunken Vox-Bastion",
             "type": "bulwark",
             "condition": "ruined",
-            "level": 1
+            "level": 1,
+            "tier": "surface"
            }
           ],
           "resources": 45,
@@ -2122,16 +2136,26 @@
            "faction": "Astra Militarum"
           },
           "desc": "Fortress-hive garrisoned to the teeth.",
-          "orbit": [
-           "System Defence Flotilla - Astra Militarum"
-          ],
           "locations": [
+           {
+            "id": "sanguaorbit",
+            "name": "Sangua Tertius — High Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "System Defence Flotilla - Astra Militarum"
+            ],
+            "desc": "High orbit over Sangua Tertius. Ships arrive here first; descent to the surface is a separate move."
+           },
            {
             "id": "hiveprimus",
             "name": "Hive Primus",
             "type": "hive",
             "condition": "intact",
-            "level": 3
+            "level": 3,
+            "tier": "surface"
            },
            {
             "id": "docksigma",
@@ -2141,13 +2165,30 @@
             "level": 2,
             "door_names": {
              "shop": "Dockside Requisition"
-            }
+            },
+            "tier": "orbit"
            }
           ],
           "resources": 70,
           "status": null
          }
-        ]
+        ],
+        "space": {
+         "id": "vigsecspace",
+         "name": "The Nachmund Void",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [
+          [
+           "Iron Ruin",
+           "Warsmith Dravok (PC, Black Legion) · picket",
+           "translating in-system"
+          ]
+         ],
+         "desc": "The void of Vigilus Sector. Fleets translate, hold, and give battle here before ever reaching a world."
+        }
        }
       ]
      },
@@ -2172,10 +2213,19 @@
            "faction": "Death Guard"
           },
           "desc": "Death Guard staging world under a jaundiced sky.",
-          "orbit": [
-           "The Grave Wake - Death Guard picket"
-          ],
           "locations": [
+           {
+            "id": "nurthorbit",
+            "name": "Nurth — High Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "The Grave Wake - Death Guard picket"
+            ],
+            "desc": "High orbit over Nurth. Ships arrive here first; descent to the surface is a separate move."
+           },
            {
             "id": "garden",
             "name": "The Plague Garden",
@@ -2185,21 +2235,33 @@
             "door_names": {
              "forge": "The Plague Garden",
              "shop": "Garrison Requisition"
-            }
+            },
+            "tier": "surface"
            },
            {
             "id": "court",
             "name": "The Pallid Court",
             "type": "crown",
             "condition": "intact",
-            "level": 3
+            "level": 3,
+            "tier": "surface"
            }
           ],
           "resources": 35,
           "status": "Corrupted",
           "crown": true
          }
-        ]
+        ],
+        "space": {
+         "id": "pallidspace",
+         "name": "The Pallid Deeps",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "The void of Pallid Reach. Fleets translate, hold, and give battle here before ever reaching a world."
+        }
        }
       ]
      },
@@ -2224,29 +2286,56 @@
            "faction": "Tyranids"
           },
           "desc": "Sskarith's brood-nest. Something legendary gestates below.",
-          "orbit": [
-           "Chitin Reef - drifting bio-hulk"
-          ],
           "locations": [
+           {
+            "id": "kraithvorbit",
+            "name": "Kraith Verge — High Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Chitin Reef - drifting bio-hulk"
+            ],
+            "desc": "High orbit over Kraith Verge. Ships arrive here first; descent to the surface is a separate move."
+           },
            {
             "id": "vault",
             "name": "The Gestation Vault",
             "type": "lair",
             "condition": "intact",
-            "level": 2
+            "level": 2,
+            "tier": "surface"
            },
            {
             "id": "reef",
             "name": "Chitin Reef Orbital",
             "type": "space_station",
             "condition": "drifting",
-            "level": 1
+            "level": 1,
+            "tier": "orbit"
            }
           ],
           "resources": 12,
           "status": null
          }
-        ]
+        ],
+        "space": {
+         "id": "kraithspace",
+         "name": "The Kraith Abyss",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [
+          [
+           "The Verge Tendril",
+           "NPC, Tyranids · vanguard",
+           "drifting"
+          ]
+         ],
+         "desc": "The void of Kraith Drift. Fleets translate, hold, and give battle here before ever reaching a world."
+        }
        }
       ]
      }
@@ -2954,6 +3043,30 @@
      "Mining World"
     ],
     "effect": "Hidden. Invisible to other factions until sector Conflict >= 40 reveals it."
+   },
+   {
+    "id": "orbit",
+    "name": "Orbit",
+    "size": "—",
+    "output_base": 0,
+    "pop_base": 0,
+    "doors": [],
+    "planet_types": [
+     "*"
+    ],
+    "tier": "orbit",
+    "effect": "Planetary orbit — the arrival zone where every Travel Thread resolves and fleets hold station. Orbital docks and stations sit within it."
+   },
+   {
+    "id": "space",
+    "name": "Deep Space",
+    "size": "—",
+    "output_base": 0,
+    "pop_base": 0,
+    "doors": [],
+    "planet_types": [],
+    "tier": "space",
+    "effect": "The void between worlds. Fleet actions, warp translation, and inter-planet travel resolve here — the Space layer of a Sector."
    }
   ],
   "conditions": [
