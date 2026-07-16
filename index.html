@@ -250,7 +250,7 @@ canvas.smap{display:block;width:100%;height:auto}
 <div class="tabs"><button class="tab on" data-b="roster">Roster</button><button class="tab" data-b="loadout">Loadout</button><button class="tab" data-b="forces">Forces</button></div>
 <div class="sub on" id="b-roster"><div class="card"><h3 id="rh"></h3>
 <div class="fbar"><input type="text" id="fq" placeholder="Search…"><select id="fc"><option value="">Class — all</option></select><select id="fs"><option value="">Status — all</option><option>DEPLOYED</option><option>GARRISON</option><option>DEAD</option></select><select id="ff"><option value="">Force — all</option></select></div>
-<table id="rt"><thead><tr><th>Model</th><th>Class</th><th>Rank</th><th>AP</th><th>W</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
+<table id="rt"><thead><tr><th>Name</th><th>Model</th><th>Class</th><th>Rk</th><th>AP</th><th>W</th><th>Force</th><th>Location</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
 <div class="sub" id="b-loadout"><div class="card"><h3 id="lt"></h3><div style="font-size:12px;color:var(--dim)" id="ls"></div><div class="slotg" id="sg"></div><h3 style="margin-top:18px">Inventory — unequipped</h3><div id="il"></div></div></div>
 <div class="sub" id="b-forces"><div id="fw"></div></div></section>
 <section class="screen" id="s-shop"><div class="crumb" id="shc"></div><h2>Requisition</h2><div id="shb"></div></section>
@@ -404,12 +404,13 @@ leaders().forEach(function(m){var d=E('div','lsc'+(m.id===S.active?' act':''),'<
 d.onclick=function(){if(m.id===S.active){openModel(m.id)}else{switchTo(m.id)}};L.appendChild(d)})}
 /* ---- barracks ---- */
 var sel=null;
-function chips(m){var c=m.st==='DEAD'?'dead':m.st==='DEPLOYED'?'dep':'';var h='<span class="tc '+c+'">'+m.st+(m.st==='DEAD'?' · recoverable':'')+'</span><span class="tc loc">'+m.loc+'</span>';if(m.fo!=='—')h+='<span class="tc">FORCE: '+m.fo+'</span>';return h}
+function chips(m){var c=m.st==='DEAD'?'dead':m.st==='DEPLOYED'?'dep':'';return '<span class="tc '+c+'">'+m.st+(m.st==='DEAD'?' · recoverable':m.st==='GARRISON'?' · standby':'')+'</span>'}
+function baseModel(m){return (m.sub||'').split(' - ')[0]||m.cls}
 function rRos(){var tb=document.querySelector('#rt tbody');tb.innerHTML='';
 document.getElementById('rh').textContent='Owned models — '+S.army+' / '+S.infl+' PC';
 var q=(document.getElementById('fq').value||'').toLowerCase(),c=document.getElementById('fc').value,s=document.getElementById('fs').value,f=document.getElementById('ff').value;
 S.roster.forEach(function(m){if(q&&m.n.toLowerCase().indexOf(q)<0)return;if(c&&m.cls!==c)return;if(s&&m.st!==s)return;if(f&&m.fo!==f)return;
-var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b> '+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.w+'</td><td>'+chips(m)+'</td>');
+var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b> '+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</td><td style="color:var(--dim)">'+baseModel(m)+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.w+'</td><td style="font-size:11px">'+(m.fo==='—'?'<span style="color:var(--dim)">—</span>':m.fo)+'</td><td style="font-size:11px;color:var(--dim)">'+m.loc+'</td><td>'+chips(m)+'</td>');
 tr.onclick=function(){sel=m;rRos();rLoad();openModel(m.id)};tb.appendChild(tr)})}
 function rLoad(){if(!sel)sel=S.roster[0];
 document.getElementById('lt').textContent='Loadout — '+sel.n;document.getElementById('ls').textContent=sel.sub;
@@ -431,20 +432,67 @@ lg.forEach(function(it){var r=E('div','pki','<div><b>'+it.n+'</b><div class="d">
 b.onclick=function(){if(s.it)S.inv.push(s.it);s.it=it;S.inv.splice(S.inv.indexOf(it),1);PB.classList.remove('on');rLoad();T(it.n+' equipped.')};r.appendChild(b);L.appendChild(r)});
 PB.classList.add('on')}
 function fpc(f){var t=0;S.roster.forEach(function(m){if(m.fo===f.n)t+=m.pc});return t}
+var fcOpen=false;
+/* any free Named or Commander model may raise a Force (canon: Named/Legendary lead) */
+function eligibleLeaders(){return S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'&&m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&!isForceLead(m)})}
+function makeForce(name,leadId){var ld=S.roster.filter(function(m){return m.id===leadId})[0];if(!ld)return;
+ var nm=name.trim()||('New Force '+(S.forces.length+1));
+ S.forces.push({id:'f'+(S.forces.length+1)+'_'+ld.id,n:nm,lead:leadId,ap:0});
+ ld.fo=nm;fcOpen=false;rF();rRos();
+ var ff=document.getElementById('ff');ff.add(new Option(nm,nm));T('Force raised: '+nm+' under '+ld.n.split(',')[0]);}
 function rF(){var w=document.getElementById('fw');w.innerHTML='';
+/* ── create a new Force ── */
+var top=E('div','card');
+if(!fcOpen){var nb=E('button','btn','＋ Raise a new Force');nb.onclick=function(){fcOpen=true;rF()};
+ top.innerHTML='<h3>Forces</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:10px">A Force is a Named or Commander leader plus the models under them. Only Forces deploy into threads — standby models must be assigned to one first.</div>';
+ var el=eligibleLeaders();
+ if(!el.length)top.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;color:var(--blh)">No free leaders — every Named leader already commands a Force. Free one by disbanding a Force below.</div>');
+ else top.appendChild(nb);
+}else{
+ top.innerHTML='<h3>Raise a new Force</h3>';
+ var ni=E('input');ni.type='text';ni.placeholder='Name the Force — it must have a name';ni.style.cssText='width:100%;margin-bottom:8px';
+ top.appendChild(E('label','f','Name'));top.appendChild(ni);
+ top.appendChild(E('label','f','Leader'));var ls=E('select');ls.style.cssText='width:100%;margin-bottom:10px';
+ eligibleLeaders().forEach(function(m){ls.add(new Option(m.n+' — '+m.tag+', '+m.loc,m.id))});
+ top.appendChild(ls);
+ var mk=E('button','btn','Raise Force');mk.onclick=function(){makeForce(ni.value,ls.value)};
+ var cx=E('button','btn gh','Cancel');cx.style.marginLeft='8px';cx.onclick=function(){fcOpen=false;rF()};
+ top.appendChild(mk);top.appendChild(cx);
+}
+w.appendChild(top);
 S.forces.forEach(function(f){var pc=fpc(f),ld=S.roster.filter(function(m){return m.id===f.lead})[0];
 var c=E('div','card','<h3>Force</h3>');var fc=E('div','fcard');
 var fh=E('div','fh');var inp=E('input');inp.type='text';inp.value=f.n;
 inp.onchange=function(){var o=f.n;f.n=inp.value.trim()||o;S.roster.forEach(function(m){if(m.fo===o)m.fo=f.n});rF();rRos();T('Force renamed: '+f.n)};
-fh.appendChild(inp);fh.appendChild(E('span','pill vd',szTag(pc)+' · '+pc+' PC'));fh.appendChild(E('span','pill br','Leader: '+ld.n));fc.appendChild(fh);
-var ml=E('div','mem');S.roster.filter(function(m){return m.fo===f.n}).forEach(function(m){ml.appendChild(E('div',null,'<span>'+m.n+(m.id===f.lead?' <span class="pill br">Leader</span>':'')+'</span><span class="mono">'+m.pc+' PC · '+m.w+' W'+(m.st==='DEAD'?' · DEAD':'')+'</span>'))});
+fh.appendChild(inp);fh.appendChild(E('span','pill vd',szTag(pc)+' · '+pc+' PC'));fh.appendChild(E('span','pill br','Leader: '+(ld?ld.n:'—')));fc.appendChild(fh);
+var ml=E('div','mem');S.roster.filter(function(m){return m.fo===f.n}).forEach(function(m){var row=E('div',null,'<span class="clk" data-mid="'+m.id+'">'+m.n+(m.id===f.lead?' <span class="pill br">Leader</span>':'')+'</span><span class="mono">'+AP(m.pc)+' AP · '+m.w+' W'+(m.st==='DEAD'?' · DEAD':'')+'</span>');
+ row.querySelector('[data-mid]').onclick=function(){openModel(m.id)};
+ if(m.id!==f.lead){var rm=E('button','btn gh sm','✕');rm.style.marginLeft='6px';rm.onclick=function(){m.fo='—';rF();rRos();T(m.n.split(' ')[0]+' returned to standby.')};row.appendChild(rm)}
+ ml.appendChild(row)});
 fc.appendChild(ml);
-fc.insertAdjacentHTML('beforeend','<label class="f">Dispatched AP — <span class="mono" id="apv">'+f.ap+'</span></label>');
+/* add a standby model to this force */
+var pool=S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'});
+if(pool.length){var ar=E('div');ar.style.cssText='display:flex;gap:6px;margin-top:8px';
+ var as=E('select');as.style.flex='1';as.add(new Option('＋ add a standby model…',''));
+ pool.forEach(function(m){as.add(new Option(m.n+' — '+baseModel(m)+', '+m.loc,m.id))});
+ var ab=E('button','btn gh sm','Add');ab.onclick=function(){if(!as.value)return;var mm=S.roster.filter(function(x){return x.id===as.value})[0];mm.fo=f.n;mm.loc=ld?ld.loc:mm.loc;rF();rRos();T(mm.n.split(' ')[0]+' joined '+f.n)};
+ ar.appendChild(as);ar.appendChild(ab);fc.appendChild(ar)}
+fc.insertAdjacentHTML('beforeend','<label class="f">Dispatched AP — <span class="mono" id="apv_'+f.id+'">'+f.ap+'</span></label>');
 var s=E('input');s.type='range';s.min=0;s.max=S.dom;s.value=f.ap;
-s.oninput=function(){f.ap=+s.value;fc.querySelector('#apv').textContent=f.ap;rW();rSucc()};
-fc.appendChild(s);c.appendChild(fc);w.appendChild(c)});
-var dc=E('div','card','<h3>Under direct command</h3>');var ml2=E('div','mem');
-S.roster.filter(function(m){return m.fo==='—'}).forEach(function(m){ml2.appendChild(E('div',null,'<span>'+m.n+(m.tag?' <span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</span><span class="mono">'+m.pc+' PC · '+m.loc+'</span>'))});
+s.oninput=function(){f.ap=+s.value;fc.querySelector('#apv_'+f.id).textContent=f.ap;rW();rSucc()};
+fc.appendChild(s);
+var db=E('button','btn gh sm','Disband Force');db.style.marginTop='8px';
+db.onclick=function(){S.roster.forEach(function(m){if(m.fo===f.n)m.fo='—'});S.forces=S.forces.filter(function(z){return z!==f});
+ S.succ.forEach(function(z){if(z.fid===f.id)z.fid=null});
+ var ff=document.getElementById('ff');for(var i=ff.options.length-1;i>=0;i--)if(ff.options[i].value===f.n)ff.remove(i);
+ rF();rRos();T('Force disbanded: '+f.n)};
+fc.appendChild(db);
+c.appendChild(fc);w.appendChild(c)});
+var dc=E('div','card','<h3>Standby — garrisoned, not in any Force</h3><div style="font-size:11px;color:var(--dim);margin-bottom:8px">Posted at a location you hold. Assign to a Force to make them deployable.</div>');var ml2=E('div','mem');
+var sb=S.roster.filter(function(m){return m.fo==='—'});
+if(!sb.length)ml2.innerHTML='<div style="color:var(--dim);font-size:12px">Every model is assigned to a Force.</div>';
+sb.forEach(function(m){var row=E('div',null,'<span class="clk" data-mid="'+m.id+'">'+m.n+(m.tag?' <span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</span><span class="mono">'+AP(m.pc)+' AP · '+m.loc+'</span>');
+ row.querySelector('[data-mid]').onclick=function(){openModel(m.id)};ml2.appendChild(row)});
 dc.appendChild(ml2);w.appendChild(dc);
 w.appendChild(E('div','card','<h3>Succession order</h3><div id="sc"></div>'));rSucc()}
 function rSucc(){var x=document.getElementById('sc');if(!x)return;x.innerHTML='';
@@ -779,7 +827,10 @@ rHQ();rRos();rLoad();rMap();rTL();rComms();rShop()}
 /* ─── v8: the Model as a first-class entity ─── */
 function acts(m){var w=parseInt((m.w||'0/0').split('/')[0],10)||0;return Math.min(w,3)}
 function isLeader(m){return m.tag&&(m.tag.indexOf('Comm')>=0||m.tag.indexOf('Leader')>=0)}
-function leaders(){return S.roster.filter(function(m){return isLeader(m)&&m.st!=='DEAD'})}
+function isCmdr(m){return m.id==='kane'||(m.tag&&m.tag.indexOf('Comm')>=0)}
+function isForceLead(m){return S.forces.some(function(f){return f.lead===m.id})}
+/* switchable figures: the Commander + whoever currently leads a Force */
+function leaders(){return S.roster.filter(function(m){return m.st!=='DEAD'&&(isCmdr(m)||isForceLead(m))})}
 function frameColor(){var al=S.player.allegiance;return al==='chaos'?'var(--blh)':al==='xenos'?'var(--vdh)':'var(--brh)'}
 /* lore + history the overview needs; most models get sensible defaults */
 function enrichRoster(){var lore={
