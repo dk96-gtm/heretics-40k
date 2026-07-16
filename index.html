@@ -1,5 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HERETICS 40K</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2213%22 font-size=%2213%22>&#x2620;</text></svg>">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Alegreya+Sans:wght@400;500;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
 <style>
 :root{--void:#0D0B09;--panel:#171310;--p2:#1F1A15;--raise:#26201A;--ink:#D8CDB8;--dim:#8F8674;--faint:#5A554B;--br:#B08D3E;--brh:#D8B45E;--bl:#8E2F23;--blh:#C4503F;--vd:#4A7A6B;--vdh:#6FA893;--ln:#332C24}
@@ -223,6 +224,55 @@ function E(t,c,h){var d=document.createElement(t);if(c)d.className=c;if(h!=null)
 /* ---- canon lookups ---- */
 function AP(pc){var b=D.rules.ap_bands;for(var i=0;i<b.length;i++)if(pc<=b[i].pc_max)return b[i].ap;return b[b.length-1].ap}
 function FAC(id){return D.factions.filter(function(f){return f.id===id})[0]}
+/* ── canon v1.1 lookups: doors are GRANTED by location type, not stored ── */
+function LT(id){return (D.galaxy.location_types||[]).filter(function(t){return t.id===id})[0]}
+function CD(id){return (D.galaxy.conditions||[]).filter(function(c){return c.id===id})[0]}
+function DR(k){return (D.galaxy.doors||[]).filter(function(d){return d.kind===k})[0]}
+function skin(kind,alleg,facId){var d=DR(kind);if(!d||!d.skins)return kind;
+return d.skins[facId]||d.skins[alleg]||d.name||kind}
+/* doors present at a location, each with open/closed + WHY */
+function doorsAt(l){var t=LT(l.type);if(!t)return [];
+var c=CD(l.condition)||{},off=c.doors_offline||[],seen={};
+return (t.doors||[]).map(function(k){seen[k]=(seen[k]||0)+1;
+var shut=off.indexOf('*')>=0||off.indexOf(k)>=0;
+var nm=(l.door_names&&l.door_names[k])||skin(k,S.player.allegiance,S.player.faction);
+if(seen[k]>1)nm=nm+' II';
+return{kind:k,name:nm,open:!shut,tiers:t.forge_tiers,
+reason:shut?(c.name||l.condition)+' — '+(c.effect||'stations offline'):null}})}
+/* worst_of(planet, sector) — a planet can never be better than its sector */
+var STORD=['Thriving','Peace','Warring','Famine','Corrupted'];
+function statusOf(pid){var f=fPl(pid);if(!f)return null;
+var ps=f.p.status,ss=f.s.status;if(!ps)return ss;
+return STORD.indexOf(ps)>STORD.indexOf(ss)?ps:ss}
+/* one state, three readings */
+function readStatus(st){var r=(D.galaxy.status_readings||{})[st];
+if(!r)return st;return r[S.player.allegiance]||st}
+function popRank(v,facId){var P=D.galaxy.population_ranks;if(!P)return String(v);
+var lad=P.ladders[P.faction_ladder[facId||S.player.faction]||'imperial']||[];
+for(var i=P.bands.length-1;i>=0;i--)if(v>=P.bands[i][0])return lad[i]||String(v);
+return lad[0]||String(v)}
+/* DEMO sector scores — game STATE, not canon. Stage 2's backend owns these.
+   Static demo carries plausible constants; the derivation below is real. */
+var SCORES={vigsec:{prosperity:42,conflict:71,taint:18},
+            pallid:{prosperity:28,conflict:35,taint:78},
+            kraith:{prosperity:19,conflict:22,taint:44}};
+/* status is DERIVED from the three axes — first match wins, Taint outranks all */
+function deriveStatus(sc){if(!sc)return null;
+if(sc.taint>=70)return 'Corrupted';
+if(sc.conflict>=60)return 'Warring';
+if(sc.prosperity<=25)return 'Famine';
+if(sc.prosperity>=75&&sc.conflict<=20)return 'Thriving';
+return 'Peace'}
+function scoreBar(sid){var sc=SCORES[sid];if(!sc)return '';
+function ax(n,v,warn){var col=warn?'var(--blh)':'var(--brh)';
+return '<span style="color:var(--dim)">'+n+'</span> <span class="mono" style="color:'+col+'">'+v+'</span>'}
+return ' · '+ax('Prosperity',sc.prosperity,sc.prosperity<=25)
++' · '+ax('Conflict',sc.conflict,sc.conflict>=60)
++' · '+ax('Taint',sc.taint,sc.taint>=70)}
+/* effective population = base x condition x status — computed, never stored */
+function effPop(l,pid){var t=LT(l.type);if(!t)return 0;
+var c=CD(l.condition)||{pop_mult:1},se=(D.galaxy.status_effects||{})[statusOf(pid)]||{pop_mult:1};
+return (t.pop_base||0)*(c.pop_mult===undefined?1:c.pop_mult)*(se.pop_mult===undefined?1:se.pop_mult)}
 function FACS(al){return D.factions.filter(function(f){return f.allegiance===al})}
 function szTag(pc){var t=D.rules.force_size_tags;for(var i=0;i<t.length;i++)if(t[i].pc_max===null||pc<=t[i].pc_max)return t[i].tag;return 'CRUSADE'}
 function CLASSES(){var s={};D.factions.forEach(function(f){f.models.forEach(function(m){s[m.cls]=1})});return Object.keys(s)}
@@ -361,16 +411,29 @@ function rShop(){var f=fPl(S.pos.pl),h=fLoc(S.pos.pl,S.pos.sp);
 document.getElementById('shc').textContent=f.s.name+' · '+f.p.name+' · '+(S.tr?'In transit':h.name);
 var b=document.getElementById('shb');
 if(S.tr){b.innerHTML='<div class="empty">In transit — no requisition on the move.</div>';return}
-if(!h.stations.length){b.innerHTML='<div class="empty"><b>'+h.name+'</b> — no stations stand here.</div>';return}
-b.innerHTML='';var w=E('div','grid g2');
-var sh=h.stations.filter(function(s){return s.kind==='shop'})[0];
+var dz=doorsAt(h),lt=LT(h.type)||{name:h.type};
+b.innerHTML='';
+/* the world tells you where you are and why — an empty screen teaches nothing */
+var st=statusOf(S.pos.pl),hd=E('div','card');
+hd.innerHTML='<h3>'+h.name+' <span class="pill">'+lt.name+'</span></h3>'
++'<div class="d" style="margin-bottom:6px">'+(lt.effect||'')+'</div>'
++'<div class="mono" style="font-size:11px;color:var(--dim)">'
++'Population: '+popRank(effPop(h,S.pos.pl))+' · Condition: '+((CD(h.condition)||{}).name||h.condition)
++' · Level '+(h.level||1)+' · Sector: '+readStatus(st)+'</div>';
+b.appendChild(hd);
+if(!dz.length){b.insertAdjacentHTML('beforeend','<div class="empty"><b>'+h.name+'</b> — no doors stand here.<br><span class="mono" style="font-size:11px">A '+lt.name+' grants none, by definition.</span></div>');return}
+/* closed doors are SHOWN, greyed, with the cause — you can see what you cannot open */
+dz.filter(function(x){return !x.open}).forEach(function(x){
+b.insertAdjacentHTML('beforeend','<div class="empty" style="opacity:.6;text-align:left"><b>'+x.name+'</b> <span class="pill">'+x.kind.toUpperCase()+'</span> — closed<br><span class="mono" style="font-size:11px;color:var(--blh)">'+x.reason+'</span></div>')});
+var w=E('div','grid g2');
+var sh=dz.filter(function(s){return s.kind==='shop'&&s.open})[0];
 if(sh){var c=E('div','card','<h3>'+sh.name+'</h3>');var g=E('div','grid g2');
 D.equipment_alpha.shop_catalog.forEach(function(it){var s=E('div','shopc','<b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+it.d+'</div>');
 var r=E('div',null,'<span class="price">'+it.pc+' PC</span>');r.style.cssText='display:flex;justify-content:space-between';
 var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<it.pc){T('Not enough '+curName()+'.');return}S.cur-=it.pc;S.inv.push({n:it.n,cat:it.cat,d:it.d});rW();rLoad();T(it.n+' purchased.')};
 r.appendChild(bt);s.appendChild(r);g.appendChild(s)});c.appendChild(g);w.appendChild(c)}
-var fg=h.stations.filter(function(s){return s.kind==='forge'})[0];
-if(fg){var c2=E('div','card','<h3>'+fg.name+' — tiers '+fg.tiers+'</h3><label class="f">Base weapon</label><select id="fb"></select><label class="f">Tag</label><div id="ftg"></div><label class="f">Name your work</label><input type="text" id="fn" placeholder="It must have a name"><div class="apt"><span style="font-size:11px;color:var(--dim)">Cost</span><span class="n" id="fp">—</span></div><button class="btn" style="width:100%;margin-top:9px" id="fgo">FORGE IT</button>');
+var fg=dz.filter(function(s){return s.kind==='forge'&&s.open})[0];
+if(fg){var c2=E('div','card','<h3>'+fg.name+' — tiers '+(fg.tiers||'I')+'</h3><label class="f">Base weapon</label><select id="fb"></select><label class="f">Tag</label><div id="ftg"></div><label class="f">Name your work</label><input type="text" id="fn" placeholder="It must have a name"><div class="apt"><span style="font-size:11px;color:var(--dim)">Cost</span><span class="n" id="fp">—</span></div><button class="btn" style="width:100%;margin-top:9px" id="fgo">FORGE IT</button>');
 w.appendChild(c2);b.appendChild(w);
 var bs=c2.querySelector('#fb');var ws=S.inv.filter(function(i){return i.cat==='WEAPON'});
 if(!ws.length)bs.add(new Option('— no weapons —',''));
@@ -427,7 +490,8 @@ p.innerHTML='<h3>'+g.name+'</h3><div style="font-size:12.5px;color:var(--dim)">S
 if(MV.lv==='sector'){var f=fSec(MV.sec);
 cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ',cb(f.g.name.toUpperCase(),function(){MV.lv='segment';rMap()}),' › ');
 var s1=E('span',null,f.s.name.toUpperCase());s1.style.color='var(--brh)';cr.appendChild(s1);
-z.appendChild(E('div','zh',(f.z.kind==='core'?'CORE':'EXPANSE — '+f.z.name)+' · STATUS: '+f.s.status+' · '+f.s.owner));
+var _zh=E('div','zh');_zh.innerHTML=(f.z.kind==='core'?'CORE':'EXPANSE — '+f.z.name)+' · STATUS: '+readStatus(f.s.status).toUpperCase()+scoreBar(f.s.id)+' · '+f.s.owner;
+z.appendChild(_zh);
 var g4=E('div','mg');
 (f.s.planets||[]).forEach(function(pl){var h=S.pos.pl===pl.id&&!S.tr;var r=route(pl.id,pl.locations[0].id);
 var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(!h&&r&&r.p?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+r.p+'p'+(r.c?' · '+r.c+'⛁':'')+'</div>':''));
@@ -440,7 +504,7 @@ var s2=E('span',null,pl.name.toUpperCase());s2.style.color='var(--brh)';cr.appen
 z.appendChild(E('div','zh','SURFACE — NAMED LOCATIONS'));
 var g5=E('div','mg');
 pl.locations.forEach(function(l){var h=S.pos.pl===pl.id&&S.pos.sp===l.id&&!S.tr;
-var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+l.desc_type+'</div>'+(S.pos.pl===pl.id&&!h&&!S.tr?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
+var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+((LT(l.type)||{}).name||l.type)+(l.condition!=='intact'?' · '+((CD(l.condition)||{}).name||l.condition):'')+'</div>'+(S.pos.pl===pl.id&&!h&&!S.tr?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
 d.onclick=function(){MV.lc=l.id;rMap()};g5.appendChild(d)});
 z.appendChild(g5);
 var l=fLoc(pl.id,MV.lc);
@@ -448,7 +512,8 @@ var fr=forcesAt(pl.id),hi=histAt(pl.id,l.id),np=npcsAt(pl.id,l.id);
 var h2='<h3>'+pl.name+' — '+pl.type+'</h3><div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pl.ruler?(pl.ruler.allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pl.ruler?'RULED: '+pl.ruler.faction:'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+f2.s.status+'</span></div><div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">'+pl.desc+'</div><div class="grid g3" style="font-size:12px">';
 h2+='<div><b style="color:var(--br)">ORBIT</b><br>'+(pl.orbit.length?pl.orbit.map(function(o){return '· '+o}).join('<br>'):'· empty')+'</div>';
 h2+='<div><b style="color:var(--br)">FORCES PRESENT</b><br>'+(fr.length?fr.map(function(x){return '· <b>'+x[0]+'</b> — '+x[1]+' · '+x[2]}).join('<br>'):'· none known')+'</div>';
-h2+='<div><b style="color:var(--br)">'+l.name.toUpperCase()+' — '+l.desc_type.toUpperCase()+'</b><br>'+(l.stations.length?l.stations.map(function(s){return '· '+s.name+(s.tiers?' (forge '+s.tiers+')':'')}).join('<br>')+'<br>':'')+(hi.length?'<span style="color:var(--dim)">Thread history:</span><br>'+hi.map(function(t){return '· '+t}).join('<br>')+'<br>':'<span style="color:var(--dim)">No threads recorded yet.</span><br>')+(np.length?'<span style="color:var(--dim)">Known here:</span><br>'+np.map(function(n){return '· '+n}).join('<br>'):'')+'</div></div>';
+var _lt=LT(l.type)||{name:l.type},_dz=doorsAt(l),_cd=CD(l.condition)||{};
+h2+='<div><b style="color:var(--br)">'+l.name.toUpperCase()+' — '+(_lt.name||'').toUpperCase()+(l.condition!=='intact'?' <span style="color:var(--blh)">('+(_cd.name||l.condition)+')</span>':'')+'</b><br>'+(_dz.length?_dz.map(function(s){return '· '+s.name+(s.kind==='forge'&&s.open?' (forge '+(s.tiers||'I')+')':'')+(s.open?'':' <span style="color:var(--blh)">— closed</span>')}).join('<br>')+'<br>':'')+(hi.length?'<span style="color:var(--dim)">Thread history:</span><br>'+hi.map(function(t){return '· '+t}).join('<br>')+'<br>':'<span style="color:var(--dim)">No threads recorded yet.</span><br>')+(np.length?'<span style="color:var(--dim)">Known here:</span><br>'+np.map(function(n){return '· '+n}).join('<br>'):'')+'</div></div>';
 p.innerHTML=h2;
 var r=route(pl.id,l.id);
 if(r&&!S.tr){p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(r.p?' · <span class="mono">'+r.p+' post(s)</span>':'')+(r.c?' · <span class="mono">'+r.c+' '+curName()+'</span>':'')+'</div>');
@@ -459,7 +524,7 @@ else{var gb=E('button','btn'+(r.m==='c'?' bl':''),'Move here — '+(r.m==='g'?'m
 p.appendChild(bx)}
 else if(!S.tr){var bx2=E('div');bx2.style.cssText='display:flex;gap:8px;margin-top:10px';
 if(hi.some(function(x){return x.indexOf('ACTIVE')>=0})){var b1=E('button','btn','Open thread here');b1.onclick=function(){go('threads')};bx2.appendChild(b1)}
-if(l.stations.length){var b2=E('button','btn gh','Enter station');b2.onclick=function(){go('shop')};bx2.appendChild(b2)}
+if(doorsAt(l).length){var b2=E('button','btn gh','Enter station');b2.onclick=function(){go('shop')};bx2.appendChild(b2)}
 p.appendChild(bx2)}}
 /* ---- threads ---- */
 function rTL(){var L=document.getElementById('tl'),V=document.getElementById('tv');
