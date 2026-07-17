@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.2",
-  "updated": "2026-07-16",
+  "version": "1.3",
+  "updated": "2026-07-17",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -30,7 +30,8 @@
     "thread scales (location/planet/sector)",
     "world-enders per allegiance",
     "death revival window",
-    "orbit-as-location + sector Space layer (v1.2)"
+    "orbit-as-location + sector Space layer (v1.2)",
+    "more placed NPCs with overview sheets (v1.3)"
    ],
    "next": [
     {
@@ -3857,6 +3858,22 @@
    "faction": "Tyranids",
    "location": "vigilus/ashravine",
    "hook": "active Skirmish opponent; broods gestating on Kraith Verge"
+  },
+  {
+   "id": "kryv",
+   "name": "Magos Kryv",
+   "kind": "Faction Broker",
+   "faction": "Adeptus Mechanicus",
+   "location": "sangua/hiveprimus",
+   "hook": "trades data for data; gateway to Mechanicus forge-tech"
+  },
+  {
+   "id": "warden",
+   "name": "The Rust-Warden",
+   "kind": "Wild Named",
+   "faction": "Votann",
+   "location": "sangua/docksigma",
+   "hook": "Kin prospector; buys salvage and mineral rights, asks no questions"
   }
  ]
 }
