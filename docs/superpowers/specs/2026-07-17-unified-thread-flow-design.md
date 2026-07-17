@@ -2,7 +2,9 @@
 
 **Date:** 2026-07-17
 **Status:** Approved, ready for implementation planning
-**Scope:** Engine only (`index.html`). No canon change, no `meta.version` bump.
+**Scope:** Engine (`index.html`) + one scoped canon extension — the travel
+passage-cost model (`travel` section, `meta.version` bump). Everything else
+is engine only.
 **Baseline:** engine v15, canon data v1.3
 
 ## Problem
@@ -46,8 +48,10 @@ tableau.
 - Trade escrow / dispute→combat (gains an obvious home; not built here).
 - AI thread summaries or referee adjudication (Stage 3).
 - Art, scores/production persistence, throne-room world-enders.
-- Any canon edit. Thread types, AP bands, desperation, and revival window
-  already exist in data v1.3 — this design reads them, it does not add them.
+- Broad canon edits. Thread types, AP bands, desperation, revival window, and
+  the travel ladder already exist in data v1.3 — this design reads them. The
+  *one* canon addition is the travel passage-cost model (see "Travel cost
+  model" below); nothing else in canon moves.
 
 ## Decisions
 
@@ -124,7 +128,8 @@ a browser — the first time that is true in this codebase.
     combatants: { <id>: { w: [4, 8], band: 'MELEE', conds: [], party } },
     joined:     <bool>,          // has combat begun — drives exit cost
     terms:      { ... },         // DIPLOMACY only
-    legs:       { ... }          // TRAVEL only
+    transit:    { tier, wordsReq, wordsWritten }, // TRAVEL — word meter to arrival
+    passage:    <int>            // TRAVEL only — currency paid at initiation
   },
   summary
 }
@@ -159,8 +164,21 @@ Five beats, every thread, every type.
 |---|---|---|---|---|
 | `SKIRMISH`, `INVASION` | force AP | model | from equipped slots: Attack / Cast / Ability / Move | AP |
 | `DIPLOMACY` | your currency | you | Offer · Demand · Accept · Walk away | currency / influence |
-| `TRAVEL` | legs remaining | force | Transit post · Arrival challenge | 1 leg |
+| `TRAVEL` | words to arrival | force | Transit post · Arrival challenge | words written |
 | `MISSION`, generic | none | — | catalog empty → no block rendered | — |
+
+TRAVEL also carries a **precondition** the other types don't: passage cost.
+It is charged once in currency at initiation (not staged in-thread, the way a
+Mission's accept is a gate rather than a block) and equals
+`distance base × force-size multiplier`, waived entirely when departing through
+a Warp Gate. Off-planet tiers require a vessel. See "Travel cost model" below.
+
+TRAVEL also inverts the pool. Combat and diplomacy *spend a pool down*; travel
+*fills a meter up*. The tier sets a word-count-to-arrival; each Transit post's
+fiction accrues toward it, and the Arrival challenge unlocks once the total is
+met. Same numeric gate as the validator, read the other direction
+(`written ≥ required` rather than `spent ≤ available`) — the longer the
+journey, the more you have to write to complete it.
 
 Combat's catalog is built from the model's equipped slots — the existing
 `abmFor` logic survives here largely intact, as does `apMod` reading the AP
@@ -178,7 +196,7 @@ effect: { kind: 'band',    to: 'SHORT', who: <combatantId> } // reposition
 effect: { kind: 'cond',    add: 'Regen II', to: <id> }       // condition on
 effect: { kind: 'slay',    to: <id>, intact: true }          // → revival_window
 effect: { kind: 'terms',   agreed: true }                    // DIPLOMACY
-effect: { kind: 'leg' }                                      // TRAVEL
+effect: { kind: 'transit', words: 138 }                      // TRAVEL — accrues to the arrival meter
 effect: null                                                 // fiction only
 ```
 
@@ -205,15 +223,82 @@ Exceeding the pool in combat does not hard-block — it surfaces
 `D.rules.combat.desperation_action`, which the current builder already does
 and which this design preserves.
 
+## Travel cost model (canon extension)
+
+The one canon addition. It extends the existing `travel` section — which
+already carries the distance ladder — with a force-scaled passage cost and a
+word-count arrival gate. Numbers below are placeholder (canon already flags its
+own `cross_segmentum` toll as TBD); the *structure* is the decision.
+
+**Passage cost = distance base × force-size multiplier.** Charged once, in
+currency, at travel initiation. Waived entirely through a Warp Gate.
+
+Distance base keys off the tier. The ladder gains one finer rung — planet↔space
+within a sector, which canon currently folds into `same_sector`. `words` is the
+word-count-to-arrival gate (replacing the old per-tier `posts` count — see
+below):
+
+| Tier | mode | base | words |
+|---|---|---|---|
+| location → location, same planet | ground | 10 | 50 |
+| planet → planet, same sector | system vessel | 40 | 150 |
+| planet ↔ space, same sector | system vessel | 60 | 200 |
+| cross-sector, same segmentum | warp | 120 | 400 |
+| cross-segmentum | warp | 300 | 800 |
+
+**Force-size multiplier = `PC ÷ 250`, continuous — no bands.** Keyed to the
+force's total PC directly, so there is no rank threshold to sit one point under
+to dodge a higher tier (the whole reason not to band it). Anchored so 250 PC =
+×1; the divisor is the tunable placeholder.
+
+| force PC | multiplier |
+|---|---|
+| 100 | ×0.4 |
+| 250 | ×1 |
+| 500 | ×2 |
+| 1,500 | ×6 |
+| 6,000 | ×24 |
+
+Worked examples: a 500-PC warband crossing a sector = `120 × 2 = 240`. A
+6,000-PC host crossing a segmentum = `300 × 24 = 7,200`. Moving a giant force
+through the galaxy costs something real, which is the point.
+
+**Transit is a word-count gate, not a post count.** Canon's per-tier `posts`
+value is superseded by a `words` requirement: the longer the journey, the more
+fiction you must submit before arrival. Transit posts accrue toward the tier's
+`words` target (see the state's `transit` meter); the Arrival challenge unlocks
+once it is met. This rewards writing the journey rather than clicking through
+it, and scales the demand with distance for free.
+
+**Two gates on top of the cost:**
+
+- **Off-planet requires a vessel.** `same_planet` is ground movement; every
+  tier above it needs a spaceship. Ships are essentially CP containers — a
+  Force-like carrier — so they add little modelling weight, but you cannot
+  leave a planet without one. Canon already encodes this as
+  `requires: "system-capable vessel"` / `"warp vessel or charter"` per tier;
+  this design surfaces it as a precondition in the travel gate.
+- **The Warp Gate waives passage entirely.** Canon door `warp_gate` already
+  reads *"travel shortcut, skips the travel ladder"* (skinned Webway Portal for
+  Aeldari/Drukhari/Harlequins, Rift Maw / Tellyporta / Dolmen Gate for others).
+  Departing through one sets `passage = 0` and, per canon, collapses the
+  transit tier — portal-to-portal, free. It is the only way to avoid the cost.
+
+The engine reads all of this from canon; the only new *logic* is
+`passage = base(tier) × (PC ÷ 250)`, the word-count arrival gate, and the two
+preconditions (vessel, Warp Gate). The tables live in the data file.
+
 ## What falls out
 
 These are consequences of the spine, not additional work.
 
 **Travel becomes a real thread.** Canon defines Travel as spawned by movement
 with arrival procedures resolving in-thread. Today: a button. With the spine:
-a thread you write — transit posts carrying fiction, legs as the pool, the
-arrival challenge as a catalog action. The type most improved by this work,
-at no extra cost.
+a thread you write — transit posts carrying fiction toward a word-count arrival
+gate, the arrival challenge as a catalog action. And it finally charges
+what it should: passage cost scales with how far and how big, so a lone Squad
+crossing a planet is pocket change while a Host crossing the galaxy is a
+logistics event. The type most improved by this work.
 
 **Diplomacy stops being one hardcoded bargain.** Vess's
 `Accept — 250 + 2 bodies` becomes a seeded offer in `state.terms` rather than
@@ -235,7 +320,7 @@ The demos survive as seed data, not code.
 | `pool = 26` (module global) | `state.pools["The Rotward"]` |
 | `EN[]` (module global) | derived from `state.combatants` by party |
 | Vess's `Accept — 250 + 2 bodies` handler | seeded `state.terms` on thread `bar` |
-| `S.tr` transit object | a `TRAVEL` thread with `state.legs` |
+| `S.tr` transit object (`left` counter) | a `TRAVEL` thread with `state.transit` + `state.passage` |
 
 **Migration success criterion:** the Ash Ravine plays *identically* on day one.
 Then it plays *correctly* for the first time when you actually post.
