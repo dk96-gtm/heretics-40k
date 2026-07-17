@@ -259,6 +259,12 @@ canvas.smap{display:block;width:100%;height:auto}
 .slotcard .sk{font-family:var(--mono,monospace);font-size:8px;letter-spacing:.1em;color:var(--br)}
 .slotchg{font-family:var(--mono,monospace);font-size:8px;letter-spacing:.06em;text-transform:uppercase;color:var(--brh);background:none;border:1px solid var(--gold-dim,var(--br));padding:2px 5px;cursor:pointer}
 .slotchg:hover{background:rgba(176,141,62,.14)}
+.movdev{border-top:1px solid var(--ln);padding:16px 22px}
+.movdev h4{margin:0 0 8px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--br)}
+.devt{width:100%;border-collapse:collapse;font-size:12px}
+.devt th{font-family:var(--mono,monospace);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:left;padding:5px 10px;border-bottom:1px solid var(--ln)}
+.devt td{padding:5px 10px;border-bottom:1px solid var(--ln);color:var(--ink)}
+.devt tr.rknow td{color:var(--brh);background:rgba(176,141,62,.07)}
 .mframe.big{width:150px;height:180px;flex-basis:150px}
 .mframe.big .sig{font-size:46px}
 /* v12: floating profile HUD */
@@ -310,6 +316,13 @@ canvas.smap{display:block;width:100%;height:auto}
 .thhdr-meta{display:flex;flex-wrap:wrap;gap:18px;font-size:12px;color:var(--dim);margin-bottom:8px}
 .thhdr-meta b{color:var(--ink);font-weight:400}
 .thhdr-about{font-size:13px;line-height:1.55;color:var(--ink);border-top:1px solid var(--ln);padding-top:8px}
+/* v14: forum thread — bigger, scrollable posts, pinned composer, foldable sidebar */
+.threadscroll{max-height:58vh;overflow-y:auto;padding-right:8px;margin-bottom:12px;border:1px solid var(--ln);background:rgba(0,0,0,.15);padding:10px}
+.threadscroll::-webkit-scrollbar{width:8px}.threadscroll::-webkit-scrollbar-thumb{background:var(--ln)}
+.thsidebar{display:flex;flex-direction:column;gap:12px;position:sticky;top:12px}
+.foldcard .foldbody{display:none}.foldcard.on .foldbody{display:block}
+.foldh{cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}
+.foldcard:not(.on) .foldar{transform:rotate(-90deg);display:inline-block}
 </style></head><body>
 <div id="boot"><div><h1 style="color:var(--brh);font-size:22px;margin-bottom:10px">HERETICS 40K</h1><div id="bootmsg" style="color:var(--dim);font-size:14px">Loading canon…</div></div></div>
 <div class="shell" style="display:none" id="shell">
@@ -347,11 +360,12 @@ canvas.smap{display:block;width:100%;height:auto}
 <div class="card"><h3>Your Leaders</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:9px">Switch the figure you command. Each may stand in a different location.</div><div class="lsw" id="hqlead"></div></div>
 </div></section>
 <section class="screen" id="s-barracks"><div class="crumb">Army management</div><h2>The Barracks</h2>
-<div class="tabs"><button class="tab on" data-b="roster">Roster</button><button class="tab" data-b="forces">Forces</button></div>
+<div class="tabs"><button class="tab on" data-b="roster">Roster</button><button class="tab" data-b="armoury">Armoury</button><button class="tab" data-b="forces">Forces</button></div>
 <div class="sub on" id="b-roster"><div class="card"><h3 id="rh"></h3>
 <div class="fbar"><input type="text" id="fq" placeholder="Search…"><select id="fc"><option value="">Class — all</option></select><select id="fs"><option value="">Status — all</option><option>DEPLOYED</option><option>GARRISON</option><option>DEAD</option></select><select id="ff"><option value="">Force — all</option></select></div>
 <table id="rt"><thead><tr><th>Name</th><th>Model</th><th>Class</th><th>Rk</th><th>AP</th><th>Spd</th><th>Slots</th><th>W</th><th>Force</th><th>Location</th><th>Status</th></tr></thead><tbody></tbody></table></div></div>
 <div class="sub" id="b-loadout"><div class="card"><h3 id="lt"></h3><div style="font-size:12px;color:var(--dim)" id="ls"></div><div class="slotg" id="sg"></div><h3 style="margin-top:18px">Inventory — unequipped</h3><div id="il"></div></div></div>
+<div class="sub" id="b-armoury"><div id="arm"></div></div>
 <div class="sub" id="b-forces"><div id="fw"></div></div></section>
 <section class="screen" id="s-shop"><div class="crumb" id="shc"></div><h2>Requisition</h2><div id="shb"></div></section>
 <section class="screen" id="s-map"><div class="crumb">Navigation</div><h2>The Map</h2><div id="tb"></div><div class="mc" id="mcr"></div><div id="mz"></div><div class="card" style="margin-top:14px" id="mp"></div></section>
@@ -476,9 +490,10 @@ world:{
   'vigilus/carrion':['DIPLOMACY — The Carrion Bargain · ACTIVE'],'vigilus/voxbastion':['MISSION — open'],
   'sangua/hiveprimus':['INVASION — requires COMPANY+ · open'],'nurth/court':['DIPLOMACY — open'],
   'kraithv/vault':['MISSION — high risk · open'],'kraithv/reef':['RAID — open']}},
-threads:[{id:'ash',type:'SKIRMISH',n:'Skirmish at the Ash Ravine',loc:'Vigilus · The Ash Ravine',turn:'you',initiator:"Brood-Tyrant Sskarith (NPC · Tyranids)",about:"Sskarith's brood boiled up out of the black sand to contest the Ash Ravine. Whoever still holds the ground when the posts run dry claims the field — and the Ravine feeds the sector's Conflict either way.",forces:['The Rotward',"Sskarith's Brood"]},
-{id:'bar',type:'DIPLOMACY',n:'The Carrion Bargain',loc:'Vigilus · The Carrion Market',turn:'you',initiator:'Vess the Carrion-Broker (Wild Named · Drukhari)',about:'Vess dangles Drukhari toxin-craft for your forge list — and names her price in intact Tyranid bodies. Terms are still open; Influence is the reward for closing them.',forces:['The Rotward']},
-{id:'vox',type:'MISSION',n:'The Sunken Vox-Bastion',loc:'Vigilus · Sunken Vox-Bastion',turn:'open',initiator:'You',about:'The Sunken Vox-Bastion lies ruined and unclaimed. Salvage its cogitators and vox-relays before a rival warband strips them first.',forces:[]}],
+threads:[{id:'ash',type:'SKIRMISH',n:'Skirmish at the Ash Ravine',loc:'Vigilus · The Ash Ravine',turn:'you',vis:'public',initiator:"Brood-Tyrant Sskarith (NPC · Tyranids)",about:"Sskarith's brood boiled up out of the black sand to contest the Ash Ravine. Whoever still holds the ground when the posts run dry claims the field — and the Ravine feeds the sector's Conflict either way.",forces:['The Rotward',"Sskarith's Brood"]},
+{id:'bar',type:'DIPLOMACY',n:'The Carrion Bargain',loc:'Vigilus · The Carrion Market',turn:'you',vis:'public',initiator:'Vess the Carrion-Broker (Wild Named · Drukhari)',about:'Vess dangles Drukhari toxin-craft for your forge list — and names her price in intact Tyranid bodies. Terms are still open; Influence is the reward for closing them.',forces:['The Rotward']},
+{id:'vox',type:'MISSION',n:'The Sunken Vox-Bastion',loc:'Vigilus · Sunken Vox-Bastion',turn:'open',initiator:'You',about:'The Sunken Vox-Bastion lies ruined and unclaimed. Salvage its cogitators and vox-relays before a rival warband strips them first.',forces:[],vis:'public'},
+{id:'compact',type:'DIPLOMACY',n:"The Warsmith's Compact",loc:'Vigilus · The Carrion Market',turn:'other',initiator:'Warsmith Dravok (PC · Black Legion)',about:'A private accord between the Iron Ruin and the Carrion Market brokers. Its terms are sealed.',forces:['Iron Ruin Landing Claw'],vis:'private'}],
 convos:[{id:'herald',pc:false,pl:'nurth',l:'Faction broker · Nurth, Pallid Reach',n:'Herald of the Pallid Court',ms:[['them','The Garden blooms, rot-lord. The Court asks: when do you come to kneel — or to bargain?']]},
 {id:'kryv',pc:true,pl:'sangua',l:'Adeptus Mechanicus · Sangua Tertius',n:'Magos Kryv',ms:[['them','Your plague-patterns interest me, heretic. Data for data?']]},
 {id:'dravok',pc:true,pl:'vigilus',l:'Black Legion',n:'Warsmith Dravok',ms:[]},
@@ -538,7 +553,7 @@ function rRos(){var tb=document.querySelector('#rt tbody');tb.innerHTML='';
 document.getElementById('rh').textContent='Owned models — '+S.army+' / '+S.infl+' PC';
 var q=(document.getElementById('fq').value||'').toLowerCase(),c=document.getElementById('fc').value,s=document.getElementById('fs').value,f=document.getElementById('ff').value;
 S.roster.forEach(function(m){if(q&&m.n.toLowerCase().indexOf(q)<0)return;if(c&&m.cls!==c)return;if(s&&m.st!==s)return;if(f&&m.fo!==f)return;
-var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b> '+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span>':'')+'</td><td style="color:var(--dim)">'+baseModel(m)+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.spd+'</td><td class="mono">'+m.slots+'</td><td class="mono">'+m.w+'</td><td style="font-size:11px">'+(m.fo==='—'?'<span style="color:var(--dim)">—</span>':m.fo)+'</td><td style="font-size:11px;color:var(--dim)">'+m.loc+'</td><td>'+chips(m)+'</td>');
+var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b></td><td style="color:var(--dim)">'+baseModel(m)+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.spd+'</td><td class="mono">'+m.slots+'</td><td class="mono">'+m.w+'</td><td style="font-size:11px">'+(m.fo==='—'?'<span style="color:var(--dim)">—</span>':m.fo)+'</td><td style="font-size:11px;color:var(--dim)">'+m.loc+'</td><td>'+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span> ':'')+chips(m)+'</td>');
 tr.onclick=function(){sel=m;rRos();rLoad();openModel(m.id)};tb.appendChild(tr)})}
 function rLoad(){if(!sel)sel=S.roster[0];
 document.getElementById('lt').textContent='Loadout — '+sel.n;document.getElementById('ls').textContent=sel.sub;
@@ -573,6 +588,21 @@ function makeForce(name,leadId){var ld=S.roster.filter(function(m){return m.id==
  S.forces.push({id:'f'+(S.forces.length+1)+'_'+ld.id,n:nm,lead:leadId,ap:0});
  ld.fo=nm;fixLeaderTags();fcOpen=false;rF();rRos();
  var ff=document.getElementById('ff');ff.add(new Option(nm,nm));T('Force raised: '+nm+' under '+ld.n.split(',')[0]);}
+/* Armoury — every piece of gear you own, equipped or in store */
+function rArm(){var w=document.getElementById('arm');w.innerHTML='';
+ var rows=[];(S.inv||[]).forEach(function(it){rows.push({it:it,eq:null})});
+ S.roster.forEach(function(m){m.sl.forEach(function(s){if(s.it)rows.push({it:s.it,eq:m})})});
+ var q=(document.getElementById('armq')?document.getElementById('armq').value:'').toLowerCase();
+ var card=E('div','card','<h3>Armoury — everything you own ('+rows.length+')</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:8px">Every weapon, item, ability and cast in your possession — equipped or in store. Click any to open its card.</div><input type="text" id="armq" placeholder="Search gear…" style="width:100%;margin-bottom:6px">');
+ ['WEAPON','ITEM','ABILITY','CAST','LEGENDARY'].forEach(function(cat){
+  var cr=rows.filter(function(r){return r.it.cat===cat&&(!q||r.it.n.toLowerCase().indexOf(q)>=0)});if(!cr.length)return;
+  card.insertAdjacentHTML('beforeend','<div class="lsec"><h5>'+cat+'S ('+cr.length+')</h5></div>');
+  cr.forEach(function(r){var row=E('div','shopc');
+   row.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="clk" style="flex:1"><b>'+r.it.n+'</b><div class="d">'+annotate(r.it.d)+'</div></span><span class="mono" style="font-size:10px;color:'+(r.eq?'var(--vdh)':'var(--dim)')+';white-space:nowrap">'+(r.eq?'◉ '+r.eq.n.split(',')[0]:'in store')+'</span></div>';
+   row.querySelector('.clk').onclick=function(){openEntity(r.it,{owner:'You',origin:r.eq?'equipped on '+r.eq.n.split(',')[0]:'held in store'})};
+   card.appendChild(row)})});
+ w.appendChild(card);
+ var qi=document.getElementById('armq');if(qi)qi.oninput=function(){var v=qi.value;rArm();document.getElementById('armq').value=v;document.getElementById('armq').focus()}}
 function rF(){fixLeaderTags();var w=document.getElementById('fw');w.innerHTML='';
 /* ── create a new Force ── */
 var top=E('div','card');
@@ -814,8 +844,12 @@ var accepted=S.threads.slice();if(S.tr)accepted.push({id:'tr',type:'TRAVEL',n:'T
 var dash=E('div','card');dash.innerHTML='<h3>Thread board</h3><div style="font-size:11.5px;color:var(--dim)">Everything you are in, everything you could join, and who is at war.</div>';
 /* accepted */
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Your threads — accepted ('+accepted.length+')</h5></div>');
-accepted.forEach(function(t){var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b><div style="font-size:11px;color:var(--dim);margin-top:2px">'+t.loc+'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Objective: '+(OBJ[t.type]||'—')+'</div></div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'waiting')+'</span>');
- d.onclick=function(){if(t.turn!=='you'){T('Waiting on the other party.');return}openT(t.id)};dash.appendChild(d)});
+accepted.forEach(function(t){var vis=t.vis||'public',mine=(t.initiator||'').match(/^You/)||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f})});
+ var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b> <span class="pill '+(vis==='private'?'bl':'')+'">'+(vis==='private'?'🔒 PRIVATE':'PUBLIC')+'</span><div style="font-size:11px;color:var(--dim);margin-top:2px">'+t.loc+'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Objective: '+(OBJ[t.type]||'—')+'</div></div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'waiting')+'</span>');
+ d.onclick=function(){openT(t.id)};
+ if(mine&&t.id!=='tr'){var tg=E('button','btn gh sm',vis==='private'?'Make public':'Make private');tg.style.marginTop='6px';
+  tg.onclick=function(e){e.stopPropagation();t.vis=vis==='private'?'public':'private';if(t.vis==='public'){t.summary=threadSummary(t.type)+' (auto-summary generated on publish — full AI summary at Stage 3.)'}rTL();T('Thread set '+t.vis+(t.vis==='public'?' — a summary was generated and it now enters the public record.':' — hidden from non-participants.'))};d.appendChild(tg)}
+ dash.appendChild(d)});
 /* available */
 var avail=[];Object.keys(S.world.history||{}).forEach(function(key){(S.world.history[key]||[]).forEach(function(h){if(/open/i.test(h)){var parts=key.split('/');avail.push({key:key,txt:h,pl:parts[0],lid:parts[1]})}})});
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Available missions — open at reachable locations ('+avail.length+')</h5></div>');
@@ -829,6 +863,19 @@ dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><
 if(!confs.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">No multi-faction sectors in play.</div>');
 confs.forEach(function(c){dash.insertAdjacentHTML('beforeend','<div class="thc"><div><b>'+c.sec+'</b> <span class="stt '+c.status+'">'+c.status+'</span><div style="font-size:11.5px;color:var(--dim);margin-top:3px">'+c.sides.join(' vs ')+'</div></div></div>')});
 L.appendChild(dash)}
+/* leave a thread — free if no combat; costs wounds + currency once combat is joined */
+function exitThread(t){var combat=(t.type==='SKIRMISH'||t.type==='INVASION'),duel=/duel/i.test(t.n||'');
+ if(!combat){S.threads=S.threads.filter(function(x){return x.id!==t.id});T('You withdraw from the '+t.type+' at '+t.loc+' — no cost; combat had not begun.');go('threads');rTL();return}
+ var deployed=S.roster.filter(function(m){return m.st==='DEPLOYED'&&m.fo!=='—'});
+ deployed.forEach(function(m){var p=(m.w||'1/1').split('/'),cur=Math.max(0,(parseInt(p[0],10)||1)-1);m.w=cur+'/'+p[1];if(cur<=0)m.st='DEAD'});
+ var curCost=Math.round(S.army*0.05);S.cur=Math.max(0,S.cur-curCost);
+ S.threads=S.threads.filter(function(x){return x.id!==t.id});
+ var yourSpd=deployed.reduce(function(a,m){return Math.max(a,m.spd||2)},0),enemySpd=3,caught=(enemySpd>=yourSpd);
+ rW();rRos();
+ var msg='You break contact at '+t.loc+' — '+deployed.length+' model(s) wounded, '+curCost+' '+curName()+' spent. '+(duel?'A duel cannot be fled — your opponent is declared victor.':'The enemy holds the field and is recorded the victor of this engagement.');
+ if(caught&&!duel){S.threads.push({id:'pursuit_'+S.threads.length,type:t.type,n:'Pursuit at '+t.loc,loc:t.loc,turn:'you',initiator:"Sskarith's Brood (in pursuit)",about:'The brood was fast enough to run down your retreat. A fresh Warzone '+t.type+' opens under pursuit — the fight you fled, now on worse ground.',forces:["Sskarith's Brood"]});
+  msg+=' They caught your retreat — a new Warzone '+t.type+' opens.'}
+ T(msg);go('threads');rTL()}
 function threadHeader(t){var h=E('div','thhdr');
  h.innerHTML='<div class="thhdr-top"><span class="tp '+t.type+'">'+t.type+'</span><h3>'+t.n+'</h3></div>'
  +'<div class="thhdr-loc">◉ '+(t.loc||'—')+'</div>'
@@ -838,8 +885,23 @@ function threadHeader(t){var h=E('div','thhdr');
 function openT(id){var L=document.getElementById('tl'),V=document.getElementById('tv');
 L.style.display='none';V.style.display='block';V.innerHTML='';
 var bk=E('button','btn gh sm','← All threads');bk.onclick=rTL;V.appendChild(bk);
-var t=S.threads.filter(function(x){return x.id===id})[0];if(t)V.appendChild(threadHeader(t));
-if(id==='ash')bBattle(V);else if(id==='bar')bDiplo(V);else if(t&&t.type==='MISSION'){V.insertAdjacentHTML('beforeend','<div class="empty" style="text-align:left">This thread is open. Bring a Force to <b>'+t.loc+'</b> and post to begin — full mission play lands with the thread rebuild.</div>')}else bTravel(V)}
+var t=S.threads.filter(function(x){return x.id===id})[0];
+var mine=t&&((t.initiator||'').match(/^You/)||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f})}));
+if(t&&t.vis==='private'&&!mine){V.insertAdjacentHTML('beforeend','<div class="empty">🔒 This thread is <b>private</b> — you are not a participant, so you cannot read it. Only its parties can make it public.</div>');return}
+if(t)V.appendChild(threadHeader(t));
+if(id==='ash')bBattle(V);
+else if(id==='bar')bDiplo(V);
+else if(t){
+ var box=E('div','card');
+ if(t.type==='MISSION'){box.innerHTML='<h3>Mission briefing</h3><div class="d" style="margin-bottom:10px">'+(t.about||'')+'</div><div style="font-size:11.5px;color:var(--dim)">Accept to add this to your active operations. Bring a Force to '+t.loc+' to begin.</div>';
+  var acc=E('button','btn','Accept mission');acc.style.cssText='width:100%;margin-top:10px';acc.onclick=function(){t.accepted=true;t.turn='you';T('Mission accepted: '+t.n+'. It\'s now in your active operations.');rTL()};
+  if(t.accepted){acc.textContent='✓ Accepted — in your operations';acc.disabled=true}
+  box.appendChild(acc);}
+ else{box.innerHTML='<h3>'+t.type+'</h3><div class="d">'+(t.about||'A '+t.type.toLowerCase()+' at '+t.loc+'.')+'</div><div style="font-size:11.5px;color:var(--dim);margin-top:8px">Full play for this thread type lands with the combat/thread rebuild. You can still manage it here.</div>';}
+ V.appendChild(box);
+ var xb=E('button','btn gh','Exit thread');xb.style.marginTop='10px';xb.onclick=function(){exitThread(t)};V.appendChild(xb);
+}
+else bTravel(V)}
 function tools(){var t=E('div','ft');[['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],['strikeThrough','<s>S</s>']].forEach(function(x){var b=E('button',null,x[1]);b.onmousedown=function(e){e.preventDefault();document.execCommand(x[0])};t.appendChild(b)});return t}
 var pool=26,blk=[];
 var EN=['Threshjaw (Carnifex)','Termagant brood','Sskarith'];
@@ -860,9 +922,10 @@ function buildABM(){var here=S.roster.filter(function(m){return m.st==='DEPLOYED
 var ABM=[];
 function tgs(g,self){if(g==='e')return EN;if(g==='y')return['Self ('+self+')','The Rotward (Force)','Morvax','Gharn'];if(g==='a')return EN.concat(['Self ('+self+')','Morvax','Gharn']);return['Advance 1 step','Retreat 1 step','Disengage']}
 function bBattle(V){ABM=buildABM();var w=E('div','tw');var lf=E('div');
-var st=E('div');
+var scroll=E('div','threadscroll');var st=E('div');
+st.insertAdjacentHTML('beforeend','<div class="post"><div class="ph"><span class="who en clk" onclick="openKnownModel(\'Brood-Tyrant Sskarith\',\'Sskarith\\\'s Brood\')">Brood-Tyrant Sskarith</span><span class="mono" style="color:var(--dim)">Post 1 · Tyranids</span></div><div class="body">The Ash Ravine was quiet until the sand began to breathe. Sskarith\'s vanguard breached the crust at dusk — the brood declaring this black gutter theirs.</div></div>');
 st.appendChild(E('div','post','<div class="ph"><span class="who en">Brood-Tyrant Sskarith</span><span class="mono" style="color:var(--dim)">Post 6 · Tyranids</span></div><div class="body">The ravine walls wept ash as the brood came on — Threshjaw first, chitin grinding like tectonic sin, gaunts spilling around its legs…</div><div class="ab"><div class="ah">Action Block · Sskarith\'s Brood · 14 AP</div><ul><li><b>Threshjaw</b> — Move: Medium→Short (0) · Crushing Claws → <b>Gharn</b>, 4 dmg (9)</li><li><b>Termagants</b> — Fleshborers → <b>Poxwalkers Epsilon &amp; Zeta</b>: slain, intact (Desperation)</li><li><b>Sskarith</b> — Cast: Catalyst → <b>Threshjaw</b>, Regen II (5)</li></ul></div>'));
-lf.appendChild(st);
+scroll.appendChild(st);lf.appendChild(scroll);
 var cp=E('div','comp','<div class="ch">Your post — '+S.player.name.split(',')[0]+' · The Rotward · Post 7 · <span class="tp SKIRMISH" style="margin:0">SKIRMISH</span></div>');
 cp.appendChild(tools());
 var fic=E('div','fic');fic.contentEditable=true;fic.setAttribute('data-ph','Write your fiction — bold it, slant it, underline the doom…');
@@ -901,12 +964,25 @@ var post=E('div','post','<div class="ph"><span class="who you">'+S.player.name.s
 st.appendChild(post);document.getElementById('sp').textContent=pool;
 blk=[];rB();fic.innerHTML='';T('Posted. Sskarith is notified — their turn.');post.scrollIntoView({behavior:'smooth'})};
 w.appendChild(lf);
-w.insertAdjacentHTML('beforeend','<div class="card"><h3>Battle state</h3><div class="fg you"><h4>The Rotward (you) · <span id="sp">'+pool+'</span> AP</h4><div class="mr"><div class="n"><span>Vexos Kane</span><span class="a">9/9 W · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT vs brood</div></div><div class="mr"><div class="n"><span>Morvax (Leader)</span><span class="a">7/7 · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div><div class="mr"><div class="n"><span>Gharn</span><span class="a">4/8 · 3 acts</span></div><div class="hp lo"><i style="width:50%"></i></div><div class="band">MELEE vs Threshjaw</div></div><div class="mr"><div class="n"><span>Poxwalkers α–δ</span><span class="a">1 W · 1 act each</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div></div><div class="fg en"><h4>Sskarith\'s Brood · pool low</h4><div class="mr"><div class="n"><span>Threshjaw — Carnifex R2</span><span class="a">7/10 · Regen II</span></div><div class="hp"><i style="width:70%"></i></div><div class="band">MELEE vs Gharn</div></div><div class="mr"><div class="n"><span>Termagants ×6</span><span class="a">1 W each</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div><div class="mr"><div class="n"><span>Sskarith (Cmdr)</span><span class="a">8/8 · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">MEDIUM</div></div></div><div style="font-size:11.5px;color:var(--dim);border-top:1px solid var(--ln);padding-top:7px">Field: Poxwalkers Epsilon &amp; Zeta — intact</div></div>');
+var sb=E('div','thsidebar');
+/* foldable battle report */
+sb.insertAdjacentHTML('beforeend','<div class="card foldcard on" id="report"><h3 class="foldh">Battle Report <span class="foldar">▾</span></h3><div class="foldbody"><div class="fg you"><h4>The Rotward (you) · <span id="sp">'+pool+'</span> AP</h4><div class="mr"><div class="n"><span>Vexos Kane</span><span class="a">9/9 W · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT vs brood</div></div><div class="mr"><div class="n"><span>Morvax (Leader)</span><span class="a">7/7 · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div><div class="mr"><div class="n"><span>Gharn</span><span class="a">4/8 · 3 acts</span></div><div class="hp lo"><i style="width:50%"></i></div><div class="band">MELEE vs Threshjaw</div></div><div class="mr"><div class="n"><span>Poxwalkers α–δ</span><span class="a">1 W · 1 act each</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div></div><div class="fg en"><h4>Sskarith\'s Brood · pool low</h4><div class="mr"><div class="n"><span>Threshjaw — Carnifex R2</span><span class="a">7/10 · Regen II</span></div><div class="hp"><i style="width:70%"></i></div><div class="band">MELEE vs Gharn</div></div><div class="mr"><div class="n"><span>Termagants ×6</span><span class="a">1 W each</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div><div class="mr"><div class="n"><span>Sskarith (Cmdr)</span><span class="a">8/8 · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">MEDIUM</div></div></div><div style="font-size:11.5px;color:var(--dim);border-top:1px solid var(--ln);padding-top:7px">Field: Poxwalkers Epsilon &amp; Zeta — intact</div></div></div>');
+/* thread controls sidebar */
+var tobj=S.threads.filter(function(x){return x.id==='ash'})[0];
+var ctrl=E('div','card');ctrl.innerHTML='<h3>Thread</h3><div style="font-size:11px;color:var(--dim);margin-bottom:4px">◉ Vigilus · The Ash Ravine</div><div style="font-size:11.5px;color:var(--blh);margin-bottom:8px">⚔ Combat is joined — exiting now costs wounds across deployed models and '+curName()+', and cedes the field.</div>';
+var exb=E('button','btn bl','Exit thread — break contact');exb.style.width='100%';exb.onclick=function(){if(tobj)exitThread(tobj)};ctrl.appendChild(exb);
+sb.appendChild(ctrl);
+/* fold toggle */
+sb.querySelector('.foldh').onclick=function(){document.getElementById('report').classList.toggle('on')};
+w.appendChild(sb);
 /* click a friendly combatant → its model overview */
 w.querySelectorAll('.fg.you .mr .n span:first-child').forEach(function(sp){
  var first=sp.textContent.split(/[ (—–]/)[0].toLowerCase();
  var m=S.roster.filter(function(x){return x.n.toLowerCase().indexOf(first)>=0})[0];
  if(m){sp.className='clk';sp.onclick=function(){openModel(m.id)}}});
+/* click an enemy combatant → auspex intel on its force */
+w.querySelectorAll('.fg.en .mr .n span:first-child').forEach(function(sp){
+ sp.className='clk';sp.onclick=function(){openKnownModel(sp.textContent.split(/[—–(]/)[0].trim(),"Sskarith's Brood")}});
 V.appendChild(w)}
 function bDiplo(V){var w=E('div','tw solo');var lf=E('div');
 var st=E('div');
@@ -950,7 +1026,31 @@ var row=E('div');row.style.cssText='display:flex;gap:7px;margin-top:10px';
 var inp=E('input');inp.type='text';inp.placeholder='Compose a message…';
 var b=E('button','btn sm','Send');
 b.onclick=function(){var v=inp.value.trim();if(!v)return;c.ms.push(['me',v]);rComms();T('Message sent across the void.')};
-row.appendChild(inp);row.appendChild(b);P2.appendChild(row)}
+row.appendChild(inp);row.appendChild(b);P2.appendChild(row);
+/* ── sharing: a conversation can be made public (a Protocol); private cannot be shared ── */
+var cvis=c.vis||'private';
+var share=E('div');share.style.cssText='display:flex;gap:8px;align-items:center;margin-top:10px;font-size:11.5px;color:var(--dim)';
+share.innerHTML='<span class="pill '+(cvis==='public'?'':'bl')+'">'+(cvis==='public'?'PUBLIC PROTOCOL':'🔒 PRIVATE')+'</span>';
+var st=E('button','btn gh sm',cvis==='public'?'Make private':'Publish as Protocol');
+st.onclick=function(){c.vis=cvis==='public'?'private':'public';rComms();T(c.vis==='public'?'Conversation published as a Protocol — others can now read it.':'Conversation set private — it cannot be shared.')};
+share.appendChild(st);P2.appendChild(share);
+/* ── unsafe trade over comms ── */
+var trade=E('div','card');trade.style.marginTop='12px';
+trade.innerHTML='<h3 style="font-size:13px">Offer a trade</h3><div style="font-size:11px;color:var(--dim);margin-bottom:8px">Transfer '+curName()+' or an item to '+c.n.split(' ')[0]+'. This channel is <b style="color:var(--blh)">unsafe</b> — nothing forces them to give anything back. A soured deal can spill into combat if you share a thread.</div>';
+var ci=E('input');ci.type='number';ci.min=0;ci.placeholder=curName()+' amount';ci.style.cssText='width:100%;margin-bottom:6px';
+var is=E('select');is.style.cssText='width:100%;margin-bottom:8px';is.add(new Option('— no item —',''));
+(S.inv||[]).forEach(function(it,i){is.add(new Option(it.n+' ('+it.cat+')',i))});
+trade.appendChild(ci);trade.appendChild(is);
+var so=E('button','btn','Send offer');so.style.width='100%';
+so.onclick=function(){var amt=parseInt(ci.value,10)||0,itIdx=is.value!==''?parseInt(is.value,10):-1;
+ if(amt<=0&&itIdx<0){T('Offer something first.');return}
+ if(amt>S.cur){T('You don\'t hold that much '+curName()+'.');return}
+ var parts=[];if(amt>0){S.cur-=amt;parts.push(amt+' '+curName())}
+ if(itIdx>=0){var it=S.inv[itIdx];parts.push(it.n);S.inv.splice(itIdx,1)}
+ c.ms.push(['me','⇒ Trade offer: '+parts.join(' + ')]);
+ c.ms.push(['them',c.pc?'…the offer stands. I will consider it — and remember it, whatever comes.':'Accepted. The transfer is logged. Pray it was wise, rot-lord.']);
+ rW();rComms();T('Transferred '+parts.join(' + ')+' to '+c.n.split(' ')[0]+'. The channel is unsafe — no return is guaranteed.')};
+trade.appendChild(so);P2.appendChild(trade)}
 /* ---- rites (fully data-driven) ---- */
 var RB=null,RS=null,AK=['chaos','imperial','xenos'];
 var FS=[{e:'RITE I',t:'Choose your Allegiance',s:'The banners burn over the galaxy.'},{e:'RITE II',t:'Choose your Faction',s:'The banner has many hands.'},{e:'RITE III',t:'Choose your Background',s:'The road that brought you to command — or write your own.'},{e:'RITE IV',t:'Choose your Model',s:'The body you will wear through every war.'},{e:'RITE V',t:'Choose two Origins',s:'What you were decides what you begin with.'},{e:'RITE VI',t:'Your Reflection',s:'What the enemy sees before the end — or describe it.'},{e:'RITE VII',t:'Speak the Name',s:'Once spoken, it is spoken forever.'}];
@@ -1031,7 +1131,7 @@ CLASSES().forEach(function(c){document.getElementById('fc').add(new Option(c,c))
 var ff=document.getElementById('ff');S.forces.forEach(function(fo){ff.add(new Option(fo.n,fo.n))});ff.add(new Option('— direct command','—'));
 ['fq','fc','fs','ff'].forEach(function(i){document.getElementById(i).addEventListener('input',rRos)});
 document.querySelectorAll('.navbtn').forEach(function(b){b.onclick=function(){go(b.dataset.s)}});
-document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on',x===b)});document.querySelectorAll('.sub').forEach(function(v){v.classList.remove('on')});document.getElementById('b-'+b.dataset.b).classList.add('on');if(b.dataset.b==='forces')rF()}});
+document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on',x===b)});document.querySelectorAll('.sub').forEach(function(v){v.classList.remove('on')});document.getElementById('b-'+b.dataset.b).classList.add('on');if(b.dataset.b==='forces')rF();if(b.dataset.b==='armoury')rArm()}});
 mkPicker();mkRite();
 document.getElementById('boot').style.display='none';
 document.getElementById('shell').style.display='flex';
@@ -1100,7 +1200,8 @@ function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];i
  +'</div><div style="font-size:11px;color:var(--dim);margin-top:6px">'+m.sub+' · '+m.loc+'</div></div></div>'
  +'<div class="movbody"><div><h4>Lore</h4><div class="lore">'+m.lore+'</div>'
  +'<h4 style="margin-top:16px">Threads fought</h4><div class="thl">'+threads+'</div></div>'
- +'<div><h4>Loadout <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— click filled to inspect, empty to equip</span></h4>'+groups+'</div></div></div>';
+ +'<div><h4>Loadout <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— click filled to inspect, empty to equip</span></h4>'+groups+'</div></div>'
+ +'<div class="movdev"><h4>Rank development — how '+m.n.split(',')[0]+' grows</h4>'+devTable(m)+'<div style="font-size:11px;color:var(--dim);margin-top:6px">Rank-ups cost Influence equal to the model\'s current PC. Slots: '+(D.rules.growth.slot_gains[m.cls]||'—')+' · Speed: '+(D.rules.growth.speed_gains[m.cls]||'—')+'.</div></div></div>';
  document.getElementById('movx').onclick=function(){MOV.classList.remove('on')};
  sel=m;
  MOV.querySelectorAll('.slotchg').forEach(function(b){b.onclick=function(e){e.stopPropagation();sel=m;pick(+b.dataset.chg)}});
@@ -1174,23 +1275,39 @@ function openForce(name){mkEntity();var i=forceIntel(name);
  +(i?'<span class="pill">'+i.size+'</span> <span class="pill">'+i.faction+'</span>'
   +'<div class="entrow"><div class="k">Led by</div><div class="vv">'+i.lead+'</div></div>'
   +'<div class="entrow"><div class="k">Last encountered</div><div class="vv">'+i.seen+'</div></div>'
-  +'<div class="entrow"><div class="k">Known composition</div><div class="vv">'+i.models.map(function(x){return '· '+x}).join('<br>')+'</div></div>'
+  +'<div class="entrow"><div class="k">Known composition — click a model</div><div class="vv">'+i.models.map(function(x){return '<div class="lrow" data-km="'+esc(x)+'">▸ '+x+'</div>'}).join('')+'</div></div>'
   +'<div class="entrow"><div class="k">Auspex note</div><div class="vv">'+i.note+'</div></div>'
   +'<div style="font-size:11px;color:var(--dim)">The most recent intelligence you hold. The force may have changed since — bring newer auspex to update it.</div>'
   :'<div class="empty">No auspex data — you have not encountered this force. Fight or scout it to learn its strength.</div>')
  +'</div></div>';
- document.getElementById('entx').onclick=function(){ENT.classList.remove('on')};ENT.classList.add('on')}
+ document.getElementById('entx').onclick=function(){ENT.classList.remove('on')};
+ ENT.querySelectorAll('.lrow[data-km]').forEach(function(el){el.onclick=function(){openKnownModel(el.getAttribute('data-km'),name)}});
+ ENT.classList.add('on')}
+function openKnownModel(name,force){mkEntity();var sig=name.split(/[ —]/)[0].slice(0,2).toUpperCase();
+ ENT.innerHTML='<div class="entc"><div class="entimg">'+sig+'<span>auspex silhouette — art slot</span></div><div class="entb">'
+ +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>'+name+'</h3><button class="movbk" id="entx">Close</button></div>'
+ +'<span class="pill">KNOWN MODEL</span>'
+ +'<div class="entrow"><div class="k">Part of</div><div class="vv">'+force+'</div></div>'
+ +'<div class="entrow"><div class="k">Auspex reading</div><div class="vv">Last-seen silhouette only. Full stats need closer contact, a captured specimen, or a defeat in the field.</div></div>'
+ +'<button class="movbk" id="kmback">← Back to force</button>'
+ +'</div></div>';
+ document.getElementById('entx').onclick=function(){ENT.classList.remove('on')};
+ document.getElementById('kmback').onclick=function(){openForce(force)};ENT.classList.add('on')}
 function openNPC(id){mkEntity();var n=D.npcs_alpha.filter(function(x){return x.id===id})[0];if(!n)return;
+ var here=(n.location===S.pos.pl+'/'+S.pos.sp)&&!S.tr&&!S.pos.void;
  var sig=n.name.split(' ').map(function(x){return x[0]}).filter(function(c){return /[A-Za-z]/.test(c)}).slice(0,2).join('');
  ENT.innerHTML='<div class="entc"><div class="entimg">'+sig+'<span>NPC portrait — art slot</span></div><div class="entb">'
  +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>'+n.name+'</h3><button class="movbk" id="entx">Close</button></div>'
  +'<div style="display:flex;gap:6px"><span class="pill">'+n.kind+'</span><span class="pill">'+n.faction+'</span></div>'
  +'<div class="entrow"><div class="k">Disposition</div><div class="vv">'+n.hook+'</div></div>'
  +'<div class="entrow"><div class="k">Last located</div><div class="vv">'+n.location+'</div></div>'
- +'<div style="display:flex;gap:8px;margin-top:2px"><button class="btn gh sm" id="npchail">Hail via Comms</button></div>'
+ +'<div style="display:flex;gap:8px;margin-top:2px">'+(here?'<button class="btn sm" id="npcapp">Approach in person</button>':'')+'<button class="btn gh sm" id="npchail">Hail via Comms</button></div>'
+ +(here?'':'<div style="font-size:11px;color:var(--dim)">You are not at '+n.location+' — you can only reach them by remote Comms.</div>')
  +'</div></div>';
  document.getElementById('entx').onclick=function(){ENT.classList.remove('on')};
- var h=document.getElementById('npchail');if(h)h.onclick=function(){ENT.classList.remove('on');go('comms')};ENT.classList.add('on')}
+ var h=document.getElementById('npchail');if(h)h.onclick=function(){ENT.classList.remove('on');go('comms')};
+ var ap=document.getElementById('npcapp');if(ap)ap.onclick=function(){ENT.classList.remove('on');T('You approach '+n.name.split(' ')[0]+' face to face at '+fLoc(S.pos.pl,S.pos.sp).name+'. A local parley opens — full in-person chat lands with the thread rebuild; for now it plays as a Diplomacy thread.');startThread(S.pos.pl,fLoc(S.pos.pl,S.pos.sp),'Diplomacy')};
+ ENT.classList.add('on')}
 function threadSummary(txt){var t=txt.toUpperCase();
  if(t.indexOf('SKIRMISH')>=0)return 'A clash of forces — whoever holds the ground when the posts run out takes the field.';
  if(t.indexOf('DIPLOMACY')>=0)return 'A negotiation in progress — terms, trade, or tribute are on the table.';
@@ -1211,17 +1328,29 @@ function openHist(txt,locName){mkEntity();
 var HUD=null;
 function mkHUD(){if(HUD)return;HUD=document.createElement('div');HUD.id='fhud';document.body.appendChild(HUD)}
 function pctW(w){var p=(w||'0/0').split('/');return +p[1]>0?Math.round(+p[0]/+p[1]*100):0}
+/* rank progression projection from canon growth curves */
+function devTable(m){var g=D.rules.growth,curve=g.pc_curve_by_rank,rk=Math.min(m.rk||1,5);
+ var baseP=m.pc/curve[rk-1],wpct=g.wounds_pct_of_baseline_per_rankup[m.cls]||0.15;
+ var baseW=(parseInt((m.w||'1/1').split('/')[1],10)||1)/(1+wpct*(rk-1));
+ function slotsAt(r){var addNow=m.cls==='Armament'?(rk-1):((rk>=2?1:0)+(rk>=4?1:0));var base=(m.slots||m.sl.length)-addNow;var addR=m.cls==='Armament'?(r-1):((r>=2?1:0)+(r>=4?1:0));return Math.max(1,base+addR)}
+ function spdAt(r){var addNow=m.cls==='Flying'?(rk-1):m.cls==='Core'?((rk>=3?1:0)+(rk>=5?1:0)):0;var base=(m.spd||2)-addNow;var addR=m.cls==='Flying'?(r-1):m.cls==='Core'?((r>=3?1:0)+(r>=5?1:0)):0;return Math.max(1,base+addR)}
+ var rows='';for(var r=1;r<=5;r++){var pc=Math.round(baseP*curve[r-1]/5)*5||5,w=Math.max(1,Math.round(baseW*(1+wpct*(r-1))));
+  rows+='<tr'+(r===rk?' class="rknow"':'')+'><td>R'+r+(r===rk?' ◄ now':'')+'</td><td class="mono">'+pc+'</td><td class="mono">'+w+'</td><td class="mono">'+slotsAt(r)+'</td><td class="mono">'+spdAt(r)+'</td><td class="mono">'+AP(pc)+'</td></tr>'}
+ return '<table class="devt"><thead><tr><th>Rank</th><th>PC</th><th>Wounds</th><th>Slots</th><th>Spd</th><th>AP</th></tr></thead><tbody>'+rows+'</tbody></table>'}
 function forceCP(fname){var t=0;S.roster.forEach(function(m){if(m.fo===fname)t+=m.pc});return t}
 function updateHUD(){if(!HUD||!S)return;var m=activeModel();var sig=m.n.split(' ').map(function(x){return x[0]}).filter(function(c){return /[A-Za-z]/.test(c)}).slice(0,2).join('');
  var force=S.forces.filter(function(f){return f.lead===m.id})[0];
- var cp=force?forceCP(force.n):0,apPool=force?force.ap:0;
- HUD.innerHTML='<div class="fh-top"><div class="fh-sig">'+sig+'</div><div><div class="fh-nm">'+m.n.split(',')[0]+'</div><div class="fh-sub">'+posTxt()+'</div></div></div>'
+ var cp=force?forceCP(force.n):m.pc,apPool=force?force.ap:AP(m.pc),sz=force?szTag(cp):'—';
+ var rank=(m.id==='kane'?'Cmd R'+S.player.cmdRank:'R'+m.rk);
+ HUD.innerHTML='<div class="fh-top"><div class="fh-sig">'+sig+'</div><div><div class="fh-nm">'+m.n.split(',')[0]+'</div><div class="fh-sub">◉ '+posTxt()+'</div></div></div>'
  +'<div class="fh-hp"><i style="width:'+pctW(m.w)+'%"></i></div>'
  +'<div class="fh-stats">'
- +'<div><div class="k">Force AP</div><div class="v">'+(force?apPool:'—')+'</div></div>'
- +'<div><div class="k">Force CP</div><div class="v">'+(cp||'—')+'</div></div>'
- +'<div><div class="k">Wounds</div><div class="v">'+m.w+'</div></div>'
- +'<div><div class="k">'+wallets()[0]+'</div><div class="v">'+S.cur.toLocaleString()+'</div></div>'
+ +'<div><div class="k">Rank</div><div class="v">'+rank+'</div></div>'
+ +'<div><div class="k">Size</div><div class="v" style="font-size:11px">'+sz+'</div></div>'
+ +'<div><div class="k">AP pool</div><div class="v">'+apPool+'</div></div>'
+ +'<div><div class="k">XP</div><div class="v" style="font-size:12px">'+m.xp+'</div></div>'
+ +'<div><div class="k">Force CP</div><div class="v">'+cp+'</div></div>'
+ +'<div><div class="k">Used CP</div><div class="v" style="font-size:12px">'+S.army+'<small>/'+S.infl+'</small></div></div>'
  +'</div>';}
 /* ─── v12: requisition — cart, catalogs, per-door renderers ─── */
 var CART=null;
