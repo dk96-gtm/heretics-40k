@@ -224,6 +224,58 @@ canvas.smap{display:block;width:100%;height:auto}
 .statusbar b{color:var(--ink)}
 .lsec{margin-top:10px;font-size:12px}
 .lsec h5{margin:0 0 3px;font-family:var(--mono,monospace);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--br)}
+/* v12: tooltips */
+#tt{position:fixed;z-index:120;max-width:250px;background:#14100c;border:1px solid var(--br);padding:7px 10px;font-size:11.5px;color:var(--ink);pointer-events:none;display:none;box-shadow:0 6px 20px rgba(0,0,0,.55);line-height:1.45}
+#tt b{color:var(--brh)}
+.tipable{border-bottom:1px dotted rgba(143,134,116,.6);cursor:help}
+/* v12: entity overview card (weapon/item/ability/cast) */
+.ent{position:fixed;inset:0;background:rgba(8,7,5,.82);z-index:80;display:none;overflow:auto;padding:40px 20px}
+.ent.on{display:block}
+.entc{max-width:560px;margin:0 auto;background:var(--void);border:1px solid var(--br)}
+.entimg{height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.02),rgba(255,255,255,.02) 9px,transparent 9px,transparent 18px);border-bottom:1px solid var(--ln);font-family:var(--serif,Georgia,serif);color:var(--dim)}
+.entimg span{font-family:var(--mono,monospace);font-size:8px;letter-spacing:.14em;text-transform:uppercase;opacity:.6}
+.entb{padding:18px 22px;display:flex;flex-direction:column;gap:12px}
+.entb h3{margin:0;font-family:var(--serif,Georgia,serif);color:var(--brh);font-size:20px}
+.entrow{display:flex;flex-direction:column;gap:3px}
+.entrow .k{font-family:var(--mono,monospace);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--br)}
+.entrow .vv{font-size:13px;color:var(--ink);line-height:1.5}
+/* v12: model overview slot grid, grouped by type */
+.slotgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px}
+.slotgroup{margin-bottom:12px}
+.slotgroup h5{margin:0 0 5px;font-family:var(--mono,monospace);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--br)}
+.slotcard{border:1px solid var(--ln);background:var(--void);padding:8px 10px;cursor:pointer;min-height:52px}
+.slotcard:hover{border-color:var(--br)}
+.slotcard.empty{border-style:dashed;color:var(--dim)}
+.slotcard .sn{font-size:12.5px;color:var(--ink);font-weight:600}
+.slotcard .sd{font-size:11px;color:var(--dim);margin-top:2px;line-height:1.35}
+.slotcard .sk{font-family:var(--mono,monospace);font-size:8px;letter-spacing:.1em;color:var(--br)}
+.mframe.big{width:150px;height:180px;flex-basis:150px}
+.mframe.big .sig{font-size:46px}
+/* v12: floating profile HUD */
+#fhud{position:fixed;right:14px;bottom:14px;z-index:55;width:230px;background:rgba(20,16,12,.96);border:1px solid var(--br);box-shadow:0 8px 26px rgba(0,0,0,.5);font-size:11.5px;display:none}
+#fhud.on{display:block}
+#fhud .fh-top{display:flex;gap:9px;padding:10px;border-bottom:1px solid var(--ln);align-items:center}
+#fhud .fh-sig{width:34px;height:40px;flex-shrink:0;border:1px solid var(--br);display:flex;align-items:center;justify-content:center;font-family:var(--serif,Georgia,serif);color:var(--brh);font-size:15px}
+#fhud .fh-nm{color:var(--ink);font-weight:600;font-size:12px;line-height:1.2}
+#fhud .fh-sub{color:var(--dim);font-size:10px}
+#fhud .fh-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--ln)}
+#fhud .fh-stats>div{background:rgba(20,16,12,.96);padding:6px 9px}
+#fhud .fh-stats .k{font-family:var(--mono,monospace);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+#fhud .fh-stats .v{font-family:var(--mono,monospace);font-size:13px;color:var(--brh)}
+#fhud .fh-hp{height:4px;background:var(--ln)}#fhud .fh-hp i{display:block;height:100%;background:var(--vdh)}
+/* v12: requisition cart + door image */
+.doorimg{height:70px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.02),rgba(255,255,255,.02) 8px,transparent 8px,transparent 16px);border-bottom:1px solid var(--ln);font-family:var(--serif,Georgia,serif);color:var(--dim);font-size:12px;margin:-1px -1px 8px}
+.doorimg span{font-family:var(--mono,monospace);font-size:7px;letter-spacing:.12em;text-transform:uppercase;opacity:.6}
+#cart{position:fixed;right:14px;top:70px;z-index:56;width:230px;background:rgba(20,16,12,.97);border:1px solid var(--br);display:none;font-size:12px}
+#cart.on{display:block}
+#cart h4{margin:0;padding:9px 11px;border-bottom:1px solid var(--ln);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--br)}
+#cart .ci{display:flex;justify-content:space-between;padding:6px 11px;border-bottom:1px solid var(--ln);color:var(--ink)}
+#cart .ci button{background:none;border:none;color:var(--blh);cursor:pointer}
+#cart .cf{padding:9px 11px;display:flex;flex-direction:column;gap:7px}
+/* v12: map card background art-slot (placeholder texture until real imagery) */
+.mn{position:relative;overflow:hidden}
+.mn::after{content:"";position:absolute;inset:0;z-index:0;opacity:.5;background:radial-gradient(ellipse at 70% 20%,rgba(176,141,62,.06),transparent 60%),repeating-linear-gradient(120deg,rgba(255,255,255,.012),rgba(255,255,255,.012) 10px,transparent 10px,transparent 20px);pointer-events:none}
+.mn>*{position:relative;z-index:1}
 </style></head><body>
 <div id="boot"><div><h1 style="color:var(--brh);font-size:22px;margin-bottom:10px">HERETICS 40K</h1><div id="bootmsg" style="color:var(--dim);font-size:14px">Loading canon…</div></div></div>
 <div class="shell" style="display:none" id="shell">
@@ -247,16 +299,17 @@ canvas.smap{display:block;width:100%;height:auto}
 <section class="screen on" id="s-hq"><div class="crumb" id="hqc"></div><h2>Commander HQ</h2>
 <div class="grid g2">
 <div class="card"><div style="display:flex;gap:14px">
-<div style="width:66px;height:66px;border-radius:50%;border:2px solid var(--br);display:flex;align-items:center;justify-content:center;font-family:Cinzel;font-size:26px;color:var(--brh);flex-shrink:0" id="sigil"></div>
+<div style="width:60px;height:70px;border:2px solid var(--br);display:flex;align-items:center;justify-content:center;font-family:var(--serif,Georgia,serif);font-size:24px;color:var(--brh);flex-shrink:0;background:linear-gradient(160deg,rgba(255,255,255,.03),rgba(0,0,0,.25))" id="sigil"></div>
 <div style="flex:1"><div style="display:flex;justify-content:space-between"><b id="hqname"></b><span class="pill bl" id="hqrank"></span></div>
 <div style="font-size:12px;color:var(--dim)" id="hqsub"></div>
 <div style="margin:7px 0 3px;font-size:11.5px;color:var(--dim)" id="hqw"></div>
 <div class="hp"><i style="width:100%"></i></div></div></div>
-<div class="grid g3" style="margin-top:12px">
+<div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:8px">
 <div class="stat"><div class="k" id="lc"></div><div class="v" id="wc"></div></div>
 <div class="stat"><div class="k" id="ld"></div><div class="v" id="wd"></div></div>
-<div class="stat"><div class="k" id="li"></div><div class="v" id="wi"></div></div></div>
-<div style="margin-top:9px;font-size:12px;color:var(--dim)" id="hqa"></div></div>
+<div class="stat"><div class="k" id="li"></div><div class="v" id="wi"></div></div>
+<div class="stat"><div class="k">Army <small>(PC)</small></div><div class="v" id="warmy"></div></div>
+<div class="stat"><div class="k">Dispatched <small>(AP)</small></div><div class="v" id="wdisp"></div></div></div></div>
 <div class="card"><h3>Your Leaders</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:9px">Switch the figure you command. Each may stand in a different location.</div><div class="lsw" id="hqlead"></div></div>
 </div></section>
 <section class="screen" id="s-barracks"><div class="crumb">Army management</div><h2>The Barracks</h2>
@@ -391,7 +444,10 @@ convos:[{id:'herald',pc:false,pl:'nurth',l:'Faction broker · Nurth, Pallid Reac
 }}
 /* ---- nav ---- */
 function go(s){document.querySelectorAll('.screen').forEach(function(e){e.classList.remove('on')});document.getElementById('s-'+s).classList.add('on');document.querySelectorAll('.navbtn').forEach(function(b){b.classList.toggle('active',b.dataset.s===s)});
-if(s==='shop')rShop();if(s==='comms')rComms();if(s==='hq')rHQ();if(s==='map')rMap();if(s==='threads')rTL();window.scrollTo(0,0)}
+if(s==='shop')rShop();if(s==='comms')rComms();if(s==='hq')rHQ();if(s==='map')rMap();if(s==='threads')rTL();
+if(HUD){if(s==='hq')HUD.classList.remove('on');else{updateHUD();HUD.classList.add('on')}}
+if(CART){if(s!=='shop')CART.classList.remove('on');else renderCart()}
+window.scrollTo(0,0)}
 /* ---- HQ ---- */
 function voidName(sid){var n=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){if(s.id===sid&&s.space)n=s.space.name})})});return n||'the void'}
 /* start a thread at a location; a public thread enters the location's history */
@@ -404,15 +460,17 @@ function startThread(pid,l,type){var loc=fPl(pid).p.name+' · '+l.name;
  go('threads');rTL();}
 function travelSpace(sid){if(S.pos.void===sid){T('Already adrift in '+voidName(sid)+'.');return}if(S.tr){T('Already in transit.');return}S.pos.void=sid;T('Translated to the void — '+voidName(sid)+'.');rMap();rHQ();rW()}
 function posTxt(){if(S.pos.void)return 'Deep Space · '+voidName(S.pos.void);if(S.tr)return({g:'Overland',s:'In-system',c:'Warp'})[S.tr.m]+' → '+fLoc(S.tr.pl,S.tr.sp).name;return fPl(S.pos.pl).p.name+' · '+fLoc(S.pos.pl,S.pos.sp).name}
-function rW(){var w=wallets();
-document.getElementById('lc').textContent=w[0];document.getElementById('ld').innerHTML=w[1]+' <small>(AP)</small>';document.getElementById('li').innerHTML=w[2]+' <small>(ceiling)</small>';
-document.getElementById('wc').textContent=S.cur.toLocaleString();
-document.getElementById('wd').innerHTML=(S.dom-S.forces[0].ap)+' <small>/ '+S.dom+'</small>';
+function rW(){var w=wallets();var disp=S.forces.reduce(function(a,f){return a+f.ap},0);
+document.getElementById('lc').innerHTML=w[0]+' <small>(currency)</small>';document.getElementById('ld').innerHTML=w[1]+' <small>(AP)</small>';document.getElementById('li').innerHTML=w[2]+' <small>(max)</small>';
+document.getElementById('wc').innerHTML=S.cur.toLocaleString()+' <small style="color:var(--dim)">'+w[0].toLowerCase()+'</small>';
+document.getElementById('wd').innerHTML=(S.dom-disp)+' <small>/ '+S.dom+'</small>';
 document.getElementById('wi').textContent=S.infl;
-document.getElementById('hqa').innerHTML='Army: <b class="mono">'+S.army+' / '+S.infl+' PC</b> under your '+w[2]+' ceiling · <b class="mono">'+S.forces[0].ap+' AP</b> dispatched';
+document.getElementById('warmy').innerHTML=S.army+' <small>/ '+S.infl+'</small>';
+document.getElementById('wdisp').textContent=disp;
 document.getElementById('rloc').textContent=posTxt();
 document.getElementById('rship').textContent='Vessel: '+S.ships.sys+(S.ships.warp?' · '+S.ships.warp:' · no warp drive');
-var f=fPl(S.pos.pl);document.getElementById('hqc').textContent=f.g.name+' · '+f.s.name+' · '+posTxt()}
+var f=fPl(S.pos.pl);document.getElementById('hqc').textContent=f.g.name+' · '+f.s.name+' · '+posTxt();
+if(HUD&&HUD.classList.contains('on'))updateHUD()}
 function rHQ(){rW();
 var am=activeModel();
 document.getElementById('hqname').textContent=am.n;
@@ -457,60 +515,71 @@ PB.classList.add('on')}
 function afterEquip(){if(document.getElementById('b-loadout'))rLoad();if(MOV&&MOV.classList.contains('on')&&sel)openModel(sel.id)}
 function fpc(f){var t=0;S.roster.forEach(function(m){if(m.fo===f.n)t+=m.pc});return t}
 var fcOpen=false;
-/* any free Named or Commander model may raise a Force (canon: Named/Legendary lead) */
-function eligibleLeaders(){return S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'&&m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&!isForceLead(m)})}
+/* you may raise/edit a Force only when its leader is NOT in an active thread —
+   i.e. while travelling, in the void, or garrisoned. Comms don't count as active. */
+function idleNow(){return !!(S.pos.void||S.tr)}
+function forceActive(f){if(idleNow())return false;var ld=S.roster.filter(function(m){return m.id===f.lead})[0];return ld&&ld.st==='DEPLOYED'}
+function eligibleLeaders(){var idle=idleNow();return S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'&&m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&!isForceLead(m)&&(idle||m.st!=='DEPLOYED')})}
+function forceAP(fname){var t=0;S.roster.forEach(function(m){if(m.fo===fname&&m.st!=='DEAD')t+=AP(m.pc)});return t}
 function makeForce(name,leadId){var ld=S.roster.filter(function(m){return m.id===leadId})[0];if(!ld)return;
  var nm=name.trim()||('New Force '+(S.forces.length+1));
  S.forces.push({id:'f'+(S.forces.length+1)+'_'+ld.id,n:nm,lead:leadId,ap:0});
- ld.fo=nm;fcOpen=false;rF();rRos();
+ ld.fo=nm;fixLeaderTags();fcOpen=false;rF();rRos();
  var ff=document.getElementById('ff');ff.add(new Option(nm,nm));T('Force raised: '+nm+' under '+ld.n.split(',')[0]);}
-function rF(){var w=document.getElementById('fw');w.innerHTML='';
+function rF(){fixLeaderTags();var w=document.getElementById('fw');w.innerHTML='';
 /* ── create a new Force ── */
 var top=E('div','card');
 if(!fcOpen){var nb=E('button','btn','＋ Raise a new Force');nb.onclick=function(){fcOpen=true;rF()};
- top.innerHTML='<h3>Forces</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:10px">A Force is a Named or Commander leader plus the models under them. Only Forces deploy into threads — standby models must be assigned to one first.</div>';
+ top.innerHTML='<h3>Forces</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:10px">A Force is a Named or Commander leader plus the models under them. Only Forces deploy into threads — standby models must be assigned to one first. A Force can only be raised or edited while its leader is <b>not in an active thread</b> (travelling, in the void, or garrisoned).</div>';
  var el=eligibleLeaders();
- if(!el.length)top.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;color:var(--blh)">No free leaders — every Named leader already commands a Force. Free one by disbanding a Force below.</div>');
+ if(!el.length)top.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;color:var(--blh)">No leader free to raise a Force. Leaders currently fighting in a thread are locked — raise one while travelling, in the void, or with a garrisoned Named model.</div>');
  else top.appendChild(nb);
 }else{
  top.innerHTML='<h3>Raise a new Force</h3>';
  var ni=E('input');ni.type='text';ni.placeholder='Name the Force — it must have a name';ni.style.cssText='width:100%;margin-bottom:8px';
  top.appendChild(E('label','f','Name'));top.appendChild(ni);
  top.appendChild(E('label','f','Leader'));var ls=E('select');ls.style.cssText='width:100%;margin-bottom:10px';
- eligibleLeaders().forEach(function(m){ls.add(new Option(m.n+' — '+m.tag+', '+m.loc,m.id))});
+ eligibleLeaders().forEach(function(m){ls.add(new Option(m.n+' — '+baseModel(m)+' · '+m.cls+' R'+m.rk+' · '+AP(m.pc)+' AP · '+m.loc,m.id))});
  top.appendChild(ls);
  var mk=E('button','btn','Raise Force');mk.onclick=function(){makeForce(ni.value,ls.value)};
  var cx=E('button','btn gh','Cancel');cx.style.marginLeft='8px';cx.onclick=function(){fcOpen=false;rF()};
  top.appendChild(mk);top.appendChild(cx);
 }
 w.appendChild(top);
-S.forces.forEach(function(f){var pc=fpc(f),ld=S.roster.filter(function(m){return m.id===f.lead})[0];
-var c=E('div','card','<h3>Force</h3>');var fc=E('div','fcard');
-var fh=E('div','fh');var inp=E('input');inp.type='text';inp.value=f.n;
+S.forces.forEach(function(f){var pc=fpc(f),fap=forceAP(f.n),ld=S.roster.filter(function(m){return m.id===f.lead})[0],active=forceActive(f);
+var c=E('div','card','<h3>Force'+(active?' <span class="pill bl">ACTIVE — in a thread, locked</span>':'')+'</h3>');var fc=E('div','fcard');
+var fh=E('div','fh');var inp=E('input');inp.type='text';inp.value=f.n;inp.disabled=active;
 inp.onchange=function(){var o=f.n;f.n=inp.value.trim()||o;S.roster.forEach(function(m){if(m.fo===o)m.fo=f.n});rF();rRos();T('Force renamed: '+f.n)};
-fh.appendChild(inp);fh.appendChild(E('span','pill vd',szTag(pc)+' · '+pc+' PC'));fh.appendChild(E('span','pill br','Leader: '+(ld?ld.n:'—')));fc.appendChild(fh);
-var ml=E('div','mem');S.roster.filter(function(m){return m.fo===f.n}).forEach(function(m){var row=E('div',null,'<span class="clk" data-mid="'+m.id+'">'+m.n+(m.id===f.lead?' <span class="pill br">Leader</span>':'')+'</span><span class="mono">'+AP(m.pc)+' AP · '+m.w+' W'+(m.st==='DEAD'?' · DEAD':'')+'</span>');
+fh.appendChild(inp);
+fh.appendChild(E('span','pill vd',szTag(pc)+' · '+pc+' CP'));
+fh.appendChild(E('span','pill br','Min turn: '+fap+' AP'));
+fc.appendChild(fh);
+fc.insertAdjacentHTML('beforeend','<div style="font-size:11px;color:var(--dim);margin:2px 0 6px">Cheapest full turn (one action each): <b class="mono">'+fap+' AP</b> · Force point cost: <b class="mono">'+pc+' CP</b></div>');
+var ml=E('div','mem');
+/* leader first, then members — stats aligned in one column */
+var members=S.roster.filter(function(m){return m.fo===f.n});members.sort(function(a,b){return (a.id===f.lead?-1:0)-(b.id===f.lead?-1:0)});
+members.forEach(function(m){var row=E('div',null,'<span class="clk" data-mid="'+m.id+'">'+m.n+(m.id===f.lead?' <span class="pill br">Leader</span>':'')+'</span><span class="mono">'+AP(m.pc)+' AP · '+m.w+' W'+(m.st==='DEAD'?' · DEAD':'')+'</span>');
  row.querySelector('[data-mid]').onclick=function(){openModel(m.id)};
- if(m.id!==f.lead){var rm=E('button','btn gh sm','✕');rm.style.marginLeft='6px';rm.onclick=function(){m.fo='—';rF();rRos();T(m.n.split(' ')[0]+' returned to standby.')};row.appendChild(rm)}
+ if(m.id!==f.lead&&!active){var rm=E('button','btn gh sm','✕');rm.style.marginLeft='6px';rm.title='Remove from Force';rm.onclick=function(){m.fo='—';rF();rRos();T(m.n.split(' ')[0]+' returned to standby.')};row.appendChild(rm)}
  ml.appendChild(row)});
 fc.appendChild(ml);
-/* add a standby model to this force */
+/* add a standby model to this force — richer options, clearer confirmation */
 var pool=S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'});
-if(pool.length){var ar=E('div');ar.style.cssText='display:flex;gap:6px;margin-top:8px';
- var as=E('select');as.style.flex='1';as.add(new Option('＋ add a standby model…',''));
- pool.forEach(function(m){as.add(new Option(m.n+' — '+baseModel(m)+', '+m.loc,m.id))});
- var ab=E('button','btn gh sm','Add');ab.onclick=function(){if(!as.value)return;var mm=S.roster.filter(function(x){return x.id===as.value})[0];mm.fo=f.n;mm.loc=ld?ld.loc:mm.loc;rF();rRos();T(mm.n.split(' ')[0]+' joined '+f.n)};
+if(pool.length&&!active){var ar=E('div');ar.style.cssText='display:flex;gap:6px;margin-top:8px';
+ var as=E('select');as.style.cssText='flex:1;padding:8px';as.add(new Option('＋ choose a standby model to add…',''));
+ pool.forEach(function(m){as.add(new Option(m.n+' — '+baseModel(m)+' · '+m.cls+' R'+m.rk+' · '+AP(m.pc)+' AP · '+m.w+' W · '+m.loc,m.id))});
+ var ab=E('button','btn','Add to Force');ab.onclick=function(){if(!as.value){T('Pick a model first.');return}var mm=S.roster.filter(function(x){return x.id===as.value})[0];mm.fo=f.n;mm.loc=ld?ld.loc:mm.loc;rF();rRos();T('✓ '+mm.n.split(' ')[0]+' added to '+f.n+' — now '+members.length+1+' models')};
  ar.appendChild(as);ar.appendChild(ab);fc.appendChild(ar)}
-fc.insertAdjacentHTML('beforeend','<label class="f">Dispatched AP — <span class="mono" id="apv_'+f.id+'">'+f.ap+'</span></label>');
-var s=E('input');s.type='range';s.min=0;s.max=S.dom;s.value=f.ap;
+fc.insertAdjacentHTML('beforeend','<label class="f">Dispatched AP pool — <span class="mono" id="apv_'+f.id+'">'+f.ap+'</span></label>');
+var s=E('input');s.type='range';s.min=0;s.max=S.dom;s.value=f.ap;s.disabled=active;
 s.oninput=function(){f.ap=+s.value;fc.querySelector('#apv_'+f.id).textContent=f.ap;rW();rSucc()};
 fc.appendChild(s);
-var db=E('button','btn gh sm','Disband Force');db.style.marginTop='8px';
+if(!active){var db=E('button','btn gh sm','Disband Force');db.style.marginTop='8px';
 db.onclick=function(){S.roster.forEach(function(m){if(m.fo===f.n)m.fo='—'});S.forces=S.forces.filter(function(z){return z!==f});
  S.succ.forEach(function(z){if(z.fid===f.id)z.fid=null});
  var ff=document.getElementById('ff');for(var i=ff.options.length-1;i>=0;i--)if(ff.options[i].value===f.n)ff.remove(i);
- rF();rRos();T('Force disbanded: '+f.n)};
-fc.appendChild(db);
+ fixLeaderTags();rF();rRos();T('Force disbanded: '+f.n)};
+fc.appendChild(db)}
 c.appendChild(fc);w.appendChild(c)});
 var dc=E('div','card','<h3>Standby — garrisoned, not in any Force</h3><div style="font-size:11px;color:var(--dim);margin-bottom:8px">Posted at a location you hold. Assign to a Force to make them deployable.</div>');var ml2=E('div','mem');
 var sb=S.roster.filter(function(m){return m.fo==='—'});
@@ -551,29 +620,9 @@ if(!dz.length){b.insertAdjacentHTML('beforeend','<div class="empty"><b>'+h.name+
 dz.filter(function(x){return !x.open}).forEach(function(x){
 b.insertAdjacentHTML('beforeend','<div class="empty" style="opacity:.6;text-align:left"><b>'+x.name+'</b> <span class="pill">'+x.kind.toUpperCase()+'</span> — closed<br><span class="mono" style="font-size:11px;color:var(--blh)">'+x.reason+'</span></div>')});
 var w=E('div','grid g2');
-var sh=dz.filter(function(s){return s.kind==='shop'&&s.open})[0];
-if(sh){var c=E('div','card','<h3>'+sh.name+'</h3>');var g=E('div','grid g2');
-D.equipment_alpha.shop_catalog.forEach(function(it){var s=E('div','shopc','<b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+it.d+'</div>');
-var r=E('div',null,'<span class="price">'+it.pc+' PC</span>');r.style.cssText='display:flex;justify-content:space-between';
-var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<it.pc){T('Not enough '+curName()+'.');return}S.cur-=it.pc;S.inv.push({n:it.n,cat:it.cat,d:it.d});rW();rLoad();T(it.n+' purchased.')};
-r.appendChild(bt);s.appendChild(r);g.appendChild(s)});c.appendChild(g);w.appendChild(c)}
-var fg=dz.filter(function(s){return s.kind==='forge'&&s.open})[0];
-if(fg){var c2=E('div','card','<h3>'+fg.name+' — tiers '+(fg.tiers||'I')+'</h3><label class="f">Base weapon</label><select id="fb"></select><label class="f">Tag</label><div id="ftg"></div><label class="f">Name your work</label><input type="text" id="fn" placeholder="It must have a name"><div class="apt"><span style="font-size:11px;color:var(--dim)">Cost</span><span class="n" id="fp">—</span></div><button class="btn" style="width:100%;margin-top:9px" id="fgo">FORGE IT</button>');
-w.appendChild(c2);b.appendChild(w);
-var bs=c2.querySelector('#fb');var ws=S.inv.filter(function(i){return i.cat==='WEAPON'});
-if(!ws.length)bs.add(new Option('— no weapons —',''));
-ws.forEach(function(x,i){bs.add(new Option(x.n,i))});
-var tags=D.equipment_alpha.forge_tags_alpha.map(function(t){return{t:t.tag,c:t.cost,d:t.d,lk:t.access!=='open'&&!(t.access.indexOf('Drukhari')>=0&&S.dru),rq:'requires '+t.access}});
-var tw=c2.querySelector('#ftg'),st=tags[0];
-tags.forEach(function(t){var d=E('div','tg'+(t===st?' sel':'')+(t.lk?' lk':''),'<span>'+t.t+' — '+t.d+'</span>'+(t.lk?'<span class="rq">'+t.rq+'</span>':'<span class="mono">+'+t.c+'</span>'));
-if(!t.lk)d.onclick=function(){st=t;tw.querySelectorAll('.tg').forEach(function(x){x.classList.remove('sel')});d.classList.add('sel');pr()};tw.appendChild(d)});
-var base=D.equipment_alpha.forge_rules.base_cost;
-function pr(){c2.querySelector('#fp').textContent=ws.length?(base+st.c)+' PC':'—'}pr();
-c2.querySelector('#fgo').onclick=function(){var x=ws[bs.value];if(!x){T('No base weapon.');return}
-var n=c2.querySelector('#fn').value.trim();if(!n){T('A Named weapon needs a name.');return}
-var cost=base+st.c;if(S.cur<cost){T('Not enough '+curName()+'.');return}
-S.cur-=cost;S.inv.splice(S.inv.indexOf(x),1);S.inv.push({n:n,cat:'WEAPON',d:'Named '+x.n+' - '+st.t+' I'});rW();rLoad();rShop();T('The forge tolls once. "'+n+'" is made.')}}
-else b.appendChild(w)}
+dz.filter(function(x){return x.open}).forEach(function(dr){w.appendChild(renderDoor(dr,h))});
+b.appendChild(w);
+renderCart()}
 /* ---- map ---- */
 var MV=null;
 function route(pl,sp){var f=fPl(S.pos.pl),t=fPl(pl),tv=D.travel;
@@ -622,25 +671,33 @@ z.appendChild(sectorChart(f.s));
 var g4=E('div','mg');
 (f.s.planets||[]).forEach(function(pl){var h=S.pos.pl===pl.id&&!S.tr;var r=route(pl.id,pl.locations[0].id);
 var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(!h&&r&&r.p?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+r.p+'p'+(r.c?' · '+r.c+'⛁':'')+'</div>':''));
-d.onclick=function(){MV.pl=pl.id;MV.lc=pl.locations[0].id;MV.lv='planet';rMap()};g4.appendChild(d)});
+d.onclick=function(){MV.pl=pl.id;MV.lc=pl.locations[0].id;MV.spaceSel=false;MV.lv='planet';rMap()};g4.appendChild(d)});
 z.appendChild(g4);
-var sp=f.s.space,inVoid=(S.pos.void===f.s.id),sph='<h3>'+f.s.name+'</h3><div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">Select a world for its surface, orbit, and the Forces standing on it — or translate into the Space layer below.</div>';
-if(sp){sph+='<div class="locpage"><div class="locimg">'+sp.name+'<span>space image — art slot</span></div><div class="locbody">'
-+'<div class="locttl">'+sp.name.toUpperCase()+' <span class="pill">DEEP SPACE</span>'+(inVoid?' <span class="pill bl">YOU ARE HERE</span>':'')+'</div>'
-+'<div class="d" style="margin:4px 0 8px">'+(sp.desc||'')+'</div>'
-+'<div class="lsec"><h5>Fleets in the void</h5>'+(sp.forces&&sp.forces.length?sp.forces.map(function(x){return '· <b>'+x[0]+'</b> — '+x[1]+' · '+x[2]}).join('<br>'):'<span style="color:var(--dim)">· none translating</span>')+'</div>'
-+'<div class="locacts">'+(inVoid?'<span style="font-size:12px;color:var(--vdh)">Your fleet holds station here.</span>':'<button class="btn bl" id="voidgo">Translate to the void — set course</button>')+'</div>'
-+'</div></div>';}
-p.innerHTML=sph;
-var vg=document.getElementById('voidgo');if(vg)vg.onclick=function(){travelSpace(f.s.id)};
+var sp=f.s.space,inVoid=(S.pos.void===f.s.id);
+/* Space is a selectable node like a world — one line, not a wall */
+if(sp){z.appendChild(E('div','zh','SPACE LAYER'));
+ var sg=E('div','mg');
+ var sd=E('div','mn'+(MV.spaceSel?' sel':''),(inVoid?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot con"></span>'+sp.name+'</div><div class="pt">Deep Space · '+((sp.forces&&sp.forces.length)?sp.forces.length+' fleet(s)':'empty')+'</div>'+(!inVoid?'<div class="pt mono" style="margin-top:3px">in-system course · 1p</div>':''));
+ sd.onclick=function(){MV.spaceSel=true;MV.pl=null;rMap()};sg.appendChild(sd);z.appendChild(sg)}
+/* detail panel: space when selected, else the world hint */
+if(MV.spaceSel&&sp){
+ p.innerHTML='<h3>'+sp.name+'</h3><div class="locpage"><div class="locimg">'+sp.name+'<span>space image — art slot</span></div><div class="locbody">'
+ +'<div class="locttl">'+sp.name.toUpperCase()+' <span class="pill">DEEP SPACE</span>'+(inVoid?' <span class="pill bl">YOU ARE HERE</span>':'')+'</div>'
+ +'<div class="d" style="margin:4px 0 8px">'+(sp.desc||'')+'</div>'
+ +'<div class="lsec"><h5>Fleets in the void</h5>'+(sp.forces&&sp.forces.length?sp.forces.map(function(x){return '· <b>'+x[0]+'</b> — '+x[1]+' · '+x[2]}).join('<br>'):'<span style="color:var(--dim)">· none translating</span>')+'</div>'
+ +'<div class="locacts">'+(inVoid?'<span style="font-size:12px;color:var(--vdh)">Your fleet holds station here.</span>':'<button class="btn bl" id="voidgo">Set course — in-system to deep space</button>')+'</div>'
+ +'</div></div>';
+ var vg=document.getElementById('voidgo');if(vg)vg.onclick=function(){travelSpace(f.s.id)};
+}else{p.innerHTML='<h3>'+f.s.name+'</h3><div style="font-size:12.5px;color:var(--dim)">Select a world for its surface, orbit, and the Forces standing on it — or the Space layer to translate into the void.</div>';}
 return}
 var f2=fPl(MV.pl),pl=f2.p;
 cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ',cb(f2.g.name.toUpperCase(),function(){MV.lv='segment';rMap()}),' › ',cb(f2.s.name.toUpperCase(),function(){MV.lv='sector';rMap()}),' › ');
 var s2=E('span',null,pl.name.toUpperCase());s2.style.color='var(--brh)';cr.appendChild(s2);
-[['orbit','ORBIT'],['surface','SURFACE — NAMED LOCATIONS']].forEach(function(tg){
+[['orbit','◇ ORBITAL SPACE','var(--vdh)'],['surface','▣ ON THE GROUND — NAMED LOCATIONS','var(--brh)']].forEach(function(tg){
 var locs=pl.locations.filter(function(l){return (l.tier||'surface')===tg[0]});
 if(!locs.length)return;
-z.appendChild(E('div','zh',tg[1]));
+var zh=E('div','zh','<span style="color:'+tg[2]+';font-weight:600">'+tg[1]+'</span>');
+zh.style.cssText='border-left:3px solid '+tg[2]+';padding-left:9px;margin-top:6px';z.appendChild(zh);
 var gg=E('div','mg');
 locs.forEach(function(l){var h=S.pos.pl===pl.id&&S.pos.sp===l.id&&!S.tr;
 var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+((LT(l.type)||{}).name||l.type)+(l.condition!=='intact'?' · '+((CD(l.condition)||{}).name||l.condition):'')+'</div>'+(S.pos.pl===pl.id&&!h&&!S.tr?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
@@ -689,11 +746,34 @@ if(hi.some(function(x){return x.indexOf('ACTIVE')>=0})){var b1=E('button','btn',
 if(doorsAt(l).length){var b2=E('button','btn gh','Enter station');b2.onclick=function(){go('shop')};bx2.appendChild(b2)}
 p.appendChild(bx2)}}
 /* ---- threads ---- */
+var OBJ={SKIRMISH:'Defeat the enemy force, or hold the ground when the posts run out.',DIPLOMACY:'Reach terms — trade, alliance, or tribute — for Influence.',MISSION:'Complete the objective before the posts expire.',INVASION:'Seize the planet: break the defender below Crusade strength.',TRAVEL:'Reach your destination and resolve any arrival challenge.'};
+function sectorConflicts(){var out=[];D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){
+ var byPlanet={};(s.planets||[]).forEach(function(p){(S.world.forces[p.id]||[]).forEach(function(fr){
+  var al=/Death Guard|Chaos|Black Legion/.test(fr[1])?'Chaos':/Tyranid|Ork|Necron|Aeldari|Xenos/.test(fr[1])?'Xenos':/Militarum|Astartes|Imperial|Custodes/.test(fr[1])?'Imperial':'—';
+  byPlanet[al]=(byPlanet[al]||0)+1})});
+ var sides=Object.keys(byPlanet);if(sides.length>=2)out.push({sec:s.name,status:s.status,sides:sides})})})});return out}
 function rTL(){var L=document.getElementById('tl'),V=document.getElementById('tv');
 V.style.display='none';L.style.display='block';L.innerHTML='';
-var all=S.threads.slice();if(S.tr)all.push({id:'tr',type:'TRAVEL',n:'Transit — '+fLoc(S.tr.pl,S.tr.sp).name,loc:'The void between',turn:'you'});
-all.forEach(function(t){var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b><div style="font-size:11.5px;color:var(--dim);margin-top:2px">'+t.loc+'</div></div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'OPEN — join at location')+'</span>');
-d.onclick=function(){if(t.turn!=='you'){T('Open thread — bring a Force to the location and post to join.');return}openT(t.id)};L.appendChild(d)})}
+/* ── thread management dashboard ── */
+var accepted=S.threads.slice();if(S.tr)accepted.push({id:'tr',type:'TRAVEL',n:'Transit — '+fLoc(S.tr.pl,S.tr.sp).name,loc:'The void between',turn:'you'});
+var dash=E('div','card');dash.innerHTML='<h3>Thread board</h3><div style="font-size:11.5px;color:var(--dim)">Everything you are in, everything you could join, and who is at war.</div>';
+/* accepted */
+dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Your threads — accepted ('+accepted.length+')</h5></div>');
+accepted.forEach(function(t){var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b><div style="font-size:11px;color:var(--dim);margin-top:2px">'+t.loc+'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Objective: '+(OBJ[t.type]||'—')+'</div></div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'waiting')+'</span>');
+ d.onclick=function(){if(t.turn!=='you'){T('Waiting on the other party.');return}openT(t.id)};dash.appendChild(d)});
+/* available */
+var avail=[];Object.keys(S.world.history||{}).forEach(function(key){(S.world.history[key]||[]).forEach(function(h){if(/open/i.test(h)){var parts=key.split('/');avail.push({key:key,txt:h,pl:parts[0],lid:parts[1]})}})});
+dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Available missions — open at reachable locations ('+avail.length+')</h5></div>');
+if(!avail.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">None open right now.</div>');
+avail.forEach(function(a){var pp=fPl(a.pl);var lname=(pp&&fLoc(a.pl,a.lid))?fLoc(a.pl,a.lid).name:a.lid;
+ var d=E('div','thc','<div><b>'+a.txt.split('·')[0]+'</b><div style="font-size:11px;color:var(--dim);margin-top:2px">'+(pp?pp.p.name:'')+' · '+lname+'</div></div><span class="mono" style="color:var(--faint)">travel to join</span>');
+ d.onclick=function(){if(pp){MV.pl=a.pl;MV.lc=a.lid;MV.lv='planet';MV.spaceSel=false;go('map')}};dash.appendChild(d)});
+/* conflicts */
+var confs=sectorConflicts();
+dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Sector conflicts — who wars whom ('+confs.length+')</h5></div>');
+if(!confs.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">No multi-faction sectors in play.</div>');
+confs.forEach(function(c){dash.insertAdjacentHTML('beforeend','<div class="thc"><div><b>'+c.sec+'</b> <span class="stt '+c.status+'">'+c.status+'</span><div style="font-size:11.5px;color:var(--dim);margin-top:3px">'+c.sides.join(' vs ')+'</div></div></div>')});
+L.appendChild(dash)}
 function openT(id){var L=document.getElementById('tl'),V=document.getElementById('tv');
 L.style.display='none';V.style.display='block';V.innerHTML='';
 var bk=E('button','btn gh sm','← All threads');bk.onclick=rTL;V.appendChild(bk);
@@ -880,8 +960,8 @@ S.succ.push({n:m.n,fid:null});
 RB.classList.remove('on');rRos();rW();T(m.n+' rises from the ranks. The Leader tag is theirs.');go('barracks');return}}
 RS.st++;rRite()}
 /* ---- boot ---- */
-function init(){S=demoSave();enrichRoster();mkOverview();
-S.active=S.active||'kane';
+function init(){S=demoSave();enrichRoster();fixLeaderTags();mkOverview();initTips();mkEntity();mkHUD();mkCart();
+S.active=S.active||'kane';S.cart=S.cart||[];
 var f=fPl(S.pos.pl);MV={lv:'sector',seg:f.g.id,sec:f.s.id,pl:S.pos.pl,lc:S.pos.sp};
 document.getElementById('rname').textContent=S.player.name.split(',')[0];
 document.getElementById('rdata').textContent='Canon: '+D.meta.format+' v'+D.meta.version;
@@ -918,6 +998,10 @@ function enrichRoster(){var lore={
    if(m.st!=='GARRISON'){m.th.push('SKIRMISH — Ash Ravine · active, post 7');}
    if(isLeader(m))m.th.push('MISSION — The First Landing · victory');}
  });}
+/* a Named model only keeps the Leader tag while it actually leads a Force */
+function fixLeaderTags(){S.roster.forEach(function(m){if(!m.tag)return;var leads=isForceLead(m);
+ if(m.tag.indexOf('Leader')>=0&&!leads&&!isCmdr(m))m.tag=(m.tag.replace(/\s*[·-]?\s*Leader/,'').trim())||'Named';
+ if(leads&&m.tag.indexOf('Named')>=0&&m.tag.indexOf('Leader')<0)m.tag='Named · Leader';});}
 /* one overlay, reused from every screen */
 var MOV=null;
 function mkOverview(){if(MOV)return;MOV=E('div','mov');document.body.appendChild(MOV);
@@ -928,15 +1012,23 @@ function factionFrame(m,big){var col=frameColor(),rk=m.rk||1;
  return '<div class="mframe" style="--fr:'+col+(big?'':';width:64px;height:76px;flex-basis:64px')+'"><div class="rankpips">'+pips+'</div><span class="sig">'+sig+'</span><div class="ph">portrait</div></div>';}
 function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];if(!m)return;
  var stcol=m.st==='DEAD'?'var(--blh)':m.st==='DEPLOYED'?'var(--brh)':'var(--dim)';
- var loadout=m.sl.map(function(s,i){return '<div class="ovslot clk" data-si="'+i+'"><span class="sk">'+s.k+'</span><br>'+(s.it?'<b>'+s.it.n+'</b> — '+s.it.d:'<span style="color:var(--dim)">empty — click to equip</span>')+'</div>'}).join('');
  var threads=(m.th&&m.th.length)?m.th.map(function(t){return '<div>'+t+'</div>'}).join(''):'<div style="color:var(--dim)">No threads recorded.</div>';
+ /* slots grouped by type, wrapping grid — scales to 6+ slots */
+ var order=['WEAPON','ITEM','ABILITY','WARP CAST','NAMED'],names={WEAPON:'Weapons',ITEM:'Items',ABILITY:'Abilities','WARP CAST':'Warp Casts',NAMED:'Named'};
+ var groups='';order.forEach(function(k){var idxs=[];m.sl.forEach(function(s,i){if(s.k===k)idxs.push(i)});if(!idxs.length)return;
+  groups+='<div class="slotgroup"><h5>'+names[k]+' ('+idxs.length+')</h5><div class="slotgrid">';
+  idxs.forEach(function(i){var s=m.sl[i];
+   groups+='<div class="slotcard'+(s.it?'':' empty')+'" data-si="'+i+'"><span class="sk">'+s.k+'</span>'+(s.it?'<div class="sn">'+s.it.n+'</div><div class="sd">'+annotate(s.it.d)+'</div>':'<div class="sd">empty — click to equip</div>')+'</div>'});
+  groups+='</div></div>'});
  MOV.innerHTML='<div class="movc"><div class="movh">'
- +'<div style="display:flex;flex-direction:column;gap:8px"><button class="movbk" id="movx">← Back</button>'+factionFrame(m,true)+'</div>'
+ +'<div style="display:flex;flex-direction:column;gap:8px"><button class="movbk" id="movx">← Back</button>'+factionFrame(m,true).replace('mframe','mframe big')+'</div>'
  +'<div class="movtitle" style="flex:1"><h2>'+m.n+'</h2>'
- +'<div class="sub">'+(m.tag?m.tag+' · ':'')+FAC(S.player.faction).name+' · '+m.cls+' · Rank '+m.rk+'</div>'
+ +'<div class="sub">'+(m.tag?m.tag+' · ':'')+FAC(S.player.faction).name+' · '+baseModel(m)+' · '+m.cls+'</div>'
  +'<div class="ovstats">'
+ +'<div><div class="k">Rank</div><div class="v">R'+m.rk+'</div></div>'
  +'<div><div class="k">Status</div><div class="v" style="color:'+stcol+';font-size:12px">'+m.st+'</div></div>'
  +'<div><div class="k">AP</div><div class="v">'+AP(m.pc)+'</div></div>'
+ +'<div><div class="k">Spd</div><div class="v">'+(m.spd||'—')+'</div></div>'
  +'<div><div class="k">Actions</div><div class="v">'+acts(m)+'</div></div>'
  +'<div><div class="k">Wounds</div><div class="v">'+m.w+'</div></div>'
  +'<div><div class="k">XP</div><div class="v" style="font-size:12px">'+m.xp+'</div></div>'
@@ -944,14 +1036,173 @@ function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];i
  +'</div><div style="font-size:11px;color:var(--dim);margin-top:6px">'+m.sub+' · '+m.loc+'</div></div></div>'
  +'<div class="movbody"><div><h4>Lore</h4><div class="lore">'+m.lore+'</div>'
  +'<h4 style="margin-top:16px">Threads fought</h4><div class="thl">'+threads+'</div></div>'
- +'<div><h4>Loadout <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— click a slot to change it</span></h4><div class="sll">'+loadout+'</div></div></div></div>';
+ +'<div><h4>Loadout <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— click filled to inspect, empty to equip</span></h4>'+groups+'</div></div></div>';
  document.getElementById('movx').onclick=function(){MOV.classList.remove('on')};
  sel=m;
- MOV.querySelectorAll('.ovslot').forEach(function(el){el.onclick=function(){sel=m;pick(+el.dataset.si)}});
+ MOV.querySelectorAll('.slotcard').forEach(function(el){var i=+el.dataset.si,s=m.sl[i];
+  el.onclick=function(){sel=m;if(s.it)openEntity(s.it,{owner:m.n.split(',')[0],origin:m.loc,threads:m.th,onChange:function(){sel=m;pick(i)}});else pick(i)}});
  MOV.classList.add('on');}
 /* leader switcher — swap the active playable figure */
 function switchTo(id){S.active=id;rHQ();T('Now commanding: '+S.roster.filter(function(m){return m.id===id})[0].n.split(',')[0]);}
 function activeModel(){return S.roster.filter(function(m){return m.id===S.active})[0]||S.roster[0];}
+/* ─── v12: glossary + tooltips (game-wide) ─── */
+var GLOSS={
+ 'DoT':'Damage over Time — 1 dmg per post, stacks per tier (I/II/III).',
+ 'Multihit':'Strikes multiple targets or times in one action; count scales with tier.',
+ 'Rapid':'Fires an extra attack at Short range.',
+ 'Venting':'Overheats — the wielder takes backlash or must cool down after firing.',
+ 'Effortless':'Costs only the model own AP — no equipment AP modifier added.',
+ 'Unwieldy':'Heavy — costs extra AP and cannot be used the post after moving.',
+ 'Suppressing':'Pins the target, reducing its actions next post.',
+ 'Consumable':'Single use; destroyed once spent.',
+ 'Stimm':'Restores wounds or grants a short combat boost.',
+ 'Regen':'Regenerates wounds each post while active.',
+ 'Med':'Medium range band.','Melee':'Melee range only — must be in base contact.','Short':'Short range band.','Long':'Long range band.',
+ 'Phys':'Physical (Kinetic) element — strong vs Infantry.',
+ 'Corr':'Corrosive (Poison) element — strong vs Infantry, Assault, Armament.',
+ 'Heat':'Heat (Fire) element — strong vs Infantry, Assault, Armament.',
+ 'Plasma':'Plasma (Radiation) element — strong vs Infantry, Flying, Assault.',
+ 'Energy':'Energy (Shock) element — strong vs Infantry, Flying, Armament.',
+ 'Warp':'Warp (Magic) element — psychic; strong vs Infantry, Armament, Flying.',
+ 'AP':'Action Points — the cost to perform this action from the Force pool.'};
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function annotate(str){if(!str)return '';var keys=Object.keys(GLOSS).sort(function(a,b){return b.length-a.length});
+ var re=new RegExp('\\b('+keys.join('|')+')\\b','g');
+ return esc(str).replace(re,function(m){return '<span class="tipable" data-tip="<b>'+m+'</b> — '+GLOSS[m]+'">'+m+'</span>'})}
+var TT=null;
+function initTips(){TT=document.createElement('div');TT.id='tt';document.body.appendChild(TT);
+ document.addEventListener('mouseover',function(e){var el=e.target.closest?e.target.closest('[data-tip]'):null;if(!el)return;TT.innerHTML=el.getAttribute('data-tip');TT.style.display='block';posTip(e)});
+ document.addEventListener('mousemove',function(e){if(TT.style.display==='block')posTip(e)});
+ document.addEventListener('mouseout',function(e){var el=e.target.closest?e.target.closest('[data-tip]'):null;if(el)TT.style.display='none'})}
+function posTip(e){var x=e.clientX+14,y=e.clientY+16;if(x+260>innerWidth)x=e.clientX-260;if(y+90>innerHeight)y=e.clientY-90;TT.style.left=x+'px';TT.style.top=y+'px'}
+/* ─── v12: entity overview card (weapon/item/ability/cast) ─── */
+var ENT=null;
+function mkEntity(){if(ENT)return;ENT=E('div','ent');document.body.appendChild(ENT);ENT.onclick=function(e){if(e.target===ENT)ENT.classList.remove('on')}}
+function openEntity(it,ctx){mkEntity();ctx=ctx||{};
+ var owner=ctx.owner||'You',origin=ctx.origin||null,threads=ctx.threads||[];
+ ENT.innerHTML='<div class="entc"><div class="entimg">'+it.n+'<span>'+it.cat+' image — art slot</span></div>'
+ +'<div class="entb"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>'+it.n+'</h3><button class="movbk" id="entx">Close</button></div>'
+ +'<span class="pill">'+it.cat+'</span>'
+ +'<div class="entrow"><div class="k">Effect</div><div class="vv">'+annotate(it.d||'—')+'</div></div>'
+ +'<div class="entrow"><div class="k">Ownership</div><div class="vv">'+owner+(origin?' · acquired at '+origin:'')+'</div></div>'
+ +'<div class="entrow"><div class="k">Threads it has seen</div><div class="vv">'+(threads.length?threads.map(function(t){return '· '+t}).join('<br>'):'<span style="color:var(--dim)">None recorded yet.</span>')+'</div></div>'
+ +(ctx.onChange?'<div style="display:flex;gap:8px;margin-top:4px"><button class="btn gh sm" id="entchg">Change this slot</button></div>':'')
+ +'</div></div>';
+ document.getElementById('entx').onclick=function(){ENT.classList.remove('on')};
+ if(ctx.onChange){document.getElementById('entchg').onclick=function(){ENT.classList.remove('on');ctx.onChange()}}
+ ENT.classList.add('on')}
+/* ─── v12: floating profile HUD ─── */
+var HUD=null;
+function mkHUD(){if(HUD)return;HUD=document.createElement('div');HUD.id='fhud';document.body.appendChild(HUD)}
+function pctW(w){var p=(w||'0/0').split('/');return +p[1]>0?Math.round(+p[0]/+p[1]*100):0}
+function forceCP(fname){var t=0;S.roster.forEach(function(m){if(m.fo===fname)t+=m.pc});return t}
+function updateHUD(){if(!HUD||!S)return;var m=activeModel();var sig=m.n.split(' ').map(function(x){return x[0]}).filter(function(c){return /[A-Za-z]/.test(c)}).slice(0,2).join('');
+ var force=S.forces.filter(function(f){return f.lead===m.id})[0];
+ var cp=force?forceCP(force.n):0,apPool=force?force.ap:0;
+ HUD.innerHTML='<div class="fh-top"><div class="fh-sig">'+sig+'</div><div><div class="fh-nm">'+m.n.split(',')[0]+'</div><div class="fh-sub">'+posTxt()+'</div></div></div>'
+ +'<div class="fh-hp"><i style="width:'+pctW(m.w)+'%"></i></div>'
+ +'<div class="fh-stats">'
+ +'<div><div class="k">Force AP</div><div class="v">'+(force?apPool:'—')+'</div></div>'
+ +'<div><div class="k">Force CP</div><div class="v">'+(cp||'—')+'</div></div>'
+ +'<div><div class="k">Wounds</div><div class="v">'+m.w+'</div></div>'
+ +'<div><div class="k">'+wallets()[0]+'</div><div class="v">'+S.cur.toLocaleString()+'</div></div>'
+ +'</div>';}
+/* ─── v12: requisition — cart, catalogs, per-door renderers ─── */
+var CART=null;
+function mkCart(){if(CART)return;CART=document.createElement('div');CART.id='cart';document.body.appendChild(CART)}
+function cartAdd(it,origin){S.cart=S.cart||[];S.cart.push({n:it.n,cat:it.cat,d:it.d,pc:it.pc||0,origin:origin});renderCart();T(it.n+' added to cart.')}
+function cartTotal(){return (S.cart||[]).reduce(function(a,x){return a+(x.pc||0)},0)}
+function renderCart(){mkCart();var c=S.cart||[];if(!c.length){CART.classList.remove('on');CART.innerHTML='';return}
+ CART.innerHTML='<h4>Checkout — '+c.length+' item'+(c.length>1?'s':'')+'</h4>'
+ +c.map(function(x,i){return '<div class="ci"><span>'+x.n+'</span><span>'+x.pc+' <button data-ci="'+i+'">✕</button></span></div>'}).join('')
+ +'<div class="cf"><div style="display:flex;justify-content:space-between;font-family:var(--mono,monospace);color:var(--brh)"><span>Total</span><span>'+cartTotal()+' '+curName()+'</span></div>'
+ +'<button class="btn" id="cbuy">Purchase all</button><button class="btn gh sm" id="cclr">Clear</button></div>';
+ CART.classList.add('on');
+ CART.querySelectorAll('[data-ci]').forEach(function(b){b.onclick=function(){S.cart.splice(+b.dataset.ci,1);renderCart()}});
+ document.getElementById('cbuy').onclick=function(){var t=cartTotal();if(S.cur<t){T('Not enough '+curName()+' — need '+t+'.');return}
+  S.cur-=t;S.cart.forEach(function(x){S.inv.push({n:x.n,cat:x.cat,d:x.d,pc:x.pc,origin:x.origin})});
+  var n=S.cart.length;S.cart=[];renderCart();rW();rShop();T('Purchased '+n+' item'+(n>1?'s':'')+'. Ownership transferred to you.')};
+ document.getElementById('cclr').onclick=function(){S.cart=[];renderCart()}}
+function doorCatalog(kind){var base=(D.equipment_alpha.shop_catalog||[]).map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}});
+ if(kind==='shop')return base.filter(function(it){return it.cat!=='CAST'});
+ if(kind==='altar')return base.filter(function(it){return it.cat==='CAST'}).concat([{n:"Nurgle's Rot",cat:'CAST',d:'Warp R2 - DoT II - area',pc:16},{n:'Stream of Corruption',cat:'CAST',d:'Warp R3 - Multihit II',pc:20}]);
+ if(kind==='reliquary')return [{n:'The Fleshmould',cat:'LEGENDARY',d:'+3 W - Regen 1/post',pc:60},{n:"Plaguebringer's Censer",cat:'LEGENDARY',d:'Aura: enemies -1 dmg - Melee DoT I',pc:80}];
+ return []}
+function sellPrice(it){var pc=it.pc||0;if(!pc){var c=doorCatalog('shop').concat(doorCatalog('altar')).filter(function(x){return x.n===it.n})[0];pc=c?c.pc:6}return Math.max(1,Math.round(pc*0.6))}
+function doorSells(kind,cat){if(kind==='shop')return cat==='WEAPON'||cat==='ITEM'||cat==='ABILITY';if(kind==='altar')return cat==='CAST';if(kind==='reliquary')return cat==='LEGENDARY';return false}
+/* render one door as a functional card */
+function renderDoor(dr,h){var c=E('div','card');
+ c.insertAdjacentHTML('beforeend','<div class="doorimg">'+dr.name+'<span>'+dr.kind+' image — art slot</span></div>');
+ c.insertAdjacentHTML('beforeend','<h3 style="margin-top:0">'+dr.name+' <span class="pill">'+dr.kind.toUpperCase()+'</span></h3>');
+ var kind=dr.kind;
+ if(kind==='shop'||kind==='altar'||kind==='reliquary'){
+  var cat=doorCatalog(kind);
+  cat.forEach(function(it){var r=E('div','shopc');
+   r.innerHTML='<div class="clk" data-ent="1"><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+annotate(it.d)+'</div></div>';
+   var rr=E('div',null,'<span class="price">'+it.pc+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px';
+   var bt=E('button','btn gh sm','Add to cart');bt.onclick=function(){cartAdd(it,dr.name)};
+   rr.appendChild(bt);r.appendChild(rr);
+   r.querySelector('[data-ent]').onclick=function(){openEntity(it,{owner:'This door ('+dr.name+')',origin:h.name,threads:[]})};
+   c.appendChild(r)});
+  /* sell section */
+  var sellable=(S.inv||[]).filter(function(it){return doorSells(kind,it.cat)});
+  if(sellable.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — this door buys '+ (kind==='altar'?'casts':kind==='reliquary'?'legendary items':'weapons, items & abilities')+' at 60%</h5></div>');
+   sellable.forEach(function(it){var r=E('div','shopc');var sp=sellPrice(it);
+    r.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span></span></div>';
+    var rr=E('div',null,'<span class="price" style="color:var(--vdh)">+'+sp+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:4px';
+    var bt=E('button','btn gh sm','Sell');bt.onclick=function(){S.cur+=sp;S.inv.splice(S.inv.indexOf(it),1);rW();rShop();T('Sold '+it.n+' for '+sp+' '+curName()+'.')};
+    rr.appendChild(bt);r.appendChild(rr);c.appendChild(r)})}
+ }
+ else if(kind==='forge'){renderForge(c,dr)}
+ else if(kind==='muster'){c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Recruit rank-and-file into your army. They arrive garrisoned at '+h.name+'.</div>');
+  [{n:'Plague Marine',cls:'Core',pc:34,w:'5/5'},{n:'Poxwalker',cls:'Core',pc:4,w:'1/1'},{n:'Foetid Bloat-Drone',cls:'Flying',pc:90,w:'6/6'}].forEach(function(rec){
+   var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+rec.n+'</b> <span class="pill">'+rec.cls+'</span></span><span class="price">'+rec.pc+'</span></div>');
+   var bt=E('button','btn gh sm','Recruit');bt.style.marginTop='5px';bt.onclick=function(){if(S.cur<rec.pc){T('Not enough '+curName()+'.');return}S.cur-=rec.pc;
+    var id='r'+S.roster.length+'_'+Date.now();S.roster.push({id:id,n:rec.n+' '+(S.roster.length),tag:'',cls:rec.cls,rk:1,pc:rec.pc,w:rec.w,st:'GARRISON',loc:fPl(S.pos.pl).p.name+' · '+h.name,fo:'—',sub:rec.n+' - R1 - 2 slots',sl:[{k:'WEAPON',it:null},{k:'ITEM',it:null}]});
+    enrichRoster();rW();rRos();rShop();T(rec.n+' recruited — garrisoned at '+h.name+'.')};r.appendChild(bt);c.appendChild(r)})}
+ else if(kind==='apothecarion'){var dead=(S.roster||[]).filter(function(m){return m.st==='DEAD'});
+  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Revive fallen models within their revival window — any element, at a cost scaled to point cost.</div>');
+  if(!dead.length)c.insertAdjacentHTML('beforeend','<div class="empty">No revivable dead in range.</div>');
+  dead.forEach(function(m){var cost=Math.max(6,m.pc*2);var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span class="clk" data-mid="'+m.id+'"><b>'+m.n+'</b></span><span class="price">'+cost+'</span></div>');
+   var bt=E('button','btn gh sm','Revive');bt.style.marginTop='5px';bt.onclick=function(){if(S.cur<cost){T('Not enough '+curName()+'.');return}S.cur-=cost;m.st='GARRISON';m.w=m.w.split('/')[1]+'/'+m.w.split('/')[1];m.loc=fPl(S.pos.pl).p.name+' · '+h.name;rW();rRos();rShop();T(m.n.split(' ')[0]+' walks again.')};
+   r.appendChild(bt);r.querySelector('[data-mid]').onclick=function(){openModel(m.id)};c.appendChild(r)})}
+ else if(kind==='shipyard'){c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Void hulls and warp drives — the freedom of the stars.</div>');
+  var wd={n:'Warp Drive Refit',pc:350,has:!!S.ships.warp};
+  var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>Warp Drive Refit</b><div class="d">Grants warp travel to The Pale Barge</div></span><span class="price">350</span></div>');
+  var bt=E('button','btn gh sm',S.ships.warp?'Already fitted':'Purchase');bt.style.marginTop='5px';bt.disabled=!!S.ships.warp;
+  bt.onclick=function(){if(S.cur<350){T('Not enough '+curName()+'.');return}S.cur-=350;S.ships.warp='The Pale Barge (warp-capable)';rW();rShop();T('Warp drive fitted — the deep is yours.')};r.appendChild(bt);c.appendChild(r)}
+ else if(kind==='relay'){c.insertAdjacentHTML('beforeend','<div class="d">Establishes an in-character remote-contact channel from '+h.name+' — reach PCs and NPCs off-world.</div>');
+  var bt=E('button','btn gh sm','Open Comms channel');bt.style.marginTop='8px';bt.onclick=function(){go('comms')};c.appendChild(bt)}
+ else if(kind==='arena'){c.insertAdjacentHTML('beforeend','<div class="d">Host a Duel — a 1v1 Skirmish under the eyes of the mob.</div>');
+  var bt=E('button','btn gh sm','Post a Duel thread');bt.style.marginTop='8px';bt.onclick=function(){startThread(S.pos.pl,h,'Skirmish')};c.appendChild(bt)}
+ else if(kind==='warp_gate'){c.insertAdjacentHTML('beforeend','<div class="d">A tear in reality — step through to skip the travel ladder. (Destination select coming with the travel rebuild.)</div>');
+  var bt=E('button','btn gh sm','Attune the gate');bt.style.marginTop='8px';bt.onclick=function(){T('The gate hums. Destination routing lands with the travel rebuild.')};c.appendChild(bt)}
+ else if(kind==='throne_room'){var crown=fPl(S.pos.pl).p.crown;
+  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">The seat of this world\'s ruler. Initiate planet-scale threads'+(crown?' — and, as a <b>Crown World</b>, sector-scale events.':'.')+'</div>');
+  var evs=[{n:'Declare Invasion (planet)',need:0},{n:'Call a Crusade (sector)',need:400,crown:true},{n:'Exterminatus (sector)',need:900,crown:true}];
+  evs.forEach(function(ev){if(ev.crown&&!crown)return;var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+ev.n+'</b></span><span class="mono" style="font-size:11px;color:var(--dim)">'+(ev.need?ev.need+' Influence':'—')+'</span></div>');
+   var bt=E('button','btn gh sm','Initiate');bt.style.marginTop='5px';bt.onclick=function(){if(S.infl<ev.need){T('Requires '+ev.need+' Influence.');return}T(ev.n+' — thread machinery lands with the thread rebuild.')};r.appendChild(bt);c.appendChild(r)})}
+ else c.insertAdjacentHTML('beforeend','<div class="d">This door stands open.</div>');
+ return c}
+function renderForge(c,dr){
+ c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Insert a weapon from your inventory and forge an affinity tag onto it — tiers '+(dr.tiers||'I')+'.</div>');
+ var ws=(S.inv||[]).filter(function(i){return i.cat==='WEAPON'});
+ if(!ws.length){c.insertAdjacentHTML('beforeend','<div class="empty">No weapon in your inventory to modify. Buy or unequip one first.</div>');return}
+ c.insertAdjacentHTML('beforeend','<label class="f">Weapon to modify</label>');
+ var bs=E('select');bs.style.cssText='width:100%';ws.forEach(function(x,i){bs.add(new Option(x.n+' — '+x.d,i))});c.appendChild(bs);
+ c.insertAdjacentHTML('beforeend','<label class="f">Affinity tag</label>');var tw=E('div');c.appendChild(tw);
+ var tags=D.equipment_alpha.forge_tags_alpha.map(function(t){return{t:t.tag,c:t.cost,d:t.d,lk:t.access!=='open'&&!(t.access.indexOf('Drukhari')>=0&&S.dru),rq:'requires '+t.access}});
+ var st=tags[0];
+ tags.forEach(function(t){var d=E('div','tg'+(t===st?' sel':'')+(t.lk?' lk':''),'<span data-tip="<b>'+t.t+'</b> — '+t.d+'">'+t.t+' — '+t.d+'</span>'+(t.lk?'<span class="rq">'+t.rq+'</span>':'<span class="mono">+'+t.c+'</span>'));
+  if(!t.lk)d.onclick=function(){st=t;tw.querySelectorAll('.tg').forEach(function(x){x.classList.remove('sel')});d.classList.add('sel');pr()};tw.appendChild(d)});
+ c.insertAdjacentHTML('beforeend','<label class="f">Name your work</label>');var nm=E('input');nm.type='text';nm.placeholder='It must have a name';nm.style.cssText='width:100%';c.appendChild(nm);
+ var apt=E('div','apt','<span style="font-size:11px;color:var(--dim)">Cost</span><span class="n" id="fpx">—</span>');c.appendChild(apt);
+ var base=D.equipment_alpha.forge_rules.base_cost;
+ function pr(){apt.querySelector('#fpx').textContent=(base+st.c)+' '+curName()}pr();
+ var go2=E('button','btn','FORGE IT');go2.style.cssText='width:100%;margin-top:9px';c.appendChild(go2);
+ go2.onclick=function(){var x=ws[bs.value];if(!x){T('No base weapon.');return}var n=nm.value.trim();if(!n){T('A Named weapon needs a name.');return}
+  var cost=base+st.c;if(S.cur<cost){T('Not enough '+curName()+'.');return}
+  S.cur-=cost;S.inv.splice(S.inv.indexOf(x),1);S.inv.push({n:n,cat:'WEAPON',d:'Named '+x.n+' - '+st.t+' I',pc:(x.pc||6)+st.c,origin:dr.name});rW();rShop();T('The forge tolls once. "'+n+'" is made.')}}
 /* ─── v8: procedural sector chart (first real map visual) ─── */
 var ALCOL={imperial:'#D8B45E',chaos:'#C4503F',xenos:'#6FA893',con:'#8F8674'};
 var STCOL={Thriving:'#D8B45E',Peace:'#6f8fa3',Warring:'#C4503F',Famine:'#9c7b2e',Corrupted:'#6d8339'};
@@ -1029,21 +1280,13 @@ function sectorChart(sec){
  return wrap;}
 /* Requisition demo — every door, ignoring location gating */
 function shopDemo(b){
- b.insertAdjacentHTML('beforeend','<div class="card" style="border-color:var(--br)"><h3>Door demo</h3><div class="d">Every door type, skinned for '+FAC(S.player.faction).name+', ignoring where you stand. This is a sandbox to feel the requisition surface — not your real location.</div></div>');
- var w=E('div','grid g2');
+ b.insertAdjacentHTML('beforeend','<div class="card" style="border-color:var(--br)"><h3>Door demo</h3><div class="d">Every door type, skinned for '+FAC(S.player.faction).name+', fully interactive, ignoring where you stand. A sandbox to feel the requisition surface — not your real location.</div></div>');
+ var w=E('div','grid g2'),fakeLoc={name:'the demo sandbox'};
  (D.galaxy.doors||[]).forEach(function(dr){
   var nm=dr.skins&&(dr.skins[S.player.faction]||dr.skins[S.player.allegiance])||dr.name;
   if(nm==='—')nm=dr.name+' (n/a for faction)';
-  var c=E('div','card','<h3>'+nm+' <span class="pill">'+dr.kind.toUpperCase()+'</span></h3><div class="d" style="margin-bottom:4px">'+dr.does+'</div><div class="mono" style="font-size:10px;color:var(--dim)">rarity: '+dr.rarity+'</div>');
-  if(dr.kind==='shop'){var g=E('div',null);g.style.marginTop='8px';
-   D.equipment_alpha.shop_catalog.forEach(function(it){var r=E('div','shopc','<b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+it.d+'</div>');
-   var rr=E('div',null,'<span class="price">'+it.pc+' PC</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center';
-   var bt=E('button','btn gh sm','Buy');bt.onclick=(function(it){return function(){if(S.cur<it.pc){T('Not enough '+curName()+'.');return}S.cur-=it.pc;S.inv.push({n:it.n,cat:it.cat,d:it.d});rW();T(it.n+' purchased.')}})(it);
-   rr.appendChild(bt);r.appendChild(rr);g.appendChild(r)});c.appendChild(g)}
-  else if(dr.kind==='forge'){var fl=E('div',null,'<div class="mono" style="font-size:10px;color:var(--dim);margin-top:8px">FORGE TAGS</div>');
-   D.equipment_alpha.forge_tags_alpha.forEach(function(t){fl.insertAdjacentHTML('beforeend','<div style="font-size:12px;padding:3px 0">· <b>'+t.tag+'</b> — '+t.d+' <span class="mono" style="color:var(--dim)">+'+t.cost+'</span></div>')});c.appendChild(fl)}
-  w.appendChild(c)});
- b.appendChild(w);}
+  w.appendChild(renderDoor({kind:dr.kind,name:nm,tiers:'I-III'},fakeLoc))});
+ b.appendChild(w);renderCart()}
 fetch('./heretics-40k-data-v1.json').then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(d){D=d;init()}).catch(function(e){
 document.getElementById('bootmsg').innerHTML='<span style="color:var(--blh)">Could not load canon (heretics-40k-data-v1.json).</span><br><br>The engine and data file must sit in the same folder and be served over HTTP —<br>opening this file directly (file://) blocks the data fetch.<br><br><span class="mono" style="color:var(--dim)">Quick local test: run &nbsp;python -m http.server&nbsp; in the folder, open localhost:8000<br>Deploy: upload both files to GitHub Pages / Netlify / itch.io</span>'});
 </script></body></html>
