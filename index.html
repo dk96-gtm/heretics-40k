@@ -247,6 +247,20 @@ canvas.smap{display:block;width:100%;height:auto}
 .entrow{display:flex;flex-direction:column;gap:3px}
 .entrow .k{font-family:var(--mono,monospace);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--br)}
 .entrow .vv{font-size:13px;color:var(--ink);line-height:1.5}
+.istats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--ln);border:1px solid var(--ln)}
+.istat{background:var(--void);padding:7px 10px}
+.istat .ik{display:block;font-family:var(--mono,monospace);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.istat .iv{font-size:13px;color:var(--brh)}
+.itags{margin-top:10px}
+.itags .ik{font-family:var(--mono,monospace);font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--br);margin-bottom:5px}
+.itag{border-left:2px solid var(--br);padding:5px 10px;margin-bottom:5px;background:rgba(176,141,62,.05)}
+.itag b{color:var(--brh);font-size:12.5px}
+.itag .itd{font-size:11.5px;color:var(--ink);line-height:1.45;margin-top:1px}
+.armt{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px}
+.armt th{font-family:var(--mono,monospace);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:left;padding:7px 10px;border-bottom:1px solid var(--ln);white-space:nowrap}
+.armt td{padding:7px 10px;border-bottom:1px solid var(--ln);color:var(--ink);vertical-align:middle}
+.armt tbody tr:hover,.armt tr:hover{background:rgba(255,255,255,.02)}
+.armt .clk:hover{color:var(--brh)}
 /* v12: model overview slot grid, grouped by type */
 .slotgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px}
 .slotgroup{margin-bottom:12px}
@@ -268,17 +282,18 @@ canvas.smap{display:block;width:100%;height:auto}
 .mframe.big{width:150px;height:180px;flex-basis:150px}
 .mframe.big .sig{font-size:46px}
 /* v12: floating profile HUD */
-#fhud{position:fixed;right:14px;bottom:14px;z-index:55;width:230px;background:rgba(20,16,12,.96);border:1px solid var(--br);box-shadow:0 8px 26px rgba(0,0,0,.5);font-size:11.5px;display:none}
-#fhud.on{display:block}
-#fhud .fh-top{display:flex;gap:9px;padding:10px;border-bottom:1px solid var(--ln);align-items:center}
-#fhud .fh-sig{width:34px;height:40px;flex-shrink:0;border:1px solid var(--br);display:flex;align-items:center;justify-content:center;font-family:var(--serif,Georgia,serif);color:var(--brh);font-size:15px}
-#fhud .fh-nm{color:var(--ink);font-weight:600;font-size:12px;line-height:1.2}
-#fhud .fh-sub{color:var(--dim);font-size:10px}
-#fhud .fh-stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--ln)}
-#fhud .fh-stats>div{background:rgba(20,16,12,.96);padding:6px 9px}
-#fhud .fh-stats .k{font-family:var(--mono,monospace);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-#fhud .fh-stats .v{font-family:var(--mono,monospace);font-size:13px;color:var(--brh)}
-#fhud .fh-hp{height:4px;background:var(--ln)}#fhud .fh-hp i{display:block;height:100%;background:var(--vdh)}
+/* clean static profile bar — compact */
+#fhud{position:fixed;right:14px;bottom:14px;z-index:55;display:none;align-items:center;gap:10px;
+ background:rgba(20,16,12,.97);border:1px solid var(--br);padding:8px 12px 8px 8px;box-shadow:0 6px 20px rgba(0,0,0,.5);width:250px}
+#fhud.on{display:flex}
+#fhud .fh-sig{width:38px;height:44px;flex-shrink:0;border:1px solid var(--br);display:flex;align-items:center;justify-content:center;font-family:var(--serif,Georgia,serif);color:var(--brh);font-size:17px}
+#fhud .fh-main{flex:1;min-width:0}
+#fhud .fh-nm{color:var(--ink);font-weight:600;font-size:12.5px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#fhud .fh-rk{font-family:var(--mono,monospace);font-size:9px;color:var(--brh);font-weight:400}
+#fhud .fh-hp{height:4px;background:var(--ln);margin:4px 0}#fhud .fh-hp i{display:block;height:100%;background:var(--vdh)}
+#fhud .fh-line{display:flex;gap:9px;font-family:var(--mono,monospace);font-size:10.5px;color:var(--brh)}
+#fhud .fh-line span{white-space:nowrap}
+#fhud .fh-loc{font-size:9.5px;color:var(--dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* v12: requisition cart + door image */
 .doorimg{height:70px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.02),rgba(255,255,255,.02) 8px,transparent 8px,transparent 16px);border-bottom:1px solid var(--ln);font-family:var(--serif,Georgia,serif);color:var(--dim);font-size:12px;margin:-1px -1px 8px}
 .doorimg span{font-family:var(--mono,monospace);font-size:7px;letter-spacing:.12em;text-transform:uppercase;opacity:.6}
@@ -477,7 +492,8 @@ roster:[
 {id:'pd',n:'Poxwalker Delta',tag:'',cls:'Core',rk:1,pc:4,w:'1/1',st:'DEPLOYED',loc:lA,fo:fo,sub:'Poxwalker - R1 - 1 slot',sl:pxs()},
 {id:'pe',n:'Poxwalker Epsilon',tag:'',cls:'Core',rk:1,pc:4,w:'0/1',st:'DEAD',loc:'Ash Ravine — field, intact',fo:fo,sub:'Poxwalker - R1 - 1 slot',sl:pxs()},
 {id:'pf',n:'Poxwalker Zeta',tag:'',cls:'Core',rk:1,pc:4,w:'0/1',st:'DEAD',loc:'Ash Ravine — field, intact',fo:fo,sub:'Poxwalker - R1 - 1 slot',sl:pxs()},
-{id:'vec',n:'Foetid Vector',tag:'',cls:'Flying',rk:1,pc:90,w:'6/6',st:'GARRISON',loc:lR,fo:'—',sub:'Foetid Bloat-Drone - R1 - 2 slots',sl:[{k:'WEAPON',it:{n:'Plaguespitter',cat:'WEAPON',d:'Heat 2 - Multihit II'}},{k:'ITEM',it:null}]}],
+{id:'vec',n:'Foetid Vector',tag:'',cls:'Flying',rk:1,pc:90,w:'6/6',st:'GARRISON',loc:lR,fo:'—',sub:'Foetid Bloat-Drone - R1 - 2 slots',sl:[{k:'WEAPON',it:{n:'Plaguespitter',cat:'WEAPON',d:'Heat 2 - Multihit II'}},{k:'ITEM',it:null}]},
+{id:'kraill',n:'Brother Kraill',tag:'Named',cls:'Core',rk:4,pc:80,w:'6/6',st:'GARRISON',loc:lR,fo:'—',sub:'Named Plague Marine - R4 - 5 slots',sl:[{k:'WEAPON',it:{n:'Boltgun',cat:'WEAPON',d:'Phys 2 - Med - 1 AP'}},{k:'WEAPON',it:{n:'Plague Knife',cat:'WEAPON',d:'Corr 2 - Effortless'}},{k:'ITEM',it:null},{k:'ABILITY',it:null},{k:'NAMED',it:null}]}],
 forces:[{id:'rw',n:'The Rotward',lead:'morvax',ap:26}],
 succ:[{n:'Brother Morvax',fid:'rw'},{n:'Gharn the Sevenfold',fid:null}],
 world:{
@@ -588,29 +604,47 @@ function makeForce(name,leadId){var ld=S.roster.filter(function(m){return m.id==
  S.forces.push({id:'f'+(S.forces.length+1)+'_'+ld.id,n:nm,lead:leadId,ap:0});
  ld.fo=nm;fixLeaderTags();fcOpen=false;rF();rRos();
  var ff=document.getElementById('ff');ff.add(new Option(nm,nm));T('Force raised: '+nm+' under '+ld.n.split(',')[0]);}
-/* Armoury — every piece of gear you own, equipped or in store */
+/* Armoury — a columns view of every piece of gear you own */
+var armF={q:'',cat:'',eq:''};
 function rArm(){var w=document.getElementById('arm');w.innerHTML='';
  var rows=[];(S.inv||[]).forEach(function(it){rows.push({it:it,eq:null})});
  S.roster.forEach(function(m){m.sl.forEach(function(s){if(s.it)rows.push({it:s.it,eq:m})})});
- var q=(document.getElementById('armq')?document.getElementById('armq').value:'').toLowerCase();
- var card=E('div','card','<h3>Armoury — everything you own ('+rows.length+')</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:8px">Every weapon, item, ability and cast in your possession — equipped or in store. Click any to open its card.</div><input type="text" id="armq" placeholder="Search gear…" style="width:100%;margin-bottom:6px">');
- ['WEAPON','ITEM','ABILITY','CAST','LEGENDARY'].forEach(function(cat){
-  var cr=rows.filter(function(r){return r.it.cat===cat&&(!q||r.it.n.toLowerCase().indexOf(q)>=0)});if(!cr.length)return;
-  card.insertAdjacentHTML('beforeend','<div class="lsec"><h5>'+cat+'S ('+cr.length+')</h5></div>');
-  cr.forEach(function(r){var row=E('div','shopc');
-   row.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="clk" style="flex:1"><b>'+r.it.n+'</b><div class="d">'+annotate(r.it.d)+'</div></span><span class="mono" style="font-size:10px;color:'+(r.eq?'var(--vdh)':'var(--dim)')+';white-space:nowrap">'+(r.eq?'◉ '+r.eq.n.split(',')[0]:'in store')+'</span></div>';
-   row.querySelector('.clk').onclick=function(){openEntity(r.it,{owner:'You',origin:r.eq?'equipped on '+r.eq.n.split(',')[0]:'held in store'})};
-   card.appendChild(row)})});
+ var card=E('div','card');
+ card.innerHTML='<h3>Armoury — everything you own ('+rows.length+')</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:8px">Stats at a glance — no clicking needed. Click a name for the full card; click the equipped model to edit its loadout.</div>';
+ var fb=E('div','fbar');
+ fb.innerHTML='<input type="text" id="armq" placeholder="Search…" value="'+esc(armF.q)+'"><select id="armc"><option value="">Type — all</option>'+['WEAPON','ITEM','ABILITY','CAST','LEGENDARY'].map(function(c){return '<option'+(armF.cat===c?' selected':'')+'>'+c+'</option>'}).join('')+'</select><select id="arme"><option value="">Equipped — all</option><option value="eq"'+(armF.eq==='eq'?' selected':'')+'>Equipped</option><option value="un"'+(armF.eq==='un'?' selected':'')+'>Unequipped</option></select>';
+ card.appendChild(fb);
+ var filtered=rows.filter(function(r){
+  if(armF.q&&r.it.n.toLowerCase().indexOf(armF.q.toLowerCase())<0)return false;
+  if(armF.cat&&r.it.cat!==armF.cat)return false;
+  if(armF.eq==='eq'&&!r.eq)return false;
+  if(armF.eq==='un'&&r.eq)return false;
+  return true});
+ var scroll=E('div');scroll.style.overflowX='auto';
+ var tbl=E('table','armt');
+ tbl.innerHTML='<thead><tr><th>Name</th><th>Type</th><th>Element</th><th>Dmg</th><th>Range</th><th>AP</th><th>Tags</th><th>Equipped</th></tr></thead>';
+ var tb=document.createElement('tbody');
+ filtered.forEach(function(r){var p=parseItem(r.it),tr=document.createElement('tr');
+  tr.innerHTML='<td class="clk armname"><b>'+r.it.n+'</b></td><td style="color:var(--dim)">'+r.it.cat+'</td><td>'+(p.element||'—')+'</td><td class="mono">'+(p.dmg||'—')+'</td><td>'+(p.range||'—')+'</td><td class="mono">'+(p.ap?p.ap.replace(/ AP| \(.*/,''):'—')+'</td><td style="font-size:11px">'+(p.tags.length?p.tags.map(function(t){return t.tag+(t.tier?' '+t.tier:'')}).join(', '):'—')+'</td><td>'+(r.eq?'<span class="clk armeq" style="color:var(--vdh)">◉ '+r.eq.n.split(',')[0]+'</span>':'<span style="color:var(--dim)">unequipped</span>')+'</td>';
+  tr.querySelector('.armname').onclick=function(){openEntity(r.it,{owner:'You',origin:r.eq?'equipped on '+r.eq.n.split(',')[0]:'held in store'})};
+  var eq=tr.querySelector('.armeq');if(eq)eq.onclick=function(){openModel(r.eq.id)};
+  tb.appendChild(tr)});
+ tbl.appendChild(tb);scroll.appendChild(tbl);card.appendChild(scroll);
+ if(!filtered.length)card.insertAdjacentHTML('beforeend','<div class="empty">Nothing matches these filters.</div>');
  w.appendChild(card);
- var qi=document.getElementById('armq');if(qi)qi.oninput=function(){var v=qi.value;rArm();document.getElementById('armq').value=v;document.getElementById('armq').focus()}}
+ var qi=document.getElementById('armq');qi.oninput=function(){armF.q=qi.value;var pos=qi.selectionStart;rArm();var n=document.getElementById('armq');n.focus();n.setSelectionRange(pos,pos)};
+ document.getElementById('armc').onchange=function(){armF.cat=this.value;rArm()};
+ document.getElementById('arme').onchange=function(){armF.eq=this.value;rArm()}}
 function rF(){fixLeaderTags();var w=document.getElementById('fw');w.innerHTML='';
 /* ── create a new Force ── */
 var top=E('div','card');
 if(!fcOpen){var nb=E('button','btn','＋ Raise a new Force');nb.onclick=function(){fcOpen=true;rF()};
  top.innerHTML='<h3>Forces</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:10px">A Force is a Named or Commander leader plus the models under them. Only Forces deploy into threads — standby models must be assigned to one first. A Force can only be raised or edited while its leader is <b>not in an active thread</b> (travelling, in the void, or garrisoned).</div>';
  var el=eligibleLeaders();
- if(!el.length)top.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;color:var(--blh)">No leader free to raise a Force. Leaders currently fighting in a thread are locked — raise one while travelling, in the void, or with a garrisoned Named model.</div>');
- else top.appendChild(nb);
+ if(el.length){top.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;color:var(--vdh);margin-bottom:8px">'+el.length+' leader'+(el.length>1?'s':'')+' free to raise a Force: '+el.map(function(m){return m.n.split(',')[0]}).join(', ')+'.</div>');top.appendChild(nb);}
+ else{var locked=S.roster.filter(function(m){return m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&m.st!=='DEAD'});
+  top.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;color:var(--blh)">No leader is free to raise a new Force right now. A Named or Commander model can only raise one while <b>garrisoned</b> (not in a thread) or while <b>you are travelling / in the void</b>.</div>');
+  if(locked.length)top.insertAdjacentHTML('beforeend','<div style="font-size:11px;color:var(--dim);margin-top:6px">'+locked.map(function(m){return '· '+m.n.split(',')[0]+' — '+(isForceLead(m)?'already leads '+m.fo:m.st==='DEPLOYED'?'in an active thread':m.fo!=='—'?'a member of '+m.fo:'available')}).join('<br>')+'</div>');}
 }else{
  top.innerHTML='<h3>Raise a new Force</h3>';
  var ni=E('input');ni.type='text';ni.placeholder='Name the Force — it must have a name';ni.style.cssText='width:100%;margin-bottom:8px';
@@ -892,16 +926,29 @@ if(t)V.appendChild(threadHeader(t));
 if(id==='ash')bBattle(V);
 else if(id==='bar')bDiplo(V);
 else if(t){
- var box=E('div','card');
- if(t.type==='MISSION'){box.innerHTML='<h3>Mission briefing</h3><div class="d" style="margin-bottom:10px">'+(t.about||'')+'</div><div style="font-size:11.5px;color:var(--dim)">Accept to add this to your active operations. Bring a Force to '+t.loc+' to begin.</div>';
-  var acc=E('button','btn','Accept mission');acc.style.cssText='width:100%;margin-top:10px';acc.onclick=function(){t.accepted=true;t.turn='you';T('Mission accepted: '+t.n+'. It\'s now in your active operations.');rTL()};
-  if(t.accepted){acc.textContent='✓ Accepted — in your operations';acc.disabled=true}
-  box.appendChild(acc);}
- else{box.innerHTML='<h3>'+t.type+'</h3><div class="d">'+(t.about||'A '+t.type.toLowerCase()+' at '+t.loc+'.')+'</div><div style="font-size:11.5px;color:var(--dim);margin-top:8px">Full play for this thread type lands with the combat/thread rebuild. You can still manage it here.</div>';}
- V.appendChild(box);
- var xb=E('button','btn gh','Exit thread');xb.style.marginTop='10px';xb.onclick=function(){exitThread(t)};V.appendChild(xb);
+ if(t.type==='MISSION'&&!t.accepted){
+  var box=E('div','card');box.innerHTML='<h3>Mission briefing</h3><div class="d" style="margin-bottom:10px">'+(t.about||'')+'</div><div style="font-size:11.5px;color:var(--dim)">Accept to add this to your active operations, then post to begin.</div>';
+  var acc=E('button','btn','Accept mission');acc.style.cssText='width:100%;margin-top:10px';acc.onclick=function(){t.accepted=true;t.turn='you';T('Mission accepted: '+t.n+' — you can post now.');openT(t.id)};
+  box.appendChild(acc);V.appendChild(box);
+  var xb0=E('button','btn gh','Decline / leave');xb0.style.marginTop='10px';xb0.onclick=function(){exitThread(t)};V.appendChild(xb0);
+ } else bGeneric(V,t);
 }
 else bTravel(V)}
+/* generic thread reader + composer — read the thread, write and post your reply */
+function bGeneric(V,t){if(!t.posts)t.posts=[{who:(t.initiator||'—').replace(/\s*\(.*/,''),body:t.about||('A '+t.type.toLowerCase()+' at '+t.loc+'.'),tag:t.initiator&&/^You/.test(t.initiator)?'you':''}];
+ var wrap=E('div','tw solo');
+ var scroll=E('div','threadscroll');
+ t.posts.forEach(function(p,i){scroll.insertAdjacentHTML('beforeend','<div class="post"><div class="ph"><span class="who '+(p.tag==='you'?'you':'en')+'">'+p.who+'</span><span class="mono" style="color:var(--dim)">Post '+(i+1)+'</span></div><div class="body">'+p.body+'</div></div>')});
+ wrap.appendChild(scroll);
+ var cp=E('div','comp');cp.innerHTML='<div class="ch">Your post — '+activeModel().n.split(',')[0]+' · <span class="tp '+t.type+'" style="margin:0">'+t.type+'</span></div>';
+ cp.appendChild(tools());
+ var fic=E('div','fic');fic.contentEditable=true;fic.setAttribute('data-ph','Write your post — advance the story, make your move…');cp.appendChild(fic);
+ var pb=E('button','btn bl','Post to thread');pb.style.cssText='width:100%;margin:9px 0 0';
+ pb.onclick=function(){var v=fic.innerHTML.trim();if(!v||v==='<br>'){T('Write something first.');return}
+  t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you'});fic.innerHTML='';openT(t.id);
+  var sc=document.querySelector('#tv .threadscroll');if(sc)sc.scrollTop=sc.scrollHeight;T('Posted to '+t.n+'.')};
+ cp.appendChild(pb);wrap.appendChild(cp);V.appendChild(wrap);
+ var xb=E('button','btn gh','Exit thread');xb.style.marginTop='10px';xb.onclick=function(){exitThread(t)};V.appendChild(xb)}
 function tools(){var t=E('div','ft');[['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],['strikeThrough','<s>S</s>']].forEach(function(x){var b=E('button',null,x[1]);b.onmousedown=function(e){e.preventDefault();document.execCommand(x[0])};t.appendChild(b)});return t}
 var pool=26,blk=[];
 var EN=['Threshjaw (Carnifex)','Termagant brood','Sskarith'];
@@ -1212,7 +1259,7 @@ function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];i
 function switchTo(id){S.active=id;rHQ();T('Now commanding: '+S.roster.filter(function(m){return m.id===id})[0].n.split(',')[0]);}
 function activeModel(){return S.roster.filter(function(m){return m.id===S.active})[0]||S.roster[0];}
 /* ─── v12: glossary + tooltips (game-wide) ─── */
-function tierNum(r){if(!r)return 0;return {I:1,II:2,III:3,IV:4,V:5}[r.toUpperCase()]||0}
+function tierNum(r){if(!r)return 0;return {I:1,II:2,III:3,IV:4,V:5}[String(r).toUpperCase()]||parseInt(r,10)||0}
 /* glossary — values may be a string or a function(tierNumber) for tier-aware text */
 var GLOSS={
  'DoT':function(t){t=t||1;return 'Damage over Time — deals '+t+' damage each post for '+(2+t)+' posts (tier '+t+'). Stacks with itself.'},
@@ -1235,9 +1282,37 @@ var GLOSS={
  'AP':'Action Points — the cost to perform this action, drawn from the Force pool.'};
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function glossText(key,tier){var g=GLOSS[key];return typeof g==='function'?g(tier):g}
+var ELEMS=['Phys','Corr','Heat','Plasma','Energy','Warp'],RANGES=['Melee','Short','Med','Medium','Long'];
+var ELEMFULL={Phys:'Physical',Corr:'Corrosive',Heat:'Heat',Plasma:'Plasma',Energy:'Energy',Warp:'Warp'};
+/* parse a terse item string into structured stats */
+function parseItem(it){var d=(it.d||''),parts=d.split(/\s*[-·+]\s*/).map(function(s){return s.trim()}).filter(Boolean),out={cat:it.cat,named:false,element:null,dmg:null,range:null,ap:null,rank:null,tags:[],notes:[]};
+ parts.forEach(function(p){var m;
+  if(/^Named\b/i.test(p)){out.named=true;p=p.replace(/^Named\s+/i,'');}
+  if(m=p.match(/^(Phys|Corr|Heat|Plasma|Energy|Warp)\s*(\d+)?$/i)){out.element=ELEMFULL[cap(m[1])]||m[1];if(m[2])out.dmg=m[2];return}
+  if(RANGES.some(function(r){return new RegExp('^'+r+'$','i').test(p)})){out.range=(/^med/i.test(p)?'Medium':cap(p));return}
+  if(m=p.match(/^(\d+)\s*AP$/i)){out.ap=m[1]+' AP';return}
+  if(/^effortless$/i.test(p)){out.ap='Effortless (model AP only)';return}
+  if(m=p.match(/^R(\d)$/i)){out.rank=m[1];return}
+  if(m=p.match(/^(DoT|Multihit|Rapid|Venting|Regen|Suppressing|Unwieldy|Consumable|Stimm)\s*(I{1,3}|IV|V|\d+)?$/i)){var tv=m[2]||'';var roman=/^\d+$/.test(tv)?['','I','II','III','IV','V'][parseInt(tv,10)]||tv:tv.toUpperCase();out.tags.push({tag:cap(m[1]),tier:roman});return}
+  out.notes.push(p)});
+ return out}
+function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+/* full, clearly-labelled stat block for any item */
+function itemStatsHTML(it){var p=parseItem(it),rows='';
+ function r(k,v){return v?'<div class="istat"><span class="ik">'+k+'</span><span class="iv">'+v+'</span></div>':''}
+ rows+=r('Class',it.cat+(p.named?' · Named':''));
+ rows+=r('Element',p.element?p.element+(p.dmg?' '+p.dmg+' dmg':''):(p.dmg?p.dmg+' dmg':''));
+ rows+=r('Range',p.range);
+ rows+=r('Action cost',p.ap);
+ rows+=r('Cast rank',p.rank?'R'+p.rank:'');
+ if(p.notes.length)rows+=r('Effect',p.notes.map(function(n){return annotate(n)}).join(' · '));
+ var tagBlock='';
+ if(p.tags.length){tagBlock='<div class="itags"><div class="ik">Tags — what they do</div>'+p.tags.map(function(t){var tn=tierNum(t.tier);
+  return '<div class="itag"><b>'+t.tag+(t.tier?' '+t.tier:'')+'</b><div class="itd">'+glossText(t.tag,tn||1)+'</div></div>'}).join('')+'</div>';}
+ return '<div class="istats">'+rows+'</div>'+tagBlock+(rows||tagBlock?'':'<div class="iv">'+annotate(it.d||'—')+'</div>')}
 /* wrap known keywords (with optional trailing tier I/II/III) in tier-aware tooltips */
 function annotate(str){if(!str)return '';var keys=Object.keys(GLOSS).sort(function(a,b){return b.length-a.length});
- var re=new RegExp('\\b('+keys.join('|')+')\\b(\\s+(I{1,3}|IV|V)\\b)?','g');
+ var re=new RegExp('\\b('+keys.join('|')+')\\b(\\s+(I{1,3}|IV|V|\\d+)\\b)?','g');
  return esc(str).replace(re,function(m,key,g2,roman){var tier=tierNum(roman);
   var tip='<b>'+key+(roman?' '+roman:'')+'</b> — '+glossText(key,tier||1);
   return '<span class="tipable" data-tip="'+tip.replace(/"/g,'&quot;')+'">'+m+'</span>'})}
@@ -1255,7 +1330,7 @@ function openEntity(it,ctx){mkEntity();ctx=ctx||{};
  ENT.innerHTML='<div class="entc"><div class="entimg">'+it.n+'<span>'+it.cat+' image — art slot</span></div>'
  +'<div class="entb"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>'+it.n+'</h3><button class="movbk" id="entx">Close</button></div>'
  +'<span class="pill">'+it.cat+'</span>'
- +'<div class="entrow"><div class="k">Effect</div><div class="vv">'+annotate(it.d||'—')+'</div></div>'
+ +'<div class="entrow"><div class="k">Full stats</div><div class="vv">'+itemStatsHTML(it)+'</div></div>'
  +'<div class="entrow"><div class="k">Ownership</div><div class="vv">'+owner+(origin?' · acquired at '+origin:'')+'</div></div>'
  +'<div class="entrow"><div class="k">Threads it has seen</div><div class="vv">'+(threads.length?threads.map(function(t){return '· '+t}).join('<br>'):'<span style="color:var(--dim)">None recorded yet.</span>')+'</div></div>'
  +(ctx.onChange?'<div style="display:flex;gap:8px;margin-top:4px"><button class="btn gh sm" id="entchg">Change this slot</button></div>':'')
@@ -1340,17 +1415,14 @@ function devTable(m){var g=D.rules.growth,curve=g.pc_curve_by_rank,rk=Math.min(m
 function forceCP(fname){var t=0;S.roster.forEach(function(m){if(m.fo===fname)t+=m.pc});return t}
 function updateHUD(){if(!HUD||!S)return;var m=activeModel();var sig=m.n.split(' ').map(function(x){return x[0]}).filter(function(c){return /[A-Za-z]/.test(c)}).slice(0,2).join('');
  var force=S.forces.filter(function(f){return f.lead===m.id})[0];
- var cp=force?forceCP(force.n):m.pc,apPool=force?force.ap:AP(m.pc),sz=force?szTag(cp):'—';
+ var cp=force?forceCP(force.n):m.pc,apPool=force?force.ap:AP(m.pc);
  var rank=(m.id==='kane'?'Cmd R'+S.player.cmdRank:'R'+m.rk);
- HUD.innerHTML='<div class="fh-top"><div class="fh-sig">'+sig+'</div><div><div class="fh-nm">'+m.n.split(',')[0]+'</div><div class="fh-sub">◉ '+posTxt()+'</div></div></div>'
+ HUD.innerHTML='<div class="fh-sig">'+sig+'</div>'
+ +'<div class="fh-main">'
+ +'<div class="fh-nm">'+m.n.split(',')[0]+' <span class="fh-rk">'+rank+'</span></div>'
  +'<div class="fh-hp"><i style="width:'+pctW(m.w)+'%"></i></div>'
- +'<div class="fh-stats">'
- +'<div><div class="k">Rank</div><div class="v">'+rank+'</div></div>'
- +'<div><div class="k">Size</div><div class="v" style="font-size:11px">'+sz+'</div></div>'
- +'<div><div class="k">AP pool</div><div class="v">'+apPool+'</div></div>'
- +'<div><div class="k">XP</div><div class="v" style="font-size:12px">'+m.xp+'</div></div>'
- +'<div><div class="k">Force CP</div><div class="v">'+cp+'</div></div>'
- +'<div><div class="k">Used CP</div><div class="v" style="font-size:12px">'+S.army+'<small>/'+S.infl+'</small></div></div>'
+ +'<div class="fh-line"><span title="Wounds">♥ '+m.w+'</span><span title="Force AP pool">AP '+apPool+'</span><span title="Force point cost">CP '+cp+'</span><span title="'+wallets()[0]+'">'+S.cur.toLocaleString()+'</span></div>'
+ +'<div class="fh-loc">◉ '+posTxt()+'</div>'
  +'</div>';}
 /* ─── v12: requisition — cart, catalogs, per-door renderers ─── */
 var CART=null;
