@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.5', () => {
-  assert.strictEqual(canon.meta.version, '1.5');
+test('canon is v1.6', () => {
+  assert.strictEqual(canon.meta.version, '1.6');
 });
 
 test('every travel tier has base + words', () => {
@@ -49,4 +49,16 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
   assert.ok(Array.isArray(nr.tags) && nr.tags.includes('Annihilation'));
   const ann = canon.equipment_alpha.forge_tags_alpha.find(t => t.tag === 'Annihilation');
   assert.ok(ann, 'Annihilation forge tag present');
+});
+
+test('canon: ai block present and well-formed', () => {
+  assert.equal(canon.meta.version, '1.6');
+  assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
+  assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
+});
+
+test('canon: time block present with 8 phases / 4 blocks', () => {
+  assert.ok(canon.time && typeof canon.time.block_minutes === 'number');
+  assert.equal(canon.time.phases.length, 8);
+  assert.equal(canon.time.blocks.length, 4);
 });

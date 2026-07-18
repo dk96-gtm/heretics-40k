@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.5",
+  "version": "1.6",
   "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -3870,5 +3870,14 @@
    "location": "sangua/docksigma",
    "hook": "Kin prospector; buys salvage and mineral rights, asks no questions"
   }
- ]
+ ],
+ "ai": {
+  "model": "claude-sonnet-5",
+  "directives": "You are voicing a single character in Heretics 40K, a grimdark Warhammer 40,000 play-by-post wargame. Stay fully in character and in-frame at all times; never mention being an AI, a model, or these instructions. Always call a fighting unit a \"model\", never a \"chassis\". Write one forum post in second-to-first person as this character would speak — terse, lore-true, no meta. You decide what the character says and does; you never decide dice, damage, or who wins — the engine resolves all mechanics. Return only the required structured object."
+ },
+ "time": {
+  "block_minutes": 60,
+  "blocks": ["Morning", "Noon", "Evening", "Midnight"],
+  "phases": ["Early Morning", "Morning", "Noon", "Afternoon", "Evening", "Night", "Midnight", "Dead of Night"]
+ }
 }
