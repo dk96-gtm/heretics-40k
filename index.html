@@ -598,7 +598,18 @@ var THREAD=(function(){
 /*<ai-core>*/
 var NPCAI=(function(){
   var PHASES=['Early Morning','Morning','Noon','Afternoon','Evening','Night','Midnight','Dead of Night'];
-  return { PHASES:PHASES };
+  function phaseMs(bm){return bm*60000/2;}
+  function totalPhases(epochMs,nowMs,bm){return Math.floor((nowMs-epochMs)/phaseMs(bm));}
+  function stampAt(epochMs,nowMs,bm){
+    var tp=totalPhases(epochMs,nowMs,bm);if(tp<0)tp=0;
+    var pi=tp%8,day=Math.floor(tp/8)+1;
+    return {day:day,phase:PHASES[pi],blockIndex:Math.floor(pi/2),phaseIndex:pi};
+  }
+  function elapsed(fromMs,toMs,bm){
+    var p=Math.max(0,Math.floor((toMs-fromMs)/phaseMs(bm)));
+    return {phases:p,blocks:Math.floor(p/2),days:Math.floor(p/8)};
+  }
+  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed };
 })();
 /*</ai-core>*/
 /* ---- demo save ---- */
