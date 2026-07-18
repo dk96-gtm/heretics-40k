@@ -731,6 +731,62 @@ function openSettings(){mkEntity();
   document.getElementById('aiclear').onclick=function(){try{localStorage.removeItem(LS_KEY);}catch(e){}document.getElementById('aikey').value='';T('Key cleared.');};
   ENT.classList.add('on');
 }
+function threadNPC(t){
+  if(!t)return null;
+  if(t.npc)return (D.npcs_alpha||[]).filter(function(n){return n.id===t.npc;})[0]||null;
+  var hay=(t.initiator||'')+' '+((t.forces||[]).join(' '))+' '+((t.posts||[]).map(function(p){return p.who;}).join(' '));
+  return (D.npcs_alpha||[]).filter(function(n){
+    return S.world.met.indexOf(n.id)>=0 && (hay.indexOf(n.name)>=0 || hay.indexOf(n.name.split(' ')[0])>=0);
+  })[0]||null;
+}
+function nowStamp(){if(!S.time)return '';var s=NPCAI.stampAt(S.time.epoch,Date.now(),S.time.blockMinutes);return 'Day '+s.day+' · '+s.phase;}
+function aiPlace(t){
+  var L=fLoc(S.pos.pl,S.pos.sp),lt=L&&L.type?LT(L.type):null,s=S.time?NPCAI.stampAt(S.time.epoch,Date.now(),S.time.blockMinutes):null;
+  return {locName:(t&&t.loc)||(L?L.name:''),phase:s?s.phase:'',planetEffect:(lt&&lt.effect)||''};
+}
+function aiReplySchema(){return {type:'object',properties:{
+  post:{type:'string'},
+  combatPicks:{type:['array','null']},
+  dossierDelta:{type:'object',properties:{
+    newJournalEntry:{type:'string'},
+    promoteToLongTerm:{type:['string','null']},
+    commanderUpdates:{type:'object',properties:{standing:{type:'integer'},addFacts:{type:'array'},addGoals:{type:'array'},addGrudges:{type:'array'}}},
+    axisShift:{type:['object','null']}
+  },required:['newJournalEntry','commanderUpdates']}
+},required:['post','dossierDelta']};}
+function summonNPC(t,npc,mode,done){
+  mode=mode||'social';
+  var key=aiKey();
+  if(!key){T('Add your Anthropic API key in ⚙ AI settings first.');return;}
+  if(!S.npcState||!S.npcState[npc.id]){seedNPCState();}
+  var st=S.npcState[npc.id];
+  if(!st){T('No mind on record for '+npc.name.split(' ')[0]+'.');return;}
+  if(st.retired){T(npc.name.split(' ')[0]+' is dead. No answer comes.');return;}
+  var cmdr=activeModel(),cmdrId=cmdr.id,cmdrName=cmdr.n.split(',')[0];
+  var horizon=(npc.persona&&npc.persona.knowledge_horizon)||{sectors:[]};
+  var ctx={ai:D.ai,npc:npc,behavior:st.behavior,
+    memory:{recentJournal:st.recentJournal,longTermMemory:st.longTermMemory,
+            dossier:st.commanders[cmdrId]||{standing:0,facts:[],goals:[],grudges:[]}},
+    thread:t,place:aiPlace(t),scoped:NPCAI.worldScope(S.world,horizon,npc.location),
+    commanderName:cmdrName,mode:mode};
+  var b=NPCAI.buildBundle(ctx);
+  T(npc.name.split(' ')[0]+' considers…');
+  fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{
+    'content-type':'application/json','x-api-key':key,
+    'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({model:aiModel(),max_tokens:1024,system:b.system,
+      messages:[{role:'user',content:b.user}],
+      output_config:{format:{type:'json_schema',schema:aiReplySchema()}}})})
+  .then(function(r){return r.json();})
+  .then(function(j){
+    if(j.error)throw new Error(j.error.message||'API error');
+    var tb=(j.content||[]).filter(function(x){return x.type==='text';})[0];
+    var obj;try{obj=JSON.parse((tb&&tb.text)||'');}catch(e){throw new Error('unparseable reply');}
+    var v=NPCAI.validateReply(obj,mode);if(!v.ok)throw new Error(v.reason);
+    done(obj,st,cmdrId);
+  })
+  .catch(function(e){T(npc.name.split(' ')[0]+' does not respond ('+e.message+').');});
+}
 /* ---- demo save ---- */
 function pms(){return[{k:'WEAPON',it:{n:'Boltgun',cat:'WEAPON',d:'Phys 2 - Med'}},{k:'WEAPON',it:{n:'Plague Knife',cat:'WEAPON',d:'Corr 2 - Effortless'}},{k:'ITEM',it:null}]}
 function pxs(){return[{k:'WEAPON',it:{n:'Rusted Claws',cat:'WEAPON',d:'Phys 1 - Melee - Effortless'}}]}
@@ -803,12 +859,12 @@ function voidName(sid){var n=null;D.galaxy.segmentums.forEach(function(g){g.zone
 /* a Force may be in only one thread at a time (a thread may hold many Forces) */
 function threadOfForce(fname){return S.threads.filter(function(t){return (t.forces||[]).indexOf(fname)>=0})[0]}
 /* start a thread at a location; a public thread enters the location's history */
-function startThread(pid,l,type){var loc=fPl(pid).p.name+' · '+l.name;
+function startThread(pid,l,type,npcId){var loc=fPl(pid).p.name+' · '+l.name;
  var am=activeModel(),force=S.forces.filter(function(f){return f.lead===am.id})[0];
  var fname=force?force.n:null;
  if(fname){var other=threadOfForce(fname);if(other){T(fname+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}}
  var id=type.toLowerCase().slice(0,3)+'_'+l.id+'_'+S.threads.length;
- S.threads.push({id:id,type:type.toUpperCase(),n:type+' at '+l.name,loc:loc,turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',about:'You opened a '+type+' at '+l.name+'. '+(threadSummary(type.toUpperCase())),forces:fname?[fname]:[]});
+ S.threads.push({id:id,type:type.toUpperCase(),n:type+' at '+l.name,loc:loc,turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',about:'You opened a '+type+' at '+l.name+'. '+(threadSummary(type.toUpperCase())),forces:fname?[fname]:[],npc:npcId||null});
  var key=pid+'/'+l.id;if(!S.world.history[key])S.world.history[key]=[];
  S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
  T(type+' thread opened at '+l.name+(fname?' — '+fname+' committed':'')+'. Now in the location\'s public record.');
@@ -1729,7 +1785,7 @@ function openNPC(id){mkEntity();var n=D.npcs_alpha.filter(function(x){return x.i
  +'</div></div>';
  document.getElementById('entx').onclick=function(){ENT.classList.remove('on')};
  var h=document.getElementById('npchail');if(h)h.onclick=function(){ENT.classList.remove('on');go('comms')};
- var ap=document.getElementById('npcapp');if(ap)ap.onclick=function(){ENT.classList.remove('on');T('You approach '+n.name.split(' ')[0]+' face to face at '+fLoc(S.pos.pl,S.pos.sp).name+'. A local parley opens — full in-person chat lands with the thread rebuild; for now it plays as a Diplomacy thread.');startThread(S.pos.pl,fLoc(S.pos.pl,S.pos.sp),'Diplomacy')};
+ var ap=document.getElementById('npcapp');if(ap)ap.onclick=function(){ENT.classList.remove('on');T('You approach '+n.name.split(' ')[0]+' face to face at '+fLoc(S.pos.pl,S.pos.sp).name+'. A local parley opens — full in-person chat lands with the thread rebuild; for now it plays as a Diplomacy thread.');startThread(S.pos.pl,fLoc(S.pos.pl,S.pos.sp),'Diplomacy',n.id)};
  ENT.classList.add('on')}
 function threadSummary(txt){var t=txt.toUpperCase();
  if(t.indexOf('SKIRMISH')>=0)return 'A clash of forces — whoever holds the ground when the posts run out takes the field.';
