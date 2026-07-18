@@ -416,7 +416,9 @@
     "Corruption",
     "Subjugation",
     "Control"
-   ]
+   ],
+   "prime_drive": "Damnation and ascension — power torn from the warp, the galaxy remade in the Dark Gods' image.",
+   "lens": "Reads every event as an omen or an opportunity for the Ruinous Powers; a warp storm is a blessing, order an affront."
   },
   "imperial": {
    "name": "IMPERIAL",
@@ -424,11 +426,15 @@
     "Thrones",
     "Command",
     "Rank"
-   ]
+   ],
+   "prime_drive": "The survival of the Imperium of Man — compliance, purity, and the extermination of the alien and the heretic.",
+   "lens": "Reads every event through duty and threat; the unknown is presumed hostile, deviation is presumed corruption."
   },
   "xenos": {
    "name": "XENOS",
-   "wallets": "per-faction currency; Dominance/Influence names TBD per faction"
+   "wallets": "per-faction currency; Dominance/Influence names TBD per faction",
+   "prime_drive": "The ends of an alien people — be it survival, expansion, plunder, or an inhuman design no human fully grasps.",
+   "lens": "Reads events by its own species' logic; humanity is one factor among many, rarely the centre."
   }
  },
  "factions": [

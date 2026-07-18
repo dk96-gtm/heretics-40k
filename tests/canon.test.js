@@ -62,3 +62,12 @@ test('canon: time block present with 8 phases / 4 blocks', () => {
   assert.equal(canon.time.phases.length, 8);
   assert.equal(canon.time.blocks.length, 4);
 });
+
+test('canon: each allegiance carries prime_drive + lens frames', () => {
+  ['chaos', 'imperial', 'xenos'].forEach(k => {
+    const a = canon.allegiances[k];
+    assert.ok(a, 'missing allegiance ' + k);
+    assert.ok(typeof a.prime_drive === 'string' && a.prime_drive.length > 10, k + ' prime_drive');
+    assert.ok(typeof a.lens === 'string' && a.lens.length > 10, k + ' lens');
+  });
+});
