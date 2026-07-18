@@ -104,3 +104,24 @@ test('mission and generic have empty catalogs', () => {
   assert.strictEqual(THREAD.catalog(m, m.state, 'A', canon).length, 0);
   assert.strictEqual(THREAD.catalog(g, g.state, 'A', canon).length, 0);
 });
+
+test('validate rejects a block that exceeds the AP pool', () => {
+  const t = THREAD.create(combatThread, canon);   // pool The Rotward = 26
+  const over = [{actor:'gharn',action:'Attack',cost:20,effect:null},
+                {actor:'gharn',action:'Cast',cost:10,effect:null}]; // 30 > 26
+  const r = THREAD.validate(t, t.state, 'The Rotward', over, canon);
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /pool|desperation/i);
+});
+
+test('validate accepts a block within pool', () => {
+  const t = THREAD.create(combatThread, canon);
+  const ok = [{actor:'gharn',action:'Attack',cost:9,effect:null}];
+  assert.strictEqual(THREAD.validate(t, t.state, 'The Rotward', ok, canon).ok, true);
+});
+
+test('travel never drains a pool - always valid', () => {
+  const t = THREAD.create({ type:'TRAVEL', parties:['A'], seedState:{transit:{tier:'same_planet'}} }, canon);
+  const blk = [{actor:'A',action:'Transit post',cost:0,effect:{kind:'transit',words:200}}];
+  assert.strictEqual(THREAD.validate(t, t.state, 'A', blk, canon).ok, true);
+});

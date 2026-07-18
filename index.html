@@ -535,7 +535,18 @@ var THREAD=(function(){
       {actor:party,action:'Arrival challenge',group:'m',cost:0,kind:null} ];
     return [];
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog };
+  function validate(thread,state,party,block,canon){
+    if(thread.type==='TRAVEL'||thread.type==='DIPLOMACY')return {ok:true,reason:''};
+    if(thread.type==='SKIRMISH'||thread.type==='INVASION'){
+      var pool=state.pools[party]||0;
+      var spent=block.reduce(function(a,b){return a+(b.cost||0)},0);
+      if(spent>pool)return {ok:false,
+        reason:'Exceeds AP pool ('+spent+'/'+pool+') - '+
+               ((canon.rules.combat&&canon.rules.combat.desperation_action)||'desperation')};
+    }
+    return {ok:true,reason:''};
+  }
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate };
 })();
 /*</thread-core>*/
 /* ---- demo save ---- */
