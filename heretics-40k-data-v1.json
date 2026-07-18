@@ -3842,7 +3842,22 @@
    "kind": "Wild Named",
    "faction": "Drukhari",
    "location": "vigilus/carrion",
-   "hook": "trades Drukhari forge access for 250 Currency + 2 intact Tyranid bodies"
+   "hook": "trades Drukhari forge access for 250 Currency + 2 intact Tyranid bodies",
+   "persona": {
+    "voice": "Silken, transactional, endlessly polite; speaks of atrocity as inventory. Never raises the voice — the knife does that.",
+    "motivations": ["profit in flesh and secrets", "leverage over every buyer", "avoid open war that spoils the market"],
+    "red_lines": ["will not extend credit twice", "will not be threatened in the Carrion-market"],
+    "tells": ["counts on long fingers when calculating a price", "calls everyone 'client'"],
+    "disposition_to_outsiders": "Sees all others as clients or merchandise; contempt hidden under courtesy.",
+    "knowledge_horizon": { "sectors": ["vigilus"], "factions": ["Drukhari", "Tyranids", "Death Guard"], "themes": ["trade", "bodies", "forge access", "who owes whom"] }
+   },
+   "behavior_seed": {
+    "cunning":     { "value": 88, "plasticity": 10, "floor": 60, "ceiling": 98 },
+    "ferocity":    { "value": 30, "plasticity": 15, "floor": 10, "ceiling": 70 },
+    "pragmatism":  { "value": 90, "plasticity": 8,  "floor": 60, "ceiling": 98 },
+    "honor":       { "value": 35, "plasticity": 20, "floor": 10, "ceiling": 70 },
+    "supremacism": { "value": 80, "plasticity": 10, "floor": 50, "ceiling": 95 }
+   }
   },
   {
    "id": "herald",
@@ -3850,7 +3865,22 @@
    "kind": "Faction Broker",
    "faction": "Death Guard",
    "location": "nurth/garden",
-   "hook": "gateway to Death Guard faction dealings"
+   "hook": "gateway to Death Guard faction dealings",
+   "persona": {
+    "voice": "Slow, wet, and utterly unhurried; every sentence sounds like it is being exhaled through a rotted lung. Speaks of decay and Nurgle's gifts with the warmth others reserve for family.",
+    "motivations": ["spread the Pallid Court's blessing to the willing", "test outsiders' patience and their rot-tolerance", "serve the Garden's slow, inevitable design"],
+    "red_lines": ["will not be rushed — haste is an insult to the Gift", "will not suffer mockery of Grandfather Nurgle"],
+    "tells": ["pauses mid-sentence to let something drip or fester", "refers to plague and decay as 'blessings' and 'gifts'"],
+    "disposition_to_outsiders": "Patient, almost pastoral, toward the unblessed — pities their cleanliness more than it hates them, until provoked.",
+    "knowledge_horizon": { "sectors": ["vigilus", "nurth"], "factions": ["Death Guard", "Imperial Guard", "Adeptus Mechanicus"], "themes": ["plague lore", "the Garden's growth", "Death Guard doctrine", "who has resisted the Gift"] }
+   },
+   "behavior_seed": {
+    "cunning":     { "value": 55, "plasticity": 12, "floor": 35, "ceiling": 75 },
+    "ferocity":    { "value": 25, "plasticity": 10, "floor": 10, "ceiling": 50 },
+    "pragmatism":  { "value": 60, "plasticity": 10, "floor": 40, "ceiling": 80 },
+    "honor":       { "value": 70, "plasticity": 10, "floor": 50, "ceiling": 90 },
+    "supremacism": { "value": 75, "plasticity": 10, "floor": 55, "ceiling": 92 }
+   }
   },
   {
    "id": "sskarith",
@@ -3858,7 +3888,22 @@
    "kind": "NPC Commander",
    "faction": "Tyranids",
    "location": "vigilus/ashravine",
-   "hook": "active Skirmish opponent; broods gestating on Kraith Verge"
+   "hook": "active Skirmish opponent; broods gestating on Kraith Verge",
+   "persona": {
+    "voice": "A chittering, layered rasp beneath which the Hive Mind's hunger is always audible; speaks in short, predatory bursts when it speaks at all — mostly it simply acts.",
+    "motivations": ["consume biomass to feed the broods", "expand the gestating nests on Kraith Verge undisturbed", "eliminate anything that threatens the swarm's growth"],
+    "red_lines": ["will not withdraw from a kill within reach", "will not parley — there is nothing to parley over"],
+    "tells": ["broods stir and shriek in the distance before it moves", "goes still and silent right before an ambush"],
+    "disposition_to_outsiders": "All non-Tyranid life is biomass or obstacle; no distinction between enemy and prey.",
+    "knowledge_horizon": { "sectors": ["vigilus"], "factions": ["Tyranids"], "themes": ["brood strength", "biomass yield", "prey movement", "Kraith Verge gestation"] }
+   },
+   "behavior_seed": {
+    "cunning":     { "value": 45, "plasticity": 15, "floor": 25, "ceiling": 65 },
+    "ferocity":    { "value": 95, "plasticity": 5,  "floor": 80, "ceiling": 100 },
+    "pragmatism":  { "value": 40, "plasticity": 10, "floor": 20, "ceiling": 60 },
+    "honor":       { "value": 5,  "plasticity": 5,  "floor": 0,  "ceiling": 15 },
+    "supremacism": { "value": 97, "plasticity": 3,  "floor": 90, "ceiling": 100 }
+   }
   },
   {
    "id": "kryv",
@@ -3866,7 +3911,22 @@
    "kind": "Faction Broker",
    "faction": "Adeptus Mechanicus",
    "location": "sangua/hiveprimus",
-   "hook": "trades data for data; gateway to Mechanicus forge-tech"
+   "hook": "trades data for data; gateway to Mechanicus forge-tech",
+   "persona": {
+    "voice": "Flat, precise, binary-cadenced; emotion has been logged and purged. Quotes exchange rates the way others quote scripture.",
+    "motivations": ["acquire data and STC fragments", "optimize every transaction for maximal informational yield", "protect the Machine God's secrets from the unworthy"],
+    "red_lines": ["will not trade forge-tech for currency alone — data or nothing", "will not repeat a rejected offer"],
+    "tells": ["vocal modulator clicks before recalculating a price", "cants binary under its breath mid-negotiation"],
+    "disposition_to_outsiders": "Regards the fleshbound as inefficient processing units; useful only as data sources or labor.",
+    "knowledge_horizon": { "sectors": ["vigilus", "sangua"], "factions": ["Adeptus Mechanicus", "Imperial Guard"], "themes": ["forge-tech", "STC fragments", "data valuation", "who holds what archive"] }
+   },
+   "behavior_seed": {
+    "cunning":     { "value": 92, "plasticity": 6,  "floor": 75, "ceiling": 99 },
+    "ferocity":    { "value": 15, "plasticity": 10, "floor": 5,  "ceiling": 35 },
+    "pragmatism":  { "value": 95, "plasticity": 5,  "floor": 80, "ceiling": 100 },
+    "honor":       { "value": 65, "plasticity": 8,  "floor": 45, "ceiling": 85 },
+    "supremacism": { "value": 60, "plasticity": 10, "floor": 40, "ceiling": 80 }
+   }
   },
   {
    "id": "warden",
@@ -3874,7 +3934,22 @@
    "kind": "Wild Named",
    "faction": "Votann",
    "location": "sangua/docksigma",
-   "hook": "Kin prospector; buys salvage and mineral rights, asks no questions"
+   "hook": "Kin prospector; buys salvage and mineral rights, asks no questions",
+   "persona": {
+    "voice": "Gruff, plain-spoken, no wasted words; talks prices in flat numbers and shakes on a deal like it's law.",
+    "motivations": ["turn salvage and mineral rights into steady Kin profit", "keep the Guild's ledger honest and its name clean", "avoid entanglement in other factions' wars"],
+    "red_lines": ["will not cheat on a struck deal — the ledger is sacred", "will not deal in stolen Kin tech"],
+    "tells": ["taps a knuckle on the counter when a price is final", "goes quiet and watchful around unfamiliar factions"],
+    "disposition_to_outsiders": "Wary but fair — judges by the deal made, not the flag flown; slow to trust, slower to forgive a cheat.",
+    "knowledge_horizon": { "sectors": ["vigilus", "sangua"], "factions": ["Votann", "Adeptus Mechanicus", "Drukhari"], "themes": ["salvage value", "mineral rights", "Guild ledger standing", "who's cheated whom"] }
+   },
+   "behavior_seed": {
+    "cunning":     { "value": 60, "plasticity": 10, "floor": 40, "ceiling": 80 },
+    "ferocity":    { "value": 40, "plasticity": 15, "floor": 20, "ceiling": 65 },
+    "pragmatism":  { "value": 85, "plasticity": 8,  "floor": 65, "ceiling": 98 },
+    "honor":       { "value": 78, "plasticity": 10, "floor": 55, "ceiling": 95 },
+    "supremacism": { "value": 20, "plasticity": 10, "floor": 5,  "ceiling": 40 }
+   }
   }
  ],
  "ai": {

@@ -71,3 +71,21 @@ test('canon: each allegiance carries prime_drive + lens frames', () => {
     assert.ok(typeof a.lens === 'string' && a.lens.length > 10, k + ' lens');
   });
 });
+
+test('canon: every placed NPC has a persona and behavior_seed', () => {
+  const AXES = ['cunning', 'ferocity', 'pragmatism', 'honor', 'supremacism'];
+  canon.npcs_alpha.forEach(n => {
+    const p = n.persona;
+    assert.ok(p, n.id + ' missing persona');
+    assert.ok(typeof p.voice === 'string' && p.voice.length > 10, n.id + ' voice');
+    assert.ok(Array.isArray(p.motivations) && p.motivations.length, n.id + ' motivations');
+    assert.ok(Array.isArray(p.red_lines), n.id + ' red_lines');
+    assert.ok(p.knowledge_horizon && Array.isArray(p.knowledge_horizon.sectors), n.id + ' horizon');
+    const b = n.behavior_seed;
+    assert.ok(b, n.id + ' missing behavior_seed');
+    AXES.forEach(ax => {
+      assert.ok(b[ax] && typeof b[ax].value === 'number', n.id + ' axis ' + ax);
+      assert.ok(b[ax].floor <= b[ax].value && b[ax].value <= b[ax].ceiling, n.id + ' ' + ax + ' in range');
+    });
+  });
+});
