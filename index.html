@@ -677,7 +677,27 @@ var NPCAI=(function(){
     if(mode==='combat'&&!Array.isArray(o.combatPicks))return {ok:false,reason:'combat needs combatPicks array'};
     return {ok:true,reason:''};
   }
-  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope, buildBundle:buildBundle, validateReply:validateReply };
+  function addUniq(arr,items){arr=arr||[];(items||[]).forEach(function(x){if(arr.indexOf(x)<0)arr.push(x);});return arr;}
+  function applyDelta(st,cmdrId,delta,t,opts){
+    opts=opts||{};var cap=opts.journalCap||12;
+    st.recentJournal=st.recentJournal||[];st.longTermMemory=st.longTermMemory||[];st.commanders=st.commanders||{};
+    st.recentJournal.unshift({t:t,text:delta.newJournalEntry});
+    if(st.recentJournal.length>cap)st.recentJournal.length=cap;
+    if(delta.promoteToLongTerm)st.longTermMemory.push({t:t,summary:delta.promoteToLongTerm,tags:[]});
+    var cu=delta.commanderUpdates||{};
+    var c=st.commanders[cmdrId]||{standing:0,facts:[],goals:[],grudges:[]};
+    if(cu.standing!=null)c.standing=clamp(c.standing+cu.standing,-100,100);
+    c.facts=addUniq(c.facts,cu.addFacts);c.goals=addUniq(c.goals,cu.addGoals);c.grudges=addUniq(c.grudges,cu.addGrudges);
+    st.commanders[cmdrId]=c;
+    if(delta.axisShift&&st.behavior)driftClamp(st.behavior,delta.axisShift.axis,delta.axisShift.delta,delta.axisShift.reason||'',t);
+    return st;
+  }
+  function retire(st,t,cause){
+    st.retired=true;st.longTermMemory=st.longTermMemory||[];
+    st.longTermMemory.push({t:t,summary:cause||'slain permanently',tags:['death']});
+    return st;
+  }
+  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope, buildBundle:buildBundle, validateReply:validateReply, applyDelta:applyDelta, retire:retire };
 })();
 /*</ai-core>*/
 /* ---- demo save ---- */

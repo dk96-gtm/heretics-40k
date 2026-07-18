@@ -91,3 +91,30 @@ test('ai-core: validateReply accepts a good social reply, rejects malformed', ()
   assert.equal(NPCAI.validateReply({ post: 'x' }, 'social').ok, false); // no dossierDelta
   assert.equal(NPCAI.validateReply({ post: 'x', combatPicks: null, dossierDelta: good.dossierDelta }, 'combat').ok, false); // combat needs array picks
 });
+
+test('ai-core: applyDelta writes journal (capped), long-term, standing, axisShift', () => {
+  const st = {
+    behavior: NPCAI.instantiate({ honor: { value: 40, plasticity: 20, floor: 0, ceiling: 100 } }, () => 0),
+    recentJournal: [], longTermMemory: [], commanders: {}, position: 'vigilus/carrion', retired: false
+  };
+  const delta = { newJournalEntry: 'Kane pressed hard.', promoteToLongTerm: 'Kane demands passage — remember.',
+    commanderUpdates: { standing: -6, addFacts: ['wants passage'], addGoals: [], addGrudges: ['pushy'] },
+    axisShift: { axis: 'honor', delta: 5, reason: 'held to a bargain' } };
+  NPCAI.applyDelta(st, 'kane', delta, 10, { journalCap: 2 });
+  assert.equal(st.recentJournal[0].text, 'Kane pressed hard.');
+  assert.equal(st.longTermMemory[0].summary, 'Kane demands passage — remember.');
+  assert.equal(st.commanders.kane.standing, -6);
+  assert.deepEqual(st.commanders.kane.grudges, ['pushy']);
+  assert.equal(st.behavior.honor.value, 45); // drifted within plasticity
+  // journal cap: two more entries keep only the newest 2
+  NPCAI.applyDelta(st, 'kane', { newJournalEntry: 'B', commanderUpdates: { standing: 0 } }, 11, { journalCap: 2 });
+  NPCAI.applyDelta(st, 'kane', { newJournalEntry: 'C', commanderUpdates: { standing: 0 } }, 12, { journalCap: 2 });
+  assert.deepEqual(st.recentJournal.map(x => x.text), ['C', 'B']);
+});
+
+test('ai-core: retire flips the mind off', () => {
+  const st = { behavior: {}, recentJournal: [], longTermMemory: [], commanders: {}, retired: false };
+  NPCAI.retire(st, 9, 'annihilated at Kraith');
+  assert.equal(st.retired, true);
+  assert.equal(st.longTermMemory[0].summary, 'annihilated at Kraith');
+});
