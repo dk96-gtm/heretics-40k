@@ -546,7 +546,32 @@ var THREAD=(function(){
     }
     return {ok:true,reason:''};
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate };
+  function apply(thread,state,block,canon){
+    var party=null;
+    block.forEach(function(b){
+      var c=b.effect&&b.effect.to?state.combatants[b.effect.to]:null;
+      // spend the pool (combat only): find the actor's party
+      if((thread.type==='SKIRMISH'||thread.type==='INVASION')&&b.cost){
+        var actor=state.combatants[b.actor];
+        if(actor){party=actor.party;state.pools[party]=(state.pools[party]||0)-b.cost;}
+      }
+      var e=b.effect;if(!e)return;
+      if(e.kind==='damage'&&c){c.w=[Math.max(0,c.w[0]-e.amount),c.w[1]];}
+      else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
+      else if(e.kind==='cond'&&c){c.conds=c.conds||[];c.conds.push(e.add);}
+      else if(e.kind==='slay'&&c){c.dead=true;c.intact=!!e.intact;
+        c.revivalWindow=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||null;}
+      else if(e.kind==='terms'){state.terms=state.terms||{};state.terms.agreed=!!e.agreed;
+        if(e.detail)state.terms.detail=e.detail;}
+      else if(e.kind==='transit'&&state.transit){
+        state.transit.wordsWritten+=(e.words||0);}
+    });
+    return state;
+  }
+  function arrivalReady(state){
+    return !!(state.transit&&state.transit.wordsWritten>=state.transit.wordsReq);
+  }
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady };
 })();
 /*</thread-core>*/
 /* ---- demo save ---- */

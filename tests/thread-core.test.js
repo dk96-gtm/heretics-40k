@@ -125,3 +125,53 @@ test('travel never drains a pool - always valid', () => {
   const blk = [{actor:'A',action:'Transit post',cost:0,effect:{kind:'transit',words:200}}];
   assert.strictEqual(THREAD.validate(t, t.state, 'A', blk, canon).ok, true);
 });
+
+function freshCombat(){ return THREAD.create({
+  type:'SKIRMISH', parties:['The Rotward',"Sskarith's Brood"],
+  seedState:{ pools:{'The Rotward':26}, joined:true, combatants:{
+    gharn:{ w:[8,8], band:'SHORT', conds:[], party:'The Rotward' },
+    thresh:{ w:[10,10], band:'MELEE', conds:[], party:"Sskarith's Brood" } } } }, canon); }
+
+test('apply damage lowers wounds and spends the pool', () => {
+  const t = freshCombat();
+  THREAD.apply(t, t.state,
+    [{actor:'gharn',action:'Attack',cost:9,effect:{kind:'damage',amount:4,to:'thresh'}}], canon);
+  assert.deepStrictEqual(t.state.combatants.thresh.w, [6,10]);
+  assert.strictEqual(t.state.pools['The Rotward'], 17);   // 26 - 9
+});
+
+test('apply band repositions a combatant', () => {
+  const t = freshCombat();
+  THREAD.apply(t, t.state, [{actor:'gharn',action:'Move',cost:0,effect:{kind:'band',to:'MELEE',who:'gharn'}}], canon);
+  assert.strictEqual(t.state.combatants.gharn.band, 'MELEE');
+});
+
+test('apply cond adds a condition', () => {
+  const t = freshCombat();
+  THREAD.apply(t, t.state, [{actor:'thresh',action:'Regen',cost:5,effect:{kind:'cond',add:'Regen II',to:'thresh'}}], canon);
+  assert.ok(t.state.combatants.thresh.conds.includes('Regen II'));
+});
+
+test('apply slay marks dead and stamps the revival window', () => {
+  const t = freshCombat();
+  t.state.combatants.thresh.w = [1,10];
+  THREAD.apply(t, t.state, [{actor:'gharn',action:'Attack',cost:9,effect:{kind:'slay',to:'thresh',intact:true}}], canon);
+  assert.strictEqual(t.state.combatants.thresh.dead, true);
+  assert.ok(t.state.combatants.thresh.revivalWindow != null);
+});
+
+test('apply transit accrues words and arrivalReady flips at target', () => {
+  const t = THREAD.create({ type:'TRAVEL', parties:['A'], seedState:{transit:{tier:'same_planet'}} }, canon); // words=50
+  THREAD.apply(t, t.state, [{actor:'A',action:'Transit post',cost:0,effect:{kind:'transit',words:30}}], canon);
+  assert.strictEqual(t.state.transit.wordsWritten, 30);
+  assert.strictEqual(THREAD.arrivalReady(t.state), false);
+  THREAD.apply(t, t.state, [{actor:'A',action:'Transit post',cost:0,effect:{kind:'transit',words:25}}], canon);
+  assert.strictEqual(t.state.transit.wordsWritten, 55);
+  assert.strictEqual(THREAD.arrivalReady(t.state), true);
+});
+
+test('apply terms records agreement', () => {
+  const t = THREAD.create({ type:'DIPLOMACY', parties:['You','Vess'] }, canon);
+  THREAD.apply(t, t.state, [{actor:'You',action:'Accept',cost:0,effect:{kind:'terms',agreed:true}}], canon);
+  assert.strictEqual(t.state.terms.agreed, true);
+});
