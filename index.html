@@ -391,7 +391,7 @@ canvas.smap{display:block;width:100%;height:auto}
 </main></div>
 <div class="toast" id="toast"></div>
 <script>
-/* HERETICS 40K — ENGINE v6. Contains NO canon: all rules & content load from heretics-40k-data-v1.json. This file holds only rendering logic and the demo save-state. */
+/* HERETICS 40K — ENGINE v16. Contains NO canon: all rules & content load from heretics-40k-data-v1.json. This file holds only rendering logic and the demo save-state. */
 var D=null; /* canon */
 var S=null; /* save-state (player, world overlays, threads) */
 function T(t){var e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(function(){e.classList.remove('show')},2700)}
@@ -469,7 +469,7 @@ function curName(){return FAC(S.player.faction).currency}
 function forcesAt(pid){return S.world.forces[pid]||[]}
 function histAt(pid,lid){return S.world.history[pid+'/'+lid]||[]}
 function npcsAt(pid,lid){return D.npcs_alpha.filter(function(n){return n.location===pid+'/'+lid&&S.world.met.indexOf(n.id)>=0})}
-<!-- pure thread rules: no DOM, no globals; every input is an argument (node-tested) -->
+/* pure thread rules: no DOM, no globals; every input is an argument (node-tested) */
 /*<thread-core>*/
 var THREAD=(function(){
   function passageCost(canon,tierKey,forcePC,viaWarpGate){
@@ -478,7 +478,7 @@ var THREAD=(function(){
     return Math.round(t.base*(forcePC/canon.travel.force_divisor));
   }
   function wordCount(html){
-    var txt=String(html==null?'':html).replace(/<[^>]*>/g,' ').replace(/&[a-z]+;/gi,' ');
+    var txt=String(html==null?'':html).replace(/<[^>]*>/g,' ').replace(/&[a-z0-9#]+;/gi,' ');
     var parts=txt.trim().split(/\s+/).filter(function(w){return w.length});
     return parts.length;
   }
@@ -583,7 +583,7 @@ var THREAD=(function(){
     var s=(item&&item.d)||'';
     var lead=s.match(/^\s*([A-Za-z]+)/);
     if(lead&&ELEMAP[lead[1].toLowerCase()])return ELEMAP[lead[1].toLowerCase()];
-    for(var k in ELEMAP){if(new RegExp('\\b'+k,'i').test(s))return ELEMAP[k];}
+    for(var k in ELEMAP){if(new RegExp('\\b'+k+'\\b','i').test(s))return ELEMAP[k];}
     return null;
   }
   function isNoRevival(item,canon){
@@ -1697,8 +1697,8 @@ function renderDoor(dr,h){var c=E('div','card');
   var bt=E('button','btn gh sm','Open Comms channel');bt.style.marginTop='8px';bt.onclick=function(){go('comms')};c.appendChild(bt)}
  else if(kind==='arena'){c.insertAdjacentHTML('beforeend','<div class="d">Host a Duel — a 1v1 Skirmish under the eyes of the mob.</div>');
   var bt=E('button','btn gh sm','Post a Duel thread');bt.style.marginTop='8px';bt.onclick=function(){startThread(S.pos.pl,h,'Skirmish')};c.appendChild(bt)}
- else if(kind==='warp_gate'){c.insertAdjacentHTML('beforeend','<div class="d">A tear in reality — step through to skip the travel ladder. (Destination select coming with the travel rebuild.)</div>');
-  var bt=E('button','btn gh sm','Attune the gate');bt.style.marginTop='8px';bt.onclick=function(){T('The gate hums. Destination routing lands with the travel rebuild.')};c.appendChild(bt)}
+ else if(kind==='warp_gate'){c.insertAdjacentHTML('beforeend','<div class="d">A tear in reality — passage through a linked Warp Gate is <b>free</b>, skipping the travel ladder entirely. No linked gates are charted in this region of space yet.</div>');
+  var bt=E('button','btn gh sm','Attune the gate');bt.style.marginTop='8px';bt.onclick=function(){T('The gate hums, but finds no linked gate to lock onto — none are charted here yet.')};c.appendChild(bt)}
  else if(kind==='throne_room'){var crown=fPl(S.pos.pl).p.crown;
   c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">The seat of this world\'s ruler. Initiate planet-scale threads'+(crown?' — and, as a <b>Crown World</b>, sector-scale events.':'.')+'</div>');
   var evs=[{n:'Declare Invasion (planet)',need:0},{n:'Call a Crusade (sector)',need:400,crown:true},{n:'Exterminatus (sector)',need:900,crown:true}];
