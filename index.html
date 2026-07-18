@@ -700,6 +700,20 @@ var NPCAI=(function(){
   return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope, buildBundle:buildBundle, validateReply:validateReply, applyDelta:applyDelta, retire:retire };
 })();
 /*</ai-core>*/
+/* ---- AI engine (impure: localStorage, fetch, DOM — CALLS the pure NPCAI core) ---- */
+var LS_NPC='heretics_npc_state_v1';
+function saveNPC(){try{localStorage.setItem(LS_NPC,JSON.stringify({npcState:S.npcState,time:S.time}));}catch(e){}}
+function loadNPC(){try{var r=localStorage.getItem(LS_NPC);return r?JSON.parse(r):null;}catch(e){return null;}}
+function seedNPCState(){
+  S.npcState=S.npcState||{};
+  (D.npcs_alpha||[]).forEach(function(n){
+    if(S.world.met.indexOf(n.id)<0||S.npcState[n.id])return;   // only met NPCs get a mind; never re-seed
+    S.npcState[n.id]={
+      behavior:NPCAI.instantiate(n.behavior_seed||{},function(){return 0;}),  // authored seeds ignore the roll
+      recentJournal:[],longTermMemory:[],commanders:{},position:n.location,retired:false
+    };
+  });
+}
 /* ---- demo save ---- */
 function pms(){return[{k:'WEAPON',it:{n:'Boltgun',cat:'WEAPON',d:'Phys 2 - Med'}},{k:'WEAPON',it:{n:'Plague Knife',cat:'WEAPON',d:'Corr 2 - Effortless'}},{k:'ITEM',it:null}]}
 function pxs(){return[{k:'WEAPON',it:{n:'Rusted Claws',cat:'WEAPON',d:'Phys 1 - Melee - Effortless'}}]}
@@ -1483,6 +1497,11 @@ S.threads.forEach(function(t){
 });
 enrichRoster();fixLeaderTags();mkOverview();initTips();mkEntity();mkHUD();mkCart();
 S.active=S.active||'kane';S.cart=S.cart||[];
+S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
+seedNPCState();
+var _sv=loadNPC();
+if(_sv){ if(_sv.time)S.time=_sv.time; if(_sv.npcState)Object.keys(_sv.npcState).forEach(function(k){S.npcState[k]=_sv.npcState[k];}); }
+saveNPC();
 var f=fPl(S.pos.pl);MV={lv:'sector',seg:f.g.id,sec:f.s.id,pl:S.pos.pl,lc:S.pos.sp};
 document.getElementById('rname').textContent=S.player.name.split(',')[0];
 document.getElementById('rdata').textContent='Canon: '+D.meta.format+' v'+D.meta.version;
