@@ -1064,8 +1064,7 @@ var t=S.threads.filter(function(x){return x.id===id})[0];
 var mine=t&&((t.initiator||'').match(/^You/)||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f})}));
 if(t&&t.vis==='private'&&!mine){V.insertAdjacentHTML('beforeend','<div class="empty">🔒 This thread is <b>private</b> — you are not a participant, so you cannot read it. Only its parties can make it public.</div>');return}
 if(t)V.appendChild(threadHeader(t));
-if(id==='bar')bDiplo(V);
-else if(t){
+if(t){
  if(t.type==='MISSION'&&!t.accepted){
   var box=E('div','card');box.innerHTML='<h3>Mission briefing</h3><div class="d" style="margin-bottom:10px">'+(t.about||'')+'</div><div style="font-size:11.5px;color:var(--dim)">Accept to add this to your active operations, then post to begin.</div>';
   var acc=E('button','btn','Accept mission');acc.style.cssText='width:100%;margin-top:10px';acc.onclick=function(){t.accepted=true;t.turn='you';T('Mission accepted: '+t.n+' — you can post now.');openT(t.id)};
@@ -1103,6 +1102,7 @@ function threadBlockBuilder(t,party){
   function fillTargets(){var a=acts[aSel.value];tSel.innerHTML='';
     if(a.group==='e')enemies().forEach(function(id){var c=t.state.combatants[id];tSel.add(new Option(c.model?c.model.n:id,id))});
     else if(a.group==='b')['MELEE','SHORT','MEDIUM','LONG'].forEach(function(b){tSel.add(new Option('→ '+b,b))});
+    else if(a.group==='t')tSel.add(new Option('— terms —',a.actor));
     else tSel.add(new Option('Self / Force',a.actor));}
   aSel.onchange=fillTargets;fillTargets();
   var add=E('button','btn gh sm','Add');row.appendChild(aSel);row.appendChild(tSel);row.appendChild(add);box.appendChild(row);
@@ -1113,6 +1113,11 @@ function threadBlockBuilder(t,party){
     if(a.group==='e')return {kind:'damage',amount:damageOf(a.item),to:tgt,element:THREAD.elementOf(a.item),noRevival:THREAD.isNoRevival(a.item,D)};
     if(a.group==='b')return {kind:'band',to:tgt,who:a.actor};
     if(a.group==='y'||a.group==='a')return {kind:'cond',add:a.action,to:a.actor};
+    if(a.group==='t'){
+      if(/Accept/.test(a.action))return {kind:'terms',agreed:true};
+      if(/Walk away/.test(a.action))return null;
+      return {kind:'terms',agreed:false};   // Offer/Demand record intent, not agreement
+    }
     return null;}
   function redraw(){chips.innerHTML='';var tot=0;
     staged.forEach(function(s,i){tot+=s.cost;
@@ -1162,6 +1167,13 @@ function threadView(V,t){
     var val=THREAD.validate(t,t.state,party,staged,D);
     if(!val.ok){T(val.reason);return}
     THREAD.apply(t,t.state,staged,D);
+    if(t.type==='DIPLOMACY'&&t.state.terms&&t.state.terms.agreed&&!t._closed){
+      t._closed=true;
+      if(/Vess|Carrion/.test(t.initiator||'')){
+        S.dru=true; S.cur=Math.max(0,S.cur-250); rW();
+        T('Terms struck — Drukhari forge access unlocked.');
+      }
+    }
     if(!t.posts)t.posts=[];
     t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you',block:staged.map(function(s){return {actor:s.actor,action:s.action,cost:s.cost,effect:s.effect}})});
     openT(t.id);T('Posted to '+t.n+'.');};
@@ -1175,25 +1187,6 @@ function threadView(V,t){
   xb.onclick=function(){exitThread(t)};V.appendChild(xb);
 }
 function tools(){var t=E('div','ft');[['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],['strikeThrough','<s>S</s>']].forEach(function(x){var b=E('button',null,x[1]);b.onmousedown=function(e){e.preventDefault();document.execCommand(x[0])};t.appendChild(b)});return t}
-function bDiplo(V){var w=E('div','tw solo');var lf=E('div');
-var st=E('div');
-st.appendChild(E('div','post','<div class="ph"><span class="who en">Vess the Carrion-Broker</span><span class="mono" style="color:var(--dim)">Post 3 · Wild Named · Drukhari</span></div><div class="body">"You want my toxin-craft on your forge list, rot-lord? My price: 300, and one intact Tyranid body. <i>Intact</i>, mind — no flame, no acid."</div>'));
-st.appendChild(E('div','post','<div class="ph"><span class="who you">'+S.player.name.split(',')[0]+'</span><span class="mono" style="color:var(--dim)">Post 4</span></div><div class="body">"200, and two bodies. The Rotward holds the Ash Ravine by week\'s end."</div>'));
-st.appendChild(E('div','post','<div class="ph"><span class="who en">Vess</span><span class="mono" style="color:var(--dim)">Post 5</span></div><div class="body">"250. And if your Commander dies before delivery… I negotiate with your successor at double."</div>'));
-lf.appendChild(st);
-var cp=E('div','comp','<div class="ch">Your post — The Carrion Bargain · <span class="tp DIPLOMACY" style="margin:0">DIPLOMACY</span></div>');
-cp.appendChild(tools());
-var fic=E('div','fic');fic.contentEditable=true;fic.setAttribute('data-ph','Speak, rot-lord…');cp.appendChild(fic);
-var ab=E('div','abld');
-if(S.vess)ab.innerHTML='<div style="font-size:12px;color:var(--vdh)">Terms struck: 250 '+curName()+' + 2 intact bodies. Drukhari forge access unlocked.</div>';
-else{var r=E('div');r.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-var a1=E('button','btn','Accept — 250 + 2 bodies');
-a1.onclick=function(){if(S.cur<250){T('Not enough '+curName()+'.');return}S.cur-=250;S.dru=true;S.vess=true;rW();T('Deal struck. Ambush now forgeable at your stations.');openT('bar')};
-var a2=E('button','btn gh','Post counter');
-a2.onclick=function(){if(!fic.textContent.trim()){T('Write your counter first.');return}
-st.appendChild(E('div','post','<div class="ph"><span class="who you">'+S.player.name.split(',')[0]+'</span><span class="mono" style="color:var(--dim)">Post 6</span></div><div class="body">'+fic.innerHTML+'</div>'));fic.innerHTML='';T('Posted. Vess is notified.')};
-var a3=E('button','btn bl','Walk away');r.appendChild(a1);r.appendChild(a2);r.appendChild(a3);ab.appendChild(r)}
-cp.appendChild(ab);lf.appendChild(cp);w.appendChild(lf);V.appendChild(w)}
 function bTravel(V){if(!S.tr){V.insertAdjacentHTML('beforeend','<div class="empty">No transit underway.</div>');return}
 var t=S.tr;
 V.insertAdjacentHTML('beforeend','<div class="card" style="margin-top:12px"><h3><span class="tp TRAVEL" style="margin-right:8px">TRAVEL</span>Transit — '+fLoc(t.pl,t.sp).name+', '+fPl(t.pl).p.name+'</h3><div style="font-size:12.5px;color:var(--dim)">'+t.left+' post(s) remaining.'+(t.arr?'<br><span style="color:'+(t.arr.k==='h'?'var(--blh)':'var(--vdh)')+'">'+t.arr.t+'</span>':'')+'</div></div>');
