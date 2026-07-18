@@ -714,6 +714,23 @@ function seedNPCState(){
     };
   });
 }
+var LS_KEY='heretics_ai_key',LS_MODEL='heretics_ai_model';
+function aiKey(){try{return localStorage.getItem(LS_KEY)||'';}catch(e){return '';}}
+function aiModel(){try{return localStorage.getItem(LS_MODEL)||(D.ai&&D.ai.model)||'claude-sonnet-5';}catch(e){return (D.ai&&D.ai.model)||'claude-sonnet-5';}}
+function openSettings(){mkEntity();
+  var models=['claude-sonnet-5','claude-opus-4-8','claude-haiku-4-5'],cur=aiModel();
+  ENT.innerHTML='<div class="entc"><div class="entb">'
+   +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>AI Settings</h3><button class="movbk" id="entx">Close</button></div>'
+   +'<div class="entrow"><div class="k">Anthropic API key</div><div class="vv"><input id="aikey" type="password" style="width:100%" value="'+esc(aiKey())+'" placeholder="sk-ant-…"></div></div>'
+   +'<div class="entrow"><div class="k">Model</div><div class="vv"><select id="aimodel">'+models.map(function(m){return '<option'+(m===cur?' selected':'')+'>'+m+'</option>';}).join('')+'</select></div></div>'
+   +'<div style="font-size:11px;color:var(--dim)">Stored only in this browser and sent directly to Anthropic — it never leaves your machine except to the API. You pay for your own usage.</div>'
+   +'<div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm" id="aisave">Save</button><button class="btn gh sm" id="aiclear">Clear key</button></div>'
+   +'</div></div>';
+  document.getElementById('entx').onclick=function(){ENT.classList.remove('on');};
+  document.getElementById('aisave').onclick=function(){try{localStorage.setItem(LS_KEY,document.getElementById('aikey').value.trim());localStorage.setItem(LS_MODEL,document.getElementById('aimodel').value);}catch(e){}T('AI settings saved.');ENT.classList.remove('on');};
+  document.getElementById('aiclear').onclick=function(){try{localStorage.removeItem(LS_KEY);}catch(e){}document.getElementById('aikey').value='';T('Key cleared.');};
+  ENT.classList.add('on');
+}
 /* ---- demo save ---- */
 function pms(){return[{k:'WEAPON',it:{n:'Boltgun',cat:'WEAPON',d:'Phys 2 - Med'}},{k:'WEAPON',it:{n:'Plague Knife',cat:'WEAPON',d:'Corr 2 - Effortless'}},{k:'ITEM',it:null}]}
 function pxs(){return[{k:'WEAPON',it:{n:'Rusted Claws',cat:'WEAPON',d:'Phys 1 - Melee - Effortless'}}]}
@@ -1513,7 +1530,7 @@ document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){docum
 mkPicker();mkRite();
 document.getElementById('boot').style.display='none';
 document.getElementById('shell').style.display='flex';
-rHQ();rRos();rLoad();rMap();rTL();rComms();rShop()}
+rHQ();rRos();rLoad();rMap();rTL();rComms();rShop();var _gear=E('button','btn gh sm','⚙ AI');_gear.style.cssText='position:fixed;right:12px;bottom:12px;z-index:60';_gear.onclick=openSettings;document.body.appendChild(_gear);}
 
 /* ─── v8: the Model as a first-class entity ─── */
 function acts(m){var w=parseInt((m.w||'0/0').split('/')[0],10)||0;return Math.min(w,3)}
