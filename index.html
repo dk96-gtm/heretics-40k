@@ -595,6 +595,12 @@ var THREAD=(function(){
   return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival };
 })();
 /*</thread-core>*/
+/*<ai-core>*/
+var NPCAI=(function(){
+  var PHASES=['Early Morning','Morning','Noon','Afternoon','Evening','Night','Midnight','Dead of Night'];
+  return { PHASES:PHASES };
+})();
+/*</ai-core>*/
 /* ---- demo save ---- */
 function pms(){return[{k:'WEAPON',it:{n:'Boltgun',cat:'WEAPON',d:'Phys 2 - Med'}},{k:'WEAPON',it:{n:'Plague Knife',cat:'WEAPON',d:'Corr 2 - Effortless'}},{k:'ITEM',it:null}]}
 function pxs(){return[{k:'WEAPON',it:{n:'Rusted Claws',cat:'WEAPON',d:'Phys 1 - Melee - Effortless'}}]}
