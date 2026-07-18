@@ -212,3 +212,30 @@ test('apply terms records agreement', () => {
   THREAD.apply(t, t.state, [{actor:'You',action:'Accept',cost:0,effect:{kind:'terms',agreed:true}}], canon);
   assert.strictEqual(t.state.terms.agreed, true);
 });
+
+test('combat catalog actions carry their source item', () => {
+  const t = THREAD.create(combatThread, canon);
+  const atk = THREAD.catalog(t, t.state, 'The Rotward', canon).find(a => /Bolt Pistol/.test(a.action));
+  assert.ok(atk.item && atk.item.n === 'Bolt Pistol');
+});
+test('damage that zeroes a combatant kills it and stamps the element window', () => {
+  const t = freshCombat(); t.state.combatants.thresh.w = [3,10];
+  THREAD.apply(t, t.state, [{actor:'gharn',action:'Attack',cost:9,
+    effect:{kind:'damage',amount:5,to:'thresh',element:'Heat'}}], canon);
+  assert.strictEqual(t.state.combatants.thresh.w[0], 0);
+  assert.strictEqual(t.state.combatants.thresh.dead, true);
+  assert.strictEqual(t.state.combatants.thresh.revivalWindow, 3);   // Heat=3
+});
+test('a no-revival damage kill is permanent', () => {
+  const t = freshCombat(); t.state.combatants.thresh.w = [2,10];
+  THREAD.apply(t, t.state, [{actor:'gharn',action:'Attack',cost:9,
+    effect:{kind:'damage',amount:5,to:'thresh',element:'Physical',noRevival:true}}], canon);
+  assert.strictEqual(t.state.combatants.thresh.permaDeath, true);
+  assert.strictEqual(t.state.combatants.thresh.revivalWindow, 0);
+});
+test('non-lethal damage does not kill', () => {
+  const t = freshCombat();
+  THREAD.apply(t, t.state, [{actor:'gharn',action:'Attack',cost:9,
+    effect:{kind:'damage',amount:2,to:'thresh',element:'Physical'}}], canon);
+  assert.ok(!t.state.combatants.thresh.dead);
+});

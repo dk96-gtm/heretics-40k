@@ -513,11 +513,11 @@ var THREAD=(function(){
     Object.keys(state.combatants).forEach(function(id){
       var c=state.combatants[id];if(c.party!==party||!c.model)return;
       (c.model.sl||[]).forEach(function(s){if(!s.it)return;var it=s.it;
-        if(s.k==='WEAPON')out.push({actor:id,action:'Attack - '+it.n,group:'e',cost:apMod(it),kind:'damage'});
-        else if(s.k==='ABILITY')out.push({actor:id,action:it.n,group:'y',cost:apMod(it),kind:'cond'});
-        else if(s.k==='WARP CAST')out.push({actor:id,action:'Cast: '+it.n,group:'a',cost:apMod(it),kind:'cond'});
+        if(s.k==='WEAPON')out.push({actor:id,action:'Attack - '+it.n,group:'e',cost:apMod(it),kind:'damage',item:it});
+        else if(s.k==='ABILITY')out.push({actor:id,action:it.n,group:'y',cost:apMod(it),kind:'cond',item:it});
+        else if(s.k==='WARP CAST')out.push({actor:id,action:'Cast: '+it.n,group:'a',cost:apMod(it),kind:'cond',item:it});
         else if(s.k==='ITEM'&&/consumable|stimm|grenade/i.test(it.d||''))
-          out.push({actor:id,action:'Use '+it.n,group:'a',cost:apMod(it),kind:'cond'});
+          out.push({actor:id,action:'Use '+it.n,group:'a',cost:apMod(it),kind:'cond',item:it});
       });
       out.push({actor:id,action:'Move',group:'b',cost:0,kind:'band'});
     });
@@ -556,7 +556,11 @@ var THREAD=(function(){
         if(actor){party=actor.party;state.pools[party]=(state.pools[party]||0)-b.cost;}
       }
       var e=b.effect;if(!e)return;
-      if(e.kind==='damage'&&c){c.w=[Math.max(0,c.w[0]-e.amount),c.w[1]];}
+      if(e.kind==='damage'&&c){c.w=[Math.max(0,c.w[0]-e.amount),c.w[1]];
+        if(c.w[0]<=0&&!c.dead){c.dead=true;c.killElement=e.element||null;
+          var RWd=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
+          if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
+          else{var Wd=RWd.windows||{};c.revivalWindow=(e.element&&Wd[e.element])||Wd.Physical||3;c.permaDeath=false;}}}
       else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
       else if(e.kind==='cond'&&c){c.conds=c.conds||[];c.conds.push(e.add);}
       else if(e.kind==='slay'&&c){c.dead=true;c.intact=!!e.intact;c.killElement=e.element||null;
@@ -1060,8 +1064,7 @@ var t=S.threads.filter(function(x){return x.id===id})[0];
 var mine=t&&((t.initiator||'').match(/^You/)||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f})}));
 if(t&&t.vis==='private'&&!mine){V.insertAdjacentHTML('beforeend','<div class="empty">🔒 This thread is <b>private</b> — you are not a participant, so you cannot read it. Only its parties can make it public.</div>');return}
 if(t)V.appendChild(threadHeader(t));
-if(id==='ash')bBattle(V);
-else if(id==='bar')bDiplo(V);
+if(id==='bar')bDiplo(V);
 else if(t){
  if(t.type==='MISSION'&&!t.accepted){
   var box=E('div','card');box.innerHTML='<h3>Mission briefing</h3><div class="d" style="margin-bottom:10px">'+(t.about||'')+'</div><div style="font-size:11.5px;color:var(--dim)">Accept to add this to your active operations, then post to begin.</div>';
@@ -1071,7 +1074,12 @@ else if(t){
  } else threadView(V,t);
 }
 else bTravel(V)}
-/* unified thread spine — header (already appended by openT) + posts + composer, for generic/mission threads */
+/* unified thread spine — header (already appended by openT) + posts + composer, for generic/mission/combat threads */
+function damageOf(item){var m=((item&&item.d)||'').match(/^\s*[A-Za-z]+\s+(\d+)/);return m?parseInt(m[1],10):1;}
+function partyOf(t){
+  var mine=(t.forces||[]).filter(function(f){return S.forces.some(function(x){return x.n===f})});
+  return mine[0]||(t.forces&&t.forces[0])||'You';
+}
 function threadComposer(t,onPost){
   var cp=E('div','comp');
   cp.innerHTML='<div class="ch">Your post — '+activeModel().n.split(',')[0]+' · <span class="tp '+t.type+'" style="margin:0">'+t.type+'</span></div>';
@@ -1085,8 +1093,56 @@ function threadComposer(t,onPost){
   cp.appendChild(pb);
   return {el:cp, field:fic};
 }
+function threadBlockBuilder(t,party){
+  var staged=[];
+  var acts=THREAD.catalog(t,t.state,party,D);
+  var box=E('div','abld','<div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--br);margin-bottom:7px">Action Block</div>');
+  var row=E('div','arow');var aSel=E('select'),tSel=E('select');
+  acts.forEach(function(a,i){aSel.add(new Option(a.action+(a.cost?' - '+a.cost+' AP':''),i))});
+  function enemies(){return Object.keys(t.state.combatants).filter(function(id){return t.state.combatants[id].party!==party});}
+  function fillTargets(){var a=acts[aSel.value];tSel.innerHTML='';
+    if(a.group==='e')enemies().forEach(function(id){var c=t.state.combatants[id];tSel.add(new Option(c.model?c.model.n:id,id))});
+    else if(a.group==='b')['MELEE','SHORT','MEDIUM','LONG'].forEach(function(b){tSel.add(new Option('→ '+b,b))});
+    else tSel.add(new Option('Self / Force',a.actor));}
+  aSel.onchange=fillTargets;fillTargets();
+  var add=E('button','btn gh sm','Add');row.appendChild(aSel);row.appendChild(tSel);row.appendChild(add);box.appendChild(row);
+  var chips=E('div');box.appendChild(chips);var warn=E('div','warn');box.appendChild(warn);
+  var pool=(t.state.pools&&t.state.pools[party]!=null)?t.state.pools[party]:null;
+  if(pool!=null)box.insertAdjacentHTML('beforeend','<div class="apt"><span style="font-size:11px;color:var(--dim)">AP pool: <span class="mono">'+pool+'</span></span><span class="n" id="bbtot">0 AP</span></div>');
+  function effFor(a,tgt){
+    if(a.group==='e')return {kind:'damage',amount:damageOf(a.item),to:tgt,element:THREAD.elementOf(a.item),noRevival:THREAD.isNoRevival(a.item,D)};
+    if(a.group==='b')return {kind:'band',to:tgt,who:a.actor};
+    if(a.group==='y'||a.group==='a')return {kind:'cond',add:a.action,to:a.actor};
+    return null;}
+  function redraw(){chips.innerHTML='';var tot=0;
+    staged.forEach(function(s,i){tot+=s.cost;
+      var c=E('span','chip','<b style="color:var(--brh)">'+s.action+'</b>'+(s.tgtLabel?' → '+s.tgtLabel:'')+' · '+s.cost+' AP <button>✕</button>');
+      c.querySelector('button').onclick=function(){staged.splice(i,1);redraw()};chips.appendChild(c)});
+    var el=document.getElementById('bbtot');if(el)el.textContent=tot+' AP';
+    var v=THREAD.validate(t,t.state,party,staged,D);warn.textContent=v.ok?'':v.reason;}
+  add.onclick=function(){var a=acts[aSel.value];var tgt=tSel.value;
+    var tgtLabel=tSel.selectedOptions[0]?tSel.selectedOptions[0].text.replace('→ ',''):'';
+    staged.push({actor:a.actor,action:a.action,cost:a.cost,effect:effFor(a,tgt),tgtLabel:tgtLabel});redraw();};
+  return {el:box,staged:staged,clear:function(){staged.length=0;redraw();},redraw:redraw};
+}
+function threadSidebar(t){
+  var sb=E('div','thsidebar');
+  var byParty={};Object.keys(t.state.combatants).forEach(function(id){
+    var c=t.state.combatants[id];(byParty[c.party]=byParty[c.party]||[]).push({id:id,c:c})});
+  var html='<div class="card foldcard on" id="report"><h3 class="foldh">Battle Report <span class="foldar">▾</span></h3><div class="foldbody">';
+  Object.keys(byParty).forEach(function(p){
+    html+='<div class="fg"><h4>'+p+(t.state.pools[p]!=null?' · '+t.state.pools[p]+' AP':'')+'</h4>';
+    byParty[p].forEach(function(o){var pct=o.c.w[1]?Math.round(100*o.c.w[0]/o.c.w[1]):0;
+      html+='<div class="mr"><div class="n"><span>'+(o.c.model?o.c.model.n:o.id)+(o.c.dead?' ✝':'')+'</span><span class="a">'+o.c.w[0]+'/'+o.c.w[1]+' W'+(o.c.permaDeath?' · no revival':o.c.dead?' · window '+o.c.revivalWindow:'')+'</span></div>'+
+        '<div class="hp'+(pct<=50?' lo':'')+'"><i style="width:'+pct+'%"></i></div>'+
+        '<div class="band">'+o.c.band+(o.c.conds&&o.c.conds.length?' · '+o.c.conds.join(', '):'')+'</div></div>';});
+    html+='</div>';});
+  html+='</div></div>';sb.insertAdjacentHTML('beforeend',html);
+  sb.querySelector('.foldh').onclick=function(){document.getElementById('report').classList.toggle('on')};
+  return sb;
+}
 function threadView(V,t){
-  var wrap=E('div','tw solo');
+  var isCombat=Object.keys(t.state.combatants||{}).length>0;
   var scroll=E('div','threadscroll');
   (t.posts||[]).forEach(function(p,i){
     scroll.insertAdjacentHTML('beforeend',
@@ -1095,101 +1151,30 @@ function threadView(V,t){
       (p.block?'<div class="ab"><div class="ah">Action Block</div><ul>'+p.block.map(function(b){
         return '<li><b>'+b.action+'</b>'+(b.cost?' ('+b.cost+' AP)':'')+'</li>'}).join('')+'</ul></div>':'')+'</div>');
   });
-  wrap.appendChild(scroll);
-  var comp=threadComposer(t,function(v){
+  var comp=threadComposer(t,function(){});
+  var party=partyOf(t);
+  var cat=THREAD.catalog(t,t.state,party,D);
+  var builder=cat.length?threadBlockBuilder(t,party):null;
+  if(builder)comp.el.appendChild(builder.el);
+  var pb=comp.el.querySelector('.btn.bl');
+  pb.onclick=function(){var v=comp.field.innerHTML.trim();if(!v||v==='<br>'){T('Write something first.');return}
+    var staged=builder?builder.staged:[];
+    var val=THREAD.validate(t,t.state,party,staged,D);
+    if(!val.ok){T(val.reason);return}
+    THREAD.apply(t,t.state,staged,D);
     if(!t.posts)t.posts=[];
-    t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you'});
-    openT(t.id);
-    var sc=document.querySelector('#tv .threadscroll');if(sc)sc.scrollTop=sc.scrollHeight;
-    T('Posted to '+t.n+'.');
-  });
-  wrap.appendChild(comp.el);
-  V.appendChild(wrap);
+    t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you',block:staged.map(function(s){return {actor:s.actor,action:s.action,cost:s.cost,effect:s.effect}})});
+    openT(t.id);T('Posted to '+t.n+'.');};
+  if(isCombat){
+    var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);lf.appendChild(comp.el);
+    wrap.appendChild(lf);wrap.appendChild(threadSidebar(t));V.appendChild(wrap);
+  }else{
+    var wrap=E('div','tw solo');wrap.appendChild(scroll);wrap.appendChild(comp.el);V.appendChild(wrap);
+  }
   var xb=E('button','btn gh','Exit thread');xb.style.marginTop='10px';
   xb.onclick=function(){exitThread(t)};V.appendChild(xb);
 }
 function tools(){var t=E('div','ft');[['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],['strikeThrough','<s>S</s>']].forEach(function(x){var b=E('button',null,x[1]);b.onmousedown=function(e){e.preventDefault();document.execCommand(x[0])};t.appendChild(b)});return t}
-var pool=26,blk=[];
-var EN=['Threshjaw (Carnifex)','Termagant brood','Sskarith'];
-/* action AP modifier read from the item's own text (canon: model AP + equipment modifier) */
-function apMod(it){var s=it.d||'';if(/effortless/i.test(s))return 0;var m=s.match(/(\d+)\s*AP/);if(m)return parseInt(m[1],10);return it.cat==='CAST'?2:it.cat==='ABILITY'?1:it.cat==='ITEM'?0:1}
-/* actions a model can take ARE its equipped slots — pre-set from the loadout */
-function abmFor(m){var o=[];
- m.sl.forEach(function(s){if(!s.it)return;var it=s.it;
-  if(s.k==='WEAPON')o.push({n:'Attack — '+it.n,t:'Combat',x:apMod(it),g:'e',eff:it.d});
-  else if(s.k==='ABILITY')o.push({n:it.n,t:'Special',x:apMod(it),g:'y',eff:it.d});
-  else if(s.k==='WARP CAST')o.push({n:'Cast: '+it.n,t:'Special',x:apMod(it),g:'a',eff:it.d});
-  else if(s.k==='ITEM'&&/consumable|stimm|grenade/i.test(it.d||''))o.push({n:'Use '+it.n,t:'Special',x:apMod(it),g:'a',eff:it.d});});
- o.push({n:'Move',t:'Move',x:0,g:'b',eff:'Reposition one distance band. Movement is always 0 AP.'});
- return{n:m.n,id:m.id,ap:AP(m.pc),ac:acts(m),o:o}}
-function buildABM(){var here=S.roster.filter(function(m){return m.st==='DEPLOYED'&&m.loc&&m.loc.indexOf('Ash Ravine')>=0});
- if(!here.length)here=S.roster.filter(function(m){return m.st==='DEPLOYED'});
- return here.map(abmFor)}
-var ABM=[];
-function tgs(g,self){if(g==='e')return EN;if(g==='y')return['Self ('+self+')','The Rotward (Force)','Morvax','Gharn'];if(g==='a')return EN.concat(['Self ('+self+')','Morvax','Gharn']);return['Advance 1 step','Retreat 1 step','Disengage']}
-function bBattle(V){ABM=buildABM();var w=E('div','tw');var lf=E('div');
-var scroll=E('div','threadscroll');var st=E('div');
-st.insertAdjacentHTML('beforeend','<div class="post"><div class="ph"><span class="who en clk" onclick="openKnownModel(\'Brood-Tyrant Sskarith\',\'Sskarith\\\'s Brood\')">Brood-Tyrant Sskarith</span><span class="mono" style="color:var(--dim)">Post 1 · Tyranids</span></div><div class="body">The Ash Ravine was quiet until the sand began to breathe. Sskarith\'s vanguard breached the crust at dusk — the brood declaring this black gutter theirs.</div></div>');
-st.appendChild(E('div','post','<div class="ph"><span class="who en">Brood-Tyrant Sskarith</span><span class="mono" style="color:var(--dim)">Post 6 · Tyranids</span></div><div class="body">The ravine walls wept ash as the brood came on — Threshjaw first, chitin grinding like tectonic sin, gaunts spilling around its legs…</div><div class="ab"><div class="ah">Action Block · Sskarith\'s Brood · 14 AP</div><ul><li><b>Threshjaw</b> — Move: Medium→Short (0) · Crushing Claws → <b>Gharn</b>, 4 dmg (9)</li><li><b>Termagants</b> — Fleshborers → <b>Poxwalkers Epsilon &amp; Zeta</b>: slain, intact (Desperation)</li><li><b>Sskarith</b> — Cast: Catalyst → <b>Threshjaw</b>, Regen II (5)</li></ul></div>'));
-scroll.appendChild(st);lf.appendChild(scroll);
-var cp=E('div','comp','<div class="ch">Your post — '+S.player.name.split(',')[0]+' · The Rotward · Post 7 · <span class="tp SKIRMISH" style="margin:0">SKIRMISH</span></div>');
-cp.appendChild(tools());
-var fic=E('div','fic');fic.contentEditable=true;fic.setAttribute('data-ph','Write your fiction — bold it, slant it, underline the doom…');
-cp.appendChild(fic);
-var ab=E('div','abld','<div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--br);margin-bottom:7px">Action Block</div>');
-var row=E('div','arow');var m=E('select'),a=E('select'),tg=E('select');
-ABM.forEach(function(x,i){m.add(new Option(x.n+' — AP '+x.ap+' · '+x.ac+' act'+(x.ac>1?'s':''),i))});
-var dsc=E('div','actd');
-function adesc(x,o){var eff=o.eff||'';
- var gt={e:'targets an enemy',a:'area / self-cast',y:'buffs your force',b:'reposition, no target'}[o.g]||'';
- var ap=o.t==='Move'?0:x.ap+o.x;
- return '<b>'+o.t+'</b> · '+ap+' AP'+(o.t==='Move'?' (Movement is always 0 AP)':'')+' · '+gt+(eff?'<br><b>Effect:</b> '+eff:'')}
-function fa(){var x=ABM[m.value];a.innerHTML='';x.o.forEach(function(o,i){a.add(new Option(o.n+' — '+(o.t==='Move'?0:x.ap+o.x)+' AP',i))});ftg()}
-function ftg(){var x=ABM[m.value],o=x.o[a.value];tg.innerHTML='';tgs(o.g,x.n).forEach(function(t,i){tg.add(new Option((o.g==='b'?'':'→ ')+t,i))});dsc.innerHTML=adesc(x,o)}
-m.onchange=fa;a.onchange=ftg;fa();
-var add=E('button','btn gh sm','Add');
-row.appendChild(m);row.appendChild(a);row.appendChild(tg);row.appendChild(add);ab.appendChild(row);ab.appendChild(dsc);
-var cbx=E('div');ab.appendChild(cbx);var wr=E('div','warn');ab.appendChild(wr);
-ab.insertAdjacentHTML('beforeend','<div class="apt"><span style="font-size:11px;color:var(--dim)">AP total · pool: <span class="mono" id="pp">'+pool+'</span></span><span class="n" id="tt">0 AP</span></div>');
-var pb2=E('button','btn bl','ATTACH BLOCK & POST');pb2.style.cssText='width:100%;margin-top:9px';ab.appendChild(pb2);
-cp.appendChild(ab);lf.appendChild(cp);
-function rB(){cbx.innerHTML='';var t=0;
-blk.forEach(function(b,i){t+=b.ap;var c=E('span','chip','<b style="color:var(--brh)">'+b.m.split(' ')[0]+'</b> '+b.s+(b.tg?' → '+b.tg:'')+' · '+b.ap+' AP <button>✕</button>');
-c.querySelector('button').onclick=function(){blk.splice(i,1);rB()};cbx.appendChild(c)});
-document.getElementById('tt').textContent=t+' AP';document.getElementById('pp').textContent=pool;
-if(t>pool)wr.textContent='Exceeds pool — '+D.rules.combat.desperation_action}
-add.onclick=function(){var x=ABM[m.value],o=x.o[a.value],tx=tg.selectedOptions[0]?tg.selectedOptions[0].text.replace('→ ',''):'';
-if(blk.filter(function(b){return b.m===x.n}).length>=x.ac){wr.textContent=x.n+': '+x.ac+' action'+(x.ac>1?'s':'')+' — wounds are actions.';return}
-if(blk.some(function(b){return b.m===x.n&&b.o===o.n&&o.t!=='Move'})){wr.textContent='Once per post: '+o.n;return}
-wr.textContent='';blk.push({m:x.n,o:o.n,s:o.n.split(' — ')[1]||o.n,tg:tx,ap:o.t==='Move'?0:x.ap+o.x});rB()};
-pb2.onclick=function(){var t=blk.reduce(function(a,b){return a+b.ap},0);
-if(!blk.length){wr.textContent='Attach at least one action.';return}
-if(t>pool){wr.textContent='Exceeds pool.';return}
-pool-=t;
-var post=E('div','post','<div class="ph"><span class="who you">'+S.player.name.split(',')[0]+'</span><span class="mono" style="color:var(--dim)">Post 7 · '+FAC(S.player.faction).name+'</span></div><div class="body">'+(fic.innerHTML||'…')+'</div><div class="ab"><div class="ah">Action Block · The Rotward · '+t+' AP</div><ul>'+blk.map(function(b){return '<li><b>'+b.m+'</b> — '+b.o+(b.tg?' → <b>'+b.tg+'</b>':'')+' ('+b.ap+' AP)</li>'}).join('')+'</ul></div>');
-st.appendChild(post);document.getElementById('sp').textContent=pool;
-blk=[];rB();fic.innerHTML='';T('Posted. Sskarith is notified — their turn.');post.scrollIntoView({behavior:'smooth'})};
-w.appendChild(lf);
-var sb=E('div','thsidebar');
-/* foldable battle report */
-sb.insertAdjacentHTML('beforeend','<div class="card foldcard on" id="report"><h3 class="foldh">Battle Report <span class="foldar">▾</span></h3><div class="foldbody"><div class="fg you"><h4>The Rotward (you) · <span id="sp">'+pool+'</span> AP</h4><div class="mr"><div class="n"><span>Vexos Kane</span><span class="a">9/9 W · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT vs brood</div></div><div class="mr"><div class="n"><span>Morvax (Leader)</span><span class="a">7/7 · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div><div class="mr"><div class="n"><span>Gharn</span><span class="a">4/8 · 3 acts</span></div><div class="hp lo"><i style="width:50%"></i></div><div class="band">MELEE vs Threshjaw</div></div><div class="mr"><div class="n"><span>Poxwalkers α–δ</span><span class="a">1 W · 1 act each</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div></div><div class="fg en"><h4>Sskarith\'s Brood · pool low</h4><div class="mr"><div class="n"><span>Threshjaw — Carnifex R2</span><span class="a">7/10 · Regen II</span></div><div class="hp"><i style="width:70%"></i></div><div class="band">MELEE vs Gharn</div></div><div class="mr"><div class="n"><span>Termagants ×6</span><span class="a">1 W each</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">SHORT</div></div><div class="mr"><div class="n"><span>Sskarith (Cmdr)</span><span class="a">8/8 · 3 acts</span></div><div class="hp"><i style="width:100%"></i></div><div class="band">MEDIUM</div></div></div><div style="font-size:11.5px;color:var(--dim);border-top:1px solid var(--ln);padding-top:7px">Field: Poxwalkers Epsilon &amp; Zeta — intact</div></div></div>');
-/* thread controls sidebar */
-var tobj=S.threads.filter(function(x){return x.id==='ash'})[0];
-var ctrl=E('div','card');ctrl.innerHTML='<h3>Thread</h3><div style="font-size:11px;color:var(--dim);margin-bottom:4px">◉ Vigilus · The Ash Ravine</div><div style="font-size:11.5px;color:var(--blh);margin-bottom:8px">⚔ Combat is joined — exiting now costs wounds across deployed models and '+curName()+', and cedes the field.</div>';
-var exb=E('button','btn bl','Exit thread — break contact');exb.style.width='100%';exb.onclick=function(){if(tobj)exitThread(tobj)};ctrl.appendChild(exb);
-sb.appendChild(ctrl);
-/* fold toggle */
-sb.querySelector('.foldh').onclick=function(){document.getElementById('report').classList.toggle('on')};
-w.appendChild(sb);
-/* click a friendly combatant → its model overview */
-w.querySelectorAll('.fg.you .mr .n span:first-child').forEach(function(sp){
- var first=sp.textContent.split(/[ (—–]/)[0].toLowerCase();
- var m=S.roster.filter(function(x){return x.n.toLowerCase().indexOf(first)>=0})[0];
- if(m){sp.className='clk';sp.onclick=function(){openModel(m.id)}}});
-/* click an enemy combatant → auspex intel on its force */
-w.querySelectorAll('.fg.en .mr .n span:first-child').forEach(function(sp){
- sp.className='clk';sp.onclick=function(){openKnownModel(sp.textContent.split(/[—–(]/)[0].trim(),"Sskarith's Brood")}});
-V.appendChild(w)}
 function bDiplo(V){var w=E('div','tw solo');var lf=E('div');
 var st=E('div');
 st.appendChild(E('div','post','<div class="ph"><span class="who en">Vess the Carrion-Broker</span><span class="mono" style="color:var(--dim)">Post 3 · Wild Named · Drukhari</span></div><div class="body">"You want my toxin-craft on your forge list, rot-lord? My price: 300, and one intact Tyranid body. <i>Intact</i>, mind — no flame, no acid."</div>'));
