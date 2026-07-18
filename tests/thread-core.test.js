@@ -64,3 +64,43 @@ test('initState for TRAVEL sets the word meter from the tier', () => {
   assert.strictEqual(s.transit.wordsWritten, 0);
   assert.strictEqual(s.passage, 7200);
 });
+
+const combatThread = {
+  type:'SKIRMISH', parties:['The Rotward',"Sskarith's Brood"],
+  seedState:{ pools:{'The Rotward':26}, combatants:{
+    gharn:{ w:[8,8], band:'SHORT', party:'The Rotward',
+      model:{ id:'gharn', n:'Gharn', pc:180, sl:[
+        {k:'WEAPON', it:{n:'Bolt Pistol', d:'Rapid fire. 1 AP.', cat:'WEAPON'}},
+        {k:'ABILITY', it:{n:'Rage', d:'Melee bonus. 1 AP.', cat:'ABILITY'}} ] } } }, joined:true }
+};
+
+test('combat catalog draws actions from a model\'s equipped slots + Move', () => {
+  const t = THREAD.create(combatThread, canon);
+  const acts = THREAD.catalog(t, t.state, 'The Rotward', canon);
+  const names = acts.map(a => a.action);
+  assert.ok(names.some(n => /Bolt Pistol/.test(n)), 'weapon action present');
+  assert.ok(names.some(n => /Rage/.test(n)), 'ability action present');
+  assert.ok(names.some(n => /Move/.test(n)), 'Move always present');
+  const move = acts.find(a => /Move/.test(a.action));
+  assert.strictEqual(move.cost, 0, 'Move is 0 AP');
+});
+
+test('diplomacy catalog offers terms actions', () => {
+  const t = THREAD.create({ type:'DIPLOMACY', parties:['You','Vess'], seedState:{terms:null} }, canon);
+  const names = THREAD.catalog(t, t.state, 'You', canon).map(a => a.action);
+  assert.deepStrictEqual(names, ['Offer','Demand','Accept','Walk away']);
+});
+
+test('travel catalog offers Transit post and Arrival challenge', () => {
+  const t = THREAD.create({ type:'TRAVEL', parties:['A'], seedState:{transit:{tier:'same_planet'}} }, canon);
+  const names = THREAD.catalog(t, t.state, 'A', canon).map(a => a.action);
+  assert.ok(names.includes('Transit post'));
+  assert.ok(names.includes('Arrival challenge'));
+});
+
+test('mission and generic have empty catalogs', () => {
+  const m = THREAD.create({ type:'MISSION', parties:['A'] }, canon);
+  const g = THREAD.create({ type:'GENERIC', parties:['A'] }, canon);
+  assert.strictEqual(THREAD.catalog(m, m.state, 'A', canon).length, 0);
+  assert.strictEqual(THREAD.catalog(g, g.state, 'A', canon).length, 0);
+});

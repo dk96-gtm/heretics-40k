@@ -505,7 +505,37 @@ var THREAD=(function(){
     t.state=initState(t,canon);
     return t;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create };
+  function apMod(it){var s=it.d||'';if(/effortless/i.test(s))return 0;
+    var m=s.match(/(\d+)\s*AP/);if(m)return parseInt(m[1],10);
+    return it.cat==='CAST'?2:it.cat==='ABILITY'?1:it.cat==='ITEM'?0:1;}
+  function combatCatalog(state,party){
+    var out=[];
+    Object.keys(state.combatants).forEach(function(id){
+      var c=state.combatants[id];if(c.party!==party||!c.model)return;
+      (c.model.sl||[]).forEach(function(s){if(!s.it)return;var it=s.it;
+        if(s.k==='WEAPON')out.push({actor:id,action:'Attack - '+it.n,group:'e',cost:apMod(it),kind:'damage'});
+        else if(s.k==='ABILITY')out.push({actor:id,action:it.n,group:'y',cost:apMod(it),kind:'cond'});
+        else if(s.k==='WARP CAST')out.push({actor:id,action:'Cast: '+it.n,group:'a',cost:apMod(it),kind:'cond'});
+        else if(s.k==='ITEM'&&/consumable|stimm|grenade/i.test(it.d||''))
+          out.push({actor:id,action:'Use '+it.n,group:'a',cost:apMod(it),kind:'cond'});
+      });
+      out.push({actor:id,action:'Move',group:'b',cost:0,kind:'band'});
+    });
+    return out;
+  }
+  function catalog(thread,state,party,canon){
+    if(thread.type==='SKIRMISH'||thread.type==='INVASION')return combatCatalog(state,party);
+    if(thread.type==='DIPLOMACY')return [
+      {actor:party,action:'Offer',group:'t',cost:0,kind:'terms'},
+      {actor:party,action:'Demand',group:'t',cost:0,kind:'terms'},
+      {actor:party,action:'Accept',group:'t',cost:0,kind:'terms'},
+      {actor:party,action:'Walk away',group:'t',cost:0,kind:null} ];
+    if(thread.type==='TRAVEL')return [
+      {actor:party,action:'Transit post',group:'m',cost:0,kind:'transit'},
+      {actor:party,action:'Arrival challenge',group:'m',cost:0,kind:null} ];
+    return [];
+  }
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog };
 })();
 /*</thread-core>*/
 /* ---- demo save ---- */
