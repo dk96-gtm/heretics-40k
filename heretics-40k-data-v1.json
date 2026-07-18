@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.4",
-  "updated": "2026-07-17",
+  "version": "1.5",
+  "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -239,26 +239,31 @@
    },
    "field_recovery": "victor recovers 50% of their own revivable dead",
    "revival_window": {
-    "note": "Death is a race, not a flag. The killing element sets the WINDOW; the body must reach an Apothecarion within it.",
+    "note": "Death is a race, not a flag. The killing element sets the WINDOW; the body must reach an Apothecarion within it. Windows are tuned to travel: even the harshest kill leaves a same-sector ride plus one post; softer deaths leave enough that an Apothecary or the right item can turn the tide mid-thread.",
     "rule": "On death the body enters a revival window measured in posts. It must physically reach a location with an Apothecarion door before the window expires. Travel costs count against the window.",
     "windows": {
-     "Physical": 3,
-     "Energy": 3,
-     "Heat": 1,
-     "Corrosive": 1,
-     "Plasma": 1,
-     "Warp": 1
+     "Physical": 8,
+     "Energy": 8,
+     "Heat": 3,
+     "Corrosive": 3,
+     "Plasma": 3,
+     "Warp": 3
+    },
+    "minimum_rationale": "Harsh-element minimum (3) = same-sector travel (2 posts) + 1. Soft elements add +5 so revival stays a live tactic during and just after a combat thread.",
+    "no_revival": {
+     "rule": "A kill dealt by a source carrying a no-revival tag denies the window entirely: window 0, permanent death, no Apothecarion, no cost, no succession-revival. These are the annihilation weapons - use is rare and expensive.",
+     "tags": ["Annihilation", "Soul-Death", "Unmaking"]
     },
     "expiry": "Window expires -> permanent death. No door, no cost, no appeal.",
     "commanders": "Commanders use the same windows. Succession still fires if the window expires.",
     "against_travel_ladder": {
      "same planet (1 post)": "a rescue",
      "same sector (2 posts)": "a desperate ride",
-     "cross-sector (3 posts)": "exactly the window - no detours",
-     "cross-segmentum (5 posts)": "a funeral"
+     "cross-sector (3 posts)": "for harsh kills, already lost; for Physical/Energy, a real chance",
+     "cross-segmentum (5 posts)": "a funeral for all but the freshest Physical/Energy body"
     },
     "cost": "Apothecarion revival costs Currency, scaled to the model's PC.",
-    "supersedes": "revivable_elements / denied_elements are now window lengths, not a binary. Field recovery (50%) unchanged for Physical/Energy."
+    "supersedes": "Window lengths (v1.5) supersede the earlier 3/1 values. Field recovery (50%) unchanged for Physical/Energy."
    }
   },
   "economy": {
@@ -3815,6 +3820,12 @@
     "cost": 12,
     "d": "ignores Stealth",
     "access": "Aeldari or T'au forge access"
+   },
+   {
+    "tag": "Annihilation",
+    "cost": 40,
+    "d": "kills deny the revival window - permanent death, no Apothecarion",
+    "access": "rare / restricted"
    }
   ]
  },

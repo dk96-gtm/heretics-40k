@@ -160,6 +160,43 @@ test('apply slay marks dead and stamps the revival window', () => {
   assert.ok(t.state.combatants.thresh.revivalWindow != null);
 });
 
+test('elementOf parses the leading damage element from item text', () => {
+  assert.strictEqual(THREAD.elementOf({d:'Phys 2 - Med - 1 AP'}), 'Physical');
+  assert.strictEqual(THREAD.elementOf({d:'Plasma 3 - Med - 2 AP - Venting 1'}), 'Plasma');
+  assert.strictEqual(THREAD.elementOf({d:'Warp 4 - Short'}), 'Warp');
+  assert.strictEqual(THREAD.elementOf({d:'no element here'}), null);
+});
+
+test('slay stamps the element-specific window as a number', () => {
+  const t = freshCombat();
+  t.state.combatants.thresh.w = [1,10];
+  THREAD.apply(t, t.state, [{actor:'gharn',action:'Attack',cost:9,
+    effect:{kind:'slay',to:'thresh',intact:true,element:'Heat'}}], canon);
+  assert.strictEqual(t.state.combatants.thresh.revivalWindow, 3);   // Heat = 3
+  assert.strictEqual(t.state.combatants.thresh.permaDeath, false);
+  assert.strictEqual(t.state.combatants.thresh.killElement, 'Heat');
+});
+
+test('a no-revival kill is permanent (window 0)', () => {
+  const t = freshCombat();
+  THREAD.apply(t, t.state, [{actor:'gharn',action:'Attack',cost:9,
+    effect:{kind:'slay',to:'thresh',element:'Physical',noRevival:true}}], canon);
+  assert.strictEqual(t.state.combatants.thresh.revivalWindow, 0);
+  assert.strictEqual(t.state.combatants.thresh.permaDeath, true);
+});
+
+test('isNoRevival detects an annihilation source', () => {
+  assert.strictEqual(THREAD.isNoRevival({n:'Soulreaper', d:'Warp 5 - Annihilation'}, canon), true);
+  assert.strictEqual(THREAD.isNoRevival({n:'Boltgun', d:'Phys 2 - Med'}, canon), false);
+});
+
+test('damage overkill floors wounds at 0, never negative', () => {
+  const t = freshCombat();
+  THREAD.apply(t, t.state, [{actor:'gharn',action:'Attack',cost:9,
+    effect:{kind:'damage',amount:99,to:'thresh'}}], canon);
+  assert.strictEqual(t.state.combatants.thresh.w[0], 0);
+});
+
 test('apply transit accrues words and arrivalReady flips at target', () => {
   const t = THREAD.create({ type:'TRAVEL', parties:['A'], seedState:{transit:{tier:'same_planet'}} }, canon); // words=50
   THREAD.apply(t, t.state, [{actor:'A',action:'Transit post',cost:0,effect:{kind:'transit',words:30}}], canon);

@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.4', () => {
-  assert.strictEqual(canon.meta.version, '1.4');
+test('canon is v1.5', () => {
+  assert.strictEqual(canon.meta.version, '1.5');
 });
 
 test('every travel tier has base + words', () => {
@@ -32,4 +32,21 @@ test('bases and words climb with distance', () => {
   assert.ok(t.same_sector.base < t.cross_sector_same_segmentum.base);
   assert.ok(t.cross_sector_same_segmentum.base < t.cross_segmentum.base);
   assert.ok(t.same_planet.words < t.cross_segmentum.words);
+});
+
+test('v1.5 revival windows are travel-tuned', () => {
+  const w = canon.rules.death.revival_window.windows;
+  assert.strictEqual(w.Physical, 8);
+  assert.strictEqual(w.Energy, 8);
+  assert.strictEqual(w.Heat, 3);
+  assert.strictEqual(w.Warp, 3);
+  // harsh minimum >= same-sector travel + 1
+  assert.ok(w.Heat >= canon.travel.same_sector.posts + 1);
+});
+
+test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
+  const nr = canon.rules.death.revival_window.no_revival;
+  assert.ok(Array.isArray(nr.tags) && nr.tags.includes('Annihilation'));
+  const ann = canon.equipment_alpha.forge_tags_alpha.find(t => t.tag === 'Annihilation');
+  assert.ok(ann, 'Annihilation forge tag present');
 });
