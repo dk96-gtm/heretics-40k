@@ -914,7 +914,7 @@ function travel(pl,sp){var r=route(pl,sp);if(!r||r.m==='x'){T(r?r.d:'Already the
   var cost=THREAD.passageCost(D,tier,THREAD.forcePC(force),false);
   if(cost>S.cur){T('Passage costs '+cost+' '+curName()+' — not enough.');return}
   S.cur-=cost;
-  var t=THREAD.create({id:'travel_'+(S.threads.length+1),type:'TRAVEL',
+  var t=THREAD.create({id:'travel_'+Date.now(),type:'TRAVEL',
     n:'Transit — '+fLoc(pl,sp).name,loc:'The void between',turn:'you',vis:'public',
     initiator:'You',forces:S.forces.map(function(f){return f.n}),
     about:'Passage to '+fLoc(pl,sp).name+' — '+cost+' '+curName()+' ('+tier.replace(/_/g,' ')+'). Write the journey to arrive.',
@@ -1106,6 +1106,8 @@ function openT(id){var L=document.getElementById('tl'),V=document.getElementById
 L.style.display='none';V.style.display='block';V.innerHTML='';
 var bk=E('button','btn gh sm','← All threads');bk.onclick=rTL;V.appendChild(bk);
 var t=S.threads.filter(function(x){return x.id===id})[0];
+if(t&&!t.state)t.state=THREAD.initState(t,D);
+if(t&&!t.posts)t.posts=[];
 var mine=t&&((t.initiator||'').match(/^You/)||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f})}));
 if(t&&t.vis==='private'&&!mine){V.insertAdjacentHTML('beforeend','<div class="empty">🔒 This thread is <b>private</b> — you are not a participant, so you cannot read it. Only its parties can make it public.</div>');return}
 if(t)V.appendChild(threadHeader(t));
