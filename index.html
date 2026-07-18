@@ -485,7 +485,27 @@ var THREAD=(function(){
   function forcePC(models){
     return (models||[]).reduce(function(a,m){return a+(m.pc||0)},0);
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC };
+  function initState(thread,canon){
+    var seed=thread.seedState||{};
+    var s={ pools:seed.pools||{}, combatants:seed.combatants||{},
+            joined:!!seed.joined, terms:seed.terms||null,
+            transit:null, passage:seed.passage||0 };
+    if(thread.type==='TRAVEL'&&seed.transit){
+      var tier=seed.transit.tier;
+      s.transit={ tier:tier,
+        wordsReq:(canon.travel[tier]&&canon.travel[tier].words)||0,
+        wordsWritten:seed.transit.wordsWritten||0 };
+    }
+    return s;
+  }
+  function create(seed,canon){
+    var t={};for(var k in seed)t[k]=seed[k];
+    if(!t.posts)t.posts=[];
+    if(!t.vis)t.vis='public';
+    t.state=initState(t,canon);
+    return t;
+  }
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create };
 })();
 /*</thread-core>*/
 /* ---- demo save ---- */

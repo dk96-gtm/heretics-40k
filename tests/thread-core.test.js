@@ -37,3 +37,30 @@ test('forcePC sums model point costs', () => {
   assert.strictEqual(THREAD.forcePC([{pc:120},{pc:80},{pc:300}]), 500);
   assert.strictEqual(THREAD.forcePC([]), 0);
 });
+
+test('create fills defaults and attaches state', () => {
+  const t = THREAD.create({ id:'x', type:'SKIRMISH', n:'Test', parties:['A','B'] }, canon);
+  assert.deepEqual(t.posts, []);
+  assert.strictEqual(t.vis, 'public');
+  assert.ok(t.state, 'state attached');
+  assert.strictEqual(t.state.joined, false);
+});
+
+test('initState seeds combatants and pools from seedState', () => {
+  const t = { type:'SKIRMISH', parties:['The Rotward',"Sskarith's Brood"],
+    seedState:{ pools:{'The Rotward':26,"Sskarith's Brood":14},
+      combatants:{ gharn:{ w:[4,8], band:'MELEE', party:'The Rotward' } }, joined:true } };
+  const s = THREAD.initState(t, canon);
+  assert.strictEqual(s.pools['The Rotward'], 26);
+  assert.deepStrictEqual(s.combatants.gharn.w, [4,8]);
+  assert.strictEqual(s.joined, true);
+});
+
+test('initState for TRAVEL sets the word meter from the tier', () => {
+  const t = { type:'TRAVEL', parties:['A'],
+    seedState:{ transit:{ tier:'cross_segmentum' }, passage:7200 } };
+  const s = THREAD.initState(t, canon);
+  assert.strictEqual(s.transit.wordsReq, 800);   // canon cross_segmentum.words
+  assert.strictEqual(s.transit.wordsWritten, 0);
+  assert.strictEqual(s.passage, 7200);
+});
