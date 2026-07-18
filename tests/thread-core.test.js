@@ -40,7 +40,7 @@ test('forcePC sums model point costs', () => {
 
 test('create fills defaults and attaches state', () => {
   const t = THREAD.create({ id:'x', type:'SKIRMISH', n:'Test', parties:['A','B'] }, canon);
-  assert.deepEqual(t.posts, []);
+  assert.deepStrictEqual(t.posts, []);
   assert.strictEqual(t.vis, 'public');
   assert.ok(t.state, 'state attached');
   assert.strictEqual(t.state.joined, false);
