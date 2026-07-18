@@ -627,7 +627,16 @@ var NPCAI=(function(){
     a.value=next;a.drift.push({t:t,d:applied,cause:cause});
     return applied;
   }
-  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp };
+  function worldScope(world,horizon,hereLoc){
+    world=world||{};horizon=horizon||{};
+    var secs=horizon.sectors||[];
+    var kf=[];Object.keys(world.forces||{}).forEach(function(pid){
+      if(secs.indexOf(pid)>=0)(world.forces[pid]||[]).forEach(function(f){kf.push(f);});
+    });
+    var lh=(world.history&&world.history[hereLoc])?world.history[hereLoc].slice():[];
+    return {knownForces:kf,locationHistory:lh};
+  }
+  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope };
 })();
 /*</ai-core>*/
 /* ---- demo save ---- */

@@ -47,3 +47,15 @@ test('ai-core: driftClamp respects plasticity window and floor/ceiling', () => {
   assert.equal(b.honor.value, 52);
   assert.equal(b.honor.drift.length, 2);
 });
+
+test('ai-core: worldScope keeps only horizon-relevant public forces + local history', () => {
+  const world = {
+    met: ['vess'],
+    forces: { vigilus: [['The Rotward', 'plague host', 'Ashravine']], kraith: [['Hive Fleet', 'tyranids', 'Drift']] },
+    history: { 'vigilus/carrion': ['A broker deal soured.'], 'kraith/drift': ['Something woke.'] }
+  };
+  const horizon = { sectors: ['vigilus'], factions: ['Drukhari'], themes: ['trade'] };
+  const r = NPCAI.worldScope(world, horizon, 'vigilus/carrion');
+  assert.deepEqual(r.knownForces, [['The Rotward', 'plague host', 'Ashravine']]); // vigilus only, not kraith
+  assert.deepEqual(r.locationHistory, ['A broker deal soured.']);                  // here only
+});
