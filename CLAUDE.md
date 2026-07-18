@@ -3,7 +3,7 @@
 Project context and orientation for anyone (human or AI) working in this repo. Development lives here now; the Notion workspace is a read-only design archive.
 
 **Live:** https://dk96-gtm.github.io/heretics-40k/ · **Repo:** github.com/dk96-gtm/heretics-40k (public)
-**Current state:** engine **v15**, canon **data v1.3** — deployed and running.
+**Current state:** engine **v16**, canon **data v1.5** — deployed and running.
 
 ## What this is
 
@@ -27,16 +27,18 @@ The game = DATA + ENGINE. Nothing else ships.
 - **⚠ JSON cache gotcha:** the engine fetches a fixed filename, so browsers cache the JSON. After a canon change, the local rail may show the old version until cache clears; the live CDN serves fresh to new sessions. Verify canon changes on the live URL, not a warm local tab.
 - Git identity on this repo uses the GitHub noreply email (no personal email in history).
 
-## What is IN canon (data v1.0 → v1.3)
+## What is IN canon (data v1.0 → v1.5)
 
 - **Rules constants:** AP bands (PC→AP), Named/Commander premiums & deltas, rank growth curves (`rules.growth`: PC ×1.0/1.4/1.9/2.5/3.2, wounds %/rank by class, speed/slot gains), combat framework, death & succession (+ `revival_window`), economy, Force size tags, thread types, comms, both rites.
 - **20 factions** (6 Chaos / 5 Imperial / 9 Xenos) each with backgrounds, appearances, origin perks, currency, and alpha model subsets (3 each).
 - **v1.1 — location system:** `location_types` (16 standard + 5 faction-specific), `doors` (11 kinds with per-faction skins), `conditions` (9), `planet_types` (20, each with a prod_mult + a unique EFFECT), `population_ranks` (6 grouped ladders), `status_readings` (one state, three allegiance readings), `status_effects`, `scores`/`thread_scales`/`world_enders` (specced; need Stage 2 persistence to run live). Death `revival_window` (killing element sets the window; body must reach an Apothecarion in time).
 - **v1.2 — Orbit & Space:** every planet has an Orbit location (tier `orbit`, holds ships); every sector has a `space` layer.
 - **v1.3 — NPCs:** 5 placed NPCs with overview sheets.
-- Alpha galaxy: Vigilus Sector, Pallid Reach, Kraith Drift populated; rest sealed. Travel ladder + Travel-Thread arrival. Alpha equipment + forge tags.
+- **v1.4 — Travel passage-cost model:** `travel` tiers gain `base` + `words`, a `force_divisor` (250), the finer `same_sector_space` rung, and an explicit Warp-Gate waiver. Passage = `tier.base × (force total PC ÷ force_divisor)`; free through a Warp Gate.
+- **v1.5 — Element-sourced revival + no-revival:** `rules.death.revival_window.windows` retuned to travel time (Physical/Energy 8, Heat/Corrosive/Plasma/Warp 3 — harsh minimum = same-sector ride + 1); a `no_revival` tag set (+ an `Annihilation` forge tag) whose kills are permanent.
+- Alpha galaxy: Vigilus Sector, Pallid Reach, Kraith Drift populated; rest sealed. Travel ladder + Travel-Thread arrival. Alpha equipment + forge tags. (No planet has a charted Warp-Gate/webway location yet — free gate travel is plumbed but has no destinations until portals are minted.)
 
-## What the ENGINE does (built across v6 → v15)
+## What the ENGINE does (built across v6 → v16)
 
 - **7 screens:** Rites of Creation, Commander HQ, Barracks (Roster / Armoury / Forces tabs), Requisition, Map, Threads, Comms.
 - **Model as a first-class entity:** full overview overlay (framed portrait, stats incl. Kills, lore, threads fought, loadout grouped by slot-type, rank-development table). Reachable from Barracks, HQ (leader switcher), battle state, forces.
@@ -46,7 +48,7 @@ The game = DATA + ENGINE. Nothing else ships.
 - **Floating profile HUD:** compact static bar on every non-HQ screen.
 - **Requisition:** all 11 door types functional (shop/altar/reliquary catalogs + cart + sell; forge; muster; apothecarion; shipyard; relay; arena; warp gate; throne room). Location gating + closed-door reasons. Door demo mode.
 - **Map:** procedural charts at galaxy/segment/sector levels; readable sector header (Prosperity/Conflict/Taint meters); Orbit vs Surface split; Deep Space as a travelable node; clickable location panel (doors → requisition, forces → auspex intel, history → summaries, NPCs → sheets); in-location "start a thread" / "enter requisition".
-- **Threads:** IC headers (location, initiator, forces, about); public/private with participant gating; thread board (accepted + objectives, available, sector conflicts); forum view (scrollable posts, pinned composer, foldable battle report); mission accept → reader+composer; Exit + costs + pursuit; one-Force-per-thread.
+- **Threads (unified spine, v16):** every type — battle / diplomacy / travel / mission / generic — runs through ONE `threadView` loop (header → read posts → compose → optional action block → post → await), driven by a pure, node-tested `THREAD` core (`create`/`initState`/`catalog`/`validate`/`apply`; see below). Threads carry live `state` (per-model wounds, distance bands, per-force AP pools, terms, transit meter) that posted action blocks actually mutate: combat spends AP and drops wounds on a state-driven battle report; a kill stamps the element-specific revival window (or permadeath for a no-revival source); diplomacy stages terms; travel fills a word-count arrival meter and charges force-scaled passage. Public/private gating, thread board, mission accept-gate, Exit (reads `state.joined`; travel exit refunds passage) all preserved. The old hardcoded `bBattle`/`bDiplo`/`bTravel` builders and the `S.tr` transit global are gone.
 - **Comms:** remote hail; unsafe trade (transfer currency/item); publish conversation as Protocol; NPC approach-in-person when co-located.
 - **Force intel / auspex:** encountered forces show last-known composition.
 
@@ -56,13 +58,16 @@ These are functional but not the deep versions — flagged in-UI where relevant:
 - Exit **pursuit** uses a simple speed comparison, not the full ranked-speed rule.
 - **Trade** transfers gear but has no escrow / dispute→combat resolution.
 - **AI thread summaries** are templates (real AI is a Stage 3 / backend + API feature).
-- Throne Room world-enders and Warp Gate travel acknowledge the action but don't resolve — they depend on the thread/travel rebuilds.
+- **Travel now resolves** (v16): real Travel thread with a word-count arrival meter + force-scaled passage cost. Throne Room world-enders still acknowledge but don't resolve. Warp-Gate free travel is plumbed (`passageCost` waives it) but has no charted portal destinations yet — needs galaxy data (minted webway/warp-gate locations), not engine work.
+- Exit **pursuit** still uses a simple speed comparison (`enemySpd=3`), not the full ranked-speed rule — now reads real state but the pursuit heuristic is unchanged.
 - **Scores/production/resources** (the flywheel) are specced in canon but need persistence (Stage 2) to actually accumulate; the map shows demo constants.
 - **Art:** all image slots (portraits, door/location/space art, map card backgrounds) are wireframe placeholders. Filling them is its own conversation (procedural vs asset-pack vs generated).
 
-## Open design question (parked)
+## Thread core & tests (v16)
 
-A **unified thread flow** — one consistent loop (open → read → compose, with an optional action block → post → await reply) across battle / diplomacy / generic threads, which currently behave differently. Worth a deliberate brainstorm rather than more incremental patching.
+The thread rules live in a pure, DOM-free `THREAD` object inside `index.html`, wrapped in a `/*<thread-core>*/ … /*</thread-core>*/` region (reads no globals — canon and state arrive as arguments). A **dev-only `tests/` folder** unit-tests it with Node's built-in runner: `node --test` (zero dependencies, no `package.json`). `tests/_load.js` extracts-and-evals the region in the host realm; `tests/engine-syntax.test.js` is a headless boot proxy (compiles the inline `<script>` via `vm.Script`). `tests/` is **dev-only and never shipped** — only `index.html` + the JSON deploy. Design/plan docs live in `docs/superpowers/`.
+
+The previously-parked **unified thread flow** design question is now RESOLVED and shipped (see the Threads bullet above).
 
 ## Roadmap
 
