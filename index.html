@@ -636,7 +636,38 @@ var NPCAI=(function(){
     var lh=(world.history&&world.history[hereLoc])?world.history[hereLoc].slice():[];
     return {knownForces:kf,locationHistory:lh};
   }
-  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope };
+  function axisLine(behavior){
+    return Object.keys(behavior).map(function(ax){return ax+' '+behavior[ax].value;}).join(' · ');
+  }
+  function buildBundle(ctx){
+    var p=(ctx.npc&&ctx.npc.persona)||{},m=ctx.memory||{},pl=ctx.place||{},sc=ctx.scoped||{};
+    var sys=[
+      ctx.ai.directives,
+      'CHARACTER: '+ctx.npc.name+'.',
+      'VOICE: '+(p.voice||''),
+      p.prime_drive?('DRIVE: '+p.prime_drive):'',
+      p.lens?('LENS: '+p.lens):'',
+      'TEMPERAMENT (0-100): '+axisLine(ctx.behavior||{}),
+      (m.longTermMemory&&m.longTermMemory.length)?('WHAT YOU REMEMBER: '+m.longTermMemory.map(function(x){return x.summary;}).join(' | ')):'',
+      (ctx.dossierNote||'')
+    ].filter(Boolean).join('\n');
+    var d=m.dossier||{};
+    var usr=[
+      'SCENE: '+((ctx.thread&&ctx.thread.about)||'a conversation')+'.',
+      'PLACE: '+(pl.locName||'')+(pl.phase?(' — '+pl.phase):'')+(pl.planetEffect?(' ('+pl.planetEffect+')'):'')+'.',
+      'RECENT: '+(m.recentJournal||[]).map(function(x){return x.text;}).join(' ')+'.',
+      'STANDING toward '+(ctx.commanderName||'them')+': '+(d.standing!=null?d.standing:0)+
+        (d.grudges&&d.grudges.length?(' · grudges: '+d.grudges.join(', ')):'')+'.',
+      sc.knownForces&&sc.knownForces.length?('KNOWN FORCES NEARBY: '+sc.knownForces.map(function(f){return f[0]+' ('+f[1]+')';}).join('; ')+'.'):'',
+      sc.locationHistory&&sc.locationHistory.length?('HERE LATELY: '+sc.locationHistory.join(' ')):'',
+      'CONVERSATION SO FAR:',
+      (ctx.thread&&ctx.thread.posts||[]).map(function(po){return po.who+': '+String(po.body).replace(/<[^>]*>/g,' ').trim();}).join('\n'),
+      '',
+      'Reply as '+ctx.npc.name+'. '+(ctx.mode==='combat'?'You are in battle; choose actions from the provided catalog.':'')
+    ].filter(function(x){return x!=='';}).join('\n');
+    return {system:sys,user:usr};
+  }
+  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope, buildBundle:buildBundle };
 })();
 /*</ai-core>*/
 /* ---- demo save ---- */

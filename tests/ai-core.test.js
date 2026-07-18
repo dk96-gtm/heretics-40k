@@ -59,3 +59,25 @@ test('ai-core: worldScope keeps only horizon-relevant public forces + local hist
   assert.deepEqual(r.knownForces, [['The Rotward', 'plague host', 'Ashravine']]); // vigilus only, not kraith
   assert.deepEqual(r.locationHistory, ['A broker deal soured.']);                  // here only
 });
+
+test('ai-core: buildBundle assembles layered system + user, excludes unpassed data', () => {
+  const ctx = {
+    ai: { directives: 'Stay in character.' },
+    npc: { name: 'Vess', persona: { voice: 'Silken and transactional.', prime_drive: 'profit in flesh', lens: 'all are clients' } },
+    behavior: { cunning: { value: 88 }, ferocity: { value: 30 }, pragmatism: { value: 90 }, honor: { value: 35 }, supremacism: { value: 80 } },
+    memory: { recentJournal: [{ t: 1, text: 'A deal soured.' }], longTermMemory: [{ t: 0, summary: 'Betrayed at Kraith.' }], dossier: { standing: -10, facts: [], goals: [], grudges: ['owes me'] } },
+    thread: { about: 'passage rights', posts: [{ who: 'Kane', body: 'I need passage.' }] },
+    place: { locName: 'Carrion Market', phase: 'Dead of Night', planetEffect: 'toxic rain' },
+    scoped: { knownForces: [['The Rotward', 'plague host', 'Ashravine']], locationHistory: ['A broker deal soured.'] },
+    commanderName: 'Kane',
+    mode: 'social'
+  };
+  const b = NPCAI.buildBundle(ctx);
+  assert.match(b.system, /Silken and transactional/);
+  assert.match(b.system, /cunning 88/);
+  assert.match(b.system, /Betrayed at Kraith/);              // long-term memory carried
+  assert.match(b.user, /passage rights/);                     // scene
+  assert.match(b.user, /Dead of Night/);                      // place/phase
+  assert.match(b.user, /The Rotward/);                        // scoped world
+  assert.doesNotMatch(b.user, /roster|localStorage|secret/i); // nothing leaked
+});
