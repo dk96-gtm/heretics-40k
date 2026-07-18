@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.3",
+  "version": "1.4",
   "updated": "2026-07-17",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -3731,30 +3731,14 @@
   }
  },
  "travel": {
-  "same_planet": {
-   "mode": "ground",
-   "posts": 1,
-   "cost": 0
-  },
-  "same_sector": {
-   "mode": "system vessel",
-   "posts": 2,
-   "cost": 0,
-   "requires": "system-capable vessel"
-  },
-  "cross_sector_same_segmentum": {
-   "mode": "warp",
-   "posts": 3,
-   "charter_cost": 350,
-   "requires": "warp vessel or charter"
-  },
-  "cross_segmentum": {
-   "mode": "warp",
-   "posts": 5,
-   "charter_cost": 550,
-   "own_vessel_toll": 200,
-   "note": "Segmentum toll amount is placeholder - canon TBD"
-  },
+  "same_planet": { "mode": "ground", "posts": 1, "base": 10, "words": 50, "cost": 0 },
+  "same_sector": { "mode": "system vessel", "posts": 2, "base": 40, "words": 150, "requires": "system-capable vessel" },
+  "same_sector_space": { "mode": "system vessel", "posts": 2, "base": 60, "words": 200, "requires": "system-capable vessel", "note": "planet <-> space within a sector" },
+  "cross_sector_same_segmentum": { "mode": "warp", "posts": 3, "base": 120, "words": 400, "requires": "warp vessel or charter" },
+  "cross_segmentum": { "mode": "warp", "posts": 5, "base": 300, "words": 800, "requires": "warp vessel or charter", "note": "base/words are placeholder - canon TBD" },
+  "force_divisor": 250,
+  "warp_gate_waiver": "Departing through a Warp Gate waives passage entirely (passage = 0) and skips the travel ladder - portal to portal, free.",
+  "passage_formula": "passage = tier.base * (force total PC / force_divisor); off-planet tiers require a vessel; Warp Gate waives it.",
   "arrival_at_controlled_planet": {
    "rule": "opens a Travel Thread with entry procedures",
    "friendly": "allied colors recognized: land at any location, draw garrison resupply",
