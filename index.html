@@ -667,7 +667,17 @@ var NPCAI=(function(){
     ].filter(function(x){return x!=='';}).join('\n');
     return {system:sys,user:usr};
   }
-  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope, buildBundle:buildBundle };
+  function validateReply(o,mode){
+    if(!o||typeof o.post!=='string'||!o.post.trim())return {ok:false,reason:'missing post'};
+    var d=o.dossierDelta;
+    if(!d||typeof d.newJournalEntry!=='string'||!d.newJournalEntry.trim())return {ok:false,reason:'missing journal entry'};
+    var cu=d.commanderUpdates||{};
+    if(cu.standing!=null&&(typeof cu.standing!=='number'||cu.standing%1!==0))return {ok:false,reason:'standing not an int'};
+    if(d.axisShift!=null&&(typeof d.axisShift.axis!=='string'||typeof d.axisShift.delta!=='number'))return {ok:false,reason:'bad axisShift'};
+    if(mode==='combat'&&!Array.isArray(o.combatPicks))return {ok:false,reason:'combat needs combatPicks array'};
+    return {ok:true,reason:''};
+  }
+  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope, buildBundle:buildBundle, validateReply:validateReply };
 })();
 /*</ai-core>*/
 /* ---- demo save ---- */

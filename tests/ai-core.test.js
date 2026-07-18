@@ -81,3 +81,13 @@ test('ai-core: buildBundle assembles layered system + user, excludes unpassed da
   assert.match(b.user, /The Rotward/);                        // scoped world
   assert.doesNotMatch(b.user, /roster|localStorage|secret/i); // nothing leaked
 });
+
+test('ai-core: validateReply accepts a good social reply, rejects malformed', () => {
+  const good = { post: 'Passage costs, client.', combatPicks: null,
+    dossierDelta: { newJournalEntry: 'Kane asked passage.', promoteToLongTerm: null,
+      commanderUpdates: { standing: -2, addFacts: [], addGoals: [], addGrudges: [] }, axisShift: null } };
+  assert.deepEqual(NPCAI.validateReply(good, 'social'), { ok: true, reason: '' });
+  assert.equal(NPCAI.validateReply({ post: '' , dossierDelta: good.dossierDelta }, 'social').ok, false);
+  assert.equal(NPCAI.validateReply({ post: 'x' }, 'social').ok, false); // no dossierDelta
+  assert.equal(NPCAI.validateReply({ post: 'x', combatPicks: null, dossierDelta: good.dossierDelta }, 'combat').ok, false); // combat needs array picks
+});
