@@ -469,6 +469,17 @@ function curName(){return FAC(S.player.faction).currency}
 function forcesAt(pid){return S.world.forces[pid]||[]}
 function histAt(pid,lid){return S.world.history[pid+'/'+lid]||[]}
 function npcsAt(pid,lid){return D.npcs_alpha.filter(function(n){return n.location===pid+'/'+lid&&S.world.met.indexOf(n.id)>=0})}
+<!-- pure thread rules: no DOM, no globals; every input is an argument (node-tested) -->
+/*<thread-core>*/
+var THREAD=(function(){
+  function passageCost(canon,tierKey,forcePC,viaWarpGate){
+    if(viaWarpGate)return 0;
+    var t=canon.travel[tierKey];if(!t)return 0;
+    return Math.round(t.base*(forcePC/canon.travel.force_divisor));
+  }
+  return { passageCost:passageCost };
+})();
+/*</thread-core>*/
 /* ---- demo save ---- */
 function pms(){return[{k:'WEAPON',it:{n:'Boltgun',cat:'WEAPON',d:'Phys 2 - Med'}},{k:'WEAPON',it:{n:'Plague Knife',cat:'WEAPON',d:'Corr 2 - Effortless'}},{k:'ITEM',it:null}]}
 function pxs(){return[{k:'WEAPON',it:{n:'Rusted Claws',cat:'WEAPON',d:'Phys 1 - Melee - Effortless'}}]}
