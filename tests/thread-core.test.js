@@ -25,3 +25,15 @@ test('no threshold cliff: one extra PC costs a little more, never a jump', () =>
 test('Warp Gate waives passage entirely', () => {
   assert.strictEqual(THREAD.passageCost(canon, 'cross_segmentum', 6000, true), 0);
 });
+
+test('wordCount strips HTML and counts words', () => {
+  assert.strictEqual(THREAD.wordCount('<b>The</b> ravine walls wept ash'), 5);
+  assert.strictEqual(THREAD.wordCount('  spaced   out  '), 2);
+  assert.strictEqual(THREAD.wordCount('<br>'), 0);
+  assert.strictEqual(THREAD.wordCount(''), 0);
+});
+
+test('forcePC sums model point costs', () => {
+  assert.strictEqual(THREAD.forcePC([{pc:120},{pc:80},{pc:300}]), 500);
+  assert.strictEqual(THREAD.forcePC([]), 0);
+});

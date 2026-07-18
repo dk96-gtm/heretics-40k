@@ -477,7 +477,15 @@ var THREAD=(function(){
     var t=canon.travel[tierKey];if(!t)return 0;
     return Math.round(t.base*(forcePC/canon.travel.force_divisor));
   }
-  return { passageCost:passageCost };
+  function wordCount(html){
+    var txt=String(html==null?'':html).replace(/<[^>]*>/g,' ').replace(/&[a-z]+;/gi,' ');
+    var parts=txt.trim().split(/\s+/).filter(function(w){return w.length});
+    return parts.length;
+  }
+  function forcePC(models){
+    return (models||[]).reduce(function(a,m){return a+(m.pc||0)},0);
+  }
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC };
 })();
 /*</thread-core>*/
 /* ---- demo save ---- */
