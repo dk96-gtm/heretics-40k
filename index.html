@@ -1397,7 +1397,7 @@ function threadView(V,t){
   (t.posts||[]).forEach(function(p,i){
     scroll.insertAdjacentHTML('beforeend',
       '<div class="post"><div class="ph"><span class="who '+(p.tag==='you'?'you':'en')+'">'+p.who+'</span>'+
-      '<span class="mono" style="color:var(--dim)">Post '+(i+1)+'</span></div><div class="body">'+p.body+'</div>'+
+      '<span class="mono" style="color:var(--dim)">'+(p.stamp?p.stamp+' · ':'')+'Post '+(i+1)+'</span></div><div class="body">'+p.body+'</div>'+
       (p.block?'<div class="ab"><div class="ah">Action Block</div><ul>'+p.block.map(function(b){
         return '<li><b>'+b.action+'</b>'+(b.cost?' ('+b.cost+' AP)':'')+'</li>'}).join('')+'</ul></div>':'')+'</div>');
   });
@@ -1411,7 +1411,7 @@ function threadView(V,t){
     if(t.type==='TRAVEL' && t.state.transit){
       THREAD.apply(t,t.state,[{actor:party,action:'Transit post',cost:0,effect:{kind:'transit',words:THREAD.wordCount(v)}}],D);
       if(!t.posts)t.posts=[];
-      t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you'});
+      t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you',stamp:nowStamp()});
       if(THREAD.arrivalReady(t.state)&&t._dest){
         S.pos={pl:t._dest.pl,sp:t._dest.sp};
         S.threads=S.threads.filter(function(x){return x.id!==t.id});
@@ -1433,13 +1433,28 @@ function threadView(V,t){
       }
     }
     if(!t.posts)t.posts=[];
-    t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you',block:staged.map(function(s){return {actor:s.actor,action:s.action,cost:s.cost,effect:s.effect}})});
+    t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you',stamp:nowStamp(),block:staged.map(function(s){return {actor:s.actor,action:s.action,cost:s.cost,effect:s.effect}})});
     openT(t.id);T('Posted to '+t.n+'.');};
   if(isCombat){
     var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);lf.appendChild(comp.el);
     wrap.appendChild(lf);wrap.appendChild(threadSidebar(t));V.appendChild(wrap);
   }else{
     var wrap=E('div','tw solo');wrap.appendChild(scroll);wrap.appendChild(comp.el);V.appendChild(wrap);
+  }
+  var _npc=threadNPC(t);
+  if(_npc && !isCombat){   // combat summon is Plan B
+    var _sm=E('button','btn','Prompt '+_npc.name.split(' ')[0]+' to respond');
+    _sm.style.cssText='width:100%;margin-top:9px';
+    _sm.onclick=function(){
+      summonNPC(t,_npc,'social',function(obj,st,cmdrId){
+        if(!t.posts)t.posts=[];
+        t.posts.push({who:_npc.name,body:obj.post,tag:'',stamp:nowStamp()});
+        NPCAI.applyDelta(st,cmdrId,obj.dossierDelta,Date.now(),{journalCap:12});
+        saveNPC();
+        openT(t.id);T(_npc.name.split(' ')[0]+' has spoken.');
+      });
+    };
+    V.appendChild(_sm);
   }
   var xb=E('button','btn gh','Exit thread');xb.style.marginTop='10px';
   xb.onclick=function(){exitThread(t)};V.appendChild(xb);
