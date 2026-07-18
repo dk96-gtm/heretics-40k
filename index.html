@@ -628,8 +628,23 @@ world:{
   'vigilus/carrion':['DIPLOMACY — The Carrion Bargain · ACTIVE'],'vigilus/voxbastion':['MISSION — open'],
   'sangua/hiveprimus':['INVASION — requires COMPANY+ · open'],'nurth/court':['DIPLOMACY — open'],
   'kraithv/vault':['MISSION — high risk · open'],'kraithv/reef':['RAID — open']}},
-threads:[{id:'ash',type:'SKIRMISH',n:'Skirmish at the Ash Ravine',loc:'Vigilus · The Ash Ravine',turn:'you',vis:'public',initiator:"Brood-Tyrant Sskarith (NPC · Tyranids)",about:"Sskarith's brood boiled up out of the black sand to contest the Ash Ravine. Whoever still holds the ground when the posts run dry claims the field — and the Ravine feeds the sector's Conflict either way.",forces:['The Rotward',"Sskarith's Brood"]},
-{id:'bar',type:'DIPLOMACY',n:'The Carrion Bargain',loc:'Vigilus · The Carrion Market',turn:'you',vis:'public',initiator:'Vess the Carrion-Broker (Wild Named · Drukhari)',about:'Vess dangles Drukhari toxin-craft for your forge list — and names her price in intact Tyranid bodies. Terms are still open; Influence is the reward for closing them.',forces:['The Rotward']},
+threads:[{id:'ash',type:'SKIRMISH',n:'Skirmish at the Ash Ravine',loc:'Vigilus · The Ash Ravine',turn:'you',vis:'public',initiator:"Brood-Tyrant Sskarith (NPC · Tyranids)",about:"Sskarith's brood boiled up out of the black sand to contest the Ash Ravine. Whoever still holds the ground when the posts run dry claims the field — and the Ravine feeds the sector's Conflict either way.",forces:['The Rotward',"Sskarith's Brood"],
+ posts:[
+  {who:'Brood-Tyrant Sskarith',tag:'',body:"The Ash Ravine was quiet until the sand began to breathe. Sskarith's vanguard breached the crust at dusk — the brood declaring this black gutter theirs."},
+  {who:'Brood-Tyrant Sskarith',tag:'',body:"The ravine walls wept ash as the brood came on — Threshjaw first, chitin grinding like tectonic sin, gaunts spilling around its legs…",
+   block:[{actor:'thresh',action:'Crushing Claws → Gharn',cost:9,effect:{kind:'damage',amount:4,to:'gharn'}},
+          {actor:'sskarith',action:'Cast: Catalyst → Threshjaw',cost:5,effect:{kind:'cond',add:'Regen II',to:'thresh'}}]}
+ ],
+ seedState:{ pools:{'The Rotward':26,"Sskarith's Brood":14}, joined:true, combatants:{
+   gharn:{ w:[4,8], band:'MELEE', conds:[], party:'The Rotward' },
+   thresh:{ w:[7,10], band:'MELEE', conds:['Regen II'], party:"Sskarith's Brood" },
+   sskarith:{ w:[8,8], band:'MEDIUM', conds:[], party:"Sskarith's Brood" } } } },
+{id:'bar',type:'DIPLOMACY',n:'The Carrion Bargain',loc:'Vigilus · The Carrion Market',turn:'you',vis:'public',initiator:'Vess the Carrion-Broker (Wild Named · Drukhari)',about:'Vess dangles Drukhari toxin-craft for your forge list — and names her price in intact Tyranid bodies. Terms are still open; Influence is the reward for closing them.',forces:['The Rotward'],
+ posts:[
+  {who:'Vess the Carrion-Broker',tag:'',body:'"You want my toxin-craft on your forge list, rot-lord? My price: 300, and one intact Tyranid body. <i>Intact</i>, mind — no flame, no acid."'},
+  {who:'Vess',tag:'',body:'"250. And if your Commander dies before delivery… I negotiate with your successor at double."'}
+ ],
+ seedState:{ terms:{ agreed:false, detail:'250 + 2 intact bodies → Drukhari forge access' } } },
 {id:'vox',type:'MISSION',n:'The Sunken Vox-Bastion',loc:'Vigilus · Sunken Vox-Bastion',turn:'open',initiator:'You',about:'The Sunken Vox-Bastion lies ruined and unclaimed. Salvage its cogitators and vox-relays before a rival warband strips them first.',forces:[],vis:'public'},
 {id:'compact',type:'DIPLOMACY',n:"The Warsmith's Compact",loc:'Vigilus · The Carrion Market',turn:'other',initiator:'Warsmith Dravok (PC · Black Legion)',about:'A private accord between the Iron Ruin and the Carrion Market brokers. Its terms are sealed.',forces:['Iron Ruin Landing Claw'],vis:'private'}],
 convos:[{id:'herald',pc:false,pl:'nurth',l:'Faction broker · Nurth, Pallid Reach',n:'Herald of the Pallid Court',ms:[['them','The Garden blooms, rot-lord. The Court asks: when do you come to kneel — or to bargain?']]},
@@ -1291,7 +1306,17 @@ S.succ.push({n:m.n,fid:null});
 RB.classList.remove('on');rRos();rW();T(m.n+' rises from the ranks. The Leader tag is theirs.');go('barracks');return}}
 RS.st++;rRite()}
 /* ---- boot ---- */
-function init(){S=demoSave();enrichRoster();fixLeaderTags();mkOverview();initTips();mkEntity();mkHUD();mkCart();
+function init(){S=demoSave();
+S.threads=S.threads.map(function(t){return THREAD.create(t,D)});
+S.threads.forEach(function(t){
+ if(t.state&&t.state.combatants){
+  Object.keys(t.state.combatants).forEach(function(id){
+   var m=S.roster.filter(function(x){return x.id===id})[0];
+   if(m)t.state.combatants[id].model=m;
+  });
+ }
+});
+enrichRoster();fixLeaderTags();mkOverview();initTips();mkEntity();mkHUD();mkCart();
 S.active=S.active||'kane';S.cart=S.cart||[];
 var f=fPl(S.pos.pl);MV={lv:'sector',seg:f.g.id,sec:f.s.id,pl:S.pos.pl,lc:S.pos.sp};
 document.getElementById('rname').textContent=S.player.name.split(',')[0];
