@@ -744,16 +744,16 @@ function aiPlace(t){
   var L=fLoc(S.pos.pl,S.pos.sp),lt=L&&L.type?LT(L.type):null,s=S.time?NPCAI.stampAt(S.time.epoch,Date.now(),S.time.blockMinutes):null;
   return {locName:(t&&t.loc)||(L?L.name:''),phase:s?s.phase:'',planetEffect:(lt&&lt.effect)||''};
 }
-function aiReplySchema(){return {type:'object',properties:{
+function aiReplySchema(){return {type:'object',additionalProperties:false,properties:{
   post:{type:'string'},
-  combatPicks:{type:['array','null']},
-  dossierDelta:{type:'object',properties:{
+  combatPicks:{anyOf:[{type:'array'},{type:'null'}]},
+  dossierDelta:{type:'object',additionalProperties:false,properties:{
     newJournalEntry:{type:'string'},
-    promoteToLongTerm:{type:['string','null']},
-    commanderUpdates:{type:'object',properties:{standing:{type:'integer'},addFacts:{type:'array'},addGoals:{type:'array'},addGrudges:{type:'array'}}},
-    axisShift:{type:['object','null']}
-  },required:['newJournalEntry','commanderUpdates']}
-},required:['post','dossierDelta']};}
+    promoteToLongTerm:{anyOf:[{type:'string'},{type:'null'}]},
+    commanderUpdates:{type:'object',additionalProperties:false,properties:{standing:{type:'integer'},addFacts:{type:'array'},addGoals:{type:'array'},addGrudges:{type:'array'}},required:['standing','addFacts','addGoals','addGrudges']},
+    axisShift:{anyOf:[{type:'object'},{type:'null'}]}
+  },required:['newJournalEntry','promoteToLongTerm','commanderUpdates','axisShift']}
+},required:['post','combatPicks','dossierDelta']};}
 function summonNPC(t,npc,mode,done){
   mode=mode||'social';
   var key=aiKey();
@@ -774,7 +774,7 @@ function summonNPC(t,npc,mode,done){
   fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{
     'content-type':'application/json','x-api-key':key,
     'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify({model:aiModel(),max_tokens:1024,system:b.system,
+    body:JSON.stringify({model:aiModel(),max_tokens:2048,system:b.system,
       messages:[{role:'user',content:b.user}],
       output_config:{format:{type:'json_schema',schema:aiReplySchema()}}})})
   .then(function(r){return r.json();})
@@ -1448,7 +1448,7 @@ function threadView(V,t){
     _sm.onclick=function(){
       summonNPC(t,_npc,'social',function(obj,st,cmdrId){
         if(!t.posts)t.posts=[];
-        t.posts.push({who:_npc.name,body:obj.post,tag:'',stamp:nowStamp()});
+        t.posts.push({who:_npc.name,body:esc(obj.post),tag:'',stamp:nowStamp()});
         NPCAI.applyDelta(st,cmdrId,obj.dossierDelta,Date.now(),{journalCap:12});
         saveNPC();
         openT(t.id);T(_npc.name.split(' ')[0]+' has spoken.');
@@ -1487,7 +1487,7 @@ if(_hn){
     var pseudo={about:'a remote hail across the void',npc:_hn.id,initiator:_hn.name,forces:[],
       posts:(c.ms||[]).map(function(m){return {who:m[0]==='me'?cmdrName:_hn.name,body:m[1]};})};
     summonNPC(pseudo,_hn,'social',function(obj,st,cmdrId){
-      c.ms.push([_hn.id,obj.post]);
+      c.ms.push([_hn.id,esc(obj.post)]);
       NPCAI.applyDelta(st,cmdrId,obj.dossierDelta,Date.now(),{journalCap:12});
       saveNPC();rComms();T(_hn.name.split(' ')[0]+' answers the hail.');
     });
