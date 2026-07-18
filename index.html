@@ -1068,24 +1068,46 @@ else if(t){
   var acc=E('button','btn','Accept mission');acc.style.cssText='width:100%;margin-top:10px';acc.onclick=function(){t.accepted=true;t.turn='you';T('Mission accepted: '+t.n+' — you can post now.');openT(t.id)};
   box.appendChild(acc);V.appendChild(box);
   var xb0=E('button','btn gh','Decline / leave');xb0.style.marginTop='10px';xb0.onclick=function(){exitThread(t)};V.appendChild(xb0);
- } else bGeneric(V,t);
+ } else threadView(V,t);
 }
 else bTravel(V)}
-/* generic thread reader + composer — read the thread, write and post your reply */
-function bGeneric(V,t){if(!t.posts)t.posts=[{who:(t.initiator||'—').replace(/\s*\(.*/,''),body:t.about||('A '+t.type.toLowerCase()+' at '+t.loc+'.'),tag:t.initiator&&/^You/.test(t.initiator)?'you':''}];
- var wrap=E('div','tw solo');
- var scroll=E('div','threadscroll');
- t.posts.forEach(function(p,i){scroll.insertAdjacentHTML('beforeend','<div class="post"><div class="ph"><span class="who '+(p.tag==='you'?'you':'en')+'">'+p.who+'</span><span class="mono" style="color:var(--dim)">Post '+(i+1)+'</span></div><div class="body">'+p.body+'</div></div>')});
- wrap.appendChild(scroll);
- var cp=E('div','comp');cp.innerHTML='<div class="ch">Your post — '+activeModel().n.split(',')[0]+' · <span class="tp '+t.type+'" style="margin:0">'+t.type+'</span></div>';
- cp.appendChild(tools());
- var fic=E('div','fic');fic.contentEditable=true;fic.setAttribute('data-ph','Write your post — advance the story, make your move…');cp.appendChild(fic);
- var pb=E('button','btn bl','Post to thread');pb.style.cssText='width:100%;margin:9px 0 0';
- pb.onclick=function(){var v=fic.innerHTML.trim();if(!v||v==='<br>'){T('Write something first.');return}
-  t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you'});fic.innerHTML='';openT(t.id);
-  var sc=document.querySelector('#tv .threadscroll');if(sc)sc.scrollTop=sc.scrollHeight;T('Posted to '+t.n+'.')};
- cp.appendChild(pb);wrap.appendChild(cp);V.appendChild(wrap);
- var xb=E('button','btn gh','Exit thread');xb.style.marginTop='10px';xb.onclick=function(){exitThread(t)};V.appendChild(xb)}
+/* unified thread spine — header (already appended by openT) + posts + composer, for generic/mission threads */
+function threadComposer(t,onPost){
+  var cp=E('div','comp');
+  cp.innerHTML='<div class="ch">Your post — '+activeModel().n.split(',')[0]+' · <span class="tp '+t.type+'" style="margin:0">'+t.type+'</span></div>';
+  cp.appendChild(tools());
+  var fic=E('div','fic');fic.contentEditable=true;
+  fic.setAttribute('data-ph','Write your post — advance the story, make your move…');
+  cp.appendChild(fic);
+  var pb=E('button','btn bl','Post to thread');pb.style.cssText='width:100%;margin:9px 0 0';
+  pb.onclick=function(){var v=fic.innerHTML.trim();if(!v||v==='<br>'){T('Write something first.');return}
+    onPost(v);};
+  cp.appendChild(pb);
+  return {el:cp, field:fic};
+}
+function threadView(V,t){
+  var wrap=E('div','tw solo');
+  var scroll=E('div','threadscroll');
+  (t.posts||[]).forEach(function(p,i){
+    scroll.insertAdjacentHTML('beforeend',
+      '<div class="post"><div class="ph"><span class="who '+(p.tag==='you'?'you':'en')+'">'+p.who+'</span>'+
+      '<span class="mono" style="color:var(--dim)">Post '+(i+1)+'</span></div><div class="body">'+p.body+'</div>'+
+      (p.block?'<div class="ab"><div class="ah">Action Block</div><ul>'+p.block.map(function(b){
+        return '<li><b>'+b.action+'</b>'+(b.cost?' ('+b.cost+' AP)':'')+'</li>'}).join('')+'</ul></div>':'')+'</div>');
+  });
+  wrap.appendChild(scroll);
+  var comp=threadComposer(t,function(v){
+    if(!t.posts)t.posts=[];
+    t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you'});
+    openT(t.id);
+    var sc=document.querySelector('#tv .threadscroll');if(sc)sc.scrollTop=sc.scrollHeight;
+    T('Posted to '+t.n+'.');
+  });
+  wrap.appendChild(comp.el);
+  V.appendChild(wrap);
+  var xb=E('button','btn gh','Exit thread');xb.style.marginTop='10px';
+  xb.onclick=function(){exitThread(t)};V.appendChild(xb);
+}
 function tools(){var t=E('div','ft');[['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],['strikeThrough','<s>S</s>']].forEach(function(x){var b=E('button',null,x[1]);b.onmousedown=function(e){e.preventDefault();document.execCommand(x[0])};t.appendChild(b)});return t}
 var pool=26,blk=[];
 var EN=['Threshjaw (Carnifex)','Termagant brood','Sskarith'];
