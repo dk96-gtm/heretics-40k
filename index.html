@@ -609,7 +609,25 @@ var NPCAI=(function(){
     var p=Math.max(0,Math.floor((toMs-fromMs)/phaseMs(bm)));
     return {phases:p,blocks:Math.floor(p/2),days:Math.floor(p/8)};
   }
-  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed };
+  function clamp(v,lo,hi){return v<lo?lo:v>hi?hi:v;}
+  function instantiate(seed,roll){
+    var out={};
+    Object.keys(seed).forEach(function(ax){
+      var s=seed[ax],val;
+      if(typeof s.value==='number')val=clamp(Math.round(s.value),s.floor,s.ceiling);
+      else val=clamp(Math.round(s.base+roll(ax)*s.spread),s.floor,s.ceiling);
+      out[ax]={value:val,spawn:val,plasticity:s.plasticity,floor:s.floor,ceiling:s.ceiling,drift:[]};
+    });
+    return out;
+  }
+  function driftClamp(behavior,axis,delta,cause,t){
+    var a=behavior[axis];if(!a)return 0;
+    var lo=Math.max(a.floor,a.spawn-a.plasticity),hi=Math.min(a.ceiling,a.spawn+a.plasticity);
+    var next=clamp(a.value+delta,lo,hi),applied=next-a.value;
+    a.value=next;a.drift.push({t:t,d:applied,cause:cause});
+    return applied;
+  }
+  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp };
 })();
 /*</ai-core>*/
 /* ---- demo save ---- */
