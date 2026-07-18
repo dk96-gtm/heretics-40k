@@ -681,7 +681,8 @@ function curTravel(){return S.threads.filter(function(t){return t.type==='TRAVEL
 function inTransit(){return !!curTravel();}
 function travelTier(fpl,fsp,tpl,tsp){
   if(fpl===tpl){
-    var toSpace=/orbit|space|void/i.test(tsp||''),fromSpace=/orbit|space|void/i.test(fsp||'');
+    var toL=fLoc(tpl,tsp),frL=fLoc(fpl,fsp);
+    var toSpace=!!(toL&&toL.tier==='orbit'),fromSpace=!!(frL&&frL.tier==='orbit');
     return (toSpace!==fromSpace)?'same_sector_space':'same_planet';
   }
   var a=fPl(fpl),b=fPl(tpl);
@@ -901,6 +902,11 @@ return S.ships.warp?{m:'s',p:tv.cross_segmentum.posts,c:tv.cross_segmentum.own_v
 function arrTxt(p){if(!p.ruler)return null;var a=D.travel.arrival_at_controlled_planet;
 if(p.ruler.allegiance===S.player.allegiance)return{k:'f',t:'CONTROLLED — '+p.ruler.faction+'. '+a.friendly};
 return{k:'h',t:'CONTROLLED — '+p.ruler.faction+'. '+a.hostile}}
+function passagePreview(pl,sp){
+  var tier=travelTier(S.pos.pl,S.pos.sp,pl,sp);
+  var force=S.roster.filter(function(m){return m.st==='DEPLOYED'});
+  return {tier:tier, cost:THREAD.passageCost(D,tier,THREAD.forcePC(force),false), words:(D.travel[tier]||{}).words||0};
+}
 function travel(pl,sp){var r=route(pl,sp);if(!r||r.m==='x'){T(r?r.d:'Already there.');return}
   if(inTransit()){T('Already in transit.');return}
   var tier=travelTier(S.pos.pl,S.pos.sp,pl,sp);
@@ -945,7 +951,8 @@ z.appendChild(sectorHeader(f));
 z.appendChild(sectorChart(f.s));
 var g4=E('div','mg');
 (f.s.planets||[]).forEach(function(pl){var h=S.pos.pl===pl.id&&!inTransit();var r=route(pl.id,pl.locations[0].id);
-var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(!h&&r&&r.p?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+r.p+'p'+(r.c?' · '+r.c+'⛁':'')+'</div>':''));
+var pp=(!h&&r&&r.m!=='x')?passagePreview(pl.id,pl.locations[0].id):null;
+var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(pp?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+pp.cost+'⛁ · '+pp.words+'w</div>':''));
 d.onclick=function(){MV.pl=pl.id;MV.lc=pl.locations[0].id;MV.spaceSel=false;MV.lv='planet';rMap()};g4.appendChild(d)});
 z.appendChild(g4);
 var sp=f.s.space,inVoid=(S.pos.void===f.s.id);
@@ -1019,7 +1026,8 @@ if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){
   ['Diplomacy','Mission','Skirmish','Invasion'].forEach(function(ty){var bn=E('button','btn gh sm',ty);bn.onclick=function(){startThread(pl.id,l,ty)};row.appendChild(bn)});
   tm.appendChild(row)};}
 var r=route(pl.id,l.id);
-if(r&&!inTransit()){p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(r.p?' · <span class="mono">'+r.p+' post(s)</span>':'')+(r.c?' · <span class="mono">'+r.c+' '+curName()+'</span>':'')+'</div>');
+if(r&&!inTransit()){var pp=(r.m!=='x')?passagePreview(pl.id,l.id):null;
+p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(pp?' · <span class="mono">'+pp.cost+' '+curName()+'</span> · <span class="mono">'+pp.words+' words</span>':'')+'</div>');
 var at=arrTxt(pl);if(at&&S.pos.pl!==pl.id)p.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;margin-top:5px;color:'+(at.k==='h'?'var(--blh)':'var(--vdh)')+'">'+at.t+'</div>');
 var bx=E('div');bx.style.cssText='display:flex;gap:8px;margin-top:10px';
 if(r.m==='x'){var nb=E('button','btn',r.d);nb.disabled=true;bx.appendChild(nb)}
@@ -1063,18 +1071,31 @@ if(!confs.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px
 confs.forEach(function(c){dash.insertAdjacentHTML('beforeend','<div class="thc"><div><b>'+c.sec+'</b> <span class="stt '+c.status+'">'+c.status+'</span><div style="font-size:11.5px;color:var(--dim);margin-top:3px">'+c.sides.join(' vs ')+'</div></div></div>')});
 L.appendChild(dash)}
 /* leave a thread — free if no combat; costs wounds + currency once combat is joined */
-function exitThread(t){var combat=(t.type==='SKIRMISH'||t.type==='INVASION'),duel=/duel/i.test(t.n||'');
- if(!combat){S.threads=S.threads.filter(function(x){return x.id!==t.id});T('You withdraw from the '+t.type+' at '+t.loc+' — no cost; combat had not begun.');go('threads');rTL();return}
- var deployed=S.roster.filter(function(m){return m.st==='DEPLOYED'&&m.fo!=='—'});
- deployed.forEach(function(m){var p=(m.w||'1/1').split('/'),cur=Math.max(0,(parseInt(p[0],10)||1)-1);m.w=cur+'/'+p[1];if(cur<=0)m.st='DEAD'});
- var curCost=Math.round(S.army*0.05);S.cur=Math.max(0,S.cur-curCost);
- S.threads=S.threads.filter(function(x){return x.id!==t.id});
- var yourSpd=deployed.reduce(function(a,m){return Math.max(a,m.spd||2)},0),enemySpd=3,caught=(enemySpd>=yourSpd);
- rW();rRos();
- var msg='You break contact at '+t.loc+' — '+deployed.length+' model(s) wounded, '+curCost+' '+curName()+' spent. '+(duel?'A duel cannot be fled — your opponent is declared victor.':'The enemy holds the field and is recorded the victor of this engagement.');
- if(caught&&!duel){S.threads.push({id:'pursuit_'+S.threads.length,type:t.type,n:'Pursuit at '+t.loc,loc:t.loc,turn:'you',initiator:"Sskarith's Brood (in pursuit)",about:'The brood was fast enough to run down your retreat. A fresh Warzone '+t.type+' opens under pursuit — the fight you fled, now on worse ground.',forces:["Sskarith's Brood"]});
-  msg+=' They caught your retreat — a new Warzone '+t.type+' opens.'}
- T(msg);go('threads');rTL()}
+function exitThread(t){
+  if(t.type==='TRAVEL'){
+    var refund=(t.state&&t.state.passage)||0;
+    S.cur+=refund;
+    S.threads=S.threads.filter(function(x){return x.id!==t.id});
+    rW();
+    var dn=t._dest?((fLoc(t._dest.pl,t._dest.sp)||{}).name||''):'';
+    T('You abort the passage'+(dn?' to '+dn:'')+' — '+refund+' '+curName()+' refunded.');
+    go('threads');rTL();return;
+  }
+  var joined=!!(t.state&&t.state.joined),duel=/duel/i.test(t.n||'');
+  if(!joined){S.threads=S.threads.filter(function(x){return x.id!==t.id});
+    T('You withdraw from the '+t.type+' at '+t.loc+' — no cost; hostilities had not begun.');
+    go('threads');rTL();return;}
+  var deployed=S.roster.filter(function(m){return m.st==='DEPLOYED'&&m.fo!=='—'});
+  deployed.forEach(function(m){var p=(m.w||'1/1').split('/'),cur=Math.max(0,(parseInt(p[0],10)||1)-1);m.w=cur+'/'+p[1];if(cur<=0)m.st='DEAD'});
+  var curCost=Math.round(S.army*0.05);S.cur=Math.max(0,S.cur-curCost);
+  S.threads=S.threads.filter(function(x){return x.id!==t.id});
+  var yourSpd=deployed.reduce(function(a,m){return Math.max(a,m.spd||2)},0),enemySpd=3,caught=(enemySpd>=yourSpd);
+  rW();rRos();
+  var msg='You break contact at '+t.loc+' — '+deployed.length+' model(s) wounded, '+curCost+' '+curName()+' spent. '+(duel?'A duel cannot be fled — your opponent is declared victor.':'The enemy holds the field and is recorded the victor of this engagement.');
+  if(caught&&!duel){S.threads.push({id:'pursuit_'+S.threads.length,type:t.type,n:'Pursuit at '+t.loc,loc:t.loc,turn:'you',initiator:"Sskarith's Brood (in pursuit)",about:'The brood was fast enough to run down your retreat. A fresh Warzone '+t.type+' opens under pursuit — the fight you fled, now on worse ground.',forces:["Sskarith's Brood"]});
+    msg+=' They caught your retreat — a new Warzone '+t.type+' opens.';}
+  T(msg);go('threads');rTL();
+}
 function threadHeader(t){var h=E('div','thhdr');
  h.innerHTML='<div class="thhdr-top"><span class="tp '+t.type+'">'+t.type+'</span><h3>'+t.n+'</h3></div>'
  +'<div class="thhdr-loc">◉ '+(t.loc||'—')+'</div>'
