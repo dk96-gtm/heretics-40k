@@ -1790,11 +1790,17 @@ function openKnownModel(name,force){mkEntity();var sig=name.split(/[ —]/)[0].s
 function openNPC(id){mkEntity();var n=D.npcs_alpha.filter(function(x){return x.id===id})[0];if(!n)return;
  var here=(n.location===S.pos.pl+'/'+S.pos.sp)&&!inTransit()&&!S.pos.void;
  var sig=n.name.split(' ').map(function(x){return x[0]}).filter(function(c){return /[A-Za-z]/.test(c)}).slice(0,2).join('');
+ var _st=S.npcState&&S.npcState[id],_cid=activeModel().id,_dz=_st&&_st.commanders[_cid];
+ var _doss=_st?((_st.retired?'<div class="entrow"><div class="k">Status</div><div class="vv" style="color:var(--bad,#c66)">SLAIN — this mind is gone</div></div>':'')
+   +'<div class="entrow"><div class="k">Standing toward you</div><div class="vv">'+((_dz&&_dz.standing!=null)?_dz.standing:0)+((_dz&&_dz.grudges&&_dz.grudges.length)?(' · grudges: '+esc(_dz.grudges.join(', '))):'')+'</div></div>'
+   +((_st.recentJournal&&_st.recentJournal.length)?('<div class="entrow"><div class="k">Recent</div><div class="vv">'+_st.recentJournal.slice(0,3).map(function(x){return esc(x.text);}).join('<br>')+'</div></div>'):'')
+   +((_st.longTermMemory&&_st.longTermMemory.length)?('<div class="entrow"><div class="k">Remembers</div><div class="vv">'+_st.longTermMemory.map(function(x){return esc(x.summary);}).join('<br>')+'</div></div>'):'')
+ ):'';
  ENT.innerHTML='<div class="entc"><div class="entimg">'+sig+'<span>NPC portrait — art slot</span></div><div class="entb">'
  +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>'+n.name+'</h3><button class="movbk" id="entx">Close</button></div>'
  +'<div style="display:flex;gap:6px"><span class="pill">'+n.kind+'</span><span class="pill">'+n.faction+'</span></div>'
  +'<div class="entrow"><div class="k">Disposition</div><div class="vv">'+n.hook+'</div></div>'
- +'<div class="entrow"><div class="k">Last located</div><div class="vv">'+n.location+'</div></div>'
+ +'<div class="entrow"><div class="k">Last located</div><div class="vv">'+n.location+'</div></div>'+_doss
  +'<div style="display:flex;gap:8px;margin-top:2px">'+(here?'<button class="btn sm" id="npcapp">Approach in person</button>':'')+'<button class="btn gh sm" id="npchail">Hail via Comms</button></div>'
  +(here?'':'<div style="font-size:11px;color:var(--dim)">You are not at '+n.location+' — you can only reach them by remote Comms.</div>')
  +'</div></div>';
