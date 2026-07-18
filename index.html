@@ -1478,6 +1478,22 @@ var inp=E('input');inp.type='text';inp.placeholder='Compose a message…';
 var b=E('button','btn sm','Send');
 b.onclick=function(){var v=inp.value.trim();if(!v)return;c.ms.push(['me',v]);rComms();T('Message sent across the void.')};
 row.appendChild(inp);row.appendChild(b);P2.appendChild(row);
+var _hn=(D.npcs_alpha||[]).filter(function(n){return n.id===c.id;})[0];
+if(_hn){
+  var _hb=E('button','btn sm','Prompt '+_hn.name.split(' ')[0]);
+  _hb.style.marginLeft='6px';
+  _hb.onclick=function(){
+    var cmdrName=activeModel().n.split(',')[0];
+    var pseudo={about:'a remote hail across the void',npc:_hn.id,initiator:_hn.name,forces:[],
+      posts:(c.ms||[]).map(function(m){return {who:m[0]==='me'?cmdrName:_hn.name,body:m[1]};})};
+    summonNPC(pseudo,_hn,'social',function(obj,st,cmdrId){
+      c.ms.push([_hn.id,obj.post]);
+      NPCAI.applyDelta(st,cmdrId,obj.dossierDelta,Date.now(),{journalCap:12});
+      saveNPC();rComms();T(_hn.name.split(' ')[0]+' answers the hail.');
+    });
+  };
+  row.appendChild(_hb);
+}
 /* ── sharing: a conversation can be made public (a Protocol); private cannot be shared ── */
 var cvis=c.vis||'private';
 var share=E('div');share.style.cssText='display:flex;gap:8px;align-items:center;margin-top:10px;font-size:11.5px;color:var(--dim)';
