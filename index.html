@@ -677,8 +677,24 @@ function startThread(pid,l,type){var loc=fPl(pid).p.name+' · '+l.name;
  S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
  T(type+' thread opened at '+l.name+(fname?' — '+fname+' committed':'')+'. Now in the location\'s public record.');
  go('threads');rTL();}
-function travelSpace(sid){if(S.pos.void===sid){T('Already adrift in '+voidName(sid)+'.');return}if(S.tr){T('Already in transit.');return}S.pos.void=sid;T('Translated to the void — '+voidName(sid)+'.');rMap();rHQ();rW()}
-function posTxt(){if(S.pos.void)return 'Deep Space · '+voidName(S.pos.void);if(S.tr)return({g:'Overland',s:'In-system',c:'Warp'})[S.tr.m]+' → '+fLoc(S.tr.pl,S.tr.sp).name;return fPl(S.pos.pl).p.name+' · '+fLoc(S.pos.pl,S.pos.sp).name}
+function curTravel(){return S.threads.filter(function(t){return t.type==='TRAVEL'})[0]||null;}
+function inTransit(){return !!curTravel();}
+function travelTier(fpl,fsp,tpl,tsp){
+  if(fpl===tpl){
+    var toSpace=/orbit|space|void/i.test(tsp||''),fromSpace=/orbit|space|void/i.test(fsp||'');
+    return (toSpace!==fromSpace)?'same_sector_space':'same_planet';
+  }
+  var a=fPl(fpl),b=fPl(tpl);
+  if(a&&b&&a.s===b.s)return 'same_sector';
+  if(a&&b&&a.g===b.g)return 'cross_sector_same_segmentum';
+  return 'cross_segmentum';
+}
+function travelSpace(sid){if(S.pos.void===sid){T('Already adrift in '+voidName(sid)+'.');return}if(inTransit()){T('Already in transit.');return}S.pos.void=sid;T('Translated to the void — '+voidName(sid)+'.');rMap();rHQ();rW()}
+function posTxt(){if(S.pos.void)return 'Deep Space · '+voidName(S.pos.void);
+  var tr=curTravel();
+  if(tr){var mode=(D.travel[tr.state.transit.tier]||{}).mode||'transit';
+    return mode+' → '+fLoc(tr._dest.pl,tr._dest.sp).name;}
+  return fPl(S.pos.pl).p.name+' · '+fLoc(S.pos.pl,S.pos.sp).name}
 function rW(){var w=wallets();var disp=S.forces.reduce(function(a,f){return a+f.ap},0);
 document.getElementById('lc').innerHTML=w[0]+' <small>(currency)</small>';document.getElementById('ld').innerHTML=w[1]+' <small>(AP)</small>';document.getElementById('li').innerHTML=w[2]+' <small>(max)</small>';
 document.getElementById('wc').innerHTML=S.cur.toLocaleString()+' <small style="color:var(--dim)">'+w[0].toLowerCase()+'</small>';
@@ -736,7 +752,7 @@ function fpc(f){var t=0;S.roster.forEach(function(m){if(m.fo===f.n)t+=m.pc});ret
 var fcOpen=false;
 /* you may raise/edit a Force only when its leader is NOT in an active thread —
    i.e. while travelling, in the void, or garrisoned. Comms don't count as active. */
-function idleNow(){return !!(S.pos.void||S.tr)}
+function idleNow(){return !!(S.pos.void||inTransit())}
 function forceActive(f){if(idleNow())return false;var ld=S.roster.filter(function(m){return m.id===f.lead})[0];return ld&&ld.st==='DEPLOYED'}
 function eligibleLeaders(){var idle=idleNow();return S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'&&m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&!isForceLead(m)&&(idle||m.st!=='DEPLOYED')})}
 function forceAP(fname){var t=0;S.roster.forEach(function(m){if(m.fo===fname&&m.st!=='DEAD')t+=AP(m.pc)});return t}
@@ -849,10 +865,10 @@ var dn=E('button','btn gh sm','↓');dn.disabled=i===S.succ.length-1;dn.onclick=
 mv.appendChild(u);mv.appendChild(dn);d.appendChild(mv);x.appendChild(d)})}
 /* ---- shop (parked) ---- */
 function rShop(){var f=fPl(S.pos.pl),h=fLoc(S.pos.pl,S.pos.sp);
-document.getElementById('shc').textContent=f.s.name+' · '+f.p.name+' · '+(S.tr?'In transit':h.name);
+document.getElementById('shc').textContent=f.s.name+' · '+f.p.name+' · '+(inTransit()?'In transit':h.name);
 var b=document.getElementById('shb');
 if(S.pos.void){b.innerHTML='<div class="empty">Adrift in '+voidName(S.pos.void)+' — no requisition among the stars. Make planetfall to trade.</div>';return}
-if(S.tr){b.innerHTML='<div class="empty">In transit — no requisition on the move.</div>';return}
+if(inTransit()){b.innerHTML='<div class="empty">In transit — no requisition on the move.</div>';return}
 b.innerHTML='';
 /* demo toggle — preview every door type, ignoring location gating */
 var tgl=E('button','movbk','◈ '+(S.shopDemo?'Exit door demo':'Door demo — preview every door'));
@@ -886,22 +902,30 @@ function arrTxt(p){if(!p.ruler)return null;var a=D.travel.arrival_at_controlled_
 if(p.ruler.allegiance===S.player.allegiance)return{k:'f',t:'CONTROLLED — '+p.ruler.faction+'. '+a.friendly};
 return{k:'h',t:'CONTROLLED — '+p.ruler.faction+'. '+a.hostile}}
 function travel(pl,sp){var r=route(pl,sp);if(!r||r.m==='x'){T(r?r.d:'Already there.');return}
-if(S.tr){T('Already in transit.');return}
-if(r.c){if(S.cur<r.c){T('Not enough '+curName()+'.');return}S.cur-=r.c}
-S.tr={m:r.m==='c'?'c':(r.m==='g'?'g':'s'),pl:pl,sp:sp,left:r.p,arr:arrTxt(fPl(pl).p)};
-T('Travel Thread spawned — '+r.p+' post(s).');rMap();rHQ();rW()}
-function rTrans(){var b=document.getElementById('tb');if(!S.tr){b.innerHTML='';return}
-var t=S.tr;b.innerHTML='';
-var d=E('div','transit','<div><b>'+({g:'OVERLAND MARCH',s:'IN-SYSTEM TRANSIT',c:'CHARTERED WARP PASSAGE'})[t.m]+'</b><div style="font-size:11.5px;color:var(--dim)">→ '+fLoc(t.pl,t.sp).name+', '+fPl(t.pl).p.name+' · '+t.left+' post(s) left</div>'+(t.arr?'<div style="font-size:11.5px;margin-top:3px;color:'+(t.arr.k==='h'?'var(--blh)':'var(--vdh)')+'">'+t.arr.t+'</div>':'')+'</div>');
-var bt=E('button','btn bl','Write travel post');
-bt.onclick=function(){t.left--;if(t.left<=0){S.pos={pl:t.pl,sp:t.sp};S.tr=null;var f=fPl(S.pos.pl);MV.pl=S.pos.pl;MV.sec=f.s.id;MV.seg=f.g.id;T('Arrived: '+fLoc(S.pos.pl,S.pos.sp).name+'.')}else T('Travel post written. '+t.left+' left.');rMap();rHQ();rW()};
-d.appendChild(bt);b.appendChild(d)}
+  if(inTransit()){T('Already in transit.');return}
+  var tier=travelTier(S.pos.pl,S.pos.sp,pl,sp);
+  var force=S.roster.filter(function(m){return m.st==='DEPLOYED'});
+  var cost=THREAD.passageCost(D,tier,THREAD.forcePC(force),false);
+  if(cost>S.cur){T('Passage costs '+cost+' '+curName()+' — not enough.');return}
+  S.cur-=cost;
+  var t=THREAD.create({id:'travel_'+(S.threads.length+1),type:'TRAVEL',
+    n:'Transit — '+fLoc(pl,sp).name,loc:'The void between',turn:'you',vis:'public',
+    initiator:'You',forces:S.forces.map(function(f){return f.n}),
+    about:'Passage to '+fLoc(pl,sp).name+' — '+cost+' '+curName()+' ('+tier.replace(/_/g,' ')+'). Write the journey to arrive.',
+    seedState:{transit:{tier:tier},passage:cost}},D);
+  t._dest={pl:pl,sp:sp};
+  S.threads.push(t);rW();rHQ();T('Travel thread opened — passage '+cost+' '+curName()+'.');go('threads');openT(t.id);}
+function rTrans(){var b=document.getElementById('tb');var tr=curTravel();if(!tr){b.innerHTML='';return}
+  b.innerHTML='';var m=tr.state.transit;
+  var d=E('div','transit','<div><b>IN TRANSIT</b><div style="font-size:11.5px;color:var(--dim)">→ '+fLoc(tr._dest.pl,tr._dest.sp).name+', '+fPl(tr._dest.pl).p.name+' · '+m.wordsWritten+'/'+m.wordsReq+' words to arrival</div></div>');
+  var bt=E('button','btn bl','Resolve in Travel thread');bt.onclick=function(){go('threads');openT(tr.id);};
+  d.appendChild(bt);b.appendChild(d);}
 function cb(l,f){var b=E('button',null,l);b.onclick=f;return b}
 function rMap(){rTrans();
 var cr=document.getElementById('mcr'),z=document.getElementById('mz'),p=document.getElementById('mp');
 cr.innerHTML='';z.innerHTML='';p.innerHTML='';
 if(MV.lv==='galaxy'){cr.append('GALAXY');z.appendChild(galaxyChart());var g2=E('div','mg');
-D.galaxy.segmentums.forEach(function(g){var h=fPl(S.pos.pl).g.id===g.id&&!S.tr;
+D.galaxy.segmentums.forEach(function(g){var h=fPl(S.pos.pl).g.id===g.id&&!inTransit();
 var d=E('div','mn'+(g.id===MV.seg?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+g.name+'</div><div class="pt">'+g.zones.map(function(x){return x.name}).join(' · ')+'</div>');
 d.onclick=function(){MV.seg=g.id;MV.lv='segment';rMap()};g2.appendChild(d)});z.appendChild(g2);
 p.innerHTML='<h3>The Galaxy</h3><div style="font-size:12.5px;color:var(--dim)">'+D.galaxy.structure+'</div>';return}
@@ -910,7 +934,7 @@ cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ');var s0=E('span
 z.appendChild(segmentChart(g));
 g.zones.forEach(function(zn){z.appendChild(E('div','zh',zn.kind==='core'?'CORE':'EXPANSE — '+zn.name));
 var g3=E('div','mg');
-zn.sectors.forEach(function(sc){var h=fPl(S.pos.pl).s.id===sc.id&&!S.tr;
+zn.sectors.forEach(function(sc){var h=fPl(S.pos.pl).s.id===sc.id&&!inTransit();
 var d=E('div','mn'+(sc.sealed?' lk':'')+(sc.id===MV.sec?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+sc.name+'</div><div class="pt">'+sc.owner+'</div><div style="margin-top:5px"><span class="stt '+sc.status+'">'+sc.status+'</span></div>');
 d.onclick=function(){if(sc.sealed){T('Sealed — beyond alpha space.');return}MV.sec=sc.id;MV.lv='sector';rMap()};g3.appendChild(d)});z.appendChild(g3)});
 p.innerHTML='<h3>'+g.name+'</h3><div style="font-size:12.5px;color:var(--dim)">Sector ownership: '+D.galaxy.sector_ownership+'.</div>';return}
@@ -920,7 +944,7 @@ var s1=E('span',null,f.s.name.toUpperCase());s1.style.color='var(--brh)';cr.appe
 z.appendChild(sectorHeader(f));
 z.appendChild(sectorChart(f.s));
 var g4=E('div','mg');
-(f.s.planets||[]).forEach(function(pl){var h=S.pos.pl===pl.id&&!S.tr;var r=route(pl.id,pl.locations[0].id);
+(f.s.planets||[]).forEach(function(pl){var h=S.pos.pl===pl.id&&!inTransit();var r=route(pl.id,pl.locations[0].id);
 var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(!h&&r&&r.p?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+r.p+'p'+(r.c?' · '+r.c+'⛁':'')+'</div>':''));
 d.onclick=function(){MV.pl=pl.id;MV.lc=pl.locations[0].id;MV.spaceSel=false;MV.lv='planet';rMap()};g4.appendChild(d)});
 z.appendChild(g4);
@@ -950,8 +974,8 @@ if(!locs.length)return;
 var zh=E('div','zh','<span style="color:'+tg[2]+';font-weight:600">'+tg[1]+'</span>');
 zh.style.cssText='border-left:3px solid '+tg[2]+';padding-left:9px;margin-top:6px';z.appendChild(zh);
 var gg=E('div','mg');
-locs.forEach(function(l){var h=S.pos.pl===pl.id&&S.pos.sp===l.id&&!S.tr;
-var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+((LT(l.type)||{}).name||l.type)+(l.condition!=='intact'?' · '+((CD(l.condition)||{}).name||l.condition):'')+'</div>'+(S.pos.pl===pl.id&&!h&&!S.tr?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
+locs.forEach(function(l){var h=S.pos.pl===pl.id&&S.pos.sp===l.id&&!inTransit();
+var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+((LT(l.type)||{}).name||l.type)+(l.condition!=='intact'?' · '+((CD(l.condition)||{}).name||l.condition):'')+'</div>'+(S.pos.pl===pl.id&&!h&&!inTransit()?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
 d.onclick=function(){MV.lc=l.id;rMap()};gg.appendChild(d)});
 z.appendChild(gg)});
 var l=fLoc(pl.id,MV.lc);
@@ -975,7 +999,7 @@ h2+='<div class="lsec"><h5>Forces present — click for auspex intel</h5>'+(frLo
 h2+='<div class="lsec"><h5>Thread history — click for summary</h5>'+(hi.length?hi.map(function(t,ti){return '<div class="lrow" data-hist="'+ti+'">▸ '+t+'</div>'}).join(''):'<span style="color:var(--dim)">No threads recorded yet.</span>')+'</div>';
 /* NPCs — clickable sheets */
 if(np.length)h2+='<div class="lsec"><h5>Known here — click for their sheet</h5>'+np.map(function(n,ni){return '<div class="lrow" data-npc="'+n.id+'">▸ <b>'+n.name+'</b> — '+n.kind+', '+n.faction+'</div>'}).join('')+'</div>';
-var atHere=(S.pos.pl===pl.id&&S.pos.sp===l.id&&!S.tr&&!S.pos.void),openDoors=_dz.filter(function(x){return x.open});
+var atHere=(S.pos.pl===pl.id&&S.pos.sp===l.id&&!inTransit()&&!S.pos.void),openDoors=_dz.filter(function(x){return x.open});
 if(atHere){h2+='<div class="locacts">';
  if(openDoors.length)h2+='<button class="btn" id="locreq">Enter Requisition ('+openDoors.length+' door'+(openDoors.length>1?'s':'')+')</button>';
  h2+='<button class="btn gh" id="locthr">Start a thread here</button></div>';
@@ -995,13 +1019,13 @@ if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){
   ['Diplomacy','Mission','Skirmish','Invasion'].forEach(function(ty){var bn=E('button','btn gh sm',ty);bn.onclick=function(){startThread(pl.id,l,ty)};row.appendChild(bn)});
   tm.appendChild(row)};}
 var r=route(pl.id,l.id);
-if(r&&!S.tr){p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(r.p?' · <span class="mono">'+r.p+' post(s)</span>':'')+(r.c?' · <span class="mono">'+r.c+' '+curName()+'</span>':'')+'</div>');
+if(r&&!inTransit()){p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(r.p?' · <span class="mono">'+r.p+' post(s)</span>':'')+(r.c?' · <span class="mono">'+r.c+' '+curName()+'</span>':'')+'</div>');
 var at=arrTxt(pl);if(at&&S.pos.pl!==pl.id)p.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;margin-top:5px;color:'+(at.k==='h'?'var(--blh)':'var(--vdh)')+'">'+at.t+'</div>');
 var bx=E('div');bx.style.cssText='display:flex;gap:8px;margin-top:10px';
 if(r.m==='x'){var nb=E('button','btn',r.d);nb.disabled=true;bx.appendChild(nb)}
 else{var gb=E('button','btn'+(r.m==='c'?' bl':''),'Move here — '+(r.m==='g'?'march':r.m==='c'?'charter passage':'set course'));gb.onclick=function(){travel(pl.id,l.id)};bx.appendChild(gb)}
 p.appendChild(bx)}
-else if(!S.tr){var bx2=E('div');bx2.style.cssText='display:flex;gap:8px;margin-top:10px';
+else if(!inTransit()){var bx2=E('div');bx2.style.cssText='display:flex;gap:8px;margin-top:10px';
 if(hi.some(function(x){return x.indexOf('ACTIVE')>=0})){var b1=E('button','btn','Open thread here');b1.onclick=function(){go('threads')};bx2.appendChild(b1)}
 if(doorsAt(l).length){var b2=E('button','btn gh','Enter station');b2.onclick=function(){go('shop')};bx2.appendChild(b2)}
 p.appendChild(bx2)}}
@@ -1015,14 +1039,14 @@ function sectorConflicts(){var out=[];D.galaxy.segmentums.forEach(function(g){g.
 function rTL(){var L=document.getElementById('tl'),V=document.getElementById('tv');
 V.style.display='none';L.style.display='block';L.innerHTML='';
 /* ── thread management dashboard ── */
-var accepted=S.threads.slice();if(S.tr)accepted.push({id:'tr',type:'TRAVEL',n:'Transit — '+fLoc(S.tr.pl,S.tr.sp).name,loc:'The void between',turn:'you'});
+var accepted=S.threads.slice();
 var dash=E('div','card');dash.innerHTML='<h3>Thread board</h3><div style="font-size:11.5px;color:var(--dim)">Everything you are in, everything you could join, and who is at war.</div>';
 /* accepted */
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Your threads — accepted ('+accepted.length+')</h5></div>');
 accepted.forEach(function(t){var vis=t.vis||'public',mine=(t.initiator||'').match(/^You/)||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f})});
  var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b> <span class="pill '+(vis==='private'?'bl':'')+'">'+(vis==='private'?'🔒 PRIVATE':'PUBLIC')+'</span><div style="font-size:11px;color:var(--dim);margin-top:2px">'+t.loc+'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Objective: '+(OBJ[t.type]||'—')+'</div></div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'waiting')+'</span>');
  d.onclick=function(){openT(t.id)};
- if(mine&&t.id!=='tr'){var tg=E('button','btn gh sm',vis==='private'?'Make public':'Make private');tg.style.marginTop='6px';
+ if(mine){var tg=E('button','btn gh sm',vis==='private'?'Make public':'Make private');tg.style.marginTop='6px';
   tg.onclick=function(e){e.stopPropagation();t.vis=vis==='private'?'public':'private';if(t.vis==='public'){t.summary=threadSummary(t.type)+' (auto-summary generated on publish — full AI summary at Stage 3.)'}rTL();T('Thread set '+t.vis+(t.vis==='public'?' — a summary was generated and it now enters the public record.':' — hidden from non-participants.'))};d.appendChild(tg)}
  dash.appendChild(d)});
 /* available */
@@ -1072,7 +1096,7 @@ if(t){
   var xb0=E('button','btn gh','Decline / leave');xb0.style.marginTop='10px';xb0.onclick=function(){exitThread(t)};V.appendChild(xb0);
  } else threadView(V,t);
 }
-else bTravel(V)}
+else V.insertAdjacentHTML('beforeend','<div class="empty">Thread not found.</div>');}
 /* unified thread spine — header (already appended by openT) + posts + composer, for generic/mission/combat threads */
 function damageOf(item){var m=((item&&item.d)||'').match(/^\s*[A-Za-z]+\s+(\d+)/);return m?parseInt(m[1],10):1;}
 function partyOf(t){
@@ -1148,6 +1172,12 @@ function threadSidebar(t){
 }
 function threadView(V,t){
   var isCombat=Object.keys(t.state.combatants||{}).length>0;
+  if(t.type==='TRAVEL'&&t.state.transit){
+    var m=t.state.transit;
+    var meter=E('div','card');
+    meter.innerHTML='<h3>Transit</h3><div style="font-size:12px;color:var(--dim)">Write your journey — '+m.wordsWritten+' / '+m.wordsReq+' words to arrival.</div><div class="hp'+(THREAD.arrivalReady(t.state)?'':' lo')+'"><i style="width:'+Math.min(100,Math.round(100*m.wordsWritten/(m.wordsReq||1)))+'%"></i></div>';
+    V.appendChild(meter);
+  }
   var scroll=E('div','threadscroll');
   (t.posts||[]).forEach(function(p,i){
     scroll.insertAdjacentHTML('beforeend',
@@ -1159,10 +1189,23 @@ function threadView(V,t){
   var comp=threadComposer(t,function(){});
   var party=partyOf(t);
   var cat=THREAD.catalog(t,t.state,party,D);
-  var builder=cat.length?threadBlockBuilder(t,party):null;
+  var builder=(cat.length && t.type!=='TRAVEL')?threadBlockBuilder(t,party):null;
   if(builder)comp.el.appendChild(builder.el);
   var pb=comp.el.querySelector('.btn.bl');
   pb.onclick=function(){var v=comp.field.innerHTML.trim();if(!v||v==='<br>'){T('Write something first.');return}
+    if(t.type==='TRAVEL' && t.state.transit){
+      THREAD.apply(t,t.state,[{actor:party,action:'Transit post',cost:0,effect:{kind:'transit',words:THREAD.wordCount(v)}}],D);
+      if(!t.posts)t.posts=[];
+      t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you'});
+      if(THREAD.arrivalReady(t.state)&&t._dest){
+        S.pos={pl:t._dest.pl,sp:t._dest.sp};
+        S.threads=S.threads.filter(function(x){return x.id!==t.id});
+        var f=fPl(S.pos.pl);if(typeof MV!=='undefined'){MV.pl=S.pos.pl;MV.sec=f.s.id;MV.seg=f.g.id;}
+        T('Arrived: '+(fLoc(t._dest.pl,t._dest.sp)?fLoc(t._dest.pl,t._dest.sp).name:t._dest.sp)+'.');
+        rHQ();rW();go('threads');rTL();return;
+      }
+      openT(t.id);T('Transit post written — '+t.state.transit.wordsWritten+'/'+t.state.transit.wordsReq+' words.');return;
+    }
     var staged=builder?builder.staged:[];
     var val=THREAD.validate(t,t.state,party,staged,D);
     if(!val.ok){T(val.reason);return}
@@ -1187,23 +1230,17 @@ function threadView(V,t){
   xb.onclick=function(){exitThread(t)};V.appendChild(xb);
 }
 function tools(){var t=E('div','ft');[['bold','<b>B</b>'],['italic','<i>I</i>'],['underline','<u>U</u>'],['strikeThrough','<s>S</s>']].forEach(function(x){var b=E('button',null,x[1]);b.onmousedown=function(e){e.preventDefault();document.execCommand(x[0])};t.appendChild(b)});return t}
-function bTravel(V){if(!S.tr){V.insertAdjacentHTML('beforeend','<div class="empty">No transit underway.</div>');return}
-var t=S.tr;
-V.insertAdjacentHTML('beforeend','<div class="card" style="margin-top:12px"><h3><span class="tp TRAVEL" style="margin-right:8px">TRAVEL</span>Transit — '+fLoc(t.pl,t.sp).name+', '+fPl(t.pl).p.name+'</h3><div style="font-size:12.5px;color:var(--dim)">'+t.left+' post(s) remaining.'+(t.arr?'<br><span style="color:'+(t.arr.k==='h'?'var(--blh)':'var(--vdh)')+'">'+t.arr.t+'</span>':'')+'</div></div>');
-var b=E('button','btn bl','Write travel post');
-b.onclick=function(){t.left--;if(t.left<=0){S.pos={pl:t.pl,sp:t.sp};S.tr=null;T('Arrived: '+fLoc(S.pos.pl,S.pos.sp).name+'.');rTL()}else{T('Travel post written. '+t.left+' left.');openT('tr')}rHQ();rW()};
-V.appendChild(b)}
 /* ---- comms ---- */
 var cSel='herald';
 function rComms(){var f=fPl(S.pos.pl);
-document.getElementById('cc').textContent=f.g.name+' · '+f.s.name+' · '+(S.tr?'In transit':fLoc(S.pos.pl,S.pos.sp).name);
+document.getElementById('cc').textContent=f.g.name+' · '+f.s.name+' · '+(inTransit()?'In transit':fLoc(S.pos.pl,S.pos.sp).name);
 document.getElementById('commsrule').textContent=D.rules.comms;
 var L=document.getElementById('cl');L.innerHTML='';
-S.convos.forEach(function(c){var remote=c.pl!==S.pos.pl&&!S.tr;
-var d=E('div','cv'+(c.id===cSel?' sel':'')+(remote?'':' dis'),'<div class="cn">'+c.n+' <span class="npct"'+(c.pc?' style="color:var(--blh);border-color:var(--bl)"':'')+'>'+(c.pc?'PC':'NPC')+'</span></div><div class="cl">'+(remote?c.l:(S.tr?'No vox mid-transit':'On your planet — march to them, open a Thread'))+'</div>');
+S.convos.forEach(function(c){var remote=c.pl!==S.pos.pl&&!inTransit();
+var d=E('div','cv'+(c.id===cSel?' sel':'')+(remote?'':' dis'),'<div class="cn">'+c.n+' <span class="npct"'+(c.pc?' style="color:var(--blh);border-color:var(--bl)"':'')+'>'+(c.pc?'PC':'NPC')+'</span></div><div class="cl">'+(remote?c.l:(inTransit()?'No vox mid-transit':'On your planet — march to them, open a Thread'))+'</div>');
 if(remote)d.onclick=function(){cSel=c.id;rComms()};L.appendChild(d)});
 var P2=document.getElementById('cp');var c=S.convos.filter(function(x){return x.id===cSel})[0];
-if(!c||c.pl===S.pos.pl||S.tr){P2.innerHTML='<div class="empty">No relay open.<br><b>Those near you are met in person — in a Thread.</b></div>';return}
+if(!c||c.pl===S.pos.pl||inTransit()){P2.innerHTML='<div class="empty">No relay open.<br><b>Those near you are met in person — in a Thread.</b></div>';return}
 P2.innerHTML='<h3>'+c.n+' — astropathic relay</h3>';
 c.ms.forEach(function(m){P2.insertAdjacentHTML('beforeend','<div class="msg '+(m[0]==='me'?'me':'them')+'"><div class="who">'+(m[0]==='me'?'YOU':c.n.toUpperCase())+'</div>'+m[1]+'</div>')});
 var row=E('div');row.style.cssText='display:flex;gap:7px;margin-top:10px';
@@ -1516,7 +1553,7 @@ function openKnownModel(name,force){mkEntity();var sig=name.split(/[ —]/)[0].s
  document.getElementById('entx').onclick=function(){ENT.classList.remove('on')};
  document.getElementById('kmback').onclick=function(){openForce(force)};ENT.classList.add('on')}
 function openNPC(id){mkEntity();var n=D.npcs_alpha.filter(function(x){return x.id===id})[0];if(!n)return;
- var here=(n.location===S.pos.pl+'/'+S.pos.sp)&&!S.tr&&!S.pos.void;
+ var here=(n.location===S.pos.pl+'/'+S.pos.sp)&&!inTransit()&&!S.pos.void;
  var sig=n.name.split(' ').map(function(x){return x[0]}).filter(function(c){return /[A-Za-z]/.test(c)}).slice(0,2).join('');
  ENT.innerHTML='<div class="entc"><div class="entimg">'+sig+'<span>NPC portrait — art slot</span></div><div class="entb">'
  +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>'+n.name+'</h3><button class="movbk" id="entx">Close</button></div>'
