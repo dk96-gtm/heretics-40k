@@ -7,8 +7,46 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.6', () => {
-  assert.strictEqual(canon.meta.version, '1.6');
+test('canon is v1.7', () => {
+  assert.strictEqual(canon.meta.version, '1.7');
+});
+
+test('v1.7: numeric slot growth is present for every class', () => {
+  const g = canon.rules.growth.slot_gains_by_rank;
+  ['Core', 'Assault', 'Flying', 'Armament'].forEach((c) => {
+    assert.ok(Array.isArray(g[c]) && g[c].length === 5, `${c} slot growth`);
+    assert.strictEqual(g[c][0], 0, `${c} rank 1 gains 0`);
+  });
+  assert.strictEqual(g.Armament[4], 4, 'Armament gains a slot every rank');
+});
+
+test('v1.7: armour rules block exists with 6 elements', () => {
+  assert.deepStrictEqual(canon.rules.armour.elements,
+    ['Physical', 'Heat', 'Warp', 'Corrosive', 'Plasma', 'Energy']);
+  assert.ok(/max\(0/.test(canon.rules.armour.mitigation));
+  assert.ok(canon.rules.loadout && canon.rules.loadout.slot_types.length === 4);
+});
+
+test('armour catalog: 143 pieces, valid shape, 80 faction defaults', () => {
+  const A = canon.armour;
+  assert.ok(Array.isArray(A) && A.length === 143, `got ${A && A.length}`);
+  const ELEMS = ['Physical', 'Heat', 'Warp', 'Corrosive', 'Plasma', 'Energy'];
+  A.forEach((p) => {
+    ELEMS.forEach((e) => assert.strictEqual(typeof p.def[e], 'number', `${p.n} ${e}`));
+    assert.ok(typeof p.pc === 'number' && p.n && p.tier);
+  });
+  const defaults = A.filter((p) => p.tier === 'default' && p.faction);
+  assert.strictEqual(defaults.length, 80, `defaults ${defaults.length}`);
+});
+
+test('armoury door exists with per-faction skins', () => {
+  const d = canon.galaxy.doors.find((x) => x.kind === 'armoury');
+  assert.ok(d, 'armoury door present');
+  assert.ok(d.skins && d.skins.chaos && d.skins.imperial, 'armoury skins');
+});
+
+test('forge can upgrade armour', () => {
+  assert.ok(canon.equipment_alpha.forge_rules.armour_upgrade, 'armour_upgrade rule');
 });
 
 test('every travel tier has base + words', () => {
@@ -52,7 +90,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.6');
+  assert.equal(canon.meta.version, '1.7');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
