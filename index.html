@@ -592,7 +592,22 @@ var THREAD=(function(){
     var hay=((item&&item.d)||'')+' '+((item&&item.n)||'');
     return tags.some(function(t){return new RegExp(t.replace(/[-\s]/g,'[-\\s]?'),'i').test(hay);});
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival };
+  /* ── grid geometry (Slice A) — pure, canon-thresholds land later ── */
+  function cheb(a,b){return Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));}
+  var GRID_BANDS=[[1,'MELEE'],[3,'SHORT'],[6,'MEDIUM']];
+  function bandOf(d){for(var i=0;i<GRID_BANDS.length;i++)if(d<=GRID_BANDS[i][0])return GRID_BANDS[i][1];return 'LONG';}
+  function reachable(pos,speed,board,occupied){
+    var occ={};(occupied||[]).forEach(function(o){occ[o.x+','+o.y]=1;});
+    var out={};                                  // a Chebyshev ball IS an axis-aligned box
+    for(var y=Math.max(0,pos.y-speed);y<=Math.min(board.h-1,pos.y+speed);y++)
+      for(var x=Math.max(0,pos.x-speed);x<=Math.min(board.w-1,pos.x+speed);x++){
+        if(x===pos.x&&y===pos.y)continue;        // own square is not a move
+        if(occ[x+','+y])continue;                // occupied cells are blocked
+        out[x+','+y]=true;
+      }
+    return out;
+  }
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable };
 })();
 /*</thread-core>*/
 /*<ai-core>*/
