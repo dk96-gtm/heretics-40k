@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.13",
+  "version": "1.14",
   "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -3152,6 +3152,240 @@
          ],
          "desc": "The void of Vigilus Sector. Fleets translate, hold, and give battle here before ever reaching a world."
         }
+       },
+       {
+        "id": "despoiler",
+        "name": "The Despoiler's Wake",
+        "status": "Warring",
+        "owner": "Chaos - Black Legion",
+        "space": {
+         "id": "despoilerspace",
+         "name": "The Wake",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "The churning warp-wake dragged behind the Despoiler's fleets — no astropath charts it twice."
+        },
+        "planets": [
+         {
+          "id": "karzhorn",
+          "name": "Kar Zhorn",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Black Legion"
+          },
+          "desc": "The Despoiler's forward citadel-world, where oaths of tribute are sworn to the Long War and daemons are chained to the forges.",
+          "locations": [
+           {
+            "id": "karzhornorbit",
+            "name": "Kar Zhorn — Blackstone Anchorage",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Despoiler flagship escort-wing",
+             "Chaos cruiser 'Debt Unpaid'"
+            ],
+            "desc": "A blighted orbit ringed with blackstone gun-platforms."
+           },
+           {
+            "id": "debtthrone",
+            "name": "The Debt-Throne",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The seat of the Wake; from here the Long War's tithes are called across the sector.",
+            "door_names": {
+             "throne_room": "The Debt-Throne"
+            }
+           },
+           {
+            "id": "boundforge",
+            "name": "The Bound-Forge",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A daemon-forge where the Black Legion's relics are hammered from screaming metal.",
+            "door_names": {
+             "forge": "The Bound-Forge"
+            }
+           },
+           {
+            "id": "longwarwall",
+            "name": "Rampart of the Long War",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Ten thousand years of ramparts, each stone a broken siege."
+           }
+          ],
+          "resources": 120,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "tarnhollow",
+          "name": "Tarnhollow",
+          "type": "War World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Black Legion"
+          },
+          "desc": "A perpetual muster-ground where cultist levies and traitor cohorts are bled into shape for the next Black Crusade.",
+          "locations": [
+           {
+            "id": "tarnholloworbit",
+            "name": "Tarnhollow — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Slave-barque flotilla"
+            ],
+            "desc": "Landers cycle endlessly, ferrying conscripts down and corpses up."
+           },
+           {
+            "id": "musterfields",
+            "name": "The Endless Muster-Fields",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Open ground where warbands fight for the right to serve."
+           },
+           {
+            "id": "hollowkeep",
+            "name": "Hollow Keep",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A rusted bastion issuing chainswords and oaths."
+           },
+           {
+            "id": "tarnoutpost",
+            "name": "Forward Bastion",
+            "type": "military_outpost",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A staging relay for crusades that never end."
+           }
+          ],
+          "resources": 55,
+          "status": null
+         },
+         {
+          "id": "ironreliquary",
+          "name": "The Iron Reliquary",
+          "type": "Industrial World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Black Legion"
+          },
+          "desc": "A world-sized manufactorum turning out bolt-shells and blasphemous plate for the traitor host.",
+          "locations": [
+           {
+            "id": "ironorbit",
+            "name": "The Iron Reliquary — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Ore-hauler convoy"
+            ],
+            "desc": "Smog-choked orbit lit by the glow of a thousand forge-stacks."
+           },
+           {
+            "id": "traitorforges",
+            "name": "The Traitor-Forges",
+            "type": "manufactorum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Volume-forges that never cool.",
+            "door_names": {
+             "forge": "The Traitor-Forges"
+            }
+           },
+           {
+            "id": "chainhive",
+            "name": "The Chain-Hive",
+            "type": "hive",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A hab-hive of chained menials worked to death for the war-effort."
+           }
+          ],
+          "resources": 95,
+          "status": null
+         },
+         {
+          "id": "maleficreach",
+          "name": "Malefic's Reach",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Daemons"
+          },
+          "desc": "A warp-touched world where the Neverborn boil up unbidden — the Black Legion's uneasy allies hold it in the Despoiler's name.",
+          "locations": [
+           {
+            "id": "maleficorbit",
+            "name": "Malefic's Reach — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Daemon-hulk 'Gibbering Choir'"
+            ],
+            "desc": "An orbit where the stars themselves seem to whisper."
+           },
+           {
+            "id": "gibberingwarren",
+            "name": "The Gibbering Warren",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A daemon-warren; the ground breathes and the walls have mouths.",
+            "door_names": {
+             "muster": "The Gibbering Warren"
+            }
+           },
+           {
+            "id": "sunderedspire",
+            "name": "The Sundered Spire",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A shattered fortress the warp reclaimed mid-siege."
+           }
+          ],
+          "resources": 40,
+          "status": null
+         }
+        ]
        }
       ]
      },
@@ -3225,6 +3459,356 @@
          "forces": [],
          "desc": "The void of Pallid Reach. Fleets translate, hold, and give battle here before ever reaching a world."
         }
+       },
+       {
+        "id": "skallax",
+        "name": "Skallax Warring",
+        "status": "Warring",
+        "owner": "Chaos - World Eaters",
+        "space": {
+         "id": "skallaxspace",
+         "name": "The Red Deeps",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A void stained by a thousand boarding-actions; the World Eaters give battle here for the joy of it."
+        },
+        "planets": [
+         {
+          "id": "skallaxp",
+          "name": "Skallax",
+          "type": "War World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "World Eaters"
+          },
+          "desc": "The Blood God's parade-world and the seat of the sector — an entire planet given over to the endless killing that feeds the Skull Throne.",
+          "locations": [
+           {
+            "id": "skallaxorbit",
+            "name": "Skallax — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "World Eaters battle-barge 'Gorechild'"
+            ],
+            "desc": "An orbit thick with drop-pods poised to fall."
+           },
+           {
+            "id": "skullthrone",
+            "name": "The Skull-Throne Seat",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A throne of skulls from which the sector's slaughter is ordained.",
+            "door_names": {
+             "throne_room": "The Skull-Throne Seat"
+            }
+           },
+           {
+            "id": "bloodpits",
+            "name": "The Blood Pits",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Arena-continents where champions are made and unmade hourly."
+           },
+           {
+            "id": "brazenwall",
+            "name": "The Brazen Wall",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A rampart of bronze and bone that has never once been defended quietly."
+           }
+          ],
+          "resources": 70,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "charnovese",
+          "name": "Charnovese",
+          "type": "Death World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "World Eaters"
+          },
+          "desc": "A predator-world so lethal the World Eaters prize it as a proving ground — survival is the only rank that matters.",
+          "locations": [
+           {
+            "id": "charnorbit",
+            "name": "Charnovese — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Reaver escort squadron"
+            ],
+            "desc": "A quiet orbit above a screaming world."
+           },
+           {
+            "id": "killinggrounds",
+            "name": "The Killing Grounds",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Jungle and beast and blade; the ground itself hunts."
+           },
+           {
+            "id": "butchersden",
+            "name": "The Butcher's Den",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A war-camp carved into a beast's carcass.",
+            "door_names": {
+             "muster": "The Butcher's Den"
+            }
+           }
+          ],
+          "resources": 35,
+          "status": null
+         },
+         {
+          "id": "gorehold",
+          "name": "Gorehold",
+          "type": "Feral World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "World Eaters"
+          },
+          "desc": "A feral world of blood-clans whose fiercest sons are taken to feed the Butcher's Nails.",
+          "locations": [
+           {
+            "id": "goreorbit",
+            "name": "Gorehold — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Recruitment reaver"
+            ],
+            "desc": "Landers descend empty and rise heavy with the strong."
+           },
+           {
+            "id": "warcamps",
+            "name": "The War-Camps",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Clan-camps where every dispute is settled in the circle."
+           },
+           {
+            "id": "bloodclans",
+            "name": "The Blood-Clans",
+            "type": "village",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Fortified hill-holds that trade sons for iron."
+           }
+          ],
+          "resources": 30,
+          "status": null
+         }
+        ]
+       },
+       {
+        "id": "prosperine",
+        "name": "Prosperine Ash",
+        "status": "Corrupted",
+        "owner": "Chaos - Thousand Sons",
+        "space": {
+         "id": "prosperinespace",
+         "name": "The Silent Void",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A becalmed, ashen void where the warp runs deep and sorcery carries further than any vox."
+        },
+        "planets": [
+         {
+          "id": "prosperinep",
+          "name": "Prosperine Ash",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Thousand Sons"
+          },
+          "desc": "The sorcerers' seat — a Daemon World of drifting ash and floating spire-libraries, ruled from the Tower of the Cyclops.",
+          "locations": [
+           {
+            "id": "prosperineorbit",
+            "name": "Prosperine Ash — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Silver Tower 'Ninth Rubric'"
+            ],
+            "desc": "An orbit where warp-lightning plays between derelict spires."
+           },
+           {
+            "id": "cycloptower",
+            "name": "The Tower of the Cyclops",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The floating tower from which the Rubricae are commanded.",
+            "door_names": {
+             "throne_room": "The Tower of the Cyclops"
+            }
+           },
+           {
+            "id": "sorcreliquary",
+            "name": "The Sorcerous Reliquary",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A daemon-bound vault of forbidden weapons.",
+            "door_names": {
+             "forge": "The Sorcerous Reliquary"
+            }
+           },
+           {
+            "id": "ashenlibraries",
+            "name": "The Ashen Libraries",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Endless drifting stacks of grimoires, most of them screaming."
+           }
+          ],
+          "resources": 80,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "aetherion",
+          "name": "Aetherion",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Thousand Sons"
+          },
+          "desc": "A warp-gate world the Thousand Sons use to strike across the segmentum without ever crossing real space.",
+          "locations": [
+           {
+            "id": "aetherionorbit",
+            "name": "Aetherion — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Cabal escort-wing"
+            ],
+            "desc": "An orbit that hums with the pull of an unseen gate."
+           },
+           {
+            "id": "rubricgate",
+            "name": "The Rubric Gate",
+            "type": "webway_portal",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A sorcerous gate onto hidden paths — passage without conquest.",
+            "door_names": {
+             "warp_gate": "The Rubric Gate"
+            }
+           },
+           {
+            "id": "silentspires",
+            "name": "The Silent Spires",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Spires emptied of all life save the dust that remembers it."
+           }
+          ],
+          "resources": 50,
+          "status": null
+         },
+         {
+          "id": "tizca",
+          "name": "Tizca Reborn",
+          "type": "Dead World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Thousand Sons"
+          },
+          "desc": "A dead echo of lost Prospero, rebuilt in ash — it produces nothing, but its vaults hold everything the Legion salvaged from the burning.",
+          "locations": [
+           {
+            "id": "tizcaorbit",
+            "name": "Tizca Reborn — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Sentinel construct-fleet"
+            ],
+            "desc": "A silent orbit above a silent world."
+           },
+           {
+            "id": "drownedspires",
+            "name": "The Drowned Spires",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "The reconstructed pyramids of Tizca, half-swallowed by ash-dunes."
+           },
+           {
+            "id": "vaultprospero",
+            "name": "The Vault of Prospero",
+            "type": "tomb_vault",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A sealed vault of relics rescued from the Wolves' fire.",
+            "door_names": {
+             "forge": "The Vault of Prospero"
+            }
+           }
+          ],
+          "resources": 25,
+          "status": null
+         }
+        ]
        }
       ]
      },
@@ -3299,6 +3883,185 @@
          ],
          "desc": "The void of Kraith Drift. Fleets translate, hold, and give battle here before ever reaching a world."
         }
+       },
+       {
+        "id": "greenrok",
+        "name": "Da Great Green Rok",
+        "status": "Warring",
+        "owner": "Xenos - Orks",
+        "space": {
+         "id": "greenrokspace",
+         "name": "Da Speed Freek Lanes",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A junk-choked void full of ramshackle rok-fleets looking for a good scrap."
+        },
+        "planets": [
+         {
+          "id": "gorkamorka",
+          "name": "Gorkamorka",
+          "type": "Xenos World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Orks"
+          },
+          "desc": "A world-sized ork settlement grown around a crashed space hulk — the biggest, loudest, orkiest place in the sector, and the Warboss's gaff.",
+          "locations": [
+           {
+            "id": "gorkorbit",
+            "name": "Gorkamorka — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Ork rok 'Da Krumpa'",
+             "Kroozer flotilla"
+            ],
+            "desc": "An orbit of drifting scrap and ramshackle kroozers waiting to drop."
+           },
+           {
+            "id": "warbossgaff",
+            "name": "Da Warboss Gaff",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Da biggest tent on da biggest hill — where da Warboss says who krumps who.",
+            "door_names": {
+             "throne_room": "Da Warboss Gaff"
+            }
+           },
+           {
+            "id": "bigmekshop",
+            "name": "Da Mek Shop",
+            "type": "mek_shop",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Sparks, teef, and kustom shootas — it shouldn't work, but it do.",
+            "door_names": {
+             "shop": "Da Mek Shop"
+            }
+           },
+           {
+            "id": "squigpens",
+            "name": "Da Squig Pens",
+            "type": "lair",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Pens of snarling squigs and grots, half of them lunch.",
+            "door_names": {
+             "muster": "Da Squig Pens"
+            }
+           }
+          ],
+          "resources": 65,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "skarboyz",
+          "name": "Skarboyz Rok",
+          "type": "Feral World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Orks"
+          },
+          "desc": "A feral ork moon-rok where da fightin' never stops and da toughest boyz rise to da top.",
+          "locations": [
+           {
+            "id": "skarborbit",
+            "name": "Skarboyz Rok — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Speed Freek warband"
+            ],
+            "desc": "A low, cluttered orbit swarming with warbikes and buggies."
+           },
+           {
+            "id": "fightinpitz",
+            "name": "Da Fightin' Pitz",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Where boyz sort out who's da biggest by da usual method."
+           },
+           {
+            "id": "orkcamps",
+            "name": "Da Ork Camps",
+            "type": "village",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Scrap-shanties full of boyz spoilin' for a scrap."
+           }
+          ],
+          "resources": 30,
+          "status": null
+         },
+         {
+          "id": "scrapmoon",
+          "name": "Da Scrap Moon",
+          "type": "Mining World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Orks"
+          },
+          "desc": "A hollowed moon of scrap and ore where da Meks dig up teef and build da next big rok.",
+          "locations": [
+           {
+            "id": "scraporbit",
+            "name": "Da Scrap Moon — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Ore-rok tug-fleet"
+            ],
+            "desc": "An orbit ringed with half-built roks and scrap-nets."
+           },
+           {
+            "id": "scrapyards",
+            "name": "Da Scrap-Yards",
+            "type": "mek_shop",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Mountains of loot da Meks turn into dead 'ard war-gubbinz.",
+            "door_names": {
+             "shop": "Da Scrap-Yards"
+            }
+           },
+           {
+            "id": "lookout",
+            "name": "Da Lookout",
+            "type": "military_outpost",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A rickety tower da grots watch da lanes from."
+           }
+          ],
+          "resources": 45,
+          "status": null
+         }
+        ]
        }
       ]
      }
@@ -3959,7 +4722,7 @@
         },
         "planets": [
          {
-          "id": "kestar",
+          "id": "kestarp",
           "name": "Kes'tar",
           "type": "Sept World",
           "rift": "Sanctus",
