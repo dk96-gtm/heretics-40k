@@ -3941,6 +3941,175 @@
           "status": null
          }
         ]
+       },
+       {
+        "id": "kestar",
+        "name": "Kes'tar Sphere",
+        "status": "Thriving",
+        "owner": "Xenos - T'au",
+        "space": {
+         "id": "kestarspace",
+         "name": "The Sphere-Approaches",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "Ordered void-lanes patrolled by T'au picket-craft, beacons blinking the Greater Good in every hue."
+        },
+        "planets": [
+         {
+          "id": "kestar",
+          "name": "Kes'tar",
+          "type": "Sept World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "T'au"
+          },
+          "desc": "The sept-capital of the Sphere — gleaming dome-cities where the castes labour as one for the Greater Good.",
+          "locations": [
+           {
+            "id": "kestarorbit",
+            "name": "Kes'tar — Orbital Tier",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Kor'vattra cruiser 'Wisdom of Aun'"
+            ],
+            "desc": "A disciplined orbit of gravitic docks and drone-tenders."
+           },
+           {
+            "id": "kestarcrown",
+            "name": "The Aun'shi Dome",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Council-dome of the Ethereals; the sept's will is spoken here and obeyed everywhere.",
+            "door_names": {
+             "throne_room": "The Aun'shi Dome"
+            }
+           },
+           {
+            "id": "kestarcity",
+            "name": "Vior'la-Pattern Hab-Dome",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A model sept-city — spotless plazas, caste-quarters, and academy-spires."
+           },
+           {
+            "id": "kestaroutpost",
+            "name": "Fire Caste Cadre-Fort",
+            "type": "military_outpost",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Barracks and firing-ranges of the sept's standing cadres."
+           }
+          ],
+          "resources": 98,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "vralla",
+          "name": "Vral'la",
+          "type": "Civilized World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "T'au"
+          },
+          "desc": "A recently-uplifted world, its native gue'la taught the ways of the Greater Good.",
+          "locations": [
+           {
+            "id": "vrallaorbit",
+            "name": "Vral'la — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Merchant-fleet convoy"
+            ],
+            "desc": "A bustling trade-orbit; Water Caste barter-craft come and go."
+           },
+           {
+            "id": "vrallacity",
+            "name": "New Concord",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A planned city rising over the ruins of the old regime."
+           },
+           {
+            "id": "vrallatrade",
+            "name": "The Water Caste Exchange",
+            "type": "tradeport",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Where the sept trades with — and quietly courts — its neighbours."
+           }
+          ],
+          "resources": 72,
+          "status": null
+         },
+         {
+          "id": "dalyth",
+          "name": "Dal'yth Verge",
+          "type": "Frontier World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "T'au"
+          },
+          "desc": "An expansion-world on the sept's edge, its Pathfinder camps pushing into contested stars.",
+          "locations": [
+           {
+            "id": "dalythorbit",
+            "name": "Dal'yth Verge — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Pathfinder recon-flight"
+            ],
+            "desc": "A frontier orbit of survey-drones and prospector-craft."
+           },
+           {
+            "id": "dalythtrade",
+            "name": "Prospect Waystation",
+            "type": "tradeport",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A frontier tradeport dealing with anyone the Greater Good can use."
+           },
+           {
+            "id": "dalythoutpost",
+            "name": "Pathfinder Forward Camp",
+            "type": "military_outpost",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "The Fire Caste's spearhead into the Verge."
+           }
+          ],
+          "resources": 50,
+          "status": null
+         }
+        ]
        }
       ]
      },
