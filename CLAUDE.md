@@ -3,7 +3,7 @@
 Project context and orientation for anyone (human or AI) working in this repo. Development lives here now; the Notion workspace is a read-only design archive.
 
 **Live:** https://dk96-gtm.github.io/heretics-40k/ · **Repo:** github.com/dk96-gtm/heretics-40k (public)
-**Current state:** engine **v16**, canon **data v1.5** — deployed and running.
+**Current state:** engine **v17**, canon **data v1.7** — deployed and running.
 
 ## What this is
 
@@ -36,6 +36,7 @@ The game = DATA + ENGINE. Nothing else ships.
 - **v1.3 — NPCs:** 5 placed NPCs with overview sheets.
 - **v1.4 — Travel passage-cost model:** `travel` tiers gain `base` + `words`, a `force_divisor` (250), the finer `same_sector_space` rung, and an explicit Warp-Gate waiver. Passage = `tier.base × (force total PC ÷ force_divisor)`; free through a Warp Gate.
 - **v1.5 — Element-sourced revival + no-revival:** `rules.death.revival_window.windows` retuned to travel time (Physical/Energy 8, Heat/Corrosive/Plasma/Warp 3 — harsh minimum = same-sector ride + 1); a `no_revival` tag set (+ an `Annihilation` forge tag) whose kills are permanent.
+- **v1.7 — Free-form slots + per-element armour:** `rules.loadout` (universal player-typed slots — no fixed weapon/item/ability split), `rules.growth.slot_gains_by_rank` (numeric slot growth), `rules.armour` (per-element Defense; a hit deals `max(0, dmg − def[element])`, corrosive-bypass expressed as data), a galaxy-wide `armour` catalog (143 pieces: 20 factions × class defaults + Light/Med/Heavy ladders + universal baseline), a 12th **Armoury** door, and a Forge `armour_upgrade` path (+1 Defense/element per tier I–III).
 - Alpha galaxy: Vigilus Sector, Pallid Reach, Kraith Drift populated; rest sealed. Travel ladder + Travel-Thread arrival. Alpha equipment + forge tags. (No planet has a charted Warp-Gate/webway location yet — free gate travel is plumbed but has no destinations until portals are minted.)
 
 ## What the ENGINE does (built across v6 → v16)
@@ -46,7 +47,8 @@ The game = DATA + ENGINE. Nothing else ships.
 - **Armoury:** columns table of all owned gear (equipped/in-store) with filters.
 - **Forces:** raise/edit/disband, member management, total AP+CP, active-in-thread locking, leader-tag rule, creation gated to non-active leaders.
 - **Floating profile HUD:** compact static bar on every non-HQ screen.
-- **Requisition:** all 11 door types functional (shop/altar/reliquary catalogs + cart + sell; forge; muster; apothecarion; shipyard; relay; arena; warp gate; throne room). Location gating + closed-door reasons. Door demo mode.
+- **Requisition:** all 12 door types functional (shop/altar/reliquary catalogs + cart + sell; forge; muster; apothecarion; shipyard; relay; arena; warp gate; throne room; **armoury** — buy/fit/sell armour). Location gating + closed-door reasons. Door demo mode.
+- **Free-form loadout + armour (v17):** every model's slots are universal — the player assigns each slot a type (Weapon/Item/Ability/Warp Cast) then equips into it; slot count derives from `base sl + rank growth`; edits gated to non-active models. Every model also has one hard **Armour slot** pre-filled with a class+faction default; armour carries a per-element Defense profile that `THREAD.apply` subtracts from incoming damage (`max(0, dmg − def[element])`, floored). Buy/fit armour at an Armoury door; harden a chosen element at the Forge. Pure `LOADOUT` core (`slotCount`/`legalItems`/`canEquip`/`retypeSlot`/`mitigate`) is node-tested.
 - **Map:** procedural charts at galaxy/segment/sector levels; readable sector header (Prosperity/Conflict/Taint meters); Orbit vs Surface split; Deep Space as a travelable node; clickable location panel (doors → requisition, forces → auspex intel, history → summaries, NPCs → sheets); in-location "start a thread" / "enter requisition".
 - **Threads (unified spine, v16):** every type — battle / diplomacy / travel / mission / generic — runs through ONE `threadView` loop (header → read posts → compose → optional action block → post → await), driven by a pure, node-tested `THREAD` core (`create`/`initState`/`catalog`/`validate`/`apply`; see below). Threads carry live `state` (per-model wounds, distance bands, per-force AP pools, terms, transit meter) that posted action blocks actually mutate: combat spends AP and drops wounds on a state-driven battle report; a kill stamps the element-specific revival window (or permadeath for a no-revival source); diplomacy stages terms; travel fills a word-count arrival meter and charges force-scaled passage. Public/private gating, thread board, mission accept-gate, Exit (reads `state.joined`; travel exit refunds passage) all preserved. The old hardcoded `bBattle`/`bDiplo`/`bTravel` builders and the `S.tr` transit global are gone.
 - **Comms:** remote hail; unsafe trade (transfer currency/item); publish conversation as Protocol; NPC approach-in-person when co-located.
