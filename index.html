@@ -808,6 +808,62 @@ var NPCAI=(function(){
   return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope, buildBundle:buildBundle, validateReply:validateReply, applyDelta:applyDelta, retire:retire };
 })();
 /*</ai-core>*/
+/*<world-core>*/
+var WORLD=(function(){
+  // Pure, DOM-free deterministic world-tick. Canon/state/nowMs arrive as arguments;
+  // NO Date.now()/Math.random() inside — replayable. Slice 2a: production + taint drift.
+  function dayMs(canon){return ((canon.tick&&canon.tick.day_minutes)||240)*60000;}
+  function ticksElapsed(state,canon,nowMs){
+    var last=(state.time&&state.time.lastTick)||0;
+    var e=Math.floor((nowMs-last)/dayMs(canon));
+    return e>0?e:0;
+  }
+  function produce(state,canon,events){
+    var rate=(canon.tick&&canon.tick.production_per_day)||0;
+    state.cur=(state.cur||0)+rate;
+    if(rate)events.push({kind:'production',amount:rate});
+  }
+  function driftTaint(state,canon,events){
+    var rate=(canon.tick&&canon.tick.taint_per_day)||0;
+    var stats=(state.world&&state.world.stats)||{};
+    Object.keys(stats).forEach(function(sec){
+      if(typeof stats[sec].taint==='number'){stats[sec].taint+=rate;
+        if(rate)events.push({kind:'taint',sector:sec,delta:rate});}
+    });
+  }
+  function stepDay(state,canon,events){
+    produce(state,canon,events);
+    driftTaint(state,canon,events);
+  }
+  function catchUp(state,canon,nowMs){
+    var events=[];
+    var elapsed=ticksElapsed(state,canon,nowMs);
+    var cap=(canon.tick&&canon.tick.max_catchup_days)||30;
+    var run=Math.min(elapsed,cap);
+    for(var i=0;i<run;i++)stepDay(state,canon,events);
+    var compressed=Math.max(0,elapsed-run);
+    if(compressed>0)events.push({kind:'compressed',days:compressed});
+    if(!state.time)state.time={};
+    state.time.lastTick=(state.time.lastTick||0)+elapsed*dayMs(canon);
+    return {events:events,ticks:run,compressed:compressed};
+  }
+  function digest(events){
+    var lines=[];
+    var prod=events.filter(function(e){return e.kind==='production';})
+                   .reduce(function(a,e){return a+e.amount;},0);
+    if(prod)lines.push('Production banked: '+prod+'.');
+    var taintBy={};   // aggregate per sector across all ticks (one line each, not per-tick)
+    events.filter(function(e){return e.kind==='taint';}).forEach(function(e){
+      taintBy[e.sector]=(taintBy[e.sector]||0)+e.delta;});
+    Object.keys(taintBy).forEach(function(s){lines.push('Taint rose '+taintBy[s]+' in '+s+'.');});
+    var comp=events.filter(function(e){return e.kind==='compressed';})[0];
+    if(comp)lines.push('Over ~'+comp.days+' earlier cycles the frontier settled quietly.');
+    return {lines:lines};
+  }
+  return { dayMs:dayMs, ticksElapsed:ticksElapsed, stepDay:stepDay,
+           catchUp:catchUp, digest:digest };
+})();
+/*</world-core>*/
 /* ---- AI engine (impure: localStorage, fetch, DOM — CALLS the pure NPCAI core) ---- */
 var LS_NPC='heretics_npc_state_v1';
 function saveNPC(){try{localStorage.setItem(LS_NPC,JSON.stringify({npcState:S.npcState,time:S.time}));}catch(e){}}
@@ -944,6 +1000,8 @@ forces:[{id:'rw',n:'The Rotward',lead:'morvax',ap:26}],
 succ:[{n:'Brother Morvax',fid:'rw'},{n:'Gharn the Sevenfold',fid:null}],
 world:{
  met:['vess','herald','sskarith','kryv','warden'],
+ stats:{vigilus:{taint:12},sangua:{taint:4},nurth:{taint:20},kraithv:{taint:16}},
+ log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
   sangua:[['89th Sanguan Garrison','NPC, Astra Militarum · COMPANY','Hive Primus']],
   nurth:[['The Pallid Host','NPC, Death Guard · HOST','The Pallid Court']],
@@ -1781,6 +1839,10 @@ var L=document.getElementById('cl');L.innerHTML='';
 S.convos.forEach(function(c){var remote=c.pl!==S.pos.pl&&!inTransit();
 var d=E('div','cv'+(c.id===cSel?' sel':'')+(remote?'':' dis'),'<div class="cn">'+c.n+' <span class="npct"'+(c.pc?' style="color:var(--blh);border-color:var(--bl)"':'')+'>'+(c.pc?'PC':'NPC')+'</span></div><div class="cl">'+(remote?c.l:(inTransit()?'No vox mid-transit':'On your planet — march to them, open a Thread'))+'</div>');
 if(remote)d.onclick=function(){cSel=c.id;rComms()};L.appendChild(d)});
+if(S.world&&S.world.log&&S.world.log.length){
+ L.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>World Log — since you last looked</h5></div>');
+ S.world.log.slice(0,12).forEach(function(e){L.insertAdjacentHTML('beforeend','<div class="mr" style="font-size:11px;color:var(--dim)">'+e+'</div>');});
+}
 var P2=document.getElementById('cp');var c=S.convos.filter(function(x){return x.id===cSel})[0];
 if(!c||c.pl===S.pos.pl||inTransit()){P2.innerHTML='<div class="empty">No relay open.<br><b>Those near you are met in person — in a Thread.</b></div>';return}
 P2.innerHTML='<h3>'+c.n+' — astropathic relay</h3>';
@@ -1917,9 +1979,13 @@ S.threads.forEach(function(t){
 enrichRoster();fixLeaderTags();mkOverview();initTips();mkEntity();mkHUD();mkCart();
 S.active=S.active||'kane';S.cart=S.cart||[];
 S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
+if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch; // first boot owes no catch-up
 seedNPCState();
 var _sv=loadNPC();
 if(_sv){ if(_sv.time)S.time=_sv.time; if(_sv.npcState)Object.keys(_sv.npcState).forEach(function(k){S.npcState[k]=_sv.npcState[k];}); }
+if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch||Date.now();
+var _wc=WORLD.catchUp(S,D,Date.now());
+S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
 saveNPC();
 var f=fPl(S.pos.pl);MV={lv:'sector',seg:f.g.id,sec:f.s.id,pl:S.pos.pl,lc:S.pos.sp};
 document.getElementById('rname').textContent=S.player.name.split(',')[0];
@@ -1932,7 +1998,19 @@ document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){docum
 mkPicker();mkRite();
 document.getElementById('boot').style.display='none';
 document.getElementById('shell').style.display='flex';
-rHQ();rRos();rLoad();rMap();rTL();rComms();rShop();var _gear=E('button','btn gh sm','⚙ AI');_gear.style.cssText='position:fixed;right:12px;bottom:12px;z-index:60';_gear.onclick=openSettings;document.body.appendChild(_gear);}
+rHQ();rRos();rLoad();rMap();rTL();rComms();rShop();var _gear=E('button','btn gh sm','⚙ AI');_gear.style.cssText='position:fixed;right:12px;bottom:12px;z-index:60';_gear.onclick=openSettings;document.body.appendChild(_gear);renderDigest();}
+/* World Digest — the player-facing output of the deterministic world-tick (slice 2a) */
+function renderDigest(){
+  if(!S._digest||!S._digest.lines.length)return;
+  S.world.log=S.world.log||[];
+  var body=S._digest.lines.map(function(l){return '<div class="mr">▸ '+l+'</div>';}).join('');
+  var ov=E('div','ov on','<div class="movc" style="max-width:520px"><h3>Since you last looked…</h3>'+body+'<button class="btn" id="digx" style="margin-top:12px;width:100%">Acknowledged</button></div>');
+  document.body.appendChild(ov);
+  document.getElementById('digx').onclick=function(){
+    S._digest.lines.forEach(function(l){S.world.log.unshift(nowStamp()+' — '+l);});
+    S._digest=null;ov.remove();
+  };
+}
 
 /* ─── v8: the Model as a first-class entity ─── */
 function acts(m){var w=parseInt((m.w||'0/0').split('/')[0],10)||0;return Math.min(w,3)}
@@ -2022,6 +2100,38 @@ var GLOSS={
  'Rapid':function(t){t=t||1;return 'Fires '+t+' extra attack'+(t>1?'s':'')+' at Short range (tier '+t+').'},
  'Venting':function(t){t=t||1;return 'Overheats — wielder takes '+t+' backlash damage, or must cool down '+t+' post'+(t>1?'s':'')+' after firing.'},
  'Regen':function(t){t=t||1;return 'Regenerates '+t+' wound'+(t>1?'s':'')+' each post while active (tier '+t+').'},
+ 'Slowing':function(t){t=t||1;return 'Hit target loses '+t+' Speed on its next post (tier '+t+').'},
+ 'Draining':function(t){t=t||1;return 'Hit target loses '+t+' AP (tier '+t+').'},
+ 'Leech':function(t){t=t||1;return 'Wielder heals '+t+' wound'+(t>1?'s':'')+' per damaging hit (tier '+t+').'},
+ 'Reclaim':function(t){t=t||1;return 'On a kill, wielder heals '+t+' wound'+(t>1?'s':'')+' (tier '+t+').'},
+ 'Refund':function(t){t=t||1;return 'On a kill, refund '+t+' AP (tier '+t+').'},
+ 'Momentum':function(t){t=t||1;return '+1 damage per consecutive post attacking, capped at +'+t+' (tier '+t+').'},
+ 'Slayer':function(t){t=t||1;return '+'+t+' damage vs models carrying the stated tag (tier '+t+').'},
+ 'Ambush':function(t){t=t||1;return '+'+t+' damage when attacking from Stealth (tier '+t+').'},
+ 'Grudge':function(t){t=t||1;return '+'+t+' damage vs Forces that damaged yours this thread (tier '+t+').'},
+ 'Shield':function(t){t=t||1;var v=[0,1,2,4][t]||t;return 'Absorbs the next '+v+' damage, then depleted for the thread (tier '+t+').'},
+ 'Ward':function(t){t=t||1;return 'Reduces incoming damage of one element by '+t+' (tier '+t+').'},
+ 'Decoy':function(t){t=t||1;return 'The next '+t+' attack'+(t>1?'s':'')+' that would hit the bearer miss (tier '+t+').'},
+ 'Marked':function(t){t=t||1;return 'Target is marked — your Force deals +'+t+' damage to it (tier '+t+').'},
+ 'Rally':function(t){t=t||1;return 'Allied models in the Force deal +'+t+' damage on their next post (tier '+t+').'},
+ 'Reach':'Melee weapon that strikes out to Short range.',
+ 'Guided':'Ignores the Stealth tag — can target hidden models.',
+ 'First Strike':'Resolves before the target can respond.',
+ 'Overcharge':'May add +1 damage; the weapon gains Venting 1 that post.',
+ 'Bypass':'Ignores the immunities and defences of the stated tag.',
+ 'Dual-profile':'Two statlines on one weapon — choose which per action.',
+ 'Free Move':'On a kill, the wielder makes a free move.',
+ 'Cleanse':'Removes all DoT and status tags (self / touch / Force-wide by tier).',
+ 'Revive':'Returns a slain model to the thread at 1 wound.',
+ 'Blink':'Reposition anywhere in the location without spending a move action.',
+ 'Immunity':'Bearer is unaffected by the stated tag.',
+ 'Charging':'+1 damage on melee attacks this post (granted by a Charge action).',
+ 'Injured':'Below half wounds — reduced to 2 actions per post.',
+ 'Critical':'Badly wounded — reduced to 1 action per post.',
+ 'Psyker':'May slot Warp Casts.',
+ 'Leader':'May lead a Force — inherent to Commanders; granted to a Named by dispatched AP.',
+ 'Grouped':'Carried by every model currently in a Force.',
+ 'Stealth':'Hidden — interacts with Guided, Ambush, and detection rules.',
  'Effortless':'Costs only the model own AP — no equipment AP modifier is added.',
  'Unwieldy':'Heavy — costs +1 AP and cannot be used the post after moving.',
  'Suppressing':'Pins the target: it loses 1 action on its next post.',
@@ -2048,7 +2158,7 @@ function parseItem(it){var d=(it.d||''),parts=d.split(/\s*[-·+]\s*/).map(functi
   if(m=p.match(/^(\d+)\s*AP$/i)){out.ap=m[1]+' AP';return}
   if(/^effortless$/i.test(p)){out.ap='Effortless (model AP only)';return}
   if(m=p.match(/^R(\d)$/i)){out.rank=m[1];return}
-  if(m=p.match(/^(DoT|Multihit|Rapid|Venting|Regen|Suppressing|Unwieldy|Consumable|Stimm)\s*(I{1,3}|IV|V|\d+)?$/i)){var tv=m[2]||'';var roman=/^\d+$/.test(tv)?['','I','II','III','IV','V'][parseInt(tv,10)]||tv:tv.toUpperCase();out.tags.push({tag:cap(m[1]),tier:roman});return}
+  if(m=p.match(/^(DoT|Multihit|Rapid|Venting|Regen|Suppressing|Unwieldy|Consumable|Stimm|Slowing|Draining|Leech|Reclaim|Refund|Momentum|Ambush|Grudge|Guided|Reach|First Strike|Free Move|Overcharge|Bypass|Shield|Ward|Decoy|Blink|Immunity|Marked|Rally|Cleanse|Revive|Charging|Injured|Critical)\s*(I{1,3}|IV|V|\d+)?$/i)){var tv=m[2]||'';var roman=/^\d+$/.test(tv)?['','I','II','III','IV','V'][parseInt(tv,10)]||tv:tv.toUpperCase();out.tags.push({tag:cap(m[1]),tier:roman});return}
   out.notes.push(p)});
  return out}
 function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
@@ -2201,10 +2311,16 @@ function renderCart(){mkCart();var c=S.cart||[];if(!c.length){CART.classList.rem
   S.cur-=t;S.cart.forEach(function(x){S.inv.push({n:x.n,cat:x.cat,d:x.d,pc:x.pc,origin:x.origin})});
   var n=S.cart.length;S.cart=[];renderCart();rW();rShop();T('Purchased '+n+' item'+(n>1?'s':'')+'. Ownership transferred to you.')};
  document.getElementById('cclr').onclick=function(){S.cart=[];renderCart()}}
-function doorCatalog(kind){var base=(D.equipment_alpha.shop_catalog||[]).map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}});
- if(kind==='shop')return base.filter(function(it){return it.cat!=='CAST'});
- if(kind==='altar')return base.filter(function(it){return it.cat==='CAST'}).concat([{n:"Nurgle's Rot",cat:'CAST',d:'Warp R2 - DoT II - area',pc:16},{n:'Stream of Corruption',cat:'CAST',d:'Warp R3 - Multihit II',pc:20}]);
- if(kind==='reliquary')return [{n:'The Fleshmould',cat:'LEGENDARY',d:'+3 W - Regen 1/post',pc:60},{n:"Plaguebringer's Censer",cat:'LEGENDARY',d:'Aura: enemies -1 dmg - Melee DoT I',pc:80}];
+/* v1.9: door catalogs drawn from the full migrated canon, filtered to the
+   player's faction + faction-null "common" gear. shop = weapons+items+abilities,
+   altar = casts, reliquary = the LEGENDARY entries (one weapon + one item per faction). */
+function doorCatalog(kind){var pf=(S.player&&S.player.faction)||null;
+ function pick(arr){return (arr||[]).filter(function(it){return it.faction==null||it.faction===pf})
+   .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}})}
+ if(kind==='shop')return pick(D.weapons).concat(pick(D.items)).concat(pick(D.abilities));
+ if(kind==='altar')return pick(D.casts);
+ if(kind==='reliquary')return (D.legendaries||[]).filter(function(it){return it.faction===pf})
+   .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}});
  return []}
 function sellPrice(it){var pc=it.pc||0;if(!pc){var c=doorCatalog('shop').concat(doorCatalog('altar')).filter(function(x){return x.n===it.n})[0];pc=c?c.pc:6}return Math.max(1,Math.round(pc*0.6))}
 function doorSells(kind,cat){if(kind==='shop')return cat==='WEAPON'||cat==='ITEM'||cat==='ABILITY';if(kind==='altar')return cat==='CAST';if(kind==='reliquary')return cat==='LEGENDARY';return false}
@@ -2288,7 +2404,9 @@ function renderForge(c,dr){
  c.insertAdjacentHTML('beforeend','<label class="f">Weapon to modify</label>');
  var bs=E('select');bs.style.cssText='width:100%';ws.forEach(function(x,i){bs.add(new Option(x.n+' — '+x.d,i))});c.appendChild(bs);
  c.insertAdjacentHTML('beforeend','<label class="f">Affinity tag</label>');var tw=E('div');c.appendChild(tw);
- var tags=D.equipment_alpha.forge_tags_alpha.map(function(t){return{t:t.tag,c:t.cost,d:t.d,lk:t.access!=='open'&&!(t.access.indexOf('Drukhari')>=0&&S.dru),rq:'requires '+t.access}});
+ var _aff=(D.equipment_alpha.forge_affinities&&D.equipment_alpha.forge_affinities[S.player.faction])||[],_affAll=_aff.indexOf('ALL')>=0;
+ var tags=((D.tags&&D.tags.weapon)||[]).filter(function(t){return t.forge_cost!=null&&t.forgeable!==false}).map(function(t){var open=_affAll||_aff.indexOf(t.tag)>=0;return{t:t.tag,c:t.forge_cost,d:t.mechanic,lk:!open,rq:'not your forge affinity — needs an allied '+t.tag+'-forge'}});
+ (D.equipment_alpha.forge_tags_alpha||[]).forEach(function(t){if(!tags.some(function(x){return x.t===t.tag})){tags.push({t:t.tag,c:t.cost,d:t.d,lk:t.access!=='open'&&!(t.access.indexOf('Drukhari')>=0&&S.dru),rq:'requires '+t.access})}});
  var st=tags[0];
  tags.forEach(function(t){var d=E('div','tg'+(t===st?' sel':'')+(t.lk?' lk':''),'<span data-tip="<b>'+t.t+'</b> — '+t.d+'">'+t.t+' — '+t.d+'</span>'+(t.lk?'<span class="rq">'+t.rq+'</span>':'<span class="mono">+'+t.c+'</span>'));
   if(!t.lk)d.onclick=function(){st=t;tw.querySelectorAll('.tg').forEach(function(x){x.classList.remove('sel')});d.classList.add('sel');pr()};tw.appendChild(d)});

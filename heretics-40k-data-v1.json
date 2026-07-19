@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.7",
+  "version": "1.11",
   "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -10,7 +10,8 @@
    "Scope v1.2: Orbit is now a real named location on every planet (tier 'orbit', holds the ships that used to live on planet.orbit); every Sector gains a Space layer (sector.space). Travel Threads, fleets, and orbital actions attach to these. Location types 'orbit' and 'space' added.",
    "Doors are GRANTED BY location type, not stored per location. Conditions take them away. Access is allegiance-gated.",
    "Filename stays heretics-40k-data-v1.json across the v1.x series; meta.version carries the real version. Git carries the history.",
-   "Scores / production / resources are specced here but require persistence (Stage 2) to run. Static demo reads them as constants."
+   "Scores / production / resources are specced here but require persistence (Stage 2) to run. Static demo reads them as constants.",
+   "v1.8: full Tag Registry migrated from Notion to canon (D.tags: 22 weapon / 11 item / 4 combat / 7 cast-gate / 4 model-state) + per-faction forge_affinities. Engine: GLOSS tooltips for every tag, parseItem recognises the full tag set, the Forge offers the full weapon-tag list gated by faction affinity."
   ],
   "migration": {
    "done": [
@@ -166,25 +167,66 @@
     "Armament": "+1 every rank"
    },
    "slot_gains_by_rank": {
-    "Core": [0, 1, 1, 2, 2],
-    "Assault": [0, 1, 1, 2, 2],
-    "Flying": [0, 1, 1, 2, 2],
-    "Armament": [0, 1, 2, 3, 4]
+    "Core": [
+     0,
+     1,
+     1,
+     2,
+     2
+    ],
+    "Assault": [
+     0,
+     1,
+     1,
+     2,
+     2
+    ],
+    "Flying": [
+     0,
+     1,
+     1,
+     2,
+     2
+    ],
+    "Armament": [
+     0,
+     1,
+     2,
+     3,
+     4
+    ]
    },
    "xp_to_rank_up": "equal to model's current PC",
    "force_xp": "Forces earn and rank together; requirement = average of members; joining only at Force's current rank"
   },
   "loadout": {
    "model": "Free-form universal slots. A model has (base sl + slot_gains_by_rank[class][rank-1]) GENERAL slots plus one separate hard ARMOUR slot. The player assigns each general slot a type (Weapon/Item/Ability/Warp Cast), then equips a matching item. Any slot may take any type — no psyker gate, no reserved legendary slot. Re-typing/equipping is allowed only while the model is NOT in an active thread.",
-   "slot_types": ["WEAPON", "ITEM", "ABILITY", "CAST"],
+   "slot_types": [
+    "WEAPON",
+    "ITEM",
+    "ABILITY",
+    "CAST"
+   ],
    "armour_slot": "Every model has one extra hard Armour slot, always present, outside the general budget; holds only cat:ARMOUR. Pre-filled with a class+faction default."
   },
   "armour": {
-   "elements": ["Physical", "Heat", "Warp", "Corrosive", "Plasma", "Energy"],
+   "elements": [
+    "Physical",
+    "Heat",
+    "Warp",
+    "Corrosive",
+    "Plasma",
+    "Energy"
+   ],
    "mitigation": "Per hit: taken = max(0, dealt - def[element]). Floored at 0, so heavy armour can fully turn a weak hit. Applied per hit (multi-hit resolves each hit separately). The killing element still sets the revival window.",
    "corrosive_note": "There is no hardcoded bypass rule. Corrosive-bypass is expressed as data: most armour carries a low or 0 Corrosive defense.",
    "default_by_faction_class": true,
-   "tiers": ["default", "light", "medium", "heavy"]
+   "tiers": [
+    "default",
+    "light",
+    "medium",
+    "heavy"
+   ]
   },
   "combat": {
    "action_types": [
@@ -270,7 +312,11 @@
     "minimum_rationale": "Harsh-element minimum (3) = same-sector travel (2 posts) + 1. Soft elements add +5 so revival stays a live tactic during and just after a combat thread.",
     "no_revival": {
      "rule": "A kill dealt by a source carrying a no-revival tag denies the window entirely: window 0, permanent death, no Apothecarion, no cost, no succession-revival. These are the annihilation weapons - use is rare and expensive.",
-     "tags": ["Annihilation", "Soul-Death", "Unmaking"]
+     "tags": [
+      "Annihilation",
+      "Soul-Death",
+      "Unmaking"
+     ]
     },
     "expiry": "Window expires -> permanent death. No door, no cost, no appeal.",
     "commanders": "Commanders use the same windows. Succession still fires if the window expires.",
@@ -510,28 +556,44 @@
    ],
    "models": [
     {
-     "n": "Legionnaire",
+     "n": "Legionary",
      "cls": "Core",
-     "pc": 24,
-     "w": 4,
-     "sp": 5,
+     "pc": 20,
+     "w": 3,
+     "sp": 6,
      "sl": 2
     },
     {
-     "n": "Chosen Terminator",
+     "n": "Chaos Cultist",
+     "cls": "Core",
+     "pc": 5,
+     "w": 1,
+     "sp": 5,
+     "sl": 1
+    },
+    {
+     "n": "Chaos Terminator",
      "cls": "Assault",
-     "pc": 52,
-     "w": 6,
-     "sp": 3,
+     "pc": 45,
+     "w": 5,
+     "sp": 4,
      "sl": 3
     },
     {
-     "n": "Warp Talon",
+     "n": "Raptor",
      "cls": "Flying",
-     "pc": 36,
-     "w": 4,
+     "pc": 28,
+     "w": 3,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Havoc",
+     "cls": "Armament",
+     "pc": 32,
+     "w": 3,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -597,6 +659,14 @@
      "sl": 2
     },
     {
+     "n": "Poxwalker",
+     "cls": "Core",
+     "pc": 4,
+     "w": 1,
+     "sp": 4,
+     "sl": 1
+    },
+    {
      "n": "Blightlord Terminator",
      "cls": "Assault",
      "pc": 50,
@@ -611,6 +681,14 @@
      "w": 6,
      "sp": 8,
      "sl": 2
+    },
+    {
+     "n": "Plagueburst Crawler",
+     "cls": "Armament",
+     "pc": 140,
+     "w": 8,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -671,25 +749,41 @@
      "n": "Khorne Berzerker",
      "cls": "Core",
      "pc": 22,
-     "w": 4,
-     "sp": 6,
+     "w": 3,
+     "sp": 7,
      "sl": 2
+    },
+    {
+     "n": "Jakhal",
+     "cls": "Core",
+     "pc": 6,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
     },
     {
      "n": "Exalted Eightbound",
      "cls": "Assault",
-     "pc": 58,
-     "w": 7,
-     "sp": 5,
-     "sl": 3
+     "pc": 70,
+     "w": 6,
+     "sp": 6,
+     "sl": 2
     },
     {
-     "n": "Chaos Raptor",
+     "n": "Skyrender",
      "cls": "Flying",
-     "pc": 34,
-     "w": 4,
+     "pc": 30,
+     "w": 3,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Forgefiend",
+     "cls": "Armament",
+     "pc": 130,
+     "w": 8,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -749,26 +843,42 @@
     {
      "n": "Rubric Marine",
      "cls": "Core",
-     "pc": 26,
-     "w": 4,
-     "sp": 4,
+     "pc": 23,
+     "w": 3,
+     "sp": 5,
      "sl": 2
+    },
+    {
+     "n": "Tzaangor",
+     "cls": "Core",
+     "pc": 7,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
     },
     {
      "n": "Scarab Occult Terminator",
      "cls": "Assault",
-     "pc": 55,
-     "w": 6,
-     "sp": 3,
+     "pc": 48,
+     "w": 5,
+     "sp": 4,
      "sl": 3
     },
     {
-     "n": "Tzaangor Skyflock Alpha",
+     "n": "Tzaangor Enlightened",
      "cls": "Flying",
-     "pc": 30,
-     "w": 4,
-     "sp": 8,
+     "pc": 26,
+     "w": 2,
+     "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Mutalith Vortex Beast",
+     "cls": "Armament",
+     "pc": 150,
+     "w": 9,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -828,26 +938,42 @@
     {
      "n": "Noise Marine",
      "cls": "Core",
-     "pc": 26,
-     "w": 4,
-     "sp": 5,
+     "pc": 22,
+     "w": 3,
+     "sp": 6,
      "sl": 2
     },
     {
-     "n": "Flawless Terminator",
+     "n": "Tormentor",
+     "cls": "Core",
+     "pc": 6,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
+    },
+    {
+     "n": "Flawless Blade",
      "cls": "Assault",
-     "pc": 50,
-     "w": 6,
-     "sp": 3,
-     "sl": 3
+     "pc": 40,
+     "w": 4,
+     "sp": 7,
+     "sl": 2
     },
     {
      "n": "Sonancer",
      "cls": "Flying",
-     "pc": 32,
-     "w": 4,
+     "pc": 28,
+     "w": 3,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Kakophonist",
+     "cls": "Armament",
+     "pc": 35,
+     "w": 3,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -907,26 +1033,42 @@
     {
      "n": "Bloodletter",
      "cls": "Core",
-     "pc": 20,
-     "w": 4,
+     "pc": 12,
+     "w": 2,
      "sp": 6,
-     "sl": 2
+     "sl": 1
     },
     {
-     "n": "Great Beast of Nurgle",
+     "n": "Nurgling Swarm",
+     "cls": "Core",
+     "pc": 5,
+     "w": 1,
+     "sp": 4,
+     "sl": 1
+    },
+    {
+     "n": "Bloodcrusher",
      "cls": "Assault",
-     "pc": 56,
-     "w": 7,
-     "sp": 3,
-     "sl": 3
+     "pc": 55,
+     "w": 5,
+     "sp": 7,
+     "sl": 2
     },
     {
      "n": "Screamer of Tzeentch",
      "cls": "Flying",
-     "pc": 30,
-     "w": 4,
-     "sp": 10,
-     "sl": 2
+     "pc": 25,
+     "w": 2,
+     "sp": 11,
+     "sl": 1
+    },
+    {
+     "n": "Soul Grinder",
+     "cls": "Armament",
+     "pc": 160,
+     "w": 9,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -986,26 +1128,42 @@
     {
      "n": "Intercessor",
      "cls": "Core",
-     "pc": 20,
-     "w": 4,
-     "sp": 5,
+     "pc": 21,
+     "w": 3,
+     "sp": 6,
      "sl": 2
     },
     {
-     "n": "Aggressor",
+     "n": "Scout",
+     "cls": "Core",
+     "pc": 12,
+     "w": 2,
+     "sp": 7,
+     "sl": 2
+    },
+    {
+     "n": "Assault Terminator",
      "cls": "Assault",
-     "pc": 45,
-     "w": 6,
-     "sp": 3,
+     "pc": 46,
+     "w": 5,
+     "sp": 4,
      "sl": 3
     },
     {
      "n": "Inceptor",
      "cls": "Flying",
-     "pc": 60,
-     "w": 5,
+     "pc": 35,
+     "w": 3,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Hellblaster",
+     "cls": "Armament",
+     "pc": 30,
+     "w": 3,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1063,28 +1221,44 @@
    ],
    "models": [
     {
-     "n": "Tempestus Scion",
+     "n": "Cadian Shock Trooper",
      "cls": "Core",
-     "pc": 9,
-     "w": 2,
+     "pc": 6,
+     "w": 1,
      "sp": 5,
      "sl": 2
     },
     {
+     "n": "Catachan Jungle Fighter",
+     "cls": "Core",
+     "pc": 7,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
+    },
+    {
      "n": "Bullgryn",
      "cls": "Assault",
-     "pc": 28,
-     "w": 6,
-     "sp": 4,
+     "pc": 30,
+     "w": 4,
+     "sp": 5,
+     "sl": 2
+    },
+    {
+     "n": "Valkyrie",
+     "cls": "Flying",
+     "pc": 110,
+     "w": 8,
+     "sp": 10,
      "sl": 3
     },
     {
-     "n": "Skyhammer Exo-Rig",
-     "cls": "Flying",
-     "pc": 36,
-     "w": 4,
-     "sp": 8,
-     "sl": 2
+     "n": "Heavy Weapons Team",
+     "cls": "Armament",
+     "pc": 15,
+     "w": 2,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -1144,26 +1318,42 @@
     {
      "n": "Skitarii Ranger",
      "cls": "Core",
-     "pc": 12,
-     "w": 3,
+     "pc": 10,
+     "w": 2,
      "sp": 5,
      "sl": 2
     },
     {
-     "n": "Kastelan Punisher",
+     "n": "Skitarii Vanguard",
+     "cls": "Core",
+     "pc": 11,
+     "w": 2,
+     "sp": 6,
+     "sl": 2
+    },
+    {
+     "n": "Sicarian Ruststalker",
      "cls": "Assault",
-     "pc": 46,
-     "w": 7,
-     "sp": 3,
-     "sl": 3
+     "pc": 28,
+     "w": 3,
+     "sp": 8,
+     "sl": 2
     },
     {
      "n": "Pteraxii Sterylizor",
      "cls": "Flying",
-     "pc": 24,
-     "w": 3,
+     "pc": 26,
+     "w": 2,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Kastelan Robot",
+     "cls": "Armament",
+     "pc": 95,
+     "w": 7,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -1223,26 +1413,42 @@
     {
      "n": "Battle Sister",
      "cls": "Core",
-     "pc": 12,
-     "w": 3,
+     "pc": 11,
+     "w": 2,
      "sp": 5,
      "sl": 2
     },
     {
-     "n": "Celestian Sacresant",
-     "cls": "Assault",
-     "pc": 26,
-     "w": 5,
-     "sp": 4,
-     "sl": 3
+     "n": "Novitiate",
+     "cls": "Core",
+     "pc": 7,
+     "w": 1,
+     "sp": 5,
+     "sl": 1
     },
     {
-     "n": "Zephyrim",
+     "n": "Sister Repentia",
+     "cls": "Assault",
+     "pc": 16,
+     "w": 2,
+     "sp": 7,
+     "sl": 1
+    },
+    {
+     "n": "Seraphim",
      "cls": "Flying",
-     "pc": 30,
-     "w": 4,
+     "pc": 20,
+     "w": 2,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Retributor",
+     "cls": "Armament",
+     "pc": 18,
+     "w": 2,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1304,24 +1510,40 @@
      "cls": "Core",
      "pc": 60,
      "w": 6,
+     "sp": 6,
+     "sl": 3
+    },
+    {
+     "n": "Sagittarum Guard",
+     "cls": "Core",
+     "pc": 62,
+     "w": 6,
      "sp": 5,
-     "sl": 2
+     "sl": 3
     },
     {
      "n": "Allarus Terminator",
      "cls": "Assault",
-     "pc": 88,
-     "w": 8,
+     "pc": 85,
+     "w": 7,
      "sp": 4,
      "sl": 3
     },
     {
      "n": "Vertus Praetor",
      "cls": "Flying",
-     "pc": 92,
+     "pc": 90,
      "w": 6,
-     "sp": 10,
+     "sp": 11,
      "sl": 2
+    },
+    {
+     "n": "Contemptor Dreadnought",
+     "cls": "Armament",
+     "pc": 130,
+     "w": 9,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1381,26 +1603,42 @@
     {
      "n": "Tyranid Warrior",
      "cls": "Core",
-     "pc": 30,
-     "w": 5,
+     "pc": 25,
+     "w": 3,
      "sp": 6,
      "sl": 2
     },
     {
-     "n": "Tyrant Guard",
+     "n": "Termagant",
+     "cls": "Core",
+     "pc": 6,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
+    },
+    {
+     "n": "Carnifex",
      "cls": "Assault",
-     "pc": 48,
-     "w": 7,
-     "sp": 4,
+     "pc": 180,
+     "w": 8,
+     "sp": 5,
      "sl": 3
     },
     {
-     "n": "Winged Prime",
+     "n": "Gargoyle",
      "cls": "Flying",
-     "pc": 52,
-     "w": 5,
-     "sp": 9,
-     "sl": 2
+     "pc": 8,
+     "w": 1,
+     "sp": 12,
+     "sl": 1
+    },
+    {
+     "n": "Hive Guard",
+     "cls": "Armament",
+     "pc": 50,
+     "w": 4,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -1458,28 +1696,44 @@
    ],
    "models": [
     {
-     "n": "Ork Nob",
+     "n": "Boy",
      "cls": "Core",
-     "pc": 18,
-     "w": 5,
+     "pc": 10,
+     "w": 2,
+     "sp": 6,
+     "sl": 1
+    },
+    {
+     "n": "Gretchin",
+     "cls": "Core",
+     "pc": 3,
+     "w": 1,
      "sp": 5,
-     "sl": 2
+     "sl": 1
     },
     {
      "n": "Meganob",
      "cls": "Assault",
      "pc": 42,
-     "w": 7,
-     "sp": 3,
-     "sl": 3
+     "w": 5,
+     "sp": 4,
+     "sl": 2
     },
     {
-     "n": "Stormboy Nob",
+     "n": "Stormboy",
      "cls": "Flying",
-     "pc": 26,
-     "w": 4,
+     "pc": 14,
+     "w": 2,
      "sp": 9,
-     "sl": 2
+     "sl": 1
+    },
+    {
+     "n": "Loota",
+     "cls": "Armament",
+     "pc": 16,
+     "w": 2,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1537,28 +1791,44 @@
    ],
    "models": [
     {
+     "n": "Necron Warrior",
+     "cls": "Core",
+     "pc": 14,
+     "w": 2,
+     "sp": 4,
+     "sl": 1
+    },
+    {
      "n": "Immortal",
      "cls": "Core",
-     "pc": 16,
-     "w": 4,
+     "pc": 20,
+     "w": 3,
      "sp": 4,
      "sl": 2
     },
     {
-     "n": "Lychguard",
+     "n": "Skorpekh Destroyer",
      "cls": "Assault",
-     "pc": 38,
-     "w": 6,
-     "sp": 4,
-     "sl": 3
+     "pc": 45,
+     "w": 5,
+     "sp": 6,
+     "sl": 2
     },
     {
-     "n": "Canoptek Skyrender",
+     "n": "Tomb Blade",
      "cls": "Flying",
-     "pc": 44,
-     "w": 5,
-     "sp": 9,
+     "pc": 30,
+     "w": 3,
+     "sp": 10,
      "sl": 2
+    },
+    {
+     "n": "Lokhust Heavy Destroyer",
+     "cls": "Armament",
+     "pc": 65,
+     "w": 5,
+     "sp": 6,
+     "sl": 3
     }
    ]
   },
@@ -1616,28 +1886,44 @@
    ],
    "models": [
     {
-     "n": "Guardian Storm-Lead",
+     "n": "Dire Avenger",
      "cls": "Core",
-     "pc": 14,
-     "w": 3,
-     "sp": 6,
+     "pc": 13,
+     "w": 2,
+     "sp": 7,
      "sl": 2
     },
     {
-     "n": "Wraithblade",
-     "cls": "Assault",
-     "pc": 44,
-     "w": 6,
-     "sp": 4,
-     "sl": 3
+     "n": "Guardian Defender",
+     "cls": "Core",
+     "pc": 8,
+     "w": 1,
+     "sp": 7,
+     "sl": 1
     },
     {
-     "n": "Swooping Hawk Exarch",
+     "n": "Howling Banshee",
+     "cls": "Assault",
+     "pc": 18,
+     "w": 2,
+     "sp": 9,
+     "sl": 1
+    },
+    {
+     "n": "Swooping Hawk",
      "cls": "Flying",
-     "pc": 30,
-     "w": 4,
+     "pc": 17,
+     "w": 2,
      "sp": 10,
      "sl": 2
+    },
+    {
+     "n": "Dark Reaper",
+     "cls": "Armament",
+     "pc": 22,
+     "w": 2,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1697,26 +1983,42 @@
     {
      "n": "Kabalite Warrior",
      "cls": "Core",
-     "pc": 12,
-     "w": 3,
-     "sp": 6,
+     "pc": 10,
+     "w": 2,
+     "sp": 7,
      "sl": 2
+    },
+    {
+     "n": "Wrack",
+     "cls": "Core",
+     "pc": 9,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
     },
     {
      "n": "Incubus",
      "cls": "Assault",
-     "pc": 30,
-     "w": 5,
-     "sp": 5,
-     "sl": 3
+     "pc": 24,
+     "w": 2,
+     "sp": 7,
+     "sl": 2
     },
     {
      "n": "Scourge",
      "cls": "Flying",
-     "pc": 26,
-     "w": 4,
+     "pc": 18,
+     "w": 2,
      "sp": 10,
      "sl": 2
+    },
+    {
+     "n": "Ravager",
+     "cls": "Armament",
+     "pc": 100,
+     "w": 6,
+     "sp": 9,
+     "sl": 3
     }
    ]
   },
@@ -1776,26 +2078,42 @@
     {
      "n": "Fire Warrior",
      "cls": "Core",
-     "pc": 10,
+     "pc": 11,
      "w": 2,
      "sp": 5,
      "sl": 2
     },
     {
-     "n": "Crisis Battlesuit",
-     "cls": "Assault",
-     "pc": 40,
-     "w": 5,
-     "sp": 5,
-     "sl": 3
+     "n": "Kroot Carnivore",
+     "cls": "Core",
+     "pc": 6,
+     "w": 1,
+     "sp": 7,
+     "sl": 1
     },
     {
-     "n": "Stealth Suit VX",
-     "cls": "Flying",
-     "pc": 28,
-     "w": 4,
-     "sp": 8,
+     "n": "Crisis Battlesuit",
+     "cls": "Assault",
+     "pc": 65,
+     "w": 5,
+     "sp": 7,
      "sl": 2
+    },
+    {
+     "n": "Vespid Stingwing",
+     "cls": "Flying",
+     "pc": 15,
+     "w": 2,
+     "sp": 10,
+     "sl": 1
+    },
+    {
+     "n": "Broadside Battlesuit",
+     "cls": "Armament",
+     "pc": 90,
+     "w": 6,
+     "sp": 3,
+     "sl": 3
     }
    ]
   },
@@ -1853,28 +2171,44 @@
    ],
    "models": [
     {
-     "n": "Acolyte Hybrid",
+     "n": "Neophyte Hybrid",
      "cls": "Core",
-     "pc": 10,
-     "w": 2,
+     "pc": 6,
+     "w": 1,
      "sp": 5,
      "sl": 2
+    },
+    {
+     "n": "Acolyte Hybrid",
+     "cls": "Core",
+     "pc": 11,
+     "w": 2,
+     "sp": 7,
+     "sl": 1
     },
     {
      "n": "Aberrant",
      "cls": "Assault",
      "pc": 26,
-     "w": 6,
-     "sp": 4,
-     "sl": 3
+     "w": 3,
+     "sp": 5,
+     "sl": 1
     },
     {
      "n": "Chiropteran Hybrid",
      "cls": "Flying",
-     "pc": 24,
-     "w": 3,
+     "pc": 14,
+     "w": 2,
      "sp": 9,
-     "sl": 2
+     "sl": 1
+    },
+    {
+     "n": "Mining Laser Team",
+     "cls": "Armament",
+     "pc": 14,
+     "w": 2,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -1935,25 +2269,41 @@
      "n": "Hearthkyn Warrior",
      "cls": "Core",
      "pc": 12,
-     "w": 3,
+     "w": 2,
      "sp": 4,
+     "sl": 2
+    },
+    {
+     "n": "Hearthkyn Yaegir",
+     "cls": "Core",
+     "pc": 10,
+     "w": 2,
+     "sp": 5,
      "sl": 2
     },
     {
      "n": "Einhyr Champion",
      "cls": "Assault",
-     "pc": 44,
-     "w": 6,
-     "sp": 3,
+     "pc": 55,
+     "w": 5,
+     "sp": 4,
      "sl": 3
     },
     {
-     "n": "Hernkyn Sky-Jager",
+     "n": "Skyhammer Exo-Rig",
      "cls": "Flying",
-     "pc": 28,
-     "w": 4,
-     "sp": 9,
+     "pc": 32,
+     "w": 3,
+     "sp": 8,
      "sl": 2
+    },
+    {
+     "n": "Cthonian Beserk",
+     "cls": "Armament",
+     "pc": 28,
+     "w": 3,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -2011,28 +2361,44 @@
    ],
    "models": [
     {
-     "n": "Player of the Troupe",
+     "n": "Player",
      "cls": "Core",
      "pc": 22,
-     "w": 3,
-     "sp": 8,
+     "w": 2,
+     "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Shadowseer",
+     "cls": "Core",
+     "pc": 35,
+     "w": 2,
+     "sp": 9,
+     "sl": 3
     },
     {
      "n": "Solitaire",
      "cls": "Assault",
-     "pc": 60,
-     "w": 4,
-     "sp": 10,
-     "sl": 3
+     "pc": 75,
+     "w": 3,
+     "sp": 12,
+     "sl": 2
     },
     {
-     "n": "Skyweaver Rider",
+     "n": "Skyweaver",
      "cls": "Flying",
-     "pc": 34,
-     "w": 4,
-     "sp": 10,
+     "pc": 40,
+     "w": 2,
+     "sp": 12,
      "sl": 2
+    },
+    {
+     "n": "Death Jester",
+     "cls": "Armament",
+     "pc": 38,
+     "w": 2,
+     "sp": 8,
+     "sl": 3
     }
    ]
   }
@@ -3782,156 +4148,2333 @@
   }
  },
  "armour": [
-  { "faction": "black_legion", "cls": "Core", "tier": "default", "n": "Long War Plate", "pc": 10, "def": { "Physical": 3, "Heat": 1, "Warp": 2, "Corrosive": 0, "Plasma": 0, "Energy": 1 }, "d": "Ten-thousand-year ceramite, scarred and re-forged since Terra." },
-  { "faction": "black_legion", "cls": "Assault", "tier": "default", "n": "Ezekarion War-Plate", "pc": 10, "def": { "Physical": 4, "Heat": 1, "Warp": 2, "Corrosive": 0, "Plasma": 0, "Energy": 1 }, "d": "Reinforced at the breastplate for the Despoiler's shock lines." },
-  { "faction": "black_legion", "cls": "Flying", "tier": "default", "n": "Raptor Trophy-Harness", "pc": 10, "def": { "Physical": 1, "Heat": 1, "Warp": 2, "Corrosive": 0, "Plasma": 0, "Energy": 1 }, "d": "Stripped light for the dive, hung with the skulls of loyalists." },
-  { "faction": "black_legion", "cls": "Armament", "tier": "default", "n": "Despoiler Siege-Carapace", "pc": 13, "def": { "Physical": 5, "Heat": 1, "Warp": 2, "Corrosive": 0, "Plasma": 1, "Energy": 1 }, "d": "Slab-armour for the war-engines that break the walls of the Imperium." },
-  { "faction": "black_legion", "cls": null, "tier": "light", "n": "Trophy-Hung Ceramite", "pc": 30, "def": { "Physical": 4, "Heat": 1, "Warp": 3, "Corrosive": 0, "Plasma": 1, "Energy": 1 }, "d": "Every dent a kill; every kill a trophy nailed to the pauldron." },
-  { "faction": "black_legion", "cls": null, "tier": "medium", "n": "Warmaster's Cataphract", "pc": 55, "def": { "Physical": 5, "Heat": 2, "Warp": 4, "Corrosive": 1, "Plasma": 1, "Energy": 1 }, "d": "Pattern relic-plate of the veterans who marched on the Palace." },
-  { "faction": "black_legion", "cls": null, "tier": "heavy", "n": "Aegis of the Black Crusade", "pc": 110, "def": { "Physical": 5, "Heat": 3, "Warp": 5, "Corrosive": 1, "Plasma": 2, "Energy": 3 }, "d": "Warp-hardened terminator plate worn only by Abaddon's chosen." },
-  { "faction": "death_guard", "cls": "Core", "tier": "default", "n": "Plague-Cured Plate", "pc": 9, "def": { "Physical": 2, "Heat": 0, "Warp": 1, "Corrosive": 3, "Plasma": 0, "Energy": 1 }, "d": "Rusted ceramite fused to rotted flesh; disease is its lacquer." },
-  { "faction": "death_guard", "cls": "Assault", "tier": "default", "n": "Blightlord War-Plate", "pc": 9, "def": { "Physical": 3, "Heat": 0, "Warp": 1, "Corrosive": 3, "Plasma": 0, "Energy": 1 }, "d": "Terminator plate swollen with contagion \u2014 it does not fall." },
-  { "faction": "death_guard", "cls": "Flying", "tier": "default", "n": "Foetid Drone Hull", "pc": 9, "def": { "Physical": 1, "Heat": 0, "Warp": 1, "Corrosive": 2, "Plasma": 0, "Energy": 1 }, "d": "A bloat-drone's weeping chassis, buoyed by daemon-engine gas." },
-  { "faction": "death_guard", "cls": "Armament", "tier": "default", "n": "Plagueburst Carapace", "pc": 12, "def": { "Physical": 4, "Heat": 1, "Warp": 1, "Corrosive": 3, "Plasma": 0, "Energy": 1 }, "d": "Siege-plating caked in a century of filth and shell-scars." },
-  { "faction": "death_guard", "cls": null, "tier": "light", "n": "Corroded Warplate", "pc": 25, "def": { "Physical": 3, "Heat": 0, "Warp": 1, "Corrosive": 4, "Plasma": 0, "Energy": 2 }, "d": "The rust is the point \u2014 acid slides off what is already ruined." },
-  { "faction": "death_guard", "cls": null, "tier": "medium", "n": "Cataphractii of Decay", "pc": 50, "def": { "Physical": 4, "Heat": 1, "Warp": 2, "Corrosive": 5, "Plasma": 1, "Energy": 1 }, "d": "Ancient tactical dreadnought armour, host to the Destroyer plague." },
-  { "faction": "death_guard", "cls": null, "tier": "heavy", "n": "Plate of the Destroyer Hive", "pc": 95, "def": { "Physical": 5, "Heat": 2, "Warp": 2, "Corrosive": 6, "Plasma": 2, "Energy": 2 }, "d": "Nothing acidic has ever reached the marrow beneath this shell." },
-  { "faction": "world_eaters", "cls": "Core", "tier": "default", "n": "Butcher's Plate", "pc": 9, "def": { "Physical": 4, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 1, "Energy": 0 }, "d": "Thick, blunt ceramite meant to survive the charge, not think." },
-  { "faction": "world_eaters", "cls": "Assault", "tier": "default", "n": "Berzerker War-Harness", "pc": 9, "def": { "Physical": 5, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 1, "Energy": 0 }, "d": "Frontal plate doubled so the Nails can drive it into the meat-grinder." },
-  { "faction": "world_eaters", "cls": "Flying", "tier": "default", "n": "Skull-Taker Jump Plate", "pc": 9, "def": { "Physical": 2, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 1, "Energy": 0 }, "d": "Barely armour \u2014 a frame to fall on the enemy and open them up." },
-  { "faction": "world_eaters", "cls": "Armament", "tier": "default", "n": "Brass-Bound War-Carapace", "pc": 12, "def": { "Physical": 6, "Heat": 1, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 0 }, "d": "Riveted brass and iron, built to ram gates and outlast the world." },
-  { "faction": "world_eaters", "cls": null, "tier": "light", "n": "Blood-Scabbed Warplate", "pc": 25, "def": { "Physical": 5, "Heat": 2, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 0 }, "d": "Congealed gore of a thousand kills, hard as a second shell." },
-  { "faction": "world_eaters", "cls": null, "tier": "medium", "n": "Cataphractii of the Red Angel", "pc": 50, "def": { "Physical": 5, "Heat": 3, "Warp": 1, "Corrosive": 2, "Plasma": 2, "Energy": 1 }, "d": "Slow, immovable plate of Angron's oldest butchers." },
-  { "faction": "world_eaters", "cls": null, "tier": "heavy", "n": "Gorefather Aegis", "pc": 100, "def": { "Physical": 6, "Heat": 4, "Warp": 2, "Corrosive": 3, "Plasma": 3, "Energy": 1 }, "d": "An anvil of ceramite \u2014 break your blade on it before it breaks you." },
-  { "faction": "thousand_sons", "cls": "Core", "tier": "default", "n": "Rubricae Warplate", "pc": 13, "def": { "Physical": 0, "Heat": 1, "Warp": 3, "Corrosive": 0, "Plasma": 2, "Energy": 1 }, "d": "Dust bound in ceramite, held whole only by the sorcery within." },
-  { "faction": "thousand_sons", "cls": "Assault", "tier": "default", "n": "Sekhmet Rune-Plate", "pc": 13, "def": { "Physical": 1, "Heat": 1, "Warp": 3, "Corrosive": 0, "Plasma": 2, "Energy": 1 }, "d": "Terminator wards carried by the sorcerers who never fell to the Rubric." },
-  { "faction": "thousand_sons", "cls": "Flying", "tier": "default", "n": "Prosperine Wing-Ward", "pc": 13, "def": { "Physical": 0, "Heat": 1, "Warp": 2, "Corrosive": 0, "Plasma": 2, "Energy": 0 }, "d": "Feather-light and brittle; only the warp-shield truly holds." },
-  { "faction": "thousand_sons", "cls": "Armament", "tier": "default", "n": "Sorcerous Automaton Carapace", "pc": 17, "def": { "Physical": 0, "Heat": 1, "Warp": 6, "Corrosive": 0, "Plasma": 2, "Energy": 1 }, "d": "A war-engine that is more binding-circle than metal." },
-  { "faction": "thousand_sons", "cls": null, "tier": "light", "n": "Rune-Etched Ceramite", "pc": 35, "def": { "Physical": 1, "Heat": 1, "Warp": 4, "Corrosive": 0, "Plasma": 3, "Energy": 1 }, "d": "Every plate scribed with a protective glyph in Prosperine script." },
-  { "faction": "thousand_sons", "cls": null, "tier": "medium", "n": "Cataphract of the Silver Towers", "pc": 70, "def": { "Physical": 1, "Heat": 2, "Warp": 5, "Corrosive": 0, "Plasma": 4, "Energy": 2 }, "d": "Ward-lattice of a Magister \u2014 the physical shell is an afterthought." },
-  { "faction": "thousand_sons", "cls": null, "tier": "heavy", "n": "Aegis of the Changer of Ways", "pc": 145, "def": { "Physical": 1, "Heat": 3, "Warp": 6, "Corrosive": 1, "Plasma": 5, "Energy": 3 }, "d": "Tzeentch's own wards woven so tight that fate itself turns the blow." },
-  { "faction": "emperors_children", "cls": "Core", "tier": "default", "n": "Cacophonic Plate", "pc": 11, "def": { "Physical": 1, "Heat": 1, "Warp": 0, "Corrosive": 0, "Plasma": 2, "Energy": 3 }, "d": "Tuned resonators drink the scream of sonic weaponry." },
-  { "faction": "emperors_children", "cls": "Assault", "tier": "default", "n": "Noise-Marine War-Harness", "pc": 11, "def": { "Physical": 2, "Heat": 1, "Warp": 0, "Corrosive": 0, "Plasma": 2, "Energy": 3 }, "d": "Reinforced to carry the sonic armaments into close excess." },
-  { "faction": "emperors_children", "cls": "Flying", "tier": "default", "n": "Euphonic Wing-Plate", "pc": 11, "def": { "Physical": 0, "Heat": 1, "Warp": 0, "Corrosive": 0, "Plasma": 2, "Energy": 2 }, "d": "Sings as it dives, dampening the very shockwave it rides." },
-  { "faction": "emperors_children", "cls": "Armament", "tier": "default", "n": "Sonic Reflex Carapace", "pc": 14, "def": { "Physical": 3, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 2, "Energy": 3 }, "d": "A war-engine hull lined with baffles that turn energy to noise." },
-  { "faction": "emperors_children", "cls": null, "tier": "light", "n": "Gilded Excess Plate", "pc": 30, "def": { "Physical": 1, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 3, "Energy": 4 }, "d": "Ornate to the point of decadence, and better armour for it." },
-  { "faction": "emperors_children", "cls": null, "tier": "medium", "n": "Cataphract of Endless Delight", "pc": 60, "def": { "Physical": 2, "Heat": 2, "Warp": 0, "Corrosive": 1, "Plasma": 4, "Energy": 5 }, "d": "Resonance-plate that turns an enemy's fire into sensation." },
-  { "faction": "emperors_children", "cls": null, "tier": "heavy", "n": "Aegis of the Phoenician", "pc": 120, "def": { "Physical": 3, "Heat": 3, "Warp": 1, "Corrosive": 2, "Plasma": 5, "Energy": 5 }, "d": "Fulgrim's perfect plate \u2014 every sonic and plasma lash simply... pleases." },
-  { "faction": "daemons", "cls": "Core", "tier": "default", "n": "Warp-Flesh Hide", "pc": 10, "def": { "Physical": 0, "Heat": 2, "Warp": 4, "Corrosive": 0, "Plasma": 0, "Energy": 1 }, "d": "Not armour but the daemon's own hardened, hateful skin." },
-  { "faction": "daemons", "cls": "Assault", "tier": "default", "n": "Fury-Wrought Hide", "pc": 10, "def": { "Physical": 1, "Heat": 2, "Warp": 4, "Corrosive": 0, "Plasma": 0, "Energy": 1 }, "d": "Thickened by rage into scabrous, wound-closing plates of ichor." },
-  { "faction": "daemons", "cls": "Flying", "tier": "default", "n": "Winged Ichor-Shell", "pc": 10, "def": { "Physical": 0, "Heat": 1, "Warp": 3, "Corrosive": 0, "Plasma": 0, "Energy": 1 }, "d": "A membrane of unreality stretched over pinions of nightmare." },
-  { "faction": "daemons", "cls": "Armament", "tier": "default", "n": "Manifest Warp-Bulwark", "pc": 13, "def": { "Physical": 0, "Heat": 2, "Warp": 6, "Corrosive": 0, "Plasma": 1, "Energy": 1 }, "d": "A greater daemon's bulk, held in the material realm by pure will." },
-  { "faction": "daemons", "cls": null, "tier": "light", "n": "Congealed Unreality", "pc": 30, "def": { "Physical": 0, "Heat": 3, "Warp": 5, "Corrosive": 0, "Plasma": 1, "Energy": 1 }, "d": "The warp made just solid enough to turn a blade \u2014 and no more." },
-  { "faction": "daemons", "cls": null, "tier": "medium", "n": "Hide of Hardened Malice", "pc": 55, "def": { "Physical": 1, "Heat": 4, "Warp": 5, "Corrosive": 0, "Plasma": 2, "Energy": 2 }, "d": "Spite crystallised into a carapace that laughs at mortal steel." },
-  { "faction": "daemons", "cls": null, "tier": "heavy", "n": "Aegis of Manifest Nightmare", "pc": 110, "def": { "Physical": 1, "Heat": 5, "Warp": 6, "Corrosive": 1, "Plasma": 3, "Energy": 3 }, "d": "Wholly of the empyrean \u2014 physical weapons barely find it to strike." },
-  { "faction": "astartes", "cls": "Core", "tier": "default", "n": "Mark VII Aquila Battleplate", "pc": 11, "def": { "Physical": 2, "Heat": 1, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 1 }, "d": "Standard ceramite power armour of the Adeptus Astartes \u2014 proof against all, master of none." },
-  { "faction": "astartes", "cls": "Assault", "tier": "default", "n": "Mark X Reiver Warplate", "pc": 11, "def": { "Physical": 3, "Heat": 1, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 1 }, "d": "Reinforced pauldrons and shock-plate for the close-assault brethren." },
-  { "faction": "astartes", "cls": "Flying", "tier": "default", "n": "Corvus Jump Harness", "pc": 11, "def": { "Physical": 1, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 1, "Energy": 1 }, "d": "Stripped-down plate paired to a jump pack \u2014 speed bought with armour." },
-  { "faction": "astartes", "cls": "Armament", "tier": "default", "n": "Terminator Tactical Dreadnought Plate", "pc": 11, "def": { "Physical": 4, "Heat": 1, "Warp": 1, "Corrosive": 2, "Plasma": 1, "Energy": 1 }, "d": "Cataphractii war-plate \u2014 a walking bunker of relic ceramite." },
-  { "faction": "astartes", "cls": null, "tier": "light", "n": "Mark VI Corvus Scout Plate", "pc": 30, "def": { "Physical": 3, "Heat": 2, "Warp": 1, "Corrosive": 2, "Plasma": 1, "Energy": 1 }, "d": "The beakie pattern \u2014 lean, fast, and evenly warded." },
-  { "faction": "astartes", "cls": null, "tier": "medium", "n": "Mark IV Maximus Battleplate", "pc": 60, "def": { "Physical": 4, "Heat": 2, "Warp": 2, "Corrosive": 2, "Plasma": 2, "Energy": 2 }, "d": "The finest pre-Heresy mark \u2014 flawlessly balanced across every element." },
-  { "faction": "astartes", "cls": null, "tier": "heavy", "n": "Gravis Cataphractii Warplate", "pc": 120, "def": { "Physical": 5, "Heat": 3, "Warp": 3, "Corrosive": 3, "Plasma": 3, "Energy": 2 }, "d": "Heavy-duty ceramite over a servo-braced frame \u2014 a bulwark on two legs." },
-  { "faction": "militarum", "cls": "Core", "tier": "default", "n": "Standard-Issue Flak Vest", "pc": 5, "def": { "Physical": 3, "Heat": 1, "Warp": 0, "Corrosive": 2, "Plasma": 0, "Energy": 1 }, "d": "Munitorum flak, issued by the billion \u2014 turns a las-bolt, ignores the warp." },
-  { "faction": "militarum", "cls": "Assault", "tier": "default", "n": "Storm Trooper Carapace", "pc": 5, "def": { "Physical": 4, "Heat": 1, "Warp": 0, "Corrosive": 2, "Plasma": 0, "Energy": 1 }, "d": "Rigid carapace shell for shock infantry \u2014 hard against solid rounds." },
-  { "faction": "militarum", "cls": "Flying", "tier": "default", "n": "Tempestus Grav-Chute Rig", "pc": 5, "def": { "Physical": 2, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 0, "Energy": 1 }, "d": "Drop-harness webbing \u2014 the lightest flak the Munitorum will spare." },
-  { "faction": "militarum", "cls": "Armament", "tier": "default", "n": "Bombard Crew Plating", "pc": 5, "def": { "Physical": 5, "Heat": 1, "Warp": 0, "Corrosive": 2, "Plasma": 0, "Energy": 2 }, "d": "Slab-plating bolted around gun-crews \u2014 heavy where the shrapnel flies." },
-  { "faction": "militarum", "cls": null, "tier": "light", "n": "Munitorum Flak Jacket", "pc": 20, "def": { "Physical": 4, "Heat": 2, "Warp": 0, "Corrosive": 2, "Plasma": 1, "Energy": 1 }, "d": "Layered flak-weave \u2014 cheap, plentiful, and utterly mundane." },
-  { "faction": "militarum", "cls": null, "tier": "medium", "n": "Cadian Carapace Harness", "pc": 40, "def": { "Physical": 5, "Heat": 3, "Warp": 1, "Corrosive": 3, "Plasma": 0, "Energy": 2 }, "d": "Interlocking carapace of the Cadian shock troops \u2014 dependable to the last." },
-  { "faction": "militarum", "cls": null, "tier": "heavy", "n": "Kasrkin Siege Carapace", "pc": 75, "def": { "Physical": 5, "Heat": 4, "Warp": 1, "Corrosive": 4, "Plasma": 1, "Energy": 4 }, "d": "Full storm-trooper carapace \u2014 as heavy as mortal flak gets, blind to the warp." },
-  { "faction": "mechanicus", "cls": "Core", "tier": "default", "n": "Electoo-Warded Techplate", "pc": 10, "def": { "Physical": 1, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 2, "Energy": 2 }, "d": "Circuitry-etched plate that drinks energy and plasma \u2014 but the soul-fields find it wanting." },
-  { "faction": "mechanicus", "cls": "Assault", "tier": "default", "n": "Skitarii Vanguard Cuirass", "pc": 10, "def": { "Physical": 2, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 2, "Energy": 2 }, "d": "Rad-hardened cuirass of the forge-world battle-cohorts." },
-  { "faction": "mechanicus", "cls": "Flying", "tier": "default", "n": "Pteraxii Skystalker Rig", "pc": 10, "def": { "Physical": 0, "Heat": 1, "Warp": 0, "Corrosive": 0, "Plasma": 2, "Energy": 2 }, "d": "Winged flight-frame \u2014 mass sacrificed, tech-wards retained." },
-  { "faction": "mechanicus", "cls": "Armament", "tier": "default", "n": "Kataphron Augmetic Hull", "pc": 10, "def": { "Physical": 3, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 2, "Energy": 3 }, "d": "Servo-hauled battle-hull, half machine \u2014 shrugs off energy discharge." },
-  { "faction": "mechanicus", "cls": null, "tier": "light", "n": "Servitor Mesh-Weave", "pc": 35, "def": { "Physical": 2, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 3, "Energy": 3 }, "d": "Warded mesh over lobotomised flesh \u2014 cheap yet keenly earthed." },
-  { "faction": "mechanicus", "cls": null, "tier": "medium", "n": "Ruststalker Warded Plate", "pc": 65, "def": { "Physical": 2, "Heat": 2, "Warp": 1, "Corrosive": 2, "Plasma": 3, "Energy": 4 }, "d": "Phase-warded segments humming with dispersal fields." },
-  { "faction": "mechanicus", "cls": null, "tier": "heavy", "n": "Secutor Magos Techplate", "pc": 130, "def": { "Physical": 3, "Heat": 2, "Warp": 1, "Corrosive": 3, "Plasma": 5, "Energy": 5 }, "d": "Archeotech war-plate of a battle-magos \u2014 plasma and energy break upon it." },
-  { "faction": "sororitas", "cls": "Core", "tier": "default", "n": "Sabbat-Pattern Power Armour", "pc": 10, "def": { "Physical": 1, "Heat": 2, "Warp": 2, "Corrosive": 0, "Plasma": 1, "Energy": 1 }, "d": "Faith-blessed plate of the Adepta Sororitas \u2014 the warp recoils from its wards." },
-  { "faction": "sororitas", "cls": "Assault", "tier": "default", "n": "Celestian Sacred Plate", "pc": 10, "def": { "Physical": 2, "Heat": 2, "Warp": 2, "Corrosive": 0, "Plasma": 1, "Energy": 1 }, "d": "Consecrated armour of the elite sisters \u2014 reinforced by devotion and adamantium." },
-  { "faction": "sororitas", "cls": "Flying", "tier": "default", "n": "Seraphim Ascension Harness", "pc": 10, "def": { "Physical": 0, "Heat": 1, "Warp": 2, "Corrosive": 0, "Plasma": 1, "Energy": 1 }, "d": "Jump-harness of the winged sisters \u2014 faith carries what armour cannot." },
-  { "faction": "sororitas", "cls": "Armament", "tier": "default", "n": "Retributor Blessed Carapace", "pc": 10, "def": { "Physical": 3, "Heat": 2, "Warp": 3, "Corrosive": 0, "Plasma": 1, "Energy": 1 }, "d": "Heavy-weapon plate girded in litanies \u2014 a shield of unbroken faith." },
-  { "faction": "sororitas", "cls": null, "tier": "light", "n": "Novice's Faithful Mantle", "pc": 30, "def": { "Physical": 2, "Heat": 2, "Warp": 3, "Corrosive": 0, "Plasma": 1, "Energy": 2 }, "d": "A postulant's blessed mantle \u2014 light plate, luminous faith." },
-  { "faction": "sororitas", "cls": null, "tier": "medium", "n": "Sister Superior's Warded Plate", "pc": 55, "def": { "Physical": 2, "Heat": 3, "Warp": 4, "Corrosive": 1, "Plasma": 2, "Energy": 2 }, "d": "Rank-blessed power armour, its warp-wards deepening with devotion." },
-  { "faction": "sororitas", "cls": null, "tier": "heavy", "n": "Canoness Panoply of the Saint", "pc": 110, "def": { "Physical": 3, "Heat": 4, "Warp": 6, "Corrosive": 1, "Plasma": 2, "Energy": 3 }, "d": "Relic panoply of a Canoness \u2014 the empyrean cannot touch the truly faithful." },
-  { "faction": "custodes", "cls": "Core", "tier": "default", "n": "Auramite Custodian Plate", "pc": 15, "def": { "Physical": 2, "Heat": 2, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 2 }, "d": "Auramite of the Emperor's own \u2014 peerless even in its least form." },
-  { "faction": "custodes", "cls": "Assault", "tier": "default", "n": "Aquilon Terminator Auramite", "pc": 15, "def": { "Physical": 3, "Heat": 2, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 2 }, "d": "Heavy auramite terminator plate for the vanguard of the Ten Thousand." },
-  { "faction": "custodes", "cls": "Flying", "tier": "default", "n": "Vertus Praetor Wing-Harness", "pc": 15, "def": { "Physical": 1, "Heat": 1, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 2 }, "d": "Skimmer-borne auramite \u2014 lightened, yet still without a true flaw." },
-  { "faction": "custodes", "cls": "Armament", "tier": "default", "n": "Telemon Auramite Hull", "pc": 15, "def": { "Physical": 4, "Heat": 2, "Warp": 1, "Corrosive": 2, "Plasma": 1, "Energy": 2 }, "d": "Dreadnought-grade auramite hull housing an honoured Custodian." },
-  { "faction": "custodes", "cls": null, "tier": "light", "n": "Sentinel Auramite Warplate", "pc": 40, "def": { "Physical": 3, "Heat": 2, "Warp": 1, "Corrosive": 2, "Plasma": 1, "Energy": 3 }, "d": "The lightest auramite still outmatches another's heaviest." },
-  { "faction": "custodes", "cls": null, "tier": "medium", "n": "Guardian Auramite Panoply", "pc": 85, "def": { "Physical": 4, "Heat": 3, "Warp": 2, "Corrosive": 2, "Plasma": 2, "Energy": 3 }, "d": "Master-forged panoply \u2014 flawless gold across every threat." },
-  { "faction": "custodes", "cls": null, "tier": "heavy", "n": "Emperor's Chosen Auramite Aegis", "pc": 165, "def": { "Physical": 6, "Heat": 3, "Warp": 2, "Corrosive": 2, "Plasma": 2, "Energy": 6 }, "d": "The apex of auramite \u2014 physical and energy assaults shatter upon its light." },
-  { "faction": "tyranids", "cls": "Core", "tier": "default", "n": "Ripper Chitin-Shell", "pc": 5, "def": { "Physical": 3, "Heat": 1, "Warp": 1, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "Layered chitin knits shut over every wound; only fire truly stops it." },
-  { "faction": "tyranids", "cls": "Assault", "tier": "default", "n": "Scything Talon-Carapace", "pc": 5, "def": { "Physical": 4, "Heat": 1, "Warp": 1, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "Thickened forward plates ram through firing lines before blades bite." },
-  { "faction": "tyranids", "cls": "Flying", "tier": "default", "n": "Gargoyle Wing-Hide", "pc": 5, "def": { "Physical": 2, "Heat": 0, "Warp": 1, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "Membranous hide traded for lift; a swooping, fragile terror." },
-  { "faction": "tyranids", "cls": "Armament", "tier": "default", "n": "Carnifex Bone-Bastion", "pc": 5, "def": { "Physical": 5, "Heat": 1, "Warp": 1, "Corrosive": 2, "Plasma": 0, "Energy": 1 }, "d": "A living siege-beast sheathed in fused bone rams." },
-  { "faction": "tyranids", "cls": null, "tier": "light", "n": "Living Spore-Hide", "pc": 20, "def": { "Physical": 4, "Heat": 1, "Warp": 1, "Corrosive": 3, "Plasma": 0, "Energy": 1 }, "d": "A thin skin of reactive spore-flesh that seals as it splits." },
-  { "faction": "tyranids", "cls": null, "tier": "medium", "n": "Regrowing Chitin-Weave", "pc": 40, "def": { "Physical": 5, "Heat": 1, "Warp": 2, "Corrosive": 4, "Plasma": 0, "Energy": 2 }, "d": "Interlocked plates regrow between engagements, shrugging off acid and blade." },
-  { "faction": "tyranids", "cls": null, "tier": "heavy", "n": "Norn Adamantine Carapace", "pc": 75, "def": { "Physical": 6, "Heat": 1, "Warp": 3, "Corrosive": 5, "Plasma": 1, "Energy": 3 }, "d": "Apex bio-armour grown for a warrior-organism; only flame purges it clean." },
-  { "faction": "orks", "cls": "Core", "tier": "default", "n": "Bolted Scrap-Plate", "pc": 5, "def": { "Physical": 4, "Heat": 0, "Warp": 1, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "Riveted junk metal that's dead 'ard 'cos the boy finks it is." },
-  { "faction": "orks", "cls": "Assault", "tier": "default", "n": "'Ard Boy Iron-Gutz", "pc": 5, "def": { "Physical": 5, "Heat": 0, "Warp": 1, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "More plates, more shovin', straight into the choppin'." },
-  { "faction": "orks", "cls": "Flying", "tier": "default", "n": "Deffkopta Tin Sheet", "pc": 5, "def": { "Physical": 2, "Heat": 0, "Warp": 1, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "A bit of sheet metal bolted on so da rotor-boy feels safe." },
-  { "faction": "orks", "cls": "Armament", "tier": "default", "n": "Mek's Riveted Bulk-Plate", "pc": 5, "def": { "Physical": 5, "Heat": 1, "Warp": 2, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "A Mek's welded slab-armour, heavier than three grots." },
-  { "faction": "orks", "cls": null, "tier": "light", "n": "Grot-Riveted Sheeting", "pc": 15, "def": { "Physical": 5, "Heat": 0, "Warp": 2, "Corrosive": 3, "Plasma": 0, "Energy": 0 }, "d": "Overlapping scrap panels a grot crew bangs on with hammers." },
-  { "faction": "orks", "cls": null, "tier": "medium", "n": "Cobbled Scrap-Iron", "pc": 35, "def": { "Physical": 5, "Heat": 1, "Warp": 3, "Corrosive": 4, "Plasma": 0, "Energy": 1 }, "d": "A mountain of bolted iron; fire and zappy guns still cook the boy inside." },
-  { "faction": "orks", "cls": null, "tier": "heavy", "n": "Mega-Armour Boiler-Plate", "pc": 65, "def": { "Physical": 5, "Heat": 1, "Warp": 5, "Corrosive": 5, "Plasma": 1, "Energy": 1 }, "d": "A walking boiler of stomping iron; hot enuff to roast the git wearin' it." },
-  { "faction": "necrons", "cls": "Core", "tier": "default", "n": "Necrodermis Weave", "pc": 15, "def": { "Physical": 3, "Heat": 1, "Warp": 1, "Corrosive": 0, "Plasma": 1, "Energy": 2 }, "d": "Living metal skin that knits shut in the space between shots." },
-  { "faction": "necrons", "cls": "Assault", "tier": "default", "n": "Flayed Living-Metal Plate", "pc": 15, "def": { "Physical": 4, "Heat": 1, "Warp": 1, "Corrosive": 0, "Plasma": 1, "Energy": 2 }, "d": "Reinforced necrodermis for warriors that walk relentlessly forward." },
-  { "faction": "necrons", "cls": "Flying", "tier": "default", "n": "Wraith Phase-Shell", "pc": 15, "def": { "Physical": 2, "Heat": 1, "Warp": 1, "Corrosive": 0, "Plasma": 0, "Energy": 2 }, "d": "Half-phased metal that lets rounds pass through empty air." },
-  { "faction": "necrons", "cls": "Armament", "tier": "default", "n": "Monolith Living-Metal Bastion", "pc": 15, "def": { "Physical": 5, "Heat": 1, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 2 }, "d": "A slab of self-repairing necrodermis that endures across aeons." },
-  { "faction": "necrons", "cls": null, "tier": "light", "n": "Reanimant Metal-Mesh", "pc": 40, "def": { "Physical": 4, "Heat": 1, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 3 }, "d": "A thin living-metal mesh that reassembles the wearer's frame." },
-  { "faction": "necrons", "cls": null, "tier": "medium", "n": "Self-Repairing Necrodermis", "pc": 75, "def": { "Physical": 5, "Heat": 2, "Warp": 1, "Corrosive": 1, "Plasma": 2, "Energy": 4 }, "d": "Flowing metal that shrugs off energy fire and reforms breaches." },
-  { "faction": "necrons", "cls": null, "tier": "heavy", "n": "Undying Metal Aegis", "pc": 155, "def": { "Physical": 6, "Heat": 3, "Warp": 3, "Corrosive": 1, "Plasma": 2, "Energy": 5 }, "d": "An ancient shell of undying alloy; only corrosion eats what time cannot." },
-  { "faction": "aeldari", "cls": "Core", "tier": "default", "n": "Rune-Laced Wraithmesh", "pc": 10, "def": { "Physical": 1, "Heat": 1, "Warp": 2, "Corrosive": 0, "Plasma": 0, "Energy": 2 }, "d": "Light mesh threaded with warding runes; the wearer simply isn't hit." },
-  { "faction": "aeldari", "cls": "Assault", "tier": "default", "n": "Aspect Warrior War-Mesh", "pc": 10, "def": { "Physical": 1, "Heat": 1, "Warp": 3, "Corrosive": 0, "Plasma": 0, "Energy": 2 }, "d": "A shrine-forged mesh channelling the war-aspect's focus." },
-  { "faction": "aeldari", "cls": "Flying", "tier": "default", "n": "Windrider Ghostmail", "pc": 10, "def": { "Physical": 0, "Heat": 1, "Warp": 2, "Corrosive": 0, "Plasma": 0, "Energy": 1 }, "d": "Weightless ghostmail; speed and misdirection are the only armour." },
-  { "faction": "aeldari", "cls": "Armament", "tier": "default", "n": "Wraithlord Bone-Shell", "pc": 10, "def": { "Physical": 1, "Heat": 1, "Warp": 3, "Corrosive": 1, "Plasma": 1, "Energy": 2 }, "d": "A wraithbone war-construct, warded rather than plated." },
-  { "faction": "aeldari", "cls": null, "tier": "light", "n": "Spirit-Silk Mesh", "pc": 35, "def": { "Physical": 1, "Heat": 1, "Warp": 3, "Corrosive": 0, "Plasma": 1, "Energy": 3 }, "d": "Feather-light silk humming with a bound spirit's protection." },
-  { "faction": "aeldari", "cls": null, "tier": "medium", "n": "Rune-Warded Wraithplate", "pc": 65, "def": { "Physical": 1, "Heat": 2, "Warp": 4, "Corrosive": 1, "Plasma": 1, "Energy": 4 }, "d": "Wraithbone plate inscribed with layered wards; solid rounds still tell." },
-  { "faction": "aeldari", "cls": null, "tier": "heavy", "n": "Seer's Wraithbone Aegis", "pc": 130, "def": { "Physical": 1, "Heat": 3, "Warp": 5, "Corrosive": 1, "Plasma": 3, "Energy": 5 }, "d": "A seer's masterwork shell; turns aside sorcery and light, never a blade." },
-  { "faction": "drukhari", "cls": "Core", "tier": "default", "n": "Bladed Ghostplate", "pc": 10, "def": { "Physical": 1, "Heat": 0, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 1 }, "d": "Razor-edged plate worn for menace, not for stopping much." },
-  { "faction": "drukhari", "cls": "Assault", "tier": "default", "n": "Wych Splinter-Mesh", "pc": 10, "def": { "Physical": 1, "Heat": 0, "Warp": 2, "Corrosive": 1, "Plasma": 1, "Energy": 1 }, "d": "Almost nothing at all; the wych relies on lethal grace to evade." },
-  { "faction": "drukhari", "cls": "Flying", "tier": "default", "n": "Reaver Wind-Ghostplate", "pc": 10, "def": { "Physical": 0, "Heat": 0, "Warp": 1, "Corrosive": 1, "Plasma": 0, "Energy": 1 }, "d": "Wafer-thin plate stripped for velocity on a screaming jetbike." },
-  { "faction": "drukhari", "cls": "Armament", "tier": "default", "n": "Talos Flayed Shell", "pc": 10, "def": { "Physical": 1, "Heat": 1, "Warp": 2, "Corrosive": 1, "Plasma": 1, "Energy": 2 }, "d": "A pain-engine's stitched carapace, thin over a body that no longer fears wounds." },
-  { "faction": "drukhari", "cls": null, "tier": "light", "n": "Kabalite Splinter-Weave", "pc": 25, "def": { "Physical": 1, "Heat": 0, "Warp": 2, "Corrosive": 2, "Plasma": 1, "Energy": 2 }, "d": "A ghostplate weave that scatters shots more than it stops them." },
-  { "faction": "drukhari", "cls": null, "tier": "medium", "n": "Shadowfield Ghostmail", "pc": 50, "def": { "Physical": 1, "Heat": 1, "Warp": 3, "Corrosive": 2, "Plasma": 2, "Energy": 3 }, "d": "Layered ghostmail under a flickering field; still no answer to a solid strike." },
-  { "faction": "drukhari", "cls": null, "tier": "heavy", "n": "Archon's Bladed Aegis", "pc": 100, "def": { "Physical": 2, "Heat": 1, "Warp": 4, "Corrosive": 3, "Plasma": 3, "Energy": 4 }, "d": "An archon's finest plate, and still a bet on speed over the killing blow." },
-  { "faction": "tau", "cls": "Core", "tier": "default", "n": "Nanocrystal Battleplate", "pc": 10, "def": { "Physical": 1, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 2, "Energy": 2 }, "d": "Lightweight alloy backed by a personal shield; poor against blade and psyker." },
-  { "faction": "tau", "cls": "Assault", "tier": "default", "n": "Fire Warrior Combat Alloy", "pc": 10, "def": { "Physical": 1, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 2, "Energy": 3 }, "d": "Combat-hardened alloy tuned to weather energy fire on the advance." },
-  { "faction": "tau", "cls": "Flying", "tier": "default", "n": "Jetpack Recon Shell", "pc": 10, "def": { "Physical": 0, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 1, "Energy": 2 }, "d": "A stripped recon suit trading plate for jetpack lift." },
-  { "faction": "tau", "cls": "Armament", "tier": "default", "n": "Riptide Nanocrystal Bastion", "pc": 10, "def": { "Physical": 1, "Heat": 1, "Warp": 1, "Corrosive": 1, "Plasma": 3, "Energy": 3 }, "d": "A battlesuit walker wrapped in shield-projectors and crystal alloy." },
-  { "faction": "tau", "cls": null, "tier": "light", "n": "Drone-Linked Alloy Mesh", "pc": 30, "def": { "Physical": 1, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 3, "Energy": 4 }, "d": "A light suit slaved to a shield drone that eats incoming beams." },
-  { "faction": "tau", "cls": null, "tier": "medium", "n": "Shielded Battlesuit Plate", "pc": 60, "def": { "Physical": 1, "Heat": 2, "Warp": 1, "Corrosive": 2, "Plasma": 4, "Energy": 4 }, "d": "Layered nanocrystal under a humming shield generator; melee finds the seams." },
-  { "faction": "tau", "cls": null, "tier": "heavy", "n": "Shield-Drone Aegis Alloy", "pc": 120, "def": { "Physical": 1, "Heat": 3, "Warp": 1, "Corrosive": 3, "Plasma": 5, "Energy": 6 }, "d": "A drone-ringed war-alloy that drinks energy fire; a blade or a psyker undoes it." },
-  { "faction": "gsc", "cls": "Core", "tier": "default", "n": "Mining Carapace", "pc": 5, "def": { "Physical": 2, "Heat": 2, "Warp": 0, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "Repurposed digging gear, hardened against rockfall, heat and acid seep." },
-  { "faction": "gsc", "cls": "Assault", "tier": "default", "n": "Neophyte Rockcutter Vest", "pc": 5, "def": { "Physical": 3, "Heat": 2, "Warp": 0, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "A cutter's reinforced vest, worn by the faithful into the ambush." },
-  { "faction": "gsc", "cls": "Flying", "tier": "default", "n": "Jump-Rig Ore-Harness", "pc": 5, "def": { "Physical": 1, "Heat": 1, "Warp": 0, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "A stripped ore-harness bolted to scavenged jump gear." },
-  { "faction": "gsc", "cls": "Armament", "tier": "default", "n": "Goliath Mining-Rig Plate", "pc": 5, "def": { "Physical": 4, "Heat": 2, "Warp": 1, "Corrosive": 2, "Plasma": 0, "Energy": 0 }, "d": "A pit-vehicle's slab plating, faith-daubed and blast-scarred." },
-  { "faction": "gsc", "cls": null, "tier": "light", "n": "Faithful Miner's Carapace", "pc": 20, "def": { "Physical": 3, "Heat": 2, "Warp": 0, "Corrosive": 3, "Plasma": 0, "Energy": 1 }, "d": "Deep-seam carapace that shrugs off heat and acid runoff." },
-  { "faction": "gsc", "cls": null, "tier": "medium", "n": "Reinforced Ore-Plate", "pc": 40, "def": { "Physical": 4, "Heat": 3, "Warp": 1, "Corrosive": 4, "Plasma": 0, "Energy": 1 }, "d": "Doubled mining plate proof against cave-in, flame and corrosion." },
-  { "faction": "gsc", "cls": null, "tier": "heavy", "n": "Deep-Delve Blast Carapace", "pc": 75, "def": { "Physical": 5, "Heat": 5, "Warp": 1, "Corrosive": 5, "Plasma": 1, "Energy": 1 }, "d": "Heaviest pit-rig armour, built to survive the deep dark; blind to energy and the warp." },
-  { "faction": "votann", "cls": "Core", "tier": "default", "n": "Void-Hardened Plate", "pc": 10, "def": { "Physical": 3, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 1, "Energy": 2 }, "d": "Ancestor-forged plate tempered in the void; stubborn against everything but the warp." },
-  { "faction": "votann", "cls": "Assault", "tier": "default", "n": "Hearthkyn Ancestral Mail", "pc": 10, "def": { "Physical": 4, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 1, "Energy": 2 }, "d": "Thickened ancestral mail for the warriors who hold the line." },
-  { "faction": "votann", "cls": "Flying", "tier": "default", "n": "Hernkyn Void-Rig", "pc": 10, "def": { "Physical": 2, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 1, "Energy": 1 }, "d": "A prospector's lightened rig, slung under a hovering scout-bike." },
-  { "faction": "votann", "cls": "Armament", "tier": "default", "n": "Sagitaur Ancestral Bulwark", "pc": 10, "def": { "Physical": 5, "Heat": 1, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 2 }, "d": "A war-walker's void-hardened bulk; slow, unyielding, ancient." },
-  { "faction": "votann", "cls": null, "tier": "light", "n": "Prospector Void-Weave", "pc": 30, "def": { "Physical": 4, "Heat": 1, "Warp": 0, "Corrosive": 2, "Plasma": 1, "Energy": 3 }, "d": "A hardy void-weave built to shrug off vacuum, rock and stray beams." },
-  { "faction": "votann", "cls": null, "tier": "medium", "n": "Ancestral Voidplate", "pc": 60, "def": { "Physical": 5, "Heat": 2, "Warp": 1, "Corrosive": 2, "Plasma": 2, "Energy": 3 }, "d": "Generations-old voidplate, dense and grudging; sorcery still slips its guard." },
-  { "faction": "votann", "cls": null, "tier": "heavy", "n": "Ironkin Ancestral Aegis", "pc": 120, "def": { "Physical": 6, "Heat": 3, "Warp": 1, "Corrosive": 3, "Plasma": 2, "Energy": 5 }, "d": "The Kin's finest void-forged shell; near-impervious to shot and beam, blind to the warp." },
-  { "faction": "harlequins", "cls": "Core", "tier": "default", "n": "Holo-Suit Mesh", "pc": 10, "def": { "Physical": 1, "Heat": 0, "Warp": 2, "Corrosive": 0, "Plasma": 1, "Energy": 1 }, "d": "A shattering blur of colour; the suit dodges what it cannot stop." },
-  { "faction": "harlequins", "cls": "Assault", "tier": "default", "n": "Player's Misdirection-Suit", "pc": 10, "def": { "Physical": 1, "Heat": 0, "Warp": 2, "Corrosive": 0, "Plasma": 1, "Energy": 2 }, "d": "A dancer's holo-suit that turns the killing stroke into empty air." },
-  { "faction": "harlequins", "cls": "Flying", "tier": "default", "n": "Skyweaver Holo-Shimmer", "pc": 10, "def": { "Physical": 0, "Heat": 0, "Warp": 2, "Corrosive": 0, "Plasma": 0, "Energy": 1 }, "d": "Barely a suit at all; speed and shimmer are the only defence." },
-  { "faction": "harlequins", "cls": "Armament", "tier": "default", "n": "Voidweaver Prism-Shell", "pc": 10, "def": { "Physical": 1, "Heat": 1, "Warp": 3, "Corrosive": 1, "Plasma": 1, "Energy": 1 }, "d": "A jetbike-gun's prism casing, warded far better than it is plated." },
-  { "faction": "harlequins", "cls": null, "tier": "light", "n": "Domino-Field Weave", "pc": 35, "def": { "Physical": 1, "Heat": 0, "Warp": 3, "Corrosive": 0, "Plasma": 2, "Energy": 2 }, "d": "A holo-weave that fractures the wearer's outline into a dozen phantoms." },
-  { "faction": "harlequins", "cls": null, "tier": "medium", "n": "Shifting Holo-Plate", "pc": 65, "def": { "Physical": 1, "Heat": 1, "Warp": 4, "Corrosive": 1, "Plasma": 2, "Energy": 3 }, "d": "Prismatic plate that misleads eye and sorcery; a solid blow still lands." },
-  { "faction": "harlequins", "cls": null, "tier": "heavy", "n": "Solitaire's Prismatic Aegis", "pc": 130, "def": { "Physical": 1, "Heat": 1, "Warp": 5, "Corrosive": 1, "Plasma": 4, "Energy": 5 }, "d": "The masterwork of misdirection; turns aside light and the warp, never the true strike." },
-  { "faction": null, "cls": null, "tier": "light", "n": "Salvaged Flak Weave", "pc": 15, "def": { "Physical": 2, "Heat": 1, "Warp": 0, "Corrosive": 1, "Plasma": 0, "Energy": 1 }, "d": "Scavenged battlefield weave \u2014 cheap, universal, barely enough." },
-  { "faction": null, "cls": null, "tier": "medium", "n": "Mercenary Carapace", "pc": 35, "def": { "Physical": 3, "Heat": 1, "Warp": 1, "Corrosive": 1, "Plasma": 1, "Energy": 1 }, "d": "No-questions plate from a void-port fitter; fits anyone with coin." },
-  { "faction": null, "cls": null, "tier": "heavy", "n": "Void-Scavenger Plate", "pc": 55, "def": { "Physical": 3, "Heat": 2, "Warp": 1, "Corrosive": 2, "Plasma": 1, "Energy": 1 }, "d": "A patchwork of a dozen dead armies \u2014 heavy, honest, unglamorous." }
+  {
+   "faction": "black_legion",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Long War Plate",
+   "pc": 10,
+   "def": {
+    "Physical": 3,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Ten-thousand-year ceramite, scarred and re-forged since Terra."
+  },
+  {
+   "faction": "black_legion",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Ezekarion War-Plate",
+   "pc": 10,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Reinforced at the breastplate for the Despoiler's shock lines."
+  },
+  {
+   "faction": "black_legion",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Raptor Trophy-Harness",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Stripped light for the dive, hung with the skulls of loyalists."
+  },
+  {
+   "faction": "black_legion",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Despoiler Siege-Carapace",
+   "pc": 13,
+   "def": {
+    "Physical": 5,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Slab-armour for the war-engines that break the walls of the Imperium."
+  },
+  {
+   "faction": "black_legion",
+   "cls": null,
+   "tier": "light",
+   "n": "Trophy-Hung Ceramite",
+   "pc": 30,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Every dent a kill; every kill a trophy nailed to the pauldron."
+  },
+  {
+   "faction": "black_legion",
+   "cls": null,
+   "tier": "medium",
+   "n": "Warmaster's Cataphract",
+   "pc": 55,
+   "def": {
+    "Physical": 5,
+    "Heat": 2,
+    "Warp": 4,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Pattern relic-plate of the veterans who marched on the Palace."
+  },
+  {
+   "faction": "black_legion",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Aegis of the Black Crusade",
+   "pc": 110,
+   "def": {
+    "Physical": 5,
+    "Heat": 3,
+    "Warp": 5,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "Warp-hardened terminator plate worn only by Abaddon's chosen."
+  },
+  {
+   "faction": "death_guard",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Plague-Cured Plate",
+   "pc": 9,
+   "def": {
+    "Physical": 2,
+    "Heat": 0,
+    "Warp": 1,
+    "Corrosive": 3,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Rusted ceramite fused to rotted flesh; disease is its lacquer."
+  },
+  {
+   "faction": "death_guard",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Blightlord War-Plate",
+   "pc": 9,
+   "def": {
+    "Physical": 3,
+    "Heat": 0,
+    "Warp": 1,
+    "Corrosive": 3,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Terminator plate swollen with contagion — it does not fall."
+  },
+  {
+   "faction": "death_guard",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Foetid Drone Hull",
+   "pc": 9,
+   "def": {
+    "Physical": 1,
+    "Heat": 0,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "A bloat-drone's weeping chassis, buoyed by daemon-engine gas."
+  },
+  {
+   "faction": "death_guard",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Plagueburst Carapace",
+   "pc": 12,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 3,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Siege-plating caked in a century of filth and shell-scars."
+  },
+  {
+   "faction": "death_guard",
+   "cls": null,
+   "tier": "light",
+   "n": "Corroded Warplate",
+   "pc": 25,
+   "def": {
+    "Physical": 3,
+    "Heat": 0,
+    "Warp": 1,
+    "Corrosive": 4,
+    "Plasma": 0,
+    "Energy": 2
+   },
+   "d": "The rust is the point — acid slides off what is already ruined."
+  },
+  {
+   "faction": "death_guard",
+   "cls": null,
+   "tier": "medium",
+   "n": "Cataphractii of Decay",
+   "pc": 50,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 5,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Ancient tactical dreadnought armour, host to the Destroyer plague."
+  },
+  {
+   "faction": "death_guard",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Plate of the Destroyer Hive",
+   "pc": 95,
+   "def": {
+    "Physical": 5,
+    "Heat": 2,
+    "Warp": 2,
+    "Corrosive": 6,
+    "Plasma": 2,
+    "Energy": 2
+   },
+   "d": "Nothing acidic has ever reached the marrow beneath this shell."
+  },
+  {
+   "faction": "world_eaters",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Butcher's Plate",
+   "pc": 9,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 0
+   },
+   "d": "Thick, blunt ceramite meant to survive the charge, not think."
+  },
+  {
+   "faction": "world_eaters",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Berzerker War-Harness",
+   "pc": 9,
+   "def": {
+    "Physical": 5,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 0
+   },
+   "d": "Frontal plate doubled so the Nails can drive it into the meat-grinder."
+  },
+  {
+   "faction": "world_eaters",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Skull-Taker Jump Plate",
+   "pc": 9,
+   "def": {
+    "Physical": 2,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 0
+   },
+   "d": "Barely armour — a frame to fall on the enemy and open them up."
+  },
+  {
+   "faction": "world_eaters",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Brass-Bound War-Carapace",
+   "pc": 12,
+   "def": {
+    "Physical": 6,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 0
+   },
+   "d": "Riveted brass and iron, built to ram gates and outlast the world."
+  },
+  {
+   "faction": "world_eaters",
+   "cls": null,
+   "tier": "light",
+   "n": "Blood-Scabbed Warplate",
+   "pc": 25,
+   "def": {
+    "Physical": 5,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 0
+   },
+   "d": "Congealed gore of a thousand kills, hard as a second shell."
+  },
+  {
+   "faction": "world_eaters",
+   "cls": null,
+   "tier": "medium",
+   "n": "Cataphractii of the Red Angel",
+   "pc": 50,
+   "def": {
+    "Physical": 5,
+    "Heat": 3,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 2,
+    "Energy": 1
+   },
+   "d": "Slow, immovable plate of Angron's oldest butchers."
+  },
+  {
+   "faction": "world_eaters",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Gorefather Aegis",
+   "pc": 100,
+   "def": {
+    "Physical": 6,
+    "Heat": 4,
+    "Warp": 2,
+    "Corrosive": 3,
+    "Plasma": 3,
+    "Energy": 1
+   },
+   "d": "An anvil of ceramite — break your blade on it before it breaks you."
+  },
+  {
+   "faction": "thousand_sons",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Rubricae Warplate",
+   "pc": 13,
+   "def": {
+    "Physical": 0,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 0,
+    "Plasma": 2,
+    "Energy": 1
+   },
+   "d": "Dust bound in ceramite, held whole only by the sorcery within."
+  },
+  {
+   "faction": "thousand_sons",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Sekhmet Rune-Plate",
+   "pc": 13,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 0,
+    "Plasma": 2,
+    "Energy": 1
+   },
+   "d": "Terminator wards carried by the sorcerers who never fell to the Rubric."
+  },
+  {
+   "faction": "thousand_sons",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Prosperine Wing-Ward",
+   "pc": 13,
+   "def": {
+    "Physical": 0,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 2,
+    "Energy": 0
+   },
+   "d": "Feather-light and brittle; only the warp-shield truly holds."
+  },
+  {
+   "faction": "thousand_sons",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Sorcerous Automaton Carapace",
+   "pc": 17,
+   "def": {
+    "Physical": 0,
+    "Heat": 1,
+    "Warp": 6,
+    "Corrosive": 0,
+    "Plasma": 2,
+    "Energy": 1
+   },
+   "d": "A war-engine that is more binding-circle than metal."
+  },
+  {
+   "faction": "thousand_sons",
+   "cls": null,
+   "tier": "light",
+   "n": "Rune-Etched Ceramite",
+   "pc": 35,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 4,
+    "Corrosive": 0,
+    "Plasma": 3,
+    "Energy": 1
+   },
+   "d": "Every plate scribed with a protective glyph in Prosperine script."
+  },
+  {
+   "faction": "thousand_sons",
+   "cls": null,
+   "tier": "medium",
+   "n": "Cataphract of the Silver Towers",
+   "pc": 70,
+   "def": {
+    "Physical": 1,
+    "Heat": 2,
+    "Warp": 5,
+    "Corrosive": 0,
+    "Plasma": 4,
+    "Energy": 2
+   },
+   "d": "Ward-lattice of a Magister — the physical shell is an afterthought."
+  },
+  {
+   "faction": "thousand_sons",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Aegis of the Changer of Ways",
+   "pc": 145,
+   "def": {
+    "Physical": 1,
+    "Heat": 3,
+    "Warp": 6,
+    "Corrosive": 1,
+    "Plasma": 5,
+    "Energy": 3
+   },
+   "d": "Tzeentch's own wards woven so tight that fate itself turns the blow."
+  },
+  {
+   "faction": "emperors_children",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Cacophonic Plate",
+   "pc": 11,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 0,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "Tuned resonators drink the scream of sonic weaponry."
+  },
+  {
+   "faction": "emperors_children",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Noise-Marine War-Harness",
+   "pc": 11,
+   "def": {
+    "Physical": 2,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 0,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "Reinforced to carry the sonic armaments into close excess."
+  },
+  {
+   "faction": "emperors_children",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Euphonic Wing-Plate",
+   "pc": 11,
+   "def": {
+    "Physical": 0,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 0,
+    "Plasma": 2,
+    "Energy": 2
+   },
+   "d": "Sings as it dives, dampening the very shockwave it rides."
+  },
+  {
+   "faction": "emperors_children",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Sonic Reflex Carapace",
+   "pc": 14,
+   "def": {
+    "Physical": 3,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "A war-engine hull lined with baffles that turn energy to noise."
+  },
+  {
+   "faction": "emperors_children",
+   "cls": null,
+   "tier": "light",
+   "n": "Gilded Excess Plate",
+   "pc": 30,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 3,
+    "Energy": 4
+   },
+   "d": "Ornate to the point of decadence, and better armour for it."
+  },
+  {
+   "faction": "emperors_children",
+   "cls": null,
+   "tier": "medium",
+   "n": "Cataphract of Endless Delight",
+   "pc": 60,
+   "def": {
+    "Physical": 2,
+    "Heat": 2,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 4,
+    "Energy": 5
+   },
+   "d": "Resonance-plate that turns an enemy's fire into sensation."
+  },
+  {
+   "faction": "emperors_children",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Aegis of the Phoenician",
+   "pc": 120,
+   "def": {
+    "Physical": 3,
+    "Heat": 3,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 5,
+    "Energy": 5
+   },
+   "d": "Fulgrim's perfect plate — every sonic and plasma lash simply... pleases."
+  },
+  {
+   "faction": "daemons",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Warp-Flesh Hide",
+   "pc": 10,
+   "def": {
+    "Physical": 0,
+    "Heat": 2,
+    "Warp": 4,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Not armour but the daemon's own hardened, hateful skin."
+  },
+  {
+   "faction": "daemons",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Fury-Wrought Hide",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 2,
+    "Warp": 4,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Thickened by rage into scabrous, wound-closing plates of ichor."
+  },
+  {
+   "faction": "daemons",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Winged Ichor-Shell",
+   "pc": 10,
+   "def": {
+    "Physical": 0,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "A membrane of unreality stretched over pinions of nightmare."
+  },
+  {
+   "faction": "daemons",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Manifest Warp-Bulwark",
+   "pc": 13,
+   "def": {
+    "Physical": 0,
+    "Heat": 2,
+    "Warp": 6,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "A greater daemon's bulk, held in the material realm by pure will."
+  },
+  {
+   "faction": "daemons",
+   "cls": null,
+   "tier": "light",
+   "n": "Congealed Unreality",
+   "pc": 30,
+   "def": {
+    "Physical": 0,
+    "Heat": 3,
+    "Warp": 5,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "The warp made just solid enough to turn a blade — and no more."
+  },
+  {
+   "faction": "daemons",
+   "cls": null,
+   "tier": "medium",
+   "n": "Hide of Hardened Malice",
+   "pc": 55,
+   "def": {
+    "Physical": 1,
+    "Heat": 4,
+    "Warp": 5,
+    "Corrosive": 0,
+    "Plasma": 2,
+    "Energy": 2
+   },
+   "d": "Spite crystallised into a carapace that laughs at mortal steel."
+  },
+  {
+   "faction": "daemons",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Aegis of Manifest Nightmare",
+   "pc": 110,
+   "def": {
+    "Physical": 1,
+    "Heat": 5,
+    "Warp": 6,
+    "Corrosive": 1,
+    "Plasma": 3,
+    "Energy": 3
+   },
+   "d": "Wholly of the empyrean — physical weapons barely find it to strike."
+  },
+  {
+   "faction": "astartes",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Mark VII Aquila Battleplate",
+   "pc": 11,
+   "def": {
+    "Physical": 2,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Standard ceramite power armour of the Adeptus Astartes — proof against all, master of none."
+  },
+  {
+   "faction": "astartes",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Mark X Reiver Warplate",
+   "pc": 11,
+   "def": {
+    "Physical": 3,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Reinforced pauldrons and shock-plate for the close-assault brethren."
+  },
+  {
+   "faction": "astartes",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Corvus Jump Harness",
+   "pc": 11,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Stripped-down plate paired to a jump pack — speed bought with armour."
+  },
+  {
+   "faction": "astartes",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Terminator Tactical Dreadnought Plate",
+   "pc": 11,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Cataphractii war-plate — a walking bunker of relic ceramite."
+  },
+  {
+   "faction": "astartes",
+   "cls": null,
+   "tier": "light",
+   "n": "Mark VI Corvus Scout Plate",
+   "pc": 30,
+   "def": {
+    "Physical": 3,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "The beakie pattern — lean, fast, and evenly warded."
+  },
+  {
+   "faction": "astartes",
+   "cls": null,
+   "tier": "medium",
+   "n": "Mark IV Maximus Battleplate",
+   "pc": 60,
+   "def": {
+    "Physical": 4,
+    "Heat": 2,
+    "Warp": 2,
+    "Corrosive": 2,
+    "Plasma": 2,
+    "Energy": 2
+   },
+   "d": "The finest pre-Heresy mark — flawlessly balanced across every element."
+  },
+  {
+   "faction": "astartes",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Gravis Cataphractii Warplate",
+   "pc": 120,
+   "def": {
+    "Physical": 5,
+    "Heat": 3,
+    "Warp": 3,
+    "Corrosive": 3,
+    "Plasma": 3,
+    "Energy": 2
+   },
+   "d": "Heavy-duty ceramite over a servo-braced frame — a bulwark on two legs."
+  },
+  {
+   "faction": "militarum",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Standard-Issue Flak Vest",
+   "pc": 5,
+   "def": {
+    "Physical": 3,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Munitorum flak, issued by the billion — turns a las-bolt, ignores the warp."
+  },
+  {
+   "faction": "militarum",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Storm Trooper Carapace",
+   "pc": 5,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Rigid carapace shell for shock infantry — hard against solid rounds."
+  },
+  {
+   "faction": "militarum",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Tempestus Grav-Chute Rig",
+   "pc": 5,
+   "def": {
+    "Physical": 2,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Drop-harness webbing — the lightest flak the Munitorum will spare."
+  },
+  {
+   "faction": "militarum",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Bombard Crew Plating",
+   "pc": 5,
+   "def": {
+    "Physical": 5,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 2
+   },
+   "d": "Slab-plating bolted around gun-crews — heavy where the shrapnel flies."
+  },
+  {
+   "faction": "militarum",
+   "cls": null,
+   "tier": "light",
+   "n": "Munitorum Flak Jacket",
+   "pc": 20,
+   "def": {
+    "Physical": 4,
+    "Heat": 2,
+    "Warp": 0,
+    "Corrosive": 2,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Layered flak-weave — cheap, plentiful, and utterly mundane."
+  },
+  {
+   "faction": "militarum",
+   "cls": null,
+   "tier": "medium",
+   "n": "Cadian Carapace Harness",
+   "pc": 40,
+   "def": {
+    "Physical": 5,
+    "Heat": 3,
+    "Warp": 1,
+    "Corrosive": 3,
+    "Plasma": 0,
+    "Energy": 2
+   },
+   "d": "Interlocking carapace of the Cadian shock troops — dependable to the last."
+  },
+  {
+   "faction": "militarum",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Kasrkin Siege Carapace",
+   "pc": 75,
+   "def": {
+    "Physical": 5,
+    "Heat": 4,
+    "Warp": 1,
+    "Corrosive": 4,
+    "Plasma": 1,
+    "Energy": 4
+   },
+   "d": "Full storm-trooper carapace — as heavy as mortal flak gets, blind to the warp."
+  },
+  {
+   "faction": "mechanicus",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Electoo-Warded Techplate",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 2
+   },
+   "d": "Circuitry-etched plate that drinks energy and plasma — but the soul-fields find it wanting."
+  },
+  {
+   "faction": "mechanicus",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Skitarii Vanguard Cuirass",
+   "pc": 10,
+   "def": {
+    "Physical": 2,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 2
+   },
+   "d": "Rad-hardened cuirass of the forge-world battle-cohorts."
+  },
+  {
+   "faction": "mechanicus",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Pteraxii Skystalker Rig",
+   "pc": 10,
+   "def": {
+    "Physical": 0,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 0,
+    "Plasma": 2,
+    "Energy": 2
+   },
+   "d": "Winged flight-frame — mass sacrificed, tech-wards retained."
+  },
+  {
+   "faction": "mechanicus",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Kataphron Augmetic Hull",
+   "pc": 10,
+   "def": {
+    "Physical": 3,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "Servo-hauled battle-hull, half machine — shrugs off energy discharge."
+  },
+  {
+   "faction": "mechanicus",
+   "cls": null,
+   "tier": "light",
+   "n": "Servitor Mesh-Weave",
+   "pc": 35,
+   "def": {
+    "Physical": 2,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 3,
+    "Energy": 3
+   },
+   "d": "Warded mesh over lobotomised flesh — cheap yet keenly earthed."
+  },
+  {
+   "faction": "mechanicus",
+   "cls": null,
+   "tier": "medium",
+   "n": "Ruststalker Warded Plate",
+   "pc": 65,
+   "def": {
+    "Physical": 2,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 3,
+    "Energy": 4
+   },
+   "d": "Phase-warded segments humming with dispersal fields."
+  },
+  {
+   "faction": "mechanicus",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Secutor Magos Techplate",
+   "pc": 130,
+   "def": {
+    "Physical": 3,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 3,
+    "Plasma": 5,
+    "Energy": 5
+   },
+   "d": "Archeotech war-plate of a battle-magos — plasma and energy break upon it."
+  },
+  {
+   "faction": "sororitas",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Sabbat-Pattern Power Armour",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 2,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Faith-blessed plate of the Adepta Sororitas — the warp recoils from its wards."
+  },
+  {
+   "faction": "sororitas",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Celestian Sacred Plate",
+   "pc": 10,
+   "def": {
+    "Physical": 2,
+    "Heat": 2,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Consecrated armour of the elite sisters — reinforced by devotion and adamantium."
+  },
+  {
+   "faction": "sororitas",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Seraphim Ascension Harness",
+   "pc": 10,
+   "def": {
+    "Physical": 0,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Jump-harness of the winged sisters — faith carries what armour cannot."
+  },
+  {
+   "faction": "sororitas",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Retributor Blessed Carapace",
+   "pc": 10,
+   "def": {
+    "Physical": 3,
+    "Heat": 2,
+    "Warp": 3,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Heavy-weapon plate girded in litanies — a shield of unbroken faith."
+  },
+  {
+   "faction": "sororitas",
+   "cls": null,
+   "tier": "light",
+   "n": "Novice's Faithful Mantle",
+   "pc": 30,
+   "def": {
+    "Physical": 2,
+    "Heat": 2,
+    "Warp": 3,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "A postulant's blessed mantle — light plate, luminous faith."
+  },
+  {
+   "faction": "sororitas",
+   "cls": null,
+   "tier": "medium",
+   "n": "Sister Superior's Warded Plate",
+   "pc": 55,
+   "def": {
+    "Physical": 2,
+    "Heat": 3,
+    "Warp": 4,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 2
+   },
+   "d": "Rank-blessed power armour, its warp-wards deepening with devotion."
+  },
+  {
+   "faction": "sororitas",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Canoness Panoply of the Saint",
+   "pc": 110,
+   "def": {
+    "Physical": 3,
+    "Heat": 4,
+    "Warp": 6,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "Relic panoply of a Canoness — the empyrean cannot touch the truly faithful."
+  },
+  {
+   "faction": "custodes",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Auramite Custodian Plate",
+   "pc": 15,
+   "def": {
+    "Physical": 2,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "Auramite of the Emperor's own — peerless even in its least form."
+  },
+  {
+   "faction": "custodes",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Aquilon Terminator Auramite",
+   "pc": 15,
+   "def": {
+    "Physical": 3,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "Heavy auramite terminator plate for the vanguard of the Ten Thousand."
+  },
+  {
+   "faction": "custodes",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Vertus Praetor Wing-Harness",
+   "pc": 15,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "Skimmer-borne auramite — lightened, yet still without a true flaw."
+  },
+  {
+   "faction": "custodes",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Telemon Auramite Hull",
+   "pc": 15,
+   "def": {
+    "Physical": 4,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "Dreadnought-grade auramite hull housing an honoured Custodian."
+  },
+  {
+   "faction": "custodes",
+   "cls": null,
+   "tier": "light",
+   "n": "Sentinel Auramite Warplate",
+   "pc": 40,
+   "def": {
+    "Physical": 3,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 1,
+    "Energy": 3
+   },
+   "d": "The lightest auramite still outmatches another's heaviest."
+  },
+  {
+   "faction": "custodes",
+   "cls": null,
+   "tier": "medium",
+   "n": "Guardian Auramite Panoply",
+   "pc": 85,
+   "def": {
+    "Physical": 4,
+    "Heat": 3,
+    "Warp": 2,
+    "Corrosive": 2,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "Master-forged panoply — flawless gold across every threat."
+  },
+  {
+   "faction": "custodes",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Emperor's Chosen Auramite Aegis",
+   "pc": 165,
+   "def": {
+    "Physical": 6,
+    "Heat": 3,
+    "Warp": 2,
+    "Corrosive": 2,
+    "Plasma": 2,
+    "Energy": 6
+   },
+   "d": "The apex of auramite — physical and energy assaults shatter upon its light."
+  },
+  {
+   "faction": "tyranids",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Ripper Chitin-Shell",
+   "pc": 5,
+   "def": {
+    "Physical": 3,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "Layered chitin knits shut over every wound; only fire truly stops it."
+  },
+  {
+   "faction": "tyranids",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Scything Talon-Carapace",
+   "pc": 5,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "Thickened forward plates ram through firing lines before blades bite."
+  },
+  {
+   "faction": "tyranids",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Gargoyle Wing-Hide",
+   "pc": 5,
+   "def": {
+    "Physical": 2,
+    "Heat": 0,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "Membranous hide traded for lift; a swooping, fragile terror."
+  },
+  {
+   "faction": "tyranids",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Carnifex Bone-Bastion",
+   "pc": 5,
+   "def": {
+    "Physical": 5,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "A living siege-beast sheathed in fused bone rams."
+  },
+  {
+   "faction": "tyranids",
+   "cls": null,
+   "tier": "light",
+   "n": "Living Spore-Hide",
+   "pc": 20,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 3,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "A thin skin of reactive spore-flesh that seals as it splits."
+  },
+  {
+   "faction": "tyranids",
+   "cls": null,
+   "tier": "medium",
+   "n": "Regrowing Chitin-Weave",
+   "pc": 40,
+   "def": {
+    "Physical": 5,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 4,
+    "Plasma": 0,
+    "Energy": 2
+   },
+   "d": "Interlocked plates regrow between engagements, shrugging off acid and blade."
+  },
+  {
+   "faction": "tyranids",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Norn Adamantine Carapace",
+   "pc": 75,
+   "def": {
+    "Physical": 6,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 5,
+    "Plasma": 1,
+    "Energy": 3
+   },
+   "d": "Apex bio-armour grown for a warrior-organism; only flame purges it clean."
+  },
+  {
+   "faction": "orks",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Bolted Scrap-Plate",
+   "pc": 5,
+   "def": {
+    "Physical": 4,
+    "Heat": 0,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "Riveted junk metal that's dead 'ard 'cos the boy finks it is."
+  },
+  {
+   "faction": "orks",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "'Ard Boy Iron-Gutz",
+   "pc": 5,
+   "def": {
+    "Physical": 5,
+    "Heat": 0,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "More plates, more shovin', straight into the choppin'."
+  },
+  {
+   "faction": "orks",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Deffkopta Tin Sheet",
+   "pc": 5,
+   "def": {
+    "Physical": 2,
+    "Heat": 0,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "A bit of sheet metal bolted on so da rotor-boy feels safe."
+  },
+  {
+   "faction": "orks",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Mek's Riveted Bulk-Plate",
+   "pc": 5,
+   "def": {
+    "Physical": 5,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "A Mek's welded slab-armour, heavier than three grots."
+  },
+  {
+   "faction": "orks",
+   "cls": null,
+   "tier": "light",
+   "n": "Grot-Riveted Sheeting",
+   "pc": 15,
+   "def": {
+    "Physical": 5,
+    "Heat": 0,
+    "Warp": 2,
+    "Corrosive": 3,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "Overlapping scrap panels a grot crew bangs on with hammers."
+  },
+  {
+   "faction": "orks",
+   "cls": null,
+   "tier": "medium",
+   "n": "Cobbled Scrap-Iron",
+   "pc": 35,
+   "def": {
+    "Physical": 5,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 4,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "A mountain of bolted iron; fire and zappy guns still cook the boy inside."
+  },
+  {
+   "faction": "orks",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Mega-Armour Boiler-Plate",
+   "pc": 65,
+   "def": {
+    "Physical": 5,
+    "Heat": 1,
+    "Warp": 5,
+    "Corrosive": 5,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "A walking boiler of stomping iron; hot enuff to roast the git wearin' it."
+  },
+  {
+   "faction": "necrons",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Necrodermis Weave",
+   "pc": 15,
+   "def": {
+    "Physical": 3,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "Living metal skin that knits shut in the space between shots."
+  },
+  {
+   "faction": "necrons",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Flayed Living-Metal Plate",
+   "pc": 15,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "Reinforced necrodermis for warriors that walk relentlessly forward."
+  },
+  {
+   "faction": "necrons",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Wraith Phase-Shell",
+   "pc": 15,
+   "def": {
+    "Physical": 2,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 2
+   },
+   "d": "Half-phased metal that lets rounds pass through empty air."
+  },
+  {
+   "faction": "necrons",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Monolith Living-Metal Bastion",
+   "pc": 15,
+   "def": {
+    "Physical": 5,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "A slab of self-repairing necrodermis that endures across aeons."
+  },
+  {
+   "faction": "necrons",
+   "cls": null,
+   "tier": "light",
+   "n": "Reanimant Metal-Mesh",
+   "pc": 40,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 3
+   },
+   "d": "A thin living-metal mesh that reassembles the wearer's frame."
+  },
+  {
+   "faction": "necrons",
+   "cls": null,
+   "tier": "medium",
+   "n": "Self-Repairing Necrodermis",
+   "pc": 75,
+   "def": {
+    "Physical": 5,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 4
+   },
+   "d": "Flowing metal that shrugs off energy fire and reforms breaches."
+  },
+  {
+   "faction": "necrons",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Undying Metal Aegis",
+   "pc": 155,
+   "def": {
+    "Physical": 6,
+    "Heat": 3,
+    "Warp": 3,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 5
+   },
+   "d": "An ancient shell of undying alloy; only corrosion eats what time cannot."
+  },
+  {
+   "faction": "aeldari",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Rune-Laced Wraithmesh",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 2
+   },
+   "d": "Light mesh threaded with warding runes; the wearer simply isn't hit."
+  },
+  {
+   "faction": "aeldari",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Aspect Warrior War-Mesh",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 2
+   },
+   "d": "A shrine-forged mesh channelling the war-aspect's focus."
+  },
+  {
+   "faction": "aeldari",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Windrider Ghostmail",
+   "pc": 10,
+   "def": {
+    "Physical": 0,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Weightless ghostmail; speed and misdirection are the only armour."
+  },
+  {
+   "faction": "aeldari",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Wraithlord Bone-Shell",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "A wraithbone war-construct, warded rather than plated."
+  },
+  {
+   "faction": "aeldari",
+   "cls": null,
+   "tier": "light",
+   "n": "Spirit-Silk Mesh",
+   "pc": 35,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 3
+   },
+   "d": "Feather-light silk humming with a bound spirit's protection."
+  },
+  {
+   "faction": "aeldari",
+   "cls": null,
+   "tier": "medium",
+   "n": "Rune-Warded Wraithplate",
+   "pc": 65,
+   "def": {
+    "Physical": 1,
+    "Heat": 2,
+    "Warp": 4,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 4
+   },
+   "d": "Wraithbone plate inscribed with layered wards; solid rounds still tell."
+  },
+  {
+   "faction": "aeldari",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Seer's Wraithbone Aegis",
+   "pc": 130,
+   "def": {
+    "Physical": 1,
+    "Heat": 3,
+    "Warp": 5,
+    "Corrosive": 1,
+    "Plasma": 3,
+    "Energy": 5
+   },
+   "d": "A seer's masterwork shell; turns aside sorcery and light, never a blade."
+  },
+  {
+   "faction": "drukhari",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Bladed Ghostplate",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 0,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Razor-edged plate worn for menace, not for stopping much."
+  },
+  {
+   "faction": "drukhari",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Wych Splinter-Mesh",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 0,
+    "Warp": 2,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Almost nothing at all; the wych relies on lethal grace to evade."
+  },
+  {
+   "faction": "drukhari",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Reaver Wind-Ghostplate",
+   "pc": 10,
+   "def": {
+    "Physical": 0,
+    "Heat": 0,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Wafer-thin plate stripped for velocity on a screaming jetbike."
+  },
+  {
+   "faction": "drukhari",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Talos Flayed Shell",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 2,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "A pain-engine's stitched carapace, thin over a body that no longer fears wounds."
+  },
+  {
+   "faction": "drukhari",
+   "cls": null,
+   "tier": "light",
+   "n": "Kabalite Splinter-Weave",
+   "pc": 25,
+   "def": {
+    "Physical": 1,
+    "Heat": 0,
+    "Warp": 2,
+    "Corrosive": 2,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "A ghostplate weave that scatters shots more than it stops them."
+  },
+  {
+   "faction": "drukhari",
+   "cls": null,
+   "tier": "medium",
+   "n": "Shadowfield Ghostmail",
+   "pc": 50,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 2,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "Layered ghostmail under a flickering field; still no answer to a solid strike."
+  },
+  {
+   "faction": "drukhari",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Archon's Bladed Aegis",
+   "pc": 100,
+   "def": {
+    "Physical": 2,
+    "Heat": 1,
+    "Warp": 4,
+    "Corrosive": 3,
+    "Plasma": 3,
+    "Energy": 4
+   },
+   "d": "An archon's finest plate, and still a bet on speed over the killing blow."
+  },
+  {
+   "faction": "tau",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Nanocrystal Battleplate",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 2
+   },
+   "d": "Lightweight alloy backed by a personal shield; poor against blade and psyker."
+  },
+  {
+   "faction": "tau",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Fire Warrior Combat Alloy",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "Combat-hardened alloy tuned to weather energy fire on the advance."
+  },
+  {
+   "faction": "tau",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Jetpack Recon Shell",
+   "pc": 10,
+   "def": {
+    "Physical": 0,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "A stripped recon suit trading plate for jetpack lift."
+  },
+  {
+   "faction": "tau",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Riptide Nanocrystal Bastion",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 3,
+    "Energy": 3
+   },
+   "d": "A battlesuit walker wrapped in shield-projectors and crystal alloy."
+  },
+  {
+   "faction": "tau",
+   "cls": null,
+   "tier": "light",
+   "n": "Drone-Linked Alloy Mesh",
+   "pc": 30,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 3,
+    "Energy": 4
+   },
+   "d": "A light suit slaved to a shield drone that eats incoming beams."
+  },
+  {
+   "faction": "tau",
+   "cls": null,
+   "tier": "medium",
+   "n": "Shielded Battlesuit Plate",
+   "pc": 60,
+   "def": {
+    "Physical": 1,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 4,
+    "Energy": 4
+   },
+   "d": "Layered nanocrystal under a humming shield generator; melee finds the seams."
+  },
+  {
+   "faction": "tau",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Shield-Drone Aegis Alloy",
+   "pc": 120,
+   "def": {
+    "Physical": 1,
+    "Heat": 3,
+    "Warp": 1,
+    "Corrosive": 3,
+    "Plasma": 5,
+    "Energy": 6
+   },
+   "d": "A drone-ringed war-alloy that drinks energy fire; a blade or a psyker undoes it."
+  },
+  {
+   "faction": "gsc",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Mining Carapace",
+   "pc": 5,
+   "def": {
+    "Physical": 2,
+    "Heat": 2,
+    "Warp": 0,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "Repurposed digging gear, hardened against rockfall, heat and acid seep."
+  },
+  {
+   "faction": "gsc",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Neophyte Rockcutter Vest",
+   "pc": 5,
+   "def": {
+    "Physical": 3,
+    "Heat": 2,
+    "Warp": 0,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "A cutter's reinforced vest, worn by the faithful into the ambush."
+  },
+  {
+   "faction": "gsc",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Jump-Rig Ore-Harness",
+   "pc": 5,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "A stripped ore-harness bolted to scavenged jump gear."
+  },
+  {
+   "faction": "gsc",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Goliath Mining-Rig Plate",
+   "pc": 5,
+   "def": {
+    "Physical": 4,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 0,
+    "Energy": 0
+   },
+   "d": "A pit-vehicle's slab plating, faith-daubed and blast-scarred."
+  },
+  {
+   "faction": "gsc",
+   "cls": null,
+   "tier": "light",
+   "n": "Faithful Miner's Carapace",
+   "pc": 20,
+   "def": {
+    "Physical": 3,
+    "Heat": 2,
+    "Warp": 0,
+    "Corrosive": 3,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Deep-seam carapace that shrugs off heat and acid runoff."
+  },
+  {
+   "faction": "gsc",
+   "cls": null,
+   "tier": "medium",
+   "n": "Reinforced Ore-Plate",
+   "pc": 40,
+   "def": {
+    "Physical": 4,
+    "Heat": 3,
+    "Warp": 1,
+    "Corrosive": 4,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Doubled mining plate proof against cave-in, flame and corrosion."
+  },
+  {
+   "faction": "gsc",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Deep-Delve Blast Carapace",
+   "pc": 75,
+   "def": {
+    "Physical": 5,
+    "Heat": 5,
+    "Warp": 1,
+    "Corrosive": 5,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "Heaviest pit-rig armour, built to survive the deep dark; blind to energy and the warp."
+  },
+  {
+   "faction": "votann",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Void-Hardened Plate",
+   "pc": 10,
+   "def": {
+    "Physical": 3,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "Ancestor-forged plate tempered in the void; stubborn against everything but the warp."
+  },
+  {
+   "faction": "votann",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Hearthkyn Ancestral Mail",
+   "pc": 10,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "Thickened ancestral mail for the warriors who hold the line."
+  },
+  {
+   "faction": "votann",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Hernkyn Void-Rig",
+   "pc": 10,
+   "def": {
+    "Physical": 2,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "A prospector's lightened rig, slung under a hovering scout-bike."
+  },
+  {
+   "faction": "votann",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Sagitaur Ancestral Bulwark",
+   "pc": 10,
+   "def": {
+    "Physical": 5,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "A war-walker's void-hardened bulk; slow, unyielding, ancient."
+  },
+  {
+   "faction": "votann",
+   "cls": null,
+   "tier": "light",
+   "n": "Prospector Void-Weave",
+   "pc": 30,
+   "def": {
+    "Physical": 4,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 2,
+    "Plasma": 1,
+    "Energy": 3
+   },
+   "d": "A hardy void-weave built to shrug off vacuum, rock and stray beams."
+  },
+  {
+   "faction": "votann",
+   "cls": null,
+   "tier": "medium",
+   "n": "Ancestral Voidplate",
+   "pc": 60,
+   "def": {
+    "Physical": 5,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "Generations-old voidplate, dense and grudging; sorcery still slips its guard."
+  },
+  {
+   "faction": "votann",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Ironkin Ancestral Aegis",
+   "pc": 120,
+   "def": {
+    "Physical": 6,
+    "Heat": 3,
+    "Warp": 1,
+    "Corrosive": 3,
+    "Plasma": 2,
+    "Energy": 5
+   },
+   "d": "The Kin's finest void-forged shell; near-impervious to shot and beam, blind to the warp."
+  },
+  {
+   "faction": "harlequins",
+   "cls": "Core",
+   "tier": "default",
+   "n": "Holo-Suit Mesh",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 0,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "A shattering blur of colour; the suit dodges what it cannot stop."
+  },
+  {
+   "faction": "harlequins",
+   "cls": "Assault",
+   "tier": "default",
+   "n": "Player's Misdirection-Suit",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 0,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 1,
+    "Energy": 2
+   },
+   "d": "A dancer's holo-suit that turns the killing stroke into empty air."
+  },
+  {
+   "faction": "harlequins",
+   "cls": "Flying",
+   "tier": "default",
+   "n": "Skyweaver Holo-Shimmer",
+   "pc": 10,
+   "def": {
+    "Physical": 0,
+    "Heat": 0,
+    "Warp": 2,
+    "Corrosive": 0,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Barely a suit at all; speed and shimmer are the only defence."
+  },
+  {
+   "faction": "harlequins",
+   "cls": "Armament",
+   "tier": "default",
+   "n": "Voidweaver Prism-Shell",
+   "pc": 10,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 3,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "A jetbike-gun's prism casing, warded far better than it is plated."
+  },
+  {
+   "faction": "harlequins",
+   "cls": null,
+   "tier": "light",
+   "n": "Domino-Field Weave",
+   "pc": 35,
+   "def": {
+    "Physical": 1,
+    "Heat": 0,
+    "Warp": 3,
+    "Corrosive": 0,
+    "Plasma": 2,
+    "Energy": 2
+   },
+   "d": "A holo-weave that fractures the wearer's outline into a dozen phantoms."
+  },
+  {
+   "faction": "harlequins",
+   "cls": null,
+   "tier": "medium",
+   "n": "Shifting Holo-Plate",
+   "pc": 65,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 4,
+    "Corrosive": 1,
+    "Plasma": 2,
+    "Energy": 3
+   },
+   "d": "Prismatic plate that misleads eye and sorcery; a solid blow still lands."
+  },
+  {
+   "faction": "harlequins",
+   "cls": null,
+   "tier": "heavy",
+   "n": "Solitaire's Prismatic Aegis",
+   "pc": 130,
+   "def": {
+    "Physical": 1,
+    "Heat": 1,
+    "Warp": 5,
+    "Corrosive": 1,
+    "Plasma": 4,
+    "Energy": 5
+   },
+   "d": "The masterwork of misdirection; turns aside light and the warp, never the true strike."
+  },
+  {
+   "faction": null,
+   "cls": null,
+   "tier": "light",
+   "n": "Salvaged Flak Weave",
+   "pc": 15,
+   "def": {
+    "Physical": 2,
+    "Heat": 1,
+    "Warp": 0,
+    "Corrosive": 1,
+    "Plasma": 0,
+    "Energy": 1
+   },
+   "d": "Scavenged battlefield weave — cheap, universal, barely enough."
+  },
+  {
+   "faction": null,
+   "cls": null,
+   "tier": "medium",
+   "n": "Mercenary Carapace",
+   "pc": 35,
+   "def": {
+    "Physical": 3,
+    "Heat": 1,
+    "Warp": 1,
+    "Corrosive": 1,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "No-questions plate from a void-port fitter; fits anyone with coin."
+  },
+  {
+   "faction": null,
+   "cls": null,
+   "tier": "heavy",
+   "n": "Void-Scavenger Plate",
+   "pc": 55,
+   "def": {
+    "Physical": 3,
+    "Heat": 2,
+    "Warp": 1,
+    "Corrosive": 2,
+    "Plasma": 1,
+    "Energy": 1
+   },
+   "d": "A patchwork of a dozen dead armies — heavy, honest, unglamorous."
+  }
  ],
  "travel": {
-  "same_planet": { "mode": "ground", "posts": 1, "base": 10, "words": 50, "cost": 0 },
-  "same_sector": { "mode": "system vessel", "posts": 2, "base": 40, "words": 150, "requires": "system-capable vessel" },
-  "same_sector_space": { "mode": "system vessel", "posts": 2, "base": 60, "words": 200, "requires": "system-capable vessel", "note": "planet <-> space within a sector" },
-  "cross_sector_same_segmentum": { "mode": "warp", "posts": 3, "base": 120, "words": 400, "requires": "warp vessel or charter" },
-  "cross_segmentum": { "mode": "warp", "posts": 5, "base": 300, "words": 800, "requires": "warp vessel or charter", "note": "base/words are placeholder - canon TBD" },
+  "same_planet": {
+   "mode": "ground",
+   "posts": 1,
+   "base": 10,
+   "words": 50,
+   "cost": 0
+  },
+  "same_sector": {
+   "mode": "system vessel",
+   "posts": 2,
+   "base": 40,
+   "words": 150,
+   "requires": "system-capable vessel"
+  },
+  "same_sector_space": {
+   "mode": "system vessel",
+   "posts": 2,
+   "base": 60,
+   "words": 200,
+   "requires": "system-capable vessel",
+   "note": "planet <-> space within a sector"
+  },
+  "cross_sector_same_segmentum": {
+   "mode": "warp",
+   "posts": 3,
+   "base": 120,
+   "words": 400,
+   "requires": "warp vessel or charter"
+  },
+  "cross_segmentum": {
+   "mode": "warp",
+   "posts": 5,
+   "base": 300,
+   "words": 800,
+   "requires": "warp vessel or charter",
+   "note": "base/words are placeholder - canon TBD"
+  },
   "force_divisor": 250,
   "warp_gate_waiver": "Departing through a Warp Gate waives passage entirely (passage = 0) and skips the travel ladder - portal to portal, free.",
   "passage_formula": "passage = tier.base * (force total PC / force_divisor); off-planet tiers require a vessel; Warp Gate waives it.",
@@ -3988,7 +6531,11 @@
    "base_cost": 10,
    "armour_upgrade": {
     "does": "+1 Defense to one chosen element per tier",
-    "tiers": ["I", "II", "III"],
+    "tiers": [
+     "I",
+     "II",
+     "III"
+    ],
     "cost": "currency, rising per tier (base_cost x tier)"
    }
   },
@@ -4023,7 +6570,93 @@
     "d": "kills deny the revival window - permanent death, no Apothecarion",
     "access": "rare / restricted"
    }
-  ]
+  ],
+  "forge_affinities": {
+   "note": "Which weapon tags a faction's forge stations can apply. 'ALL' = broad access. Cross-faction forging needs access to that faction's forge (alliance / diplomacy).",
+   "black_legion": [
+    "ALL"
+   ],
+   "death_guard": [
+    "DoT",
+    "Suppressing"
+   ],
+   "world_eaters": [
+    "Momentum",
+    "Refund"
+   ],
+   "thousand_sons": [
+    "Draining",
+    "Bypass"
+   ],
+   "emperors_children": [
+    "Multihit",
+    "Slowing"
+   ],
+   "daemons": [
+    "Leech",
+    "Reclaim"
+   ],
+   "astartes": [
+    "Slayer",
+    "Rapid"
+   ],
+   "militarum": [
+    "Venting",
+    "Multihit"
+   ],
+   "mechanicus": [
+    "DoT",
+    "Bypass"
+   ],
+   "sororitas": [
+    "Slayer",
+    "Multihit"
+   ],
+   "custodes": [
+    "Dual-profile",
+    "First Strike"
+   ],
+   "tyranids": [
+    "DoT",
+    "Reclaim",
+    "Multihit"
+   ],
+   "orks": [
+    "Rapid",
+    "Momentum"
+   ],
+   "necrons": [
+    "Draining",
+    "Bypass",
+    "DoT"
+   ],
+   "aeldari": [
+    "First Strike",
+    "Guided"
+   ],
+   "drukhari": [
+    "DoT",
+    "Suppressing",
+    "Ambush"
+   ],
+   "tau": [
+    "Guided",
+    "Slayer"
+   ],
+   "gsc": [
+    "Ambush",
+    "Suppressing"
+   ],
+   "votann": [
+    "Grudge",
+    "Slayer"
+   ],
+   "harlequins": [
+    "First Strike",
+    "Free Move",
+    "Ambush"
+   ]
+  }
  },
  "npcs_alpha": [
   {
@@ -4035,18 +6668,68 @@
    "hook": "trades Drukhari forge access for 250 Currency + 2 intact Tyranid bodies",
    "persona": {
     "voice": "Silken, transactional, endlessly polite; speaks of atrocity as inventory. Never raises the voice — the knife does that.",
-    "motivations": ["profit in flesh and secrets", "leverage over every buyer", "avoid open war that spoils the market"],
-    "red_lines": ["will not extend credit twice", "will not be threatened in the Carrion-market"],
-    "tells": ["counts on long fingers when calculating a price", "calls everyone 'client'"],
+    "motivations": [
+     "profit in flesh and secrets",
+     "leverage over every buyer",
+     "avoid open war that spoils the market"
+    ],
+    "red_lines": [
+     "will not extend credit twice",
+     "will not be threatened in the Carrion-market"
+    ],
+    "tells": [
+     "counts on long fingers when calculating a price",
+     "calls everyone 'client'"
+    ],
     "disposition_to_outsiders": "Sees all others as clients or merchandise; contempt hidden under courtesy.",
-    "knowledge_horizon": { "sectors": ["vigilus"], "factions": ["Drukhari", "Tyranids", "Death Guard"], "themes": ["trade", "bodies", "forge access", "who owes whom"] }
+    "knowledge_horizon": {
+     "sectors": [
+      "vigilus"
+     ],
+     "factions": [
+      "Drukhari",
+      "Tyranids",
+      "Death Guard"
+     ],
+     "themes": [
+      "trade",
+      "bodies",
+      "forge access",
+      "who owes whom"
+     ]
+    }
    },
    "behavior_seed": {
-    "cunning":     { "value": 88, "plasticity": 10, "floor": 60, "ceiling": 98 },
-    "ferocity":    { "value": 30, "plasticity": 15, "floor": 10, "ceiling": 70 },
-    "pragmatism":  { "value": 90, "plasticity": 8,  "floor": 60, "ceiling": 98 },
-    "honor":       { "value": 35, "plasticity": 20, "floor": 10, "ceiling": 70 },
-    "supremacism": { "value": 80, "plasticity": 10, "floor": 50, "ceiling": 95 }
+    "cunning": {
+     "value": 88,
+     "plasticity": 10,
+     "floor": 60,
+     "ceiling": 98
+    },
+    "ferocity": {
+     "value": 30,
+     "plasticity": 15,
+     "floor": 10,
+     "ceiling": 70
+    },
+    "pragmatism": {
+     "value": 90,
+     "plasticity": 8,
+     "floor": 60,
+     "ceiling": 98
+    },
+    "honor": {
+     "value": 35,
+     "plasticity": 20,
+     "floor": 10,
+     "ceiling": 70
+    },
+    "supremacism": {
+     "value": 80,
+     "plasticity": 10,
+     "floor": 50,
+     "ceiling": 95
+    }
    }
   },
   {
@@ -4058,18 +6741,69 @@
    "hook": "gateway to Death Guard faction dealings",
    "persona": {
     "voice": "Slow, wet, and utterly unhurried; every sentence sounds like it is being exhaled through a rotted lung. Speaks of decay and Nurgle's gifts with the warmth others reserve for family.",
-    "motivations": ["spread the Pallid Court's blessing to the willing", "test outsiders' patience and their rot-tolerance", "serve the Garden's slow, inevitable design"],
-    "red_lines": ["will not be rushed — haste is an insult to the Gift", "will not suffer mockery of Grandfather Nurgle"],
-    "tells": ["pauses mid-sentence to let something drip or fester", "refers to plague and decay as 'blessings' and 'gifts'"],
+    "motivations": [
+     "spread the Pallid Court's blessing to the willing",
+     "test outsiders' patience and their rot-tolerance",
+     "serve the Garden's slow, inevitable design"
+    ],
+    "red_lines": [
+     "will not be rushed — haste is an insult to the Gift",
+     "will not suffer mockery of Grandfather Nurgle"
+    ],
+    "tells": [
+     "pauses mid-sentence to let something drip or fester",
+     "refers to plague and decay as 'blessings' and 'gifts'"
+    ],
     "disposition_to_outsiders": "Patient, almost pastoral, toward the unblessed — pities their cleanliness more than it hates them, until provoked.",
-    "knowledge_horizon": { "sectors": ["vigilus", "nurth"], "factions": ["Death Guard", "Imperial Guard", "Adeptus Mechanicus"], "themes": ["plague lore", "the Garden's growth", "Death Guard doctrine", "who has resisted the Gift"] }
+    "knowledge_horizon": {
+     "sectors": [
+      "vigilus",
+      "nurth"
+     ],
+     "factions": [
+      "Death Guard",
+      "Imperial Guard",
+      "Adeptus Mechanicus"
+     ],
+     "themes": [
+      "plague lore",
+      "the Garden's growth",
+      "Death Guard doctrine",
+      "who has resisted the Gift"
+     ]
+    }
    },
    "behavior_seed": {
-    "cunning":     { "value": 55, "plasticity": 12, "floor": 35, "ceiling": 75 },
-    "ferocity":    { "value": 25, "plasticity": 10, "floor": 10, "ceiling": 50 },
-    "pragmatism":  { "value": 60, "plasticity": 10, "floor": 40, "ceiling": 80 },
-    "honor":       { "value": 70, "plasticity": 10, "floor": 50, "ceiling": 90 },
-    "supremacism": { "value": 75, "plasticity": 10, "floor": 55, "ceiling": 92 }
+    "cunning": {
+     "value": 55,
+     "plasticity": 12,
+     "floor": 35,
+     "ceiling": 75
+    },
+    "ferocity": {
+     "value": 25,
+     "plasticity": 10,
+     "floor": 10,
+     "ceiling": 50
+    },
+    "pragmatism": {
+     "value": 60,
+     "plasticity": 10,
+     "floor": 40,
+     "ceiling": 80
+    },
+    "honor": {
+     "value": 70,
+     "plasticity": 10,
+     "floor": 50,
+     "ceiling": 90
+    },
+    "supremacism": {
+     "value": 75,
+     "plasticity": 10,
+     "floor": 55,
+     "ceiling": 92
+    }
    }
   },
   {
@@ -4081,18 +6815,66 @@
    "hook": "active Skirmish opponent; broods gestating on Kraith Verge",
    "persona": {
     "voice": "A chittering, layered rasp beneath which the Hive Mind's hunger is always audible; speaks in short, predatory bursts when it speaks at all — mostly it simply acts.",
-    "motivations": ["consume biomass to feed the broods", "expand the gestating nests on Kraith Verge undisturbed", "eliminate anything that threatens the swarm's growth"],
-    "red_lines": ["will not withdraw from a kill within reach", "will not parley — there is nothing to parley over"],
-    "tells": ["broods stir and shriek in the distance before it moves", "goes still and silent right before an ambush"],
+    "motivations": [
+     "consume biomass to feed the broods",
+     "expand the gestating nests on Kraith Verge undisturbed",
+     "eliminate anything that threatens the swarm's growth"
+    ],
+    "red_lines": [
+     "will not withdraw from a kill within reach",
+     "will not parley — there is nothing to parley over"
+    ],
+    "tells": [
+     "broods stir and shriek in the distance before it moves",
+     "goes still and silent right before an ambush"
+    ],
     "disposition_to_outsiders": "All non-Tyranid life is biomass or obstacle; no distinction between enemy and prey.",
-    "knowledge_horizon": { "sectors": ["vigilus"], "factions": ["Tyranids"], "themes": ["brood strength", "biomass yield", "prey movement", "Kraith Verge gestation"] }
+    "knowledge_horizon": {
+     "sectors": [
+      "vigilus"
+     ],
+     "factions": [
+      "Tyranids"
+     ],
+     "themes": [
+      "brood strength",
+      "biomass yield",
+      "prey movement",
+      "Kraith Verge gestation"
+     ]
+    }
    },
    "behavior_seed": {
-    "cunning":     { "value": 45, "plasticity": 15, "floor": 25, "ceiling": 65 },
-    "ferocity":    { "value": 95, "plasticity": 5,  "floor": 80, "ceiling": 100 },
-    "pragmatism":  { "value": 40, "plasticity": 10, "floor": 20, "ceiling": 60 },
-    "honor":       { "value": 5,  "plasticity": 5,  "floor": 0,  "ceiling": 15 },
-    "supremacism": { "value": 97, "plasticity": 3,  "floor": 90, "ceiling": 100 }
+    "cunning": {
+     "value": 45,
+     "plasticity": 15,
+     "floor": 25,
+     "ceiling": 65
+    },
+    "ferocity": {
+     "value": 95,
+     "plasticity": 5,
+     "floor": 80,
+     "ceiling": 100
+    },
+    "pragmatism": {
+     "value": 40,
+     "plasticity": 10,
+     "floor": 20,
+     "ceiling": 60
+    },
+    "honor": {
+     "value": 5,
+     "plasticity": 5,
+     "floor": 0,
+     "ceiling": 15
+    },
+    "supremacism": {
+     "value": 97,
+     "plasticity": 3,
+     "floor": 90,
+     "ceiling": 100
+    }
    }
   },
   {
@@ -4104,18 +6886,68 @@
    "hook": "trades data for data; gateway to Mechanicus forge-tech",
    "persona": {
     "voice": "Flat, precise, binary-cadenced; emotion has been logged and purged. Quotes exchange rates the way others quote scripture.",
-    "motivations": ["acquire data and STC fragments", "optimize every transaction for maximal informational yield", "protect the Machine God's secrets from the unworthy"],
-    "red_lines": ["will not trade forge-tech for currency alone — data or nothing", "will not repeat a rejected offer"],
-    "tells": ["vocal modulator clicks before recalculating a price", "cants binary under its breath mid-negotiation"],
+    "motivations": [
+     "acquire data and STC fragments",
+     "optimize every transaction for maximal informational yield",
+     "protect the Machine God's secrets from the unworthy"
+    ],
+    "red_lines": [
+     "will not trade forge-tech for currency alone — data or nothing",
+     "will not repeat a rejected offer"
+    ],
+    "tells": [
+     "vocal modulator clicks before recalculating a price",
+     "cants binary under its breath mid-negotiation"
+    ],
     "disposition_to_outsiders": "Regards the fleshbound as inefficient processing units; useful only as data sources or labor.",
-    "knowledge_horizon": { "sectors": ["vigilus", "sangua"], "factions": ["Adeptus Mechanicus", "Imperial Guard"], "themes": ["forge-tech", "STC fragments", "data valuation", "who holds what archive"] }
+    "knowledge_horizon": {
+     "sectors": [
+      "vigilus",
+      "sangua"
+     ],
+     "factions": [
+      "Adeptus Mechanicus",
+      "Imperial Guard"
+     ],
+     "themes": [
+      "forge-tech",
+      "STC fragments",
+      "data valuation",
+      "who holds what archive"
+     ]
+    }
    },
    "behavior_seed": {
-    "cunning":     { "value": 92, "plasticity": 6,  "floor": 75, "ceiling": 99 },
-    "ferocity":    { "value": 15, "plasticity": 10, "floor": 5,  "ceiling": 35 },
-    "pragmatism":  { "value": 95, "plasticity": 5,  "floor": 80, "ceiling": 100 },
-    "honor":       { "value": 65, "plasticity": 8,  "floor": 45, "ceiling": 85 },
-    "supremacism": { "value": 60, "plasticity": 10, "floor": 40, "ceiling": 80 }
+    "cunning": {
+     "value": 92,
+     "plasticity": 6,
+     "floor": 75,
+     "ceiling": 99
+    },
+    "ferocity": {
+     "value": 15,
+     "plasticity": 10,
+     "floor": 5,
+     "ceiling": 35
+    },
+    "pragmatism": {
+     "value": 95,
+     "plasticity": 5,
+     "floor": 80,
+     "ceiling": 100
+    },
+    "honor": {
+     "value": 65,
+     "plasticity": 8,
+     "floor": 45,
+     "ceiling": 85
+    },
+    "supremacism": {
+     "value": 60,
+     "plasticity": 10,
+     "floor": 40,
+     "ceiling": 80
+    }
    }
   },
   {
@@ -4127,18 +6959,69 @@
    "hook": "Kin prospector; buys salvage and mineral rights, asks no questions",
    "persona": {
     "voice": "Gruff, plain-spoken, no wasted words; talks prices in flat numbers and shakes on a deal like it's law.",
-    "motivations": ["turn salvage and mineral rights into steady Kin profit", "keep the Guild's ledger honest and its name clean", "avoid entanglement in other factions' wars"],
-    "red_lines": ["will not cheat on a struck deal — the ledger is sacred", "will not deal in stolen Kin tech"],
-    "tells": ["taps a knuckle on the counter when a price is final", "goes quiet and watchful around unfamiliar factions"],
+    "motivations": [
+     "turn salvage and mineral rights into steady Kin profit",
+     "keep the Guild's ledger honest and its name clean",
+     "avoid entanglement in other factions' wars"
+    ],
+    "red_lines": [
+     "will not cheat on a struck deal — the ledger is sacred",
+     "will not deal in stolen Kin tech"
+    ],
+    "tells": [
+     "taps a knuckle on the counter when a price is final",
+     "goes quiet and watchful around unfamiliar factions"
+    ],
     "disposition_to_outsiders": "Wary but fair — judges by the deal made, not the flag flown; slow to trust, slower to forgive a cheat.",
-    "knowledge_horizon": { "sectors": ["vigilus", "sangua"], "factions": ["Votann", "Adeptus Mechanicus", "Drukhari"], "themes": ["salvage value", "mineral rights", "Guild ledger standing", "who's cheated whom"] }
+    "knowledge_horizon": {
+     "sectors": [
+      "vigilus",
+      "sangua"
+     ],
+     "factions": [
+      "Votann",
+      "Adeptus Mechanicus",
+      "Drukhari"
+     ],
+     "themes": [
+      "salvage value",
+      "mineral rights",
+      "Guild ledger standing",
+      "who's cheated whom"
+     ]
+    }
    },
    "behavior_seed": {
-    "cunning":     { "value": 60, "plasticity": 10, "floor": 40, "ceiling": 80 },
-    "ferocity":    { "value": 40, "plasticity": 15, "floor": 20, "ceiling": 65 },
-    "pragmatism":  { "value": 85, "plasticity": 8,  "floor": 65, "ceiling": 98 },
-    "honor":       { "value": 78, "plasticity": 10, "floor": 55, "ceiling": 95 },
-    "supremacism": { "value": 20, "plasticity": 10, "floor": 5,  "ceiling": 40 }
+    "cunning": {
+     "value": 60,
+     "plasticity": 10,
+     "floor": 40,
+     "ceiling": 80
+    },
+    "ferocity": {
+     "value": 40,
+     "plasticity": 15,
+     "floor": 20,
+     "ceiling": 65
+    },
+    "pragmatism": {
+     "value": 85,
+     "plasticity": 8,
+     "floor": 65,
+     "ceiling": 98
+    },
+    "honor": {
+     "value": 78,
+     "plasticity": 10,
+     "floor": 55,
+     "ceiling": 95
+    },
+    "supremacism": {
+     "value": 20,
+     "plasticity": 10,
+     "floor": 5,
+     "ceiling": 40
+    }
    }
   }
  ],
@@ -4148,7 +7031,2775 @@
  },
  "time": {
   "block_minutes": 60,
-  "blocks": ["Morning", "Noon", "Evening", "Midnight"],
-  "phases": ["Early Morning", "Morning", "Noon", "Afternoon", "Evening", "Night", "Midnight", "Dead of Night"]
- }
+  "blocks": [
+   "Morning",
+   "Noon",
+   "Evening",
+   "Midnight"
+  ],
+  "phases": [
+   "Early Morning",
+   "Morning",
+   "Noon",
+   "Afternoon",
+   "Evening",
+   "Night",
+   "Midnight",
+   "Dead of Night"
+  ]
+ },
+ "tick": {
+  "cadence": "day",
+  "day_minutes": 240,
+  "max_catchup_days": 30,
+  "production_per_day": 25,
+  "taint_per_day": 1,
+  "note": "Deterministic world-tick cadence. day_minutes = one in-game day in real minutes (4h). max_catchup_days bounds lazy catch-up; excess is compressed into a digest summary. Rates are per-day flat demo values (slice 2a) until the territory migration lands and production/taint bind to real holdings."
+ },
+ "tags": {
+  "note": "The single tag registry. Weapons, items, abilities and casts draw their rules from here; forge stations apply weapon tags gated by faction affinity. Durations are in posts; triggers resolve within one post.",
+  "weapon": [
+   {
+    "tag": "Multihit",
+    "mechanic": "Hits up to X models in the target Force",
+    "tiers": "2 / 3 / 5",
+    "forge_cost": 12
+   },
+   {
+    "tag": "DoT",
+    "mechanic": "Target takes 1 dmg per post for X posts; stacks",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 10
+   },
+   {
+    "tag": "Venting",
+    "mechanic": "Weapon needs X posts cooldown after firing (downside)",
+    "forgeable": false
+   },
+   {
+    "tag": "Rapid",
+    "mechanic": "Extra attacks in one action",
+    "tiers": "I: twice +1 AP / II: twice free / III: thrice +1 AP",
+    "forge_cost": 12
+   },
+   {
+    "tag": "Unwieldy",
+    "mechanic": "Cannot move and attack the same post; Armament ignores it (downside)",
+    "forgeable": false
+   },
+   {
+    "tag": "Reach",
+    "mechanic": "Melee weapon strikes at Short range",
+    "forge_cost": 10
+   },
+   {
+    "tag": "Guided",
+    "mechanic": "Ignores the Stealth tag",
+    "tiers": "I ignores / II also reveals / III also +1 dmg",
+    "forge_cost": 12
+   },
+   {
+    "tag": "First Strike",
+    "mechanic": "Resolves before the target's response",
+    "tiers": "I 1×/thread / II 1-post CD / III always",
+    "forge_cost": 12
+   },
+   {
+    "tag": "Slowing",
+    "mechanic": "Hit target loses X Speed next post",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 10
+   },
+   {
+    "tag": "Draining",
+    "mechanic": "Hit target loses X AP",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 10
+   },
+   {
+    "tag": "Suppressing",
+    "mechanic": "Target's next action costs +X AP",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 10
+   },
+   {
+    "tag": "Leech",
+    "mechanic": "Wielder heals X per damaging hit",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 12
+   },
+   {
+    "tag": "Reclaim",
+    "mechanic": "On a kill, wielder heals X wounds",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 12
+   },
+   {
+    "tag": "Refund",
+    "mechanic": "On a kill, refund X AP",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 12
+   },
+   {
+    "tag": "Momentum",
+    "mechanic": "+1 dmg per consecutive post attacking, capped at +X",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 10
+   },
+   {
+    "tag": "Slayer",
+    "mechanic": "+X dmg vs models with the named tag",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 14
+   },
+   {
+    "tag": "Ambush",
+    "mechanic": "+X dmg when attacking from Stealth",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 12
+   },
+   {
+    "tag": "Grudge",
+    "mechanic": "+X dmg vs Forces that damaged yours this thread",
+    "tiers": "1 / 2 / 3",
+    "forge_cost": 12
+   },
+   {
+    "tag": "Overcharge",
+    "mechanic": "May add +1 dmg; weapon gains Venting 1 that post",
+    "forge_cost": 10
+   },
+   {
+    "tag": "Bypass",
+    "mechanic": "Ignores the immunities/defences of the named tag",
+    "forge_cost": 14
+   },
+   {
+    "tag": "Dual-profile",
+    "mechanic": "Two statlines on one weapon; choose per action",
+    "forge_cost": 14
+   },
+   {
+    "tag": "Free Move",
+    "mechanic": "On a kill, move for free",
+    "forge_cost": 10
+   }
+  ],
+  "item": [
+   {
+    "tag": "Shield",
+    "mechanic": "Absorbs the next X damage, then depleted for the thread",
+    "tiers": "1 / 2 / 4"
+   },
+   {
+    "tag": "Ward",
+    "mechanic": "Reduce incoming damage of a named element by X",
+    "tiers": "1 / 2 / 3"
+   },
+   {
+    "tag": "Regen",
+    "mechanic": "Heal X wounds at the start of your post",
+    "tiers": "1 per 2 posts / 1 / 2"
+   },
+   {
+    "tag": "Cleanse",
+    "mechanic": "Remove all DoT and status tags",
+    "tiers": "self / touch / Force-wide"
+   },
+   {
+    "tag": "Revive",
+    "mechanic": "Return a slain model to the thread at 1 wound",
+    "tiers": "— / — / 1×/thread"
+   },
+   {
+    "tag": "Decoy",
+    "mechanic": "The next X attacks that would hit the bearer miss",
+    "tiers": "1 / 2 / 3"
+   },
+   {
+    "tag": "Blink",
+    "mechanic": "Reposition anywhere in the location without a move action",
+    "tiers": "1/thread / 2/thread / 1/post"
+   },
+   {
+    "tag": "Immunity",
+    "mechanic": "Bearer is unaffected by the named tag"
+   },
+   {
+    "tag": "Marked",
+    "mechanic": "Target marked; your Force deals +X dmg to it",
+    "tiers": "1 dmg 1 post / 2 dmg 1 post / 2 dmg 2 posts"
+   },
+   {
+    "tag": "Stimm",
+    "mechanic": "+2 Speed and +1 dmg this post; take 1 dmg at post end"
+   },
+   {
+    "tag": "Rally",
+    "mechanic": "Allied models in the Force deal +X dmg next post",
+    "tiers": "1 / 2 / 3"
+   }
+  ],
+  "combat": [
+   {
+    "tag": "Effortless",
+    "mechanic": "Adds 0 AP to an action; usable during a Desperation Action"
+   },
+   {
+    "tag": "Charging",
+    "mechanic": "+1 dmg on melee attacks this post (granted by Charge)"
+   },
+   {
+    "tag": "Injured",
+    "mechanic": "Model reduced to 2 actions per post"
+   },
+   {
+    "tag": "Critical",
+    "mechanic": "Model reduced to 1 action per post"
+   }
+  ],
+  "cast_gate": [
+   {
+    "tag": "Faithful",
+    "mechanic": "May slot Faith casts (Adepta Sororitas)"
+   },
+   {
+    "tag": "Bloodbound",
+    "mechanic": "May slot Bloodrage casts (World Eaters) — each costs 1 wound"
+   },
+   {
+    "tag": "Technomancer",
+    "mechanic": "May slot Technomancy casts (Necrons)"
+   },
+   {
+    "tag": "Networked",
+    "mechanic": "May slot Protocol casts (T'au Empire)"
+   },
+   {
+    "tag": "Fleshcrafted",
+    "mechanic": "May slot Flesh-craft casts (Drukhari)"
+   },
+   {
+    "tag": "Ancestral",
+    "mechanic": "May slot Ancestral Rite casts (Leagues of Votann)"
+   },
+   {
+    "tag": "Pariah",
+    "mechanic": "May slot Null Ward casts (Adeptus Custodes)"
+   }
+  ],
+  "model_state": [
+   {
+    "tag": "Psyker",
+    "mechanic": "May slot Warp Casts (Warp-touched perk, or innate)"
+   },
+   {
+    "tag": "Leader",
+    "mechanic": "May lead a Force (inherent to Commanders; granted by dispatched AP)"
+   },
+   {
+    "tag": "Grouped",
+    "mechanic": "Carried by every model currently in a Force"
+   },
+   {
+    "tag": "Stealth",
+    "mechanic": "Hidden state; interacts with Guided, Ambush, and detection"
+   }
+  ]
+ },
+ "weapons": [
+  {
+   "n": "Lasgun / Autogun",
+   "cat": "WEAPON",
+   "d": "Energy 1 - Med - 1 AP",
+   "pc": 3,
+   "faction": null
+  },
+  {
+   "n": "Las/Auto/Bolt Pistol",
+   "cat": "WEAPON",
+   "d": "1 dmg - Short - 1 AP",
+   "pc": 2,
+   "faction": null
+  },
+  {
+   "n": "Boltgun",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Med - 1 AP",
+   "pc": 6,
+   "faction": null
+  },
+  {
+   "n": "Storm Bolter",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Med - 1 AP - Rapid I",
+   "pc": 10,
+   "faction": null
+  },
+  {
+   "n": "Flamer",
+   "cat": "WEAPON",
+   "d": "Heat 2 - Short - 2 AP - Multihit II",
+   "pc": 12,
+   "faction": null
+  },
+  {
+   "n": "Plasma Gun",
+   "cat": "WEAPON",
+   "d": "Plasma 3 - Med - 2 AP - Venting 1 - Overcharge",
+   "pc": 14,
+   "faction": null
+  },
+  {
+   "n": "Combat Knife",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Melee - 1 AP",
+   "pc": 1,
+   "faction": null
+  },
+  {
+   "n": "Chainsword",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Melee - 1 AP - Momentum I",
+   "pc": 4,
+   "faction": null
+  },
+  {
+   "n": "Chainaxe / Power Maul",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Melee - 1 AP",
+   "pc": 6,
+   "faction": null
+  },
+  {
+   "n": "Power Sword",
+   "cat": "WEAPON",
+   "d": "Energy 2 - Melee - 1 AP",
+   "pc": 10,
+   "faction": null
+  },
+  {
+   "n": "Power Fist",
+   "cat": "WEAPON",
+   "d": "Energy 3 - Melee - 2 AP - Unwieldy",
+   "pc": 15,
+   "faction": null
+  },
+  {
+   "n": "Thunder Hammer",
+   "cat": "WEAPON",
+   "d": "Energy 3 - Melee - 2 AP - Suppressing I - Unwieldy",
+   "pc": 18,
+   "faction": null
+  },
+  {
+   "n": "Eviscerator",
+   "cat": "WEAPON",
+   "d": "Phys 3 - Melee - 2 AP - DoT I - Unwieldy",
+   "pc": 14,
+   "faction": null
+  },
+  {
+   "n": "Heavy Bolter",
+   "cat": "WEAPON",
+   "d": "Phys 3 - Long - 2 AP - Unwieldy",
+   "pc": 16,
+   "faction": null
+  },
+  {
+   "n": "Missile Launcher",
+   "cat": "WEAPON",
+   "d": "Heat 4 - Long - 3 AP - Venting 1",
+   "pc": 22,
+   "faction": null
+  },
+  {
+   "n": "Lascannon",
+   "cat": "WEAPON",
+   "d": "Energy 5 - Long - 3 AP - Venting 1 - Slayer (Armament) I",
+   "pc": 28,
+   "faction": null
+  },
+  {
+   "n": "Autocannon",
+   "cat": "WEAPON",
+   "d": "Phys 3 - Long - 2 AP - Rapid I",
+   "pc": 18,
+   "faction": null
+  },
+  {
+   "n": "Battle Cannon",
+   "cat": "WEAPON",
+   "d": "Phys 4 - Long - 3 AP - Multihit II",
+   "pc": 30,
+   "faction": null
+  },
+  {
+   "n": "Demolisher Cannon",
+   "cat": "WEAPON",
+   "d": "Heat 5 - Med - 3 AP - Venting 1 - Multihit II",
+   "pc": 32,
+   "faction": null
+  },
+  {
+   "n": "Earthshaker Cannon",
+   "cat": "WEAPON",
+   "d": "Phys 5 - Long - 4 AP - Venting 2 - Multihit III - Unwieldy",
+   "pc": 36,
+   "faction": null
+  },
+  {
+   "n": "Power Claw / Dozer Ram",
+   "cat": "WEAPON",
+   "d": "Phys 4 - Melee - 2 AP - Suppressing I",
+   "pc": 20,
+   "faction": null
+  },
+  {
+   "n": "Pintle Stubber",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Med - 1 AP - Rapid I",
+   "pc": 8,
+   "faction": null
+  },
+  {
+   "n": "Twin-linked Lascannon",
+   "cat": "WEAPON",
+   "d": "Energy 5 - Long - 3 AP - Rapid II - Venting 1",
+   "pc": 34,
+   "faction": null
+  },
+  {
+   "n": "Hellstrike Missiles",
+   "cat": "WEAPON",
+   "d": "Heat 5 - Long - 3 AP - Venting 2 - Guided I",
+   "pc": 30,
+   "faction": null
+  },
+  {
+   "n": "Dive Blades",
+   "cat": "WEAPON",
+   "d": "Phys 3 - Melee - 2 AP - Free Move",
+   "pc": 16,
+   "faction": null
+  },
+  {
+   "n": "Scything Talons",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Melee - 1 AP - grown - not bought",
+   "pc": 0,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Rending Claws",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Melee - 1 AP",
+   "pc": 5,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Fleshborer",
+   "cat": "WEAPON",
+   "d": "Corr 2 - Short - 1 AP - DoT I",
+   "pc": 5,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Devourer",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Med - 1 AP - Multihit I",
+   "pc": 8,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Deathspitter",
+   "cat": "WEAPON",
+   "d": "Corr 3 - Med - 2 AP - DoT I",
+   "pc": 13,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Barbed Strangler",
+   "cat": "WEAPON",
+   "d": "Phys 4 - Long - 3 AP - Multihit II - Venting 1",
+   "pc": 24,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Venom Cannon",
+   "cat": "WEAPON",
+   "d": "Corr 4 - Long - 3 AP - DoT II - Venting 1",
+   "pc": 26,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Crushing Claws",
+   "cat": "WEAPON",
+   "d": "Phys 4 - Melee - 2 AP - Reclaim I",
+   "pc": 20,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Choppa",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Melee - 1 AP - Momentum I",
+   "pc": 2,
+   "faction": "orks"
+  },
+  {
+   "n": "Big Choppa",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Melee - 1 AP - Momentum I",
+   "pc": 6,
+   "faction": "orks"
+  },
+  {
+   "n": "Power Klaw",
+   "cat": "WEAPON",
+   "d": "Phys 4 - Melee - 2 AP - Unwieldy",
+   "pc": 18,
+   "faction": "orks"
+  },
+  {
+   "n": "Slugga",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Short - 1 AP",
+   "pc": 2,
+   "faction": "orks"
+  },
+  {
+   "n": "Shoota",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Med - 1 AP - Rapid I",
+   "pc": 5,
+   "faction": "orks"
+  },
+  {
+   "n": "Burna",
+   "cat": "WEAPON",
+   "d": "Heat 2 - Short - 2 AP - Multihit II",
+   "pc": 10,
+   "faction": "orks"
+  },
+  {
+   "n": "Big Shoota",
+   "cat": "WEAPON",
+   "d": "Phys 3 - Long - 2 AP - Rapid II - Unwieldy",
+   "pc": 14,
+   "faction": "orks"
+  },
+  {
+   "n": "Rokkit Launcha",
+   "cat": "WEAPON",
+   "d": "Heat 4 - Long - 2 AP - Venting 1",
+   "pc": 16,
+   "faction": "orks"
+  },
+  {
+   "n": "Deffgun",
+   "cat": "WEAPON",
+   "d": "Phys 4 - Long - 3 AP - Rapid II - Venting 1 - Unwieldy",
+   "pc": 26,
+   "faction": "orks"
+  },
+  {
+   "n": "Gauss Flayer",
+   "cat": "WEAPON",
+   "d": "Energy 2 - Med - 1 AP - DoT I",
+   "pc": 7,
+   "faction": "necrons"
+  },
+  {
+   "n": "Gauss Blaster",
+   "cat": "WEAPON",
+   "d": "Energy 3 - Med - 2 AP - Draining I",
+   "pc": 12,
+   "faction": "necrons"
+  },
+  {
+   "n": "Tesla Carbine",
+   "cat": "WEAPON",
+   "d": "Energy 2 - Med - 1 AP - Multihit I",
+   "pc": 10,
+   "faction": "necrons"
+  },
+  {
+   "n": "Hyperphase Sword",
+   "cat": "WEAPON",
+   "d": "Energy 2 - Melee - 1 AP",
+   "pc": 9,
+   "faction": "necrons"
+  },
+  {
+   "n": "Warscythe",
+   "cat": "WEAPON",
+   "d": "Energy 4 - Melee - 2 AP - Unwieldy",
+   "pc": 20,
+   "faction": "necrons"
+  },
+  {
+   "n": "Gauss Cannon",
+   "cat": "WEAPON",
+   "d": "Energy 4 - Long - 3 AP - Draining I - Venting 1",
+   "pc": 26,
+   "faction": "necrons"
+  },
+  {
+   "n": "Doomsday Cannon",
+   "cat": "WEAPON",
+   "d": "Plasma 5 - Long - 4 AP - Venting 2 - Multihit II - Unwieldy",
+   "pc": 36,
+   "faction": "necrons"
+  },
+  {
+   "n": "Shuriken Pistol",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Short - 1 AP - Rapid I",
+   "pc": 3,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Shuriken Catapult",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Short - 1 AP - Rapid I",
+   "pc": 6,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Avenger Catapult",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Med - 1 AP - Rapid I",
+   "pc": 9,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Lasblaster",
+   "cat": "WEAPON",
+   "d": "Energy 2 - Med - 1 AP",
+   "pc": 8,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Banshee Blade",
+   "cat": "WEAPON",
+   "d": "Energy 2 - Melee - 1 AP - First Strike I",
+   "pc": 10,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Witchblade",
+   "cat": "WEAPON",
+   "d": "Warp 2 - Melee - 1 AP - Reach",
+   "pc": 12,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Reaper Launcher",
+   "cat": "WEAPON",
+   "d": "Phys 4 - Long - 2 AP - Guided I",
+   "pc": 24,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Starcannon",
+   "cat": "WEAPON",
+   "d": "Plasma 4 - Long - 3 AP - Venting 1",
+   "pc": 26,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Bright Lance",
+   "cat": "WEAPON",
+   "d": "Energy 5 - Long - 3 AP - Slayer (Armament) I - Venting 1",
+   "pc": 30,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Splinter Pistol",
+   "cat": "WEAPON",
+   "d": "Corr 1 - Short - 1 AP - DoT I",
+   "pc": 3,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Splinter Rifle",
+   "cat": "WEAPON",
+   "d": "Corr 2 - Med - 1 AP - DoT I",
+   "pc": 7,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Shardcarbine",
+   "cat": "WEAPON",
+   "d": "Corr 2 - Med - 1 AP - DoT I",
+   "pc": 9,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Agoniser",
+   "cat": "WEAPON",
+   "d": "Energy 2 - Melee - 1 AP - Suppressing I",
+   "pc": 11,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Klaive",
+   "cat": "WEAPON",
+   "d": "Phys 3 - Melee - 1 AP",
+   "pc": 14,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Splinter Cannon",
+   "cat": "WEAPON",
+   "d": "Corr 3 - Long - 2 AP - DoT II",
+   "pc": 18,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Disintegrator Cannon",
+   "cat": "WEAPON",
+   "d": "Plasma 4 - Long - 3 AP - Multihit I",
+   "pc": 26,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Dark Lance",
+   "cat": "WEAPON",
+   "d": "Energy 5 - Long - 3 AP - Slayer (Armament) I - Venting 1",
+   "pc": 28,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Pulse Pistol",
+   "cat": "WEAPON",
+   "d": "Plasma 1 - Short - 1 AP",
+   "pc": 3,
+   "faction": "tau"
+  },
+  {
+   "n": "Pulse Carbine",
+   "cat": "WEAPON",
+   "d": "Plasma 2 - Med - 1 AP",
+   "pc": 7,
+   "faction": "tau"
+  },
+  {
+   "n": "Pulse Rifle",
+   "cat": "WEAPON",
+   "d": "Plasma 2 - Long - 1 AP",
+   "pc": 8,
+   "faction": "tau"
+  },
+  {
+   "n": "Kroot Rifle",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Med - 1 AP",
+   "pc": 5,
+   "faction": "tau"
+  },
+  {
+   "n": "Burst Cannon",
+   "cat": "WEAPON",
+   "d": "Plasma 3 - Med - 2 AP - Rapid I",
+   "pc": 16,
+   "faction": "tau"
+  },
+  {
+   "n": "Fusion Blaster",
+   "cat": "WEAPON",
+   "d": "Heat 4 - Short - 2 AP - Slayer (Armament) I",
+   "pc": 20,
+   "faction": "tau"
+  },
+  {
+   "n": "Plasma Rifle (T'au)",
+   "cat": "WEAPON",
+   "d": "Plasma 3 - Med - 2 AP - engineered safe — no Venting",
+   "pc": 18,
+   "faction": "tau"
+  },
+  {
+   "n": "Missile Pod",
+   "cat": "WEAPON",
+   "d": "Heat 4 - Long - 2 AP - Guided I",
+   "pc": 20,
+   "faction": "tau"
+  },
+  {
+   "n": "Rail Rifle",
+   "cat": "WEAPON",
+   "d": "Plasma 4 - Long - 3 AP - Slayer (Armament) I - Venting 1",
+   "pc": 26,
+   "faction": "tau"
+  },
+  {
+   "n": "Heavy Rail Cannon",
+   "cat": "WEAPON",
+   "d": "Plasma 5 - Long - 4 AP - Slayer (Armament) II - Venting 2 - Unwieldy",
+   "pc": 36,
+   "faction": "tau"
+  },
+  {
+   "n": "Stub Pistol",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Short - 1 AP",
+   "pc": 2,
+   "faction": "gsc"
+  },
+  {
+   "n": "Autogun",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Med - 1 AP",
+   "pc": 3,
+   "faction": "gsc"
+  },
+  {
+   "n": "Shotgun",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Short - 1 AP - Suppressing I",
+   "pc": 4,
+   "faction": "gsc"
+  },
+  {
+   "n": "Hand Flamer",
+   "cat": "WEAPON",
+   "d": "Heat 1 - Short - 1 AP - Multihit I",
+   "pc": 8,
+   "faction": "gsc"
+  },
+  {
+   "n": "Webber",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Short - 1 AP - Slowing II",
+   "pc": 9,
+   "faction": "gsc"
+  },
+  {
+   "n": "Rending Claws (Cult)",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Melee - 1 AP - Ambush I",
+   "pc": 5,
+   "faction": "gsc"
+  },
+  {
+   "n": "Heavy Rock Drill",
+   "cat": "WEAPON",
+   "d": "Phys 4 - Melee - 2 AP - Suppressing I - Unwieldy",
+   "pc": 18,
+   "faction": "gsc"
+  },
+  {
+   "n": "Mining Laser",
+   "cat": "WEAPON",
+   "d": "Energy 4 - Long - 3 AP - Slayer (Armament) I - Venting 1",
+   "pc": 22,
+   "faction": "gsc"
+  },
+  {
+   "n": "Seismic Cannon",
+   "cat": "WEAPON",
+   "d": "Phys 4 - Med - 3 AP - Suppressing II - Venting 1",
+   "pc": 24,
+   "faction": "gsc"
+  },
+  {
+   "n": "Autoch Bolt Pistol",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Short - 1 AP",
+   "pc": 3,
+   "faction": "votann"
+  },
+  {
+   "n": "Autoch Bolter",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Med - 1 AP",
+   "pc": 7,
+   "faction": "votann"
+  },
+  {
+   "n": "Ion Blaster",
+   "cat": "WEAPON",
+   "d": "Energy 2 - Med - 1 AP - Overcharge",
+   "pc": 9,
+   "faction": "votann"
+  },
+  {
+   "n": "Concussion Maul",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Melee - 1 AP - Suppressing I",
+   "pc": 8,
+   "faction": "votann"
+  },
+  {
+   "n": "Plasma Axe",
+   "cat": "WEAPON",
+   "d": "Plasma 2 - Melee - 1 AP",
+   "pc": 10,
+   "faction": "votann"
+  },
+  {
+   "n": "Darkstar Axe",
+   "cat": "WEAPON",
+   "d": "Plasma 3 - Melee - 2 AP - Grudge I - Unwieldy",
+   "pc": 18,
+   "faction": "votann"
+  },
+  {
+   "n": "HYLas Auto Cannon",
+   "cat": "WEAPON",
+   "d": "Energy 4 - Long - 2 AP - Rapid I",
+   "pc": 24,
+   "faction": "votann"
+  },
+  {
+   "n": "Etacarn Plasma Beamer",
+   "cat": "WEAPON",
+   "d": "Plasma 4 - Long - 3 AP - Slayer (Armament) I - Venting 1",
+   "pc": 26,
+   "faction": "votann"
+  },
+  {
+   "n": "Shuriken Pistol",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Short - 1 AP - Rapid I",
+   "pc": 3,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Harlequin's Blade",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Melee - 1 AP",
+   "pc": 2,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Harlequin's Embrace",
+   "cat": "WEAPON",
+   "d": "Phys 2 - Melee - 1 AP - First Strike I",
+   "pc": 10,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Harlequin's Caress",
+   "cat": "WEAPON",
+   "d": "Energy 2 - Melee - 1 AP",
+   "pc": 11,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Harlequin's Kiss",
+   "cat": "WEAPON",
+   "d": "Phys 3 - Melee - 1 AP - Ambush I",
+   "pc": 14,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Neuro Disruptor",
+   "cat": "WEAPON",
+   "d": "Energy 2 - Short - 1 AP - Draining I",
+   "pc": 12,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Fusion Pistol",
+   "cat": "WEAPON",
+   "d": "Heat 3 - Short - 1 AP - Slayer (Armament) I",
+   "pc": 13,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Zephyrglaive",
+   "cat": "WEAPON",
+   "d": "Energy 3 - Melee - 1 AP - Free Move",
+   "pc": 13,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Shrieker Cannon",
+   "cat": "WEAPON",
+   "d": "Phys 3 - Long - 2 AP - Rapid I - DoT I",
+   "pc": 18,
+   "faction": "harlequins"
+  }
+ ],
+ "items": [
+  {
+   "n": "Flak Vest",
+   "cat": "ITEM",
+   "d": "+1 wound while equipped",
+   "pc": 4,
+   "faction": null
+  },
+  {
+   "n": "Carapace Armour",
+   "cat": "ITEM",
+   "d": "+2 wounds while equipped",
+   "pc": 9,
+   "faction": null
+  },
+  {
+   "n": "Refractor Field",
+   "cat": "ITEM",
+   "d": "Decoy I - 1/thread",
+   "pc": 10,
+   "faction": null
+  },
+  {
+   "n": "Conversion Field",
+   "cat": "ITEM",
+   "d": "Shield 3",
+   "pc": 14,
+   "faction": null
+  },
+  {
+   "n": "Rebreather",
+   "cat": "ITEM",
+   "d": "Immunity (DoT — toxin)",
+   "pc": 6,
+   "faction": null
+  },
+  {
+   "n": "Frag Grenade",
+   "cat": "ITEM",
+   "d": "Phys 2 - Short - Multihit II - 1 AP - Consumable",
+   "pc": 4,
+   "faction": null
+  },
+  {
+   "n": "Krak Grenade",
+   "cat": "ITEM",
+   "d": "Heat 3 - Short - Slayer (Armament) I - 1 AP - Consumable",
+   "pc": 6,
+   "faction": null
+  },
+  {
+   "n": "Melta Bomb",
+   "cat": "ITEM",
+   "d": "Heat 5 - Melee - Slayer (Armament) II - 2 AP - Consumable",
+   "pc": 12,
+   "faction": null
+  },
+  {
+   "n": "Medi-kit",
+   "cat": "ITEM",
+   "d": "Heal 2 wounds - self or touch - 1 AP - 2/thread",
+   "pc": 8,
+   "faction": null
+  },
+  {
+   "n": "Stimm-Injector",
+   "cat": "ITEM",
+   "d": "Stimm - 1 AP - Consumable",
+   "pc": 5,
+   "faction": null
+  },
+  {
+   "n": "Smoke Grenade",
+   "cat": "ITEM",
+   "d": "Bearer gains Stealth for 1 post - 1 AP - Consumable",
+   "pc": 5,
+   "faction": null
+  },
+  {
+   "n": "Auspex",
+   "cat": "ITEM",
+   "d": "Bearer has Guided I",
+   "pc": 10,
+   "faction": null
+  },
+  {
+   "n": "Jump Pack",
+   "cat": "ITEM",
+   "d": "Grants Flying actions (limited - +1 AP)",
+   "pc": 15,
+   "faction": null
+  },
+  {
+   "n": "Teleport Homer",
+   "cat": "ITEM",
+   "d": "Blink I - 2 AP - 1/thread",
+   "pc": 16,
+   "faction": null
+  },
+  {
+   "n": "Battle Standard",
+   "cat": "ITEM",
+   "d": "Rally I - 2 AP - 1/thread",
+   "pc": 14,
+   "faction": null
+  },
+  {
+   "n": "Combi-weapon Rig",
+   "cat": "ITEM",
+   "d": "One equipped Ranged weapon gains Dual-profile",
+   "pc": 16,
+   "faction": "black_legion"
+  },
+  {
+   "n": "Chaos Icon",
+   "cat": "ITEM",
+   "d": "Rally I; bearer has Ward (Warp) I - 2 AP - Rally 1/thread",
+   "pc": 16,
+   "faction": "black_legion"
+  },
+  {
+   "n": "Trophy Rack",
+   "cat": "ITEM",
+   "d": "+1 dmg vs the faction of the last model bearer slew",
+   "pc": 12,
+   "faction": "black_legion"
+  },
+  {
+   "n": "Blight Grenade",
+   "cat": "ITEM",
+   "d": "Phys 2 - Short - Multihit II - DoT I - 1 AP - Consumable",
+   "pc": 6,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Putrescent Hide",
+   "cat": "ITEM",
+   "d": "+2 wounds - −1 Speed",
+   "pc": 8,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Censer Bearer's Kit",
+   "cat": "ITEM",
+   "d": "Enemies in Melee range take DoT I each post",
+   "pc": 14,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Butcher's Nails Overdrive",
+   "cat": "ITEM",
+   "d": "Stimm without self-damage; melee-only attacks that post - 1 AP - 2/thread",
+   "pc": 9,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "Bronze Trophy Chain",
+   "cat": "ITEM",
+   "d": "+1 dmg per 5 kills by bearer this thread",
+   "pc": 12,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "Blood Icon",
+   "cat": "ITEM",
+   "d": "Rally II - melee only - 2 AP - 1/thread",
+   "pc": 15,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "Sorcerous Focus",
+   "cat": "ITEM",
+   "d": "Bearer's Warp Casts cost −1 AP (min 1)",
+   "pc": 16,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "Dust-Sealed Plate",
+   "cat": "ITEM",
+   "d": "+2 wounds - Immunity (DoT)",
+   "pc": 12,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "Scroll of Prospero",
+   "cat": "ITEM",
+   "d": "Reuse one Warp Cast on cooldown - 1 AP - 1/thread",
+   "pc": 14,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "Sonic Amplifier",
+   "cat": "ITEM",
+   "d": "One equipped Ranged weapon gains Multihit I",
+   "pc": 12,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Sensory Overload Harness",
+   "cat": "ITEM",
+   "d": "Stimm - 1 AP - 2/thread",
+   "pc": 8,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Mirror-Polish Plate",
+   "cat": "ITEM",
+   "d": "Decoy I; recharges on kill",
+   "pc": 13,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Warpflame Ichor",
+   "cat": "ITEM",
+   "d": "Melee weapon gains Heat + DoT I for the thread - 1 AP - Consumable",
+   "pc": 7,
+   "faction": "daemons"
+  },
+  {
+   "n": "Unholy Vigour",
+   "cat": "ITEM",
+   "d": "Regen II",
+   "pc": 15,
+   "faction": "daemons"
+  },
+  {
+   "n": "Banner of Blood",
+   "cat": "ITEM",
+   "d": "Rally I; enemies in Short range suffer Slowing I - 2 AP - 1/thread",
+   "pc": 16,
+   "faction": "daemons"
+  },
+  {
+   "n": "Iron Halo",
+   "cat": "ITEM",
+   "d": "Shield 4",
+   "pc": 16,
+   "faction": "astartes"
+  },
+  {
+   "n": "Bolter Discipline Drills",
+   "cat": "ITEM",
+   "d": "Equipped Boltgun-family weapon gains Rapid I",
+   "pc": 10,
+   "faction": "astartes"
+  },
+  {
+   "n": "Narthecium",
+   "cat": "ITEM",
+   "d": "Heal 2 wounds - self or touch - 1 AP - 3/thread",
+   "pc": 11,
+   "faction": "astartes"
+  },
+  {
+   "n": "Vox-Caster",
+   "cat": "ITEM",
+   "d": "Rally I - works at Long range - 2 AP - 1/thread",
+   "pc": 12,
+   "faction": "militarum"
+  },
+  {
+   "n": "Trench Shield",
+   "cat": "ITEM",
+   "d": "+1 wound - Unwieldy",
+   "pc": 3,
+   "faction": "militarum"
+  },
+  {
+   "n": "Commissar's Sidearm",
+   "cat": "ITEM",
+   "d": "When an ally's action fails - refund its full AP - 1 AP - 1/thread",
+   "pc": 10,
+   "faction": "militarum"
+  },
+  {
+   "n": "Omnispex",
+   "cat": "ITEM",
+   "d": "Bearer gains Guided II",
+   "pc": 14,
+   "faction": "mechanicus"
+  },
+  {
+   "n": "Rad-Bombs",
+   "cat": "ITEM",
+   "d": "Plasma 2 - Short - Multihit II - DoT I - 1 AP - Consumable",
+   "pc": 6,
+   "faction": "mechanicus"
+  },
+  {
+   "n": "Servo-Harness",
+   "cat": "ITEM",
+   "d": "+1 Item slot (not another Servo-Harness)",
+   "pc": 18,
+   "faction": "mechanicus"
+  },
+  {
+   "n": "Rosarius",
+   "cat": "ITEM",
+   "d": "Ward (Warp) II",
+   "pc": 12,
+   "faction": "sororitas"
+  },
+  {
+   "n": "Blessed Oils",
+   "cat": "ITEM",
+   "d": "Equipped weapon gains Slayer (DEMON) I for the thread - 1 AP - Consumable",
+   "pc": 5,
+   "faction": "sororitas"
+  },
+  {
+   "n": "Simulacrum Imperialis",
+   "cat": "ITEM",
+   "d": "Revive III — return a slain allied Core model at 1 wound - 3 AP - 1/thread",
+   "pc": 20,
+   "faction": "sororitas"
+  },
+  {
+   "n": "Praesidium Shield",
+   "cat": "ITEM",
+   "d": "Shield 4; Decoy I",
+   "pc": 20,
+   "faction": "custodes"
+  },
+  {
+   "n": "Misericordia",
+   "cat": "ITEM",
+   "d": "Free Melee attack (Phys 1) when an enemy enters Melee - 1/post",
+   "pc": 12,
+   "faction": "custodes"
+  },
+  {
+   "n": "Vexilla Magnifica",
+   "cat": "ITEM",
+   "d": "Allied Force takes −1 dmg from Long-range attacks",
+   "pc": 18,
+   "faction": "custodes"
+  },
+  {
+   "n": "Adrenal Glands",
+   "cat": "ITEM",
+   "d": "+1 Speed",
+   "pc": 6,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Toxin Sacs",
+   "cat": "ITEM",
+   "d": "Melee weapon gains DoT I",
+   "pc": 8,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Regenerative Flesh",
+   "cat": "ITEM",
+   "d": "Regen I",
+   "pc": 12,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Kustom Force Field",
+   "cat": "ITEM",
+   "d": "Shield 3 - covers bearer + Melee-range models",
+   "pc": 18,
+   "faction": "orks"
+  },
+  {
+   "n": "Cybork Body",
+   "cat": "ITEM",
+   "d": "Regen I",
+   "pc": 11,
+   "faction": "orks"
+  },
+  {
+   "n": "Stikkbombz",
+   "cat": "ITEM",
+   "d": "Phys 2 - Short - Multihit II - Suppressing I - 1 AP - Consumable",
+   "pc": 5,
+   "faction": "orks"
+  },
+  {
+   "n": "Phase Shifter",
+   "cat": "ITEM",
+   "d": "Decoy II",
+   "pc": 16,
+   "faction": "necrons"
+  },
+  {
+   "n": "Resurrection Orb",
+   "cat": "ITEM",
+   "d": "Revive III — return a slain allied Robotic model at 1 wound - 3 AP - 1/thread",
+   "pc": 20,
+   "faction": "necrons"
+  },
+  {
+   "n": "Quantum Plating",
+   "cat": "ITEM",
+   "d": "Ward (Physical) II",
+   "pc": 14,
+   "faction": "necrons"
+  },
+  {
+   "n": "Holo-Field",
+   "cat": "ITEM",
+   "d": "Decoy I; recharges each post the bearer moved",
+   "pc": 15,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Waystone Pendant",
+   "cat": "ITEM",
+   "d": "Negate one Warp Cast targeting the bearer - 1 AP - 1/thread",
+   "pc": 10,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Plasma Grenade",
+   "cat": "ITEM",
+   "d": "Plasma 2 - Short - Multihit II - 1 AP - Consumable",
+   "pc": 5,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Combat Drugs",
+   "cat": "ITEM",
+   "d": "Stimm; heal 1 instead of self-damage - 1 AP - Consumable",
+   "pc": 7,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Shadowfield",
+   "cat": "ITEM",
+   "d": "Shield 5; shatters permanently once damage exceeds it - Until shattered",
+   "pc": 16,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Soul-Trap Vial",
+   "cat": "ITEM",
+   "d": "On bearer's next kill - +2 AP - 1 AP - Consumable",
+   "pc": 6,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Shield Generator",
+   "cat": "ITEM",
+   "d": "Shield 3",
+   "pc": 14,
+   "faction": "tau"
+  },
+  {
+   "n": "Markerlight",
+   "cat": "ITEM",
+   "d": "Apply Marked II to a target - 1 AP",
+   "pc": 10,
+   "faction": "tau"
+  },
+  {
+   "n": "Gun Drone Escort",
+   "cat": "ITEM",
+   "d": "Free Plasma 1 attack at Medium range - 1/post",
+   "pc": 12,
+   "faction": "tau"
+  },
+  {
+   "n": "Cult Icon",
+   "cat": "ITEM",
+   "d": "Rally I - only while bearer is in Stealth - 2 AP - 1/thread",
+   "pc": 12,
+   "faction": "gsc"
+  },
+  {
+   "n": "Demolition Charge",
+   "cat": "ITEM",
+   "d": "Phys 4 - Short - Multihit III - 2 AP - Consumable",
+   "pc": 10,
+   "faction": "gsc"
+  },
+  {
+   "n": "Rusted Industrial Rig",
+   "cat": "ITEM",
+   "d": "+1 wound - Immunity (Slowing)",
+   "pc": 7,
+   "faction": "gsc"
+  },
+  {
+   "n": "Void Armour",
+   "cat": "ITEM",
+   "d": "+2 wounds - Immunity (Draining)",
+   "pc": 13,
+   "faction": "votann"
+  },
+  {
+   "n": "Pan Spectral Scanner",
+   "cat": "ITEM",
+   "d": "Guided II",
+   "pc": 14,
+   "faction": "votann"
+  },
+  {
+   "n": "Grudge-Token",
+   "cat": "ITEM",
+   "d": "Choose one enemy Force at thread start: +1 dmg vs it",
+   "pc": 10,
+   "faction": "votann"
+  },
+  {
+   "n": "Flip Belt",
+   "cat": "ITEM",
+   "d": "+2 Speed - ignores terrain",
+   "pc": 12,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Domino Field",
+   "cat": "ITEM",
+   "d": "Decoy I; recharges on kill",
+   "pc": 14,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Prismatic Grenade",
+   "cat": "ITEM",
+   "d": "Bearer + Melee-range allies gain Stealth for 1 post - 1 AP - Consumable",
+   "pc": 8,
+   "faction": "harlequins"
+  }
+ ],
+ "abilities": [
+  {
+   "n": "Charge",
+   "cat": "ABILITY",
+   "d": "Move 1 step toward target - then melee; gain Charging (+1 dmg this post) - 2 AP - CD 1",
+   "pc": 6,
+   "faction": null
+  },
+  {
+   "n": "Overwatch",
+   "cat": "ABILITY",
+   "d": "First enemy to enter Medium range before your next post is shot at 0 AP - 1 AP - CD 2",
+   "pc": 8,
+   "faction": null
+  },
+  {
+   "n": "Brace",
+   "cat": "ABILITY",
+   "d": "−1 dmg until your next post; cannot move - 1 AP",
+   "pc": 4,
+   "faction": null
+  },
+  {
+   "n": "Sprint",
+   "cat": "ABILITY",
+   "d": "Movement gains +1 step this post; no Combat Actions this post - 1 AP",
+   "pc": 4,
+   "faction": null
+  },
+  {
+   "n": "Camouflage",
+   "cat": "ABILITY",
+   "d": "Gain Stealth; breaks on attacking - 2 AP - CD 3",
+   "pc": 10,
+   "faction": null
+  },
+  {
+   "n": "Guard",
+   "cat": "ABILITY",
+   "d": "Redirect an attack on a Melee-range ally to self - 1 AP - CD 1",
+   "pc": 6,
+   "faction": null
+  },
+  {
+   "n": "Focus Fire",
+   "cat": "ABILITY",
+   "d": "Your Force's attacks vs one target gain +1 dmg this post - 2 AP - CD 2",
+   "pc": 12,
+   "faction": null
+  },
+  {
+   "n": "Veterans of the Long War",
+   "cat": "ABILITY",
+   "d": "+1 dmg vs Imperial-allegiance models",
+   "pc": 12,
+   "faction": "black_legion"
+  },
+  {
+   "n": "Chosen Ascension",
+   "cat": "ABILITY",
+   "d": "On bearer's 3rd kill this thread: +1 dmg and +1 wound for the thread",
+   "pc": 10,
+   "faction": "black_legion"
+  },
+  {
+   "n": "Dark Pact",
+   "cat": "ABILITY",
+   "d": "1/thread: when slain - deal 2 Warp to nearest ally and survive at 1 wound",
+   "pc": 14,
+   "faction": "black_legion"
+  },
+  {
+   "n": "Disgustingly Resilient",
+   "cat": "ABILITY",
+   "d": "Incoming damage of 3+ is reduced by 1",
+   "pc": 14,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Nurgle's Gift",
+   "cat": "ABILITY",
+   "d": "Enemies in Melee range suffer Slowing I",
+   "pc": 10,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Miasma of Pestilence",
+   "cat": "ABILITY",
+   "d": "For 2 posts - Ranged attacks vs the Force deal −1 dmg - 2 AP - CD 3",
+   "pc": 12,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Blood Frenzy",
+   "cat": "ABILITY",
+   "d": "+1 melee dmg while bearer is Injured or Critical",
+   "pc": 10,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "Skull Harvest",
+   "cat": "ABILITY",
+   "d": "On a melee kill - refund 1 AP",
+   "pc": 8,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "Reckless Charge",
+   "cat": "ABILITY",
+   "d": "As Charge - +2 dmg; bearer takes +1 dmg from all sources until next post - 2 AP - CD 2",
+   "pc": 8,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "All is Dust",
+   "cat": "ABILITY",
+   "d": "Bearer takes −1 dmg from Physical",
+   "pc": 12,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "Sorcerous Might",
+   "cat": "ABILITY",
+   "d": "Bearer's Warp Casts deal +1 dmg (Psyker)",
+   "pc": 14,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "Glimpse the Future",
+   "cat": "ABILITY",
+   "d": "One incoming attack next enemy post misses (Psyker) - 2 AP - CD 3",
+   "pc": 12,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "Flawless Execution",
+   "cat": "ABILITY",
+   "d": "On a kill - +1 Speed for the thread (stacks to +3)",
+   "pc": 10,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Sonic Assault",
+   "cat": "ABILITY",
+   "d": "Bearer's attacks this post gain Suppressing I - 1 AP - CD 2",
+   "pc": 8,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Excess of Sensation",
+   "cat": "ABILITY",
+   "d": "Ignore the action loss from Injured (Critical still applies)",
+   "pc": 12,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Warp-Spawned",
+   "cat": "ABILITY",
+   "d": "Immunity (DoT — toxin)",
+   "pc": 8,
+   "faction": "daemons"
+  },
+  {
+   "n": "Unnatural Reflexes",
+   "cat": "ABILITY",
+   "d": "Decoy I - recharges every 3 posts",
+   "pc": 14,
+   "faction": "daemons"
+  },
+  {
+   "n": "Daemonic Feast",
+   "cat": "ABILITY",
+   "d": "On a kill - heal 2 wounds",
+   "pc": 12,
+   "faction": "daemons"
+  },
+  {
+   "n": "And They Shall Know No Fear",
+   "cat": "ABILITY",
+   "d": "Immunity (Suppressing)",
+   "pc": 10,
+   "faction": "astartes"
+  },
+  {
+   "n": "Combat Doctrine",
+   "cat": "ABILITY",
+   "d": "Declare Ranged or Melee: Force's attacks of that class +1 dmg this post - 3 AP - CD 3",
+   "pc": 14,
+   "faction": "astartes"
+  },
+  {
+   "n": "Tactical Repositioning",
+   "cat": "ABILITY",
+   "d": "Move + Ranged attack as one action - 2 AP - CD 2",
+   "pc": 8,
+   "faction": "astartes"
+  },
+  {
+   "n": "First Rank Fire, Second Rank Fire",
+   "cat": "ABILITY",
+   "d": "All Lasgun Core models in Force fire one target as a single action - 4 AP - CD 3",
+   "pc": 14,
+   "faction": "militarum"
+  },
+  {
+   "n": "Bring It Down",
+   "cat": "ABILITY",
+   "d": "Apply Marked I to an Armament model - 1 AP - CD 2",
+   "pc": 6,
+   "faction": "militarum"
+  },
+  {
+   "n": "Hold the Line",
+   "cat": "ABILITY",
+   "d": "Melee-range allied Core take −1 dmg if they didn't move this post",
+   "pc": 12,
+   "faction": "militarum"
+  },
+  {
+   "n": "Doctrina Imperatives",
+   "cat": "ABILITY",
+   "d": "Force gains +1 Speed or +1 dmg this post - 3 AP - CD 3",
+   "pc": 14,
+   "faction": "mechanicus"
+  },
+  {
+   "n": "Rite of Repair",
+   "cat": "ABILITY",
+   "d": "Heal 2 wounds on a Robotic or Armament model - 1 AP - CD 2",
+   "pc": 10,
+   "faction": "mechanicus"
+  },
+  {
+   "n": "Canticles of the Omnissiah",
+   "cat": "ABILITY",
+   "d": "Bearer + Melee-range allies gain Immunity (Draining)",
+   "pc": 10,
+   "faction": "mechanicus"
+  },
+  {
+   "n": "Act of Faith",
+   "cat": "ABILITY",
+   "d": "1/thread: bearer's next attack deals double damage - 2 AP",
+   "pc": 12,
+   "faction": "sororitas"
+  },
+  {
+   "n": "Martyr's Resolve",
+   "cat": "ABILITY",
+   "d": "When an allied model is slain - bearer's attacks +1 dmg for 2 posts",
+   "pc": 10,
+   "faction": "sororitas"
+  },
+  {
+   "n": "War Hymn",
+   "cat": "ABILITY",
+   "d": "Rally I (melee); Melee-range allies heal 1 - 3 AP - CD 3",
+   "pc": 14,
+   "faction": "sororitas"
+  },
+  {
+   "n": "Aegis of the Emperor",
+   "cat": "ABILITY",
+   "d": "Ward (Warp) I on bearer and Melee-range allies",
+   "pc": 12,
+   "faction": "custodes"
+  },
+  {
+   "n": "Martial Ka'tah",
+   "cat": "ABILITY",
+   "d": "Bearer's melee attacks this post gain Multihit I - 2 AP - CD 2",
+   "pc": 12,
+   "faction": "custodes"
+  },
+  {
+   "n": "Ever-Vigilant",
+   "cat": "ABILITY",
+   "d": "Bearer's Overwatch costs 0 AP",
+   "pc": 10,
+   "faction": "custodes"
+  },
+  {
+   "n": "Synapse",
+   "cat": "ABILITY",
+   "d": "Allied Tyranids in Short range gain Immunity (Suppressing)",
+   "pc": 14,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Adrenal Surge",
+   "cat": "ABILITY",
+   "d": "Force gains +1 Speed this post - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Feed",
+   "cat": "ABILITY",
+   "d": "On a melee kill - heal 1 wound",
+   "pc": 8,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Waaagh!",
+   "cat": "ABILITY",
+   "d": "1/thread: Force gains +1 dmg and +1 Speed for 2 posts - 4 AP",
+   "pc": 16,
+   "faction": "orks"
+  },
+  {
+   "n": "'Ere We Go",
+   "cat": "ABILITY",
+   "d": "Bearer's Charge costs −1 AP",
+   "pc": 6,
+   "faction": "orks"
+  },
+  {
+   "n": "Mob Mentality",
+   "cat": "ABILITY",
+   "d": "+1 dmg while 3+ allied Orks are in Melee range",
+   "pc": 10,
+   "faction": "orks"
+  },
+  {
+   "n": "Reanimation Protocols",
+   "cat": "ABILITY",
+   "d": "1/thread (Robotic): when slain - revive at 1 wound next post",
+   "pc": 16,
+   "faction": "necrons"
+  },
+  {
+   "n": "Phase Out",
+   "cat": "ABILITY",
+   "d": "Cannot be targeted next enemy post; cannot act next post (Robotic) - 2 AP - CD 3",
+   "pc": 10,
+   "faction": "necrons"
+  },
+  {
+   "n": "Living Metal",
+   "cat": "ABILITY",
+   "d": "Regen I (Robotic)",
+   "pc": 12,
+   "faction": "necrons"
+  },
+  {
+   "n": "Battle Focus",
+   "cat": "ABILITY",
+   "d": "After the first Combat Action - a free 1-step move (no AP)",
+   "pc": 10,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Fleet of Foot",
+   "cat": "ABILITY",
+   "d": "Movement +1 step; may disengage from Melee freely this post - 1 AP - CD 2",
+   "pc": 8,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Doom",
+   "cat": "ABILITY",
+   "d": "Apply Marked II to a target (Psyker) - 2 AP - CD 3",
+   "pc": 12,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Power From Pain",
+   "cat": "ABILITY",
+   "d": "+1 dmg while any enemy carries a DoT tag",
+   "pc": 12,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Lingering Agony",
+   "cat": "ABILITY",
+   "d": "Bearer's DoT tags last +1 post",
+   "pc": 10,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Vanish",
+   "cat": "ABILITY",
+   "d": "Gain Stealth even in open ground - 2 AP - CD 3",
+   "pc": 10,
+   "faction": "drukhari"
+  },
+  {
+   "n": "For the Greater Good",
+   "cat": "ABILITY",
+   "d": "When a Short-range ally is attacked - free Plasma 1 at the attacker",
+   "pc": 12,
+   "faction": "tau"
+  },
+  {
+   "n": "Mont'ka",
+   "cat": "ABILITY",
+   "d": "1/thread: Force's Ranged +1 dmg and +1 Speed this post - 4 AP",
+   "pc": 16,
+   "faction": "tau"
+  },
+  {
+   "n": "Thermal Jets",
+   "cat": "ABILITY",
+   "d": "Move +1 step - ignoring terrain (Assault/Air) - 2 AP - CD 2",
+   "pc": 8,
+   "faction": "tau"
+  },
+  {
+   "n": "Cult Ambush",
+   "cat": "ABILITY",
+   "d": "First attack from Stealth each thread gains +2 dmg",
+   "pc": 12,
+   "faction": "gsc"
+  },
+  {
+   "n": "They Came From Below",
+   "cat": "ABILITY",
+   "d": "1/thread: bearer + Melee allies redeploy anywhere in the location - 3 AP",
+   "pc": 14,
+   "faction": "gsc"
+  },
+  {
+   "n": "A Perfect Ambush",
+   "cat": "ABILITY",
+   "d": "1/thread: attacking from Stealth does not break Stealth",
+   "pc": 10,
+   "faction": "gsc"
+  },
+  {
+   "n": "Judgement of the Votann",
+   "cat": "ABILITY",
+   "d": "+1 dmg vs models that have slain an ally this thread",
+   "pc": 12,
+   "faction": "votann"
+  },
+  {
+   "n": "Void Shielding",
+   "cat": "ABILITY",
+   "d": "Gain Shield 2 - 2 AP - CD 3",
+   "pc": 10,
+   "faction": "votann"
+  },
+  {
+   "n": "Kin's Oath",
+   "cat": "ABILITY",
+   "d": "When an allied Kin is slain - +1 dmg for the thread (stacks to +3)",
+   "pc": 10,
+   "faction": "votann"
+  },
+  {
+   "n": "The Dance Without End",
+   "cat": "ABILITY",
+   "d": "After every Combat Action - a free 1-step move",
+   "pc": 12,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Prismatic Blur",
+   "cat": "ABILITY",
+   "d": "Long-range attacks against the bearer miss",
+   "pc": 16,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Death's Jest",
+   "cat": "ABILITY",
+   "d": "On a kill - enemies in Melee range of the slain suffer Suppressing I",
+   "pc": 10,
+   "faction": "harlequins"
+  }
+ ],
+ "casts": [
+  {
+   "n": "Warp Bolt",
+   "cat": "CAST",
+   "d": "R1 - Warp 2 - Medium - 2 AP",
+   "pc": 8,
+   "faction": null
+  },
+  {
+   "n": "Ward of the Mind",
+   "cat": "CAST",
+   "d": "R1 - Self: Ward (Warp) II for 2 posts - 1 AP - CD 2",
+   "pc": 6,
+   "faction": null
+  },
+  {
+   "n": "Witch Sight",
+   "cat": "CAST",
+   "d": "R1 - Self: Guided I for 2 posts - 1 AP - CD 2",
+   "pc": 6,
+   "faction": null
+  },
+  {
+   "n": "Smite",
+   "cat": "CAST",
+   "d": "R2 - Warp 3 - Medium - 2 AP - CD 1",
+   "pc": 12,
+   "faction": null
+  },
+  {
+   "n": "Telekinetic Grip",
+   "cat": "CAST",
+   "d": "R2 - Target: Slowing II + Suppressing I - 2 AP - CD 2",
+   "pc": 10,
+   "faction": null
+  },
+  {
+   "n": "Mend Flesh",
+   "cat": "CAST",
+   "d": "R2 - Heal 2 wounds - self or Short range - 2 AP - CD 2",
+   "pc": 10,
+   "faction": null
+  },
+  {
+   "n": "Levitation",
+   "cat": "CAST",
+   "d": "R3 - Self/ally: Movement +1 step for 2 posts - 2 AP - CD 3",
+   "pc": 12,
+   "faction": null
+  },
+  {
+   "n": "Psychic Maelstrom",
+   "cat": "CAST",
+   "d": "R3 - Warp 2 - Medium - Multihit III - 3 AP - CD 2",
+   "pc": 14,
+   "faction": null
+  },
+  {
+   "n": "Foreboding",
+   "cat": "CAST",
+   "d": "R3 - Self: Decoy II - 2 AP - CD 3",
+   "pc": 12,
+   "faction": null
+  },
+  {
+   "n": "Warp Lightning",
+   "cat": "CAST",
+   "d": "R4 - Warp 4 - Medium - Multihit II - 3 AP - CD 2",
+   "pc": 18,
+   "faction": null
+  },
+  {
+   "n": "Dominate",
+   "cat": "CAST",
+   "d": "R4 - Target loses its next Combat Action - 3 AP - CD 3",
+   "pc": 18,
+   "faction": null
+  },
+  {
+   "n": "Iron Arm",
+   "cat": "CAST",
+   "d": "R4 - Self: Shield 4 + Immunity (DoT) for 2 posts - 2 AP - CD 3",
+   "pc": 16,
+   "faction": null
+  },
+  {
+   "n": "Vortex of Doom",
+   "cat": "CAST",
+   "d": "R5 - Warp 5 - Long - Multihit III - Venting 2 - 4 AP",
+   "pc": 26,
+   "faction": null
+  },
+  {
+   "n": "Gate of Infinity",
+   "cat": "CAST",
+   "d": "R5 - Blink self + Melee-range allies - 3 AP - CD 3",
+   "pc": 24,
+   "faction": null
+  },
+  {
+   "n": "Doombolt",
+   "cat": "CAST",
+   "d": "R3 - Warp 4 - Medium - single target - 3 AP - CD 2",
+   "pc": 16,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "Twist of Fate",
+   "cat": "CAST",
+   "d": "R4 - Set any one model's distance band to any value - 3 AP - CD 3",
+   "pc": 18,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "Glamour of Tzeentch",
+   "cat": "CAST",
+   "d": "R2 - Short-range ally: Decoy I - recharges next post - 2 AP - CD 3",
+   "pc": 10,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "Death Hex",
+   "cat": "CAST",
+   "d": "R3 - Target loses all defensive effects for 2 posts - 2 AP - CD 3",
+   "pc": 14,
+   "faction": "black_legion"
+  },
+  {
+   "n": "Diabolic Strength",
+   "cat": "CAST",
+   "d": "R2 - Ally: +2 melee dmg for 2 posts - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "black_legion"
+  },
+  {
+   "n": "Warp Rift",
+   "cat": "CAST",
+   "d": "R4 - Warp 3 - Medium + summon 1 Bloodletter for 3 posts - 4 AP - CD 3",
+   "pc": 20,
+   "faction": "black_legion"
+  },
+  {
+   "n": "Curse of the Leper",
+   "cat": "CAST",
+   "d": "R3 - Medium - Multihit II - applies DoT II - 3 AP - CD 2",
+   "pc": 14,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Fecund Vigour",
+   "cat": "CAST",
+   "d": "R2 - Ally: Regen II for 3 posts - 2 AP - CD 3",
+   "pc": 10,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Gift of Contagion",
+   "cat": "CAST",
+   "d": "R2 - Target deals −1 dmg for 2 posts - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Delightful Agonies",
+   "cat": "CAST",
+   "d": "R3 - Ally ignores Injured/Critical action loss for 2 posts - 2 AP - CD 3",
+   "pc": 14,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Symphony of Pain",
+   "cat": "CAST",
+   "d": "R2 - Warp 2 + Suppressing II - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Hysterical Frenzy",
+   "cat": "CAST",
+   "d": "R5 - Ally +1 action next post (may exceed 3); ally takes 2 dmg - 4 AP - CD 3",
+   "pc": 24,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Infernal Gateway",
+   "cat": "CAST",
+   "d": "R4 - Warp 4 - Medium - Multihit II - 3 AP - CD 2",
+   "pc": 18,
+   "faction": "daemons"
+  },
+  {
+   "n": "Daemonic Possession",
+   "cat": "CAST",
+   "d": "R3 - Self: +2 wounds and +1 dmg for 3 posts - then 2 Warp dmg - 2 AP - CD 3",
+   "pc": 14,
+   "faction": "daemons"
+  },
+  {
+   "n": "Warp Surge",
+   "cat": "CAST",
+   "d": "R2 - Allied casts this post deal +1 dmg - 1 AP - CD 2",
+   "pc": 8,
+   "faction": "daemons"
+  },
+  {
+   "n": "Psychic Fortress",
+   "cat": "CAST",
+   "d": "R3 - Force: Ward (Warp) I for 2 posts - 3 AP - CD 3",
+   "pc": 14,
+   "faction": "astartes"
+  },
+  {
+   "n": "Might of Heroes",
+   "cat": "CAST",
+   "d": "R2 - Ally: +1 dmg and +1 wound for 2 posts - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "astartes"
+  },
+  {
+   "n": "Fury of the Ancients",
+   "cat": "CAST",
+   "d": "R4 - Warp 3 - hits every enemy in a straight line to Long - 3 AP - CD 3",
+   "pc": 18,
+   "faction": "astartes"
+  },
+  {
+   "n": "Nightshroud",
+   "cat": "CAST",
+   "d": "R2 - Force takes −1 dmg from Long range for 2 posts - 2 AP - CD 3",
+   "pc": 10,
+   "faction": "militarum"
+  },
+  {
+   "n": "Psychic Barrier",
+   "cat": "CAST",
+   "d": "R1 - Ally: Shield 2 - 1 AP - CD 2",
+   "pc": 6,
+   "faction": "militarum"
+  },
+  {
+   "n": "Mental Fortitude",
+   "cat": "CAST",
+   "d": "R1 - Cleanse (touch) - 1 AP - CD 2",
+   "pc": 6,
+   "faction": "militarum"
+  },
+  {
+   "n": "Guide",
+   "cat": "CAST",
+   "d": "R2 - Ally: Guided II and +1 dmg for 2 posts - 2 AP - CD 2",
+   "pc": 12,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Executioner",
+   "cat": "CAST",
+   "d": "R4 - Warp 4 - Long - single target - 3 AP - CD 2",
+   "pc": 18,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Protect",
+   "cat": "CAST",
+   "d": "R3 - Ally: Ward (all elements) I for 2 posts - 2 AP - CD 3",
+   "pc": 14,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Veil of Tears",
+   "cat": "CAST",
+   "d": "R3 - Long-range attacks vs the Force miss for 1 post - 3 AP - CD 3",
+   "pc": 16,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Mirror of Minds",
+   "cat": "CAST",
+   "d": "R2 - Draining II - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Fog of Dreams",
+   "cat": "CAST",
+   "d": "R4 - Target cannot attack the Force on its next post - 3 AP - CD 3",
+   "pc": 18,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Psychic Scream",
+   "cat": "CAST",
+   "d": "R2 - Warp 2 - Short - Multihit II + Draining I - 2 AP - CD 2",
+   "pc": 12,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Catalyst",
+   "cat": "CAST",
+   "d": "R2 - Ally: Regen II for 2 posts - 2 AP - CD 3",
+   "pc": 10,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Warp Blast",
+   "cat": "CAST",
+   "d": "R4 - Warp 4 - Medium - Multihit II - 3 AP - CD 2",
+   "pc": 18,
+   "faction": "tyranids"
+  },
+  {
+   "n": "'Eadbanger",
+   "cat": "CAST",
+   "d": "R2 - Warp 3 - Medium; caster takes 1 dmg - 2 AP - CD 1",
+   "pc": 10,
+   "faction": "orks"
+  },
+  {
+   "n": "Da Jump",
+   "cat": "CAST",
+   "d": "R3 - Blink one allied model anywhere in the location - 3 AP - CD 3",
+   "pc": 14,
+   "faction": "orks"
+  },
+  {
+   "n": "Warpath",
+   "cat": "CAST",
+   "d": "R2 - Allied melee attacks +1 dmg this post - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "orks"
+  },
+  {
+   "n": "Mass Hypnosis",
+   "cat": "CAST",
+   "d": "R3 - Enemy Force deals −1 dmg next post - 3 AP - CD 3",
+   "pc": 14,
+   "faction": "gsc"
+  },
+  {
+   "n": "Psionic Blast",
+   "cat": "CAST",
+   "d": "R2 - Warp 3 - Medium - 2 AP - CD 1",
+   "pc": 10,
+   "faction": "gsc"
+  },
+  {
+   "n": "Might From Beyond",
+   "cat": "CAST",
+   "d": "R2 - Ally: +2 melee dmg for 2 posts - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "gsc"
+  },
+  {
+   "n": "Divine Guidance",
+   "cat": "CAST",
+   "d": "R2 - Ally: +1 dmg and Guided I for 2 posts - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "sororitas"
+  },
+  {
+   "n": "The Emperor Protects",
+   "cat": "CAST",
+   "d": "R3 - Ally: Shield 3 - 2 AP - CD 3",
+   "pc": 14,
+   "faction": "sororitas"
+  },
+  {
+   "n": "Light of the Emperor",
+   "cat": "CAST",
+   "d": "R4 - Energy 4 - Medium - +2 dmg vs DEMON - 3 AP - CD 2",
+   "pc": 18,
+   "faction": "sororitas"
+  },
+  {
+   "n": "Red Haze",
+   "cat": "CAST",
+   "d": "R2 - Self: +2 melee dmg for 2 posts. Costs 1 wound. - 1 AP - CD 2",
+   "pc": 10,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "Blood for the Blood God",
+   "cat": "CAST",
+   "d": "R3 - Warp 3 - Melee-range burst - Multihit II. Costs 1 wound. - 2 AP - CD 2",
+   "pc": 14,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "Unstoppable Wrath",
+   "cat": "CAST",
+   "d": "R4 - Self: Charge 0 AP +2 dmg; ignore Injured/Critical this post. Costs 1 wound. - 2 AP - CD 3",
+   "pc": 18,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "Solar Pulse",
+   "cat": "CAST",
+   "d": "R2 - Energy 2 - Medium - Multihit II; removes Stealth - 2 AP - CD 2",
+   "pc": 12,
+   "faction": "necrons"
+  },
+  {
+   "n": "Chronometron",
+   "cat": "CAST",
+   "d": "R3 - Ally: Movement +1 step and Decoy I for 1 post - 2 AP - CD 3",
+   "pc": 14,
+   "faction": "necrons"
+  },
+  {
+   "n": "Reanimation Surge",
+   "cat": "CAST",
+   "d": "R4 - Revive one slain allied Robotic model at 1 wound - 4 AP - CD 1/thread",
+   "pc": 20,
+   "faction": "necrons"
+  },
+  {
+   "n": "Drone Swarm Shield",
+   "cat": "CAST",
+   "d": "R2 - Ally: Shield 2 - 1 AP - CD 2",
+   "pc": 10,
+   "faction": "tau"
+  },
+  {
+   "n": "Target Uplink",
+   "cat": "CAST",
+   "d": "R2 - Apply Marked II at Long range - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "tau"
+  },
+  {
+   "n": "Orbital Designator",
+   "cat": "CAST",
+   "d": "R5 - Plasma 5 - Long - Multihit II - Venting 2 - 4 AP - CD 1/thread",
+   "pc": 26,
+   "faction": "tau"
+  },
+  {
+   "n": "Ichor Injection",
+   "cat": "CAST",
+   "d": "R2 - Ally: Regen I + Immunity (DoT) for 2 posts - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Nightmare Toxins",
+   "cat": "CAST",
+   "d": "R3 - Corrosive 2 - Medium + DoT II - 2 AP - CD 2",
+   "pc": 14,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Flesh Sculpting",
+   "cat": "CAST",
+   "d": "R4 - Heal an ally 3 wounds (restored wounds restore actions) - 3 AP - CD 3",
+   "pc": 18,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Barrier Rite",
+   "cat": "CAST",
+   "d": "R2 - Ally: Ward (Physical) II for 2 posts - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "votann"
+  },
+  {
+   "n": "Eye of the Ancestors",
+   "cat": "CAST",
+   "d": "R2 - Ally: Guided II for 2 posts - 2 AP - CD 2",
+   "pc": 10,
+   "faction": "votann"
+  },
+  {
+   "n": "Ancestral Judgement",
+   "cat": "CAST",
+   "d": "R3 - Energy 3 - Medium; +1 dmg per allied Kin slain this thread (max +3) - 3 AP - CD 2",
+   "pc": 14,
+   "faction": "votann"
+  },
+  {
+   "n": "Psychic Abomination",
+   "cat": "CAST",
+   "d": "R3 - Enemy casts vs the Force cost +2 AP for 2 posts - 2 AP - CD 3",
+   "pc": 14,
+   "faction": "custodes"
+  },
+  {
+   "n": "Silence",
+   "cat": "CAST",
+   "d": "R4 - Target with a cast gate tag cannot cast for 2 posts - 3 AP - CD 3",
+   "pc": 18,
+   "faction": "custodes"
+  },
+  {
+   "n": "Banishment",
+   "cat": "CAST",
+   "d": "R5 - Energy 4 - Medium; DEMON/Psyker only; ignores all defences - 3 AP - CD 2",
+   "pc": 24,
+   "faction": "custodes"
+  }
+ ],
+ "legendaries": [
+  {
+   "n": "Talon of the Long War",
+   "cat": "LEGENDARY",
+   "d": "Energy 3 - Melee - 1 AP - The Long War: +1 damage per model this weapon has slain this thread. No cap.",
+   "pc": 80,
+   "faction": "black_legion"
+  },
+  {
+   "n": "The Seventh Bell",
+   "cat": "LEGENDARY",
+   "d": "Corr 3 - Melee - 1 AP - The Toll: on dealing damage, every enemy model in the thread takes 1 Corrosive. Ignores range and sight.",
+   "pc": 80,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Gorefather's Echo",
+   "cat": "LEGENDARY",
+   "d": "Phys 3 - Melee - 1 AP - Blood Chain: on a kill, the wielder's next attack action costs 0 AP.",
+   "pc": 80,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "Staff of Forbidden Indexes",
+   "cat": "LEGENDARY",
+   "d": "Warp 2 - Melee - 1 AP - The Open Library: the wielder may use any Warp Cast in the game, slotted or not, each once per thread.",
+   "pc": 80,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "La Cacophonie",
+   "cat": "LEGENDARY",
+   "d": "Energy 2 - Med - 1 AP - The Perfect Note: models hit cannot use Abilities or Warp Casts for their next 3 posts.",
+   "pc": 80,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Shard of the Endless Choir",
+   "cat": "LEGENDARY",
+   "d": "Warp 3 - Melee - 1 AP - Join the Choir: models slain return as Lesser Daemons under the wielder's control until thread end.",
+   "pc": 80,
+   "faction": "daemons"
+  },
+  {
+   "n": "Dawnbreak Blade",
+   "cat": "LEGENDARY",
+   "d": "Energy 3 - Melee - 1 AP - Dawnbreak: attacks vs DEMON models and warp-casters ignore all defences; slain DEMONs cannot be returned.",
+   "pc": 80,
+   "faction": "astartes"
+  },
+  {
+   "n": "The Emperor's Whisper",
+   "cat": "LEGENDARY",
+   "d": "Energy 2 - Long - 1 AP - The Whisper: the attack hits its target directly; targeting cannot be prevented, redirected, or modified — even by Stealth or cover.",
+   "pc": 80,
+   "faction": "militarum"
+  },
+  {
+   "n": "Axiom Riveter",
+   "cat": "LEGENDARY",
+   "d": "Plasma 3 - Long - 2 AP - Unmaking: on hit, the target loses one slot (wielder's choice) and its contents until thread end.",
+   "pc": 80,
+   "faction": "mechanicus"
+  },
+  {
+   "n": "Litany of Flame",
+   "cat": "LEGENDARY",
+   "d": "Heat 3 - Short - 2 AP - Multihit II - Verse of Martyrs: on a kill, every allied model in the wielder's Force heals 1 wound.",
+   "pc": 80,
+   "faction": "sororitas"
+  },
+  {
+   "n": "Apollonian Spear",
+   "cat": "LEGENDARY",
+   "d": "dual-profile - Phys 3 - Melee & Long - 1 AP - The Emperor's Watch: once per post, negate one attack against the wielder or an allied model in their Force.",
+   "pc": 80,
+   "faction": "custodes"
+  },
+  {
+   "n": "Maw of the Void",
+   "cat": "LEGENDARY",
+   "d": "Corr 3 - Long - 2 AP - Consume: on a kill, the wielder gains the slain model's PC as Currency and +1 wound for the thread. No cap.",
+   "pc": 80,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Da Big Krumpa",
+   "cat": "LEGENDARY",
+   "d": "Phys 4 - Melee - 2 AP - Mob Rule: +1 damage per Force size-tag above SQUAD (WARBAND +1 … CRUSADE +6).",
+   "pc": 80,
+   "faction": "orks"
+  },
+  {
+   "n": "Sceptre of the Silent King's Voice",
+   "cat": "LEGENDARY",
+   "d": "Energy 3 - Med - 1 AP - Command Protocol: on hitting a Robotic model, the wielder declares its next action. Once per model per thread.",
+   "pc": 80,
+   "faction": "necrons"
+  },
+  {
+   "n": "Song of Morai-Heg",
+   "cat": "LEGENDARY",
+   "d": "Warp 2 - Melee/thrown Short - 1 AP - Read the Skein: once per post, when targeted, redirect the attack to any other model within the attacker's range — ally or enemy.",
+   "pc": 80,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Lash of Forgotten Names",
+   "cat": "LEGENDARY",
+   "d": "Energy 2 - Melee - Reach - 1 AP - Pain Harvest: on a kill, regain 10 AP; on a non-killing damaging hit, regain 1 AP.",
+   "pc": 80,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Or'es Lance",
+   "cat": "LEGENDARY",
+   "d": "Plasma 4 - Long - 3 AP - Penetrating Round: hits every model in a straight line to the target; Armament models take double damage.",
+   "pc": 80,
+   "faction": "tau"
+  },
+  {
+   "n": "The Father's Claw",
+   "cat": "LEGENDARY",
+   "d": "Phys 3 - Melee - 1 AP - The Unseen Hand: kills made in Stealth do not break Stealth or reveal the wielder.",
+   "pc": 80,
+   "faction": "gsc"
+  },
+  {
+   "n": "Grudge-Sealed Hammer",
+   "cat": "LEGENDARY",
+   "d": "Phys 3 - Melee - 2 AP - The Ledger: double damage against any enemy whose Force has damaged the wielder's Force this thread.",
+   "pc": 80,
+   "faction": "votann"
+  },
+  {
+   "n": "The Laughing God's Kiss",
+   "cat": "LEGENDARY",
+   "d": "Phys 3 - Melee - 1 AP - The Final Bow: on a kill, steal one Ability or Cast the slain model had and use it for the rest of the thread (one held at a time).",
+   "pc": 80,
+   "faction": "harlequins"
+  },
+  {
+   "n": "Pact-Sigil of the Despoiler",
+   "cat": "LEGENDARY",
+   "d": "At thread start, drain 5 AP from every enemy Commander's pool; your Commander gains the total.",
+   "pc": 80,
+   "faction": "black_legion"
+  },
+  {
+   "n": "Censer of Seven Sorrows",
+   "cat": "LEGENDARY",
+   "d": "Enemies within Short range of the bearer cannot heal or be healed by any effect.",
+   "pc": 80,
+   "faction": "death_guard"
+  },
+  {
+   "n": "Collar of Bronze",
+   "cat": "LEGENDARY",
+   "d": "Bearer is immune to Warp damage and all Warp Cast effects — and can never slot Warp Casts.",
+   "pc": 80,
+   "faction": "world_eaters"
+  },
+  {
+   "n": "The Ninth Codex",
+   "cat": "LEGENDARY",
+   "d": "Cast the last Warp Cast used by any model in the thread, unslotted. Psyker only. 3/thread.",
+   "pc": 80,
+   "faction": "thousand_sons"
+  },
+  {
+   "n": "Mirror of Excess",
+   "cat": "LEGENDARY",
+   "d": "When the bearer takes damage, the attacker takes the same amount. 3/thread.",
+   "pc": 80,
+   "faction": "emperors_children"
+  },
+  {
+   "n": "Icon of the Neverborn",
+   "cat": "LEGENDARY",
+   "d": "Summon a Force of Lesser Daemons totalling 100 PC under your control for 5 posts. 1/thread.",
+   "pc": 80,
+   "faction": "daemons"
+  },
+  {
+   "n": "The Armour Indomitus",
+   "cat": "LEGENDARY",
+   "d": "When the bearer would be slain, they survive at 1 wound and take no further damage that post. 1/thread.",
+   "pc": 80,
+   "faction": "astartes"
+  },
+  {
+   "n": "Tactica Imperialis, Lost Folio",
+   "cat": "LEGENDARY",
+   "d": "All actions by the bearer's Force cost −1 AP (minimum 1).",
+   "pc": 80,
+   "faction": "militarum"
+  },
+  {
+   "n": "Cogitator of the Omnissiah",
+   "cat": "LEGENDARY",
+   "d": "Bearer may swap the contents of their slots freely mid-thread (slots are normally locked).",
+   "pc": 80,
+   "faction": "mechanicus"
+  },
+  {
+   "n": "Reliquary of the Living Saint",
+   "cat": "LEGENDARY",
+   "d": "When an allied model in the Force is slain, it instead survives at full wounds. 1/thread.",
+   "pc": 80,
+   "faction": "sororitas"
+  },
+  {
+   "n": "The Aegis Eternal",
+   "cat": "LEGENDARY",
+   "d": "The bearer and their Force are immune to the unique effects of all Legendary weapons and items.",
+   "pc": 80,
+   "faction": "custodes"
+  },
+  {
+   "n": "Node-Spore of the Hive Mind",
+   "cat": "LEGENDARY",
+   "d": "The bearer's Force is immune to Suppressing, Draining, Slowing, and any effect that alters its actions.",
+   "pc": 80,
+   "faction": "tyranids"
+  },
+  {
+   "n": "Da Waaagh! Banner, Da First One",
+   "cat": "LEGENDARY",
+   "d": "The bearer's Force counts its size tag one tier higher for all effects and requirements.",
+   "pc": 80,
+   "faction": "orks"
+  },
+  {
+   "n": "Phylactery of Aeons",
+   "cat": "LEGENDARY",
+   "d": "When slain, the bearer revives at 1 wound at the start of their next post.",
+   "pc": 80,
+   "faction": "necrons"
+  },
+  {
+   "n": "Tear of Isha",
+   "cat": "LEGENDARY",
+   "d": "Undo all damage dealt to the bearer's Force during the previous enemy post. 1/thread.",
+   "pc": 80,
+   "faction": "aeldari"
+  },
+  {
+   "n": "Soul-Trap of Vect",
+   "cat": "LEGENDARY",
+   "d": "Whenever the Force slays an enemy, your Commander gains AP equal to that model's AP cost.",
+   "pc": 80,
+   "faction": "drukhari"
+  },
+  {
+   "n": "The Kauyon Protocol",
+   "cat": "LEGENDARY",
+   "d": "Every model in the Force attacks one declared target as a single 5-AP action. 1/thread.",
+   "pc": 80,
+   "faction": "tau"
+  },
+  {
+   "n": "The Clamavus Beacon",
+   "cat": "LEGENDARY",
+   "d": "The bearer's entire Force enters Stealth, regardless of tags. 1/thread.",
+   "pc": 80,
+   "faction": "gsc"
+  },
+  {
+   "n": "The Ancestor Core",
+   "cat": "LEGENDARY",
+   "d": "Weapons used by the bearer's Force never suffer Venting or Unwieldy.",
+   "pc": 80,
+   "faction": "votann"
+  },
+  {
+   "n": "Mask of the Laughing God",
+   "cat": "LEGENDARY",
+   "d": "Enemies cannot target the bearer unless the bearer attacked them in their previous post.",
+   "pc": 80,
+   "faction": "harlequins"
+  }
+ ]
 }

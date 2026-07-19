@@ -7,8 +7,18 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.7', () => {
-  assert.strictEqual(canon.meta.version, '1.7');
+test('canon is v1.11', () => {
+  assert.strictEqual(canon.meta.version, '1.11');
+});
+
+test('tick: living-world cadence block present', () => {
+  const t = canon.tick;
+  assert.ok(t, 'canon.tick present');
+  assert.strictEqual(t.cadence, 'day');
+  assert.strictEqual(t.day_minutes, 240); // 4 real hours
+  assert.ok(t.max_catchup_days >= 1, 'catch-up cap');
+  assert.strictEqual(typeof t.production_per_day, 'number');
+  assert.strictEqual(typeof t.taint_per_day, 'number');
 });
 
 test('v1.7: numeric slot growth is present for every class', () => {
@@ -90,7 +100,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.7');
+  assert.equal(canon.meta.version, '1.11');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -126,4 +136,92 @@ test('canon: every placed NPC has a persona and behavior_seed', () => {
       assert.ok(b[ax].floor <= b[ax].value && b[ax].value <= b[ax].ceiling, n.id + ' ' + ax + ' in range');
     });
   });
+});
+
+test('v1.8: tag registry migrated (weapon 22, item 11, cast_gate 7)', () => {
+  const t = canon.tags;
+  assert.ok(t, 'D.tags present');
+  assert.strictEqual(t.weapon.length, 22, 'weapon tags');
+  assert.strictEqual(t.item.length, 11, 'item tags');
+  assert.strictEqual(t.cast_gate.length, 7, 'cast-gate tags');
+  t.weapon.forEach((w) => assert.ok(w.tag && w.mechanic, 'weapon tag shape ' + w.tag));
+});
+
+test('v1.8: forge affinities cover all 20 factions', () => {
+  const aff = canon.equipment_alpha.forge_affinities;
+  assert.ok(aff, 'forge_affinities present');
+  canon.factions.forEach((f) => {
+    assert.ok(Array.isArray(aff[f.id]) && aff[f.id].length, 'affinity for ' + f.id);
+  });
+  assert.deepStrictEqual(aff.black_legion, ['ALL'], 'Black Legion broad access');
+});
+
+test('v1.9: gear catalogs migrated with correct counts', () => {
+  assert.strictEqual(canon.weapons.length, 102, 'standard weapons');
+  assert.strictEqual(canon.items.length, 75, 'standard items');
+  assert.strictEqual(canon.abilities.length, 67, 'abilities');
+  assert.strictEqual(canon.casts.length, 71, 'casts');
+  assert.strictEqual(canon.legendaries.length, 40, 'legendaries (20 weapons + 20 items)');
+});
+
+test('v1.9: every gear entry has the {n,cat,d,pc,faction} shape', () => {
+  const CATS = { weapons: 'WEAPON', items: 'ITEM', abilities: 'ABILITY',
+                 casts: 'CAST', legendaries: 'LEGENDARY' };
+  const facIds = new Set(canon.factions.map((f) => f.id));
+  Object.keys(CATS).forEach((key) => {
+    canon[key].forEach((it) => {
+      assert.ok(it.n && typeof it.n === 'string', key + ' name');
+      assert.strictEqual(it.cat, CATS[key], key + ' cat ' + it.n);
+      assert.ok(typeof it.d === 'string', key + ' d ' + it.n);
+      assert.strictEqual(typeof it.pc, 'number', key + ' pc ' + it.n);
+      assert.ok(it.faction === null || facIds.has(it.faction), key + ' faction ' + it.n);
+    });
+  });
+});
+
+test('v1.9: legendaries are one weapon + one item per faction', () => {
+  const byFac = {};
+  canon.legendaries.forEach((l) => { byFac[l.faction] = (byFac[l.faction] || 0) + 1; });
+  canon.factions.forEach((f) => {
+    assert.strictEqual(byFac[f.id], 2, 'two legendaries for ' + f.id);
+  });
+});
+
+test('v1.9: faction-null "common" gear exists for shop/altar filtering', () => {
+  assert.ok(canon.weapons.some((w) => w.faction === null), 'common weapons');
+  assert.ok(canon.items.some((i) => i.faction === null), 'common items');
+  assert.ok(canon.abilities.some((a) => a.faction === null), 'common abilities');
+  assert.ok(canon.casts.some((c) => c.faction === null), 'common casts');
+});
+
+test('v1.10: every faction fields the full 5-model roster (100 total)', () => {
+  let total = 0;
+  canon.factions.forEach((f) => {
+    assert.strictEqual(f.models.length, 5, f.id + ' roster size');
+    total += f.models.length;
+  });
+  assert.strictEqual(total, 100, 'full 100-model roster');
+});
+
+test('v1.10: every model has the {n,cls,pc,w,sp,sl} shape and 2/1/1/1 class mix', () => {
+  const CLS = ['Core', 'Assault', 'Flying', 'Armament'];
+  canon.factions.forEach((f) => {
+    const mix = { Core: 0, Assault: 0, Flying: 0, Armament: 0 };
+    f.models.forEach((m) => {
+      assert.ok(m.n && typeof m.n === 'string', f.id + ' model name');
+      assert.ok(CLS.includes(m.cls), f.id + ' class ' + m.cls);
+      ['pc', 'w', 'sp', 'sl'].forEach((k) =>
+        assert.ok(typeof m[k] === 'number' && m[k] >= 0, f.id + ' ' + m.n + ' ' + k));
+      mix[m.cls]++;
+    });
+    assert.deepStrictEqual(mix, { Core: 2, Assault: 1, Flying: 1, Armament: 1 },
+      f.id + ' class composition');
+  });
+});
+
+test('v1.10: Death Guard demo base models survive the roster migration', () => {
+  const dg = canon.factions.find((f) => f.id === 'death_guard');
+  const names = new Set(dg.models.map((m) => m.n));
+  ['Plague Marine', 'Poxwalker', 'Blightlord Terminator', 'Foetid Bloat-Drone']
+    .forEach((n) => assert.ok(names.has(n), 'demo references ' + n));
 });
