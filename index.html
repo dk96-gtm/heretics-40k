@@ -948,8 +948,7 @@ function importSaveText(txt){
 function deleteProfile(){ if(!confirm('Permanently delete this commander from this browser?'))return;
   _noPersist=true;clearProfile();T('Save deleted.');location.reload(); }
 var LS_NPC='heretics_npc_state_v1';
-function saveNPC(){try{localStorage.setItem(LS_NPC,JSON.stringify({npcState:S.npcState,time:S.time}));}catch(e){}}
-function loadNPC(){try{var r=localStorage.getItem(LS_NPC);return r?JSON.parse(r):null;}catch(e){return null;}}
+/* LS_NPC retired — npcState + time now ride the profile save (SAVE core). */
 function seedNPCState(){
   S.npcState=S.npcState||{};
   (D.npcs_alpha||[]).forEach(function(n){
@@ -1917,7 +1916,7 @@ function threadView(V,t){
         if(!t.posts)t.posts=[];
         t.posts.push({who:_npc.name,body:esc(obj.post),tag:'',stamp:nowStamp()});
         NPCAI.applyDelta(st,cmdrId,obj.dossierDelta,Date.now(),{journalCap:12});
-        saveNPC();
+        persist();
         openT(t.id);T(_npc.name.split(' ')[0]+' has spoken.');
       });
     };
@@ -1960,7 +1959,7 @@ if(_hn){
     summonNPC(pseudo,_hn,'social',function(obj,st,cmdrId){
       c.ms.push([_hn.id,esc(obj.post)]);
       NPCAI.applyDelta(st,cmdrId,obj.dossierDelta,Date.now(),{journalCap:12});
-      saveNPC();rComms();T(_hn.name.split(' ')[0]+' answers the hail.');
+      persist();rComms();T(_hn.name.split(' ')[0]+' answers the hail.');
     });
   };
   row.appendChild(_hb);
