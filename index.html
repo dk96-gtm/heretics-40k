@@ -489,7 +489,8 @@ var THREAD=(function(){
     var seed=thread.seedState||{};
     var s={ pools:seed.pools||{}, combatants:seed.combatants||{},
             joined:!!seed.joined, terms:seed.terms||null,
-            transit:null, passage:seed.passage||0 };
+            transit:null, passage:seed.passage||0,
+            board:seed.board||null, phase:seed.phase||null, fog:seed.fog||{} };
     if(thread.type==='TRAVEL'&&seed.transit){
       var tier=seed.transit.tier;
       s.transit={ tier:tier,
