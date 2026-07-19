@@ -14,6 +14,49 @@ in `CLAUDE.md → Multi-Agent Coordination` — read them once per session.
 
 ---
 
+## 🎯 PRIORITY FOCUS — MILESTONE A: PLAYABLE SOLO ALPHA
+
+> **North Star:** a real player can go **title → NEW COMMANDER (Rites) → play → it saves →
+> come back → CONTINUE** — a persistent single-player run on the live URL. Every task on this
+> board is ranked by how directly it moves us to that. When you claim, prefer a higher tier.
+
+**BUILD LAW — no tech debt, leverage what exists.** Every feature must **extend a system we
+already shipped**, not bolt a parallel one beside it. Reuse the pure cores (`LOADOUT` /
+`THREAD` / `WORLD`), the storage-adapter seam (`LocalStore`→`RemoteStore`), `doorCatalog`, the
+galaxy readers (`fPl`/`fLoc`), the living-world tick. If a task tempts a shortcut that will
+need unpicking later, stop and compose with the existing seam instead. Build so Stage-2
+(backend/multiplayer) is a **drop-in at a seam**, never a rewrite.
+
+**Already landed (the hard part of "log in & play"):**
+```
+✓ full-S profile persistence (localStorage serialize/hydrate)   85ee1a6
+✓ title screen — CONTINUE + digest + first-run gating           9b2efb0
+✓ Founding rite → spawns a REAL saved commander                 2e37b3b
+✓ galaxy live at v1.13 (Solar + Pacificus minted)               G1 + G2
+```
+
+**Priority ladder to Milestone A** (claim top-down):
+
+```
+P0 · THE GATE — finish before "playable at all"
+  └─ T-FD1   Front Door polish: Settings · save export/import · demo retirement   (frontdoor, in-progress)
+
+P1 · MAKES SOLO WORTH PLAYING — the world must respond to a lone player
+  ├─ T-NPC-2b  Enemy AI takes combat turns (fights back) — reuse the grid THREAD core, no new surface
+  └─ T-GX-G3/4/5 → T-GX-G6  Author remaining galaxy, then wire holdings→production/taint
+                            so the persistent world ACCUMULATES between sessions (the flywheel)
+
+P2 · DEPTH & FEEL — elevate the loop, extend existing cores only
+  ├─ T-THR-1   Speaker-attributed thread log (core to the play-by-post feel; presentation-only)
+  ├─ T-BF4 / T-BF5   Combat depth (scout sight, deploy respec) — reuse Barracks/Armoury UI
+  └─ T-BF3     Grid config → canon (tunable, zero debt)
+
+DEFER · not blocking the alpha — don't over-invest, don't accrue debt
+  └─ T-ENG-1/2/3 stubs (throne-room, trade escrow, pursuit) · art (wireframe → procedural/leverage, not asset-debt)
+```
+
+---
+
 ## Lane legend
 
 A task's **lane** is the set of files it will touch. Overlapping lanes collide.
