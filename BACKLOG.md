@@ -41,7 +41,6 @@ runs fully parallel). If two tasks both need `index.html`, they serialize — th
 | ID | Task | Lane | Status | Owner · session | Updated | Notes |
 |----|------|------|--------|-----------------|---------|-------|
 | T-FD1 | **Front Door + persistence backbone** — title screen (`CONTINUE` + "while-you-were-away" digest · `NEW COMMANDER` · `SETTINGS`; plain-verb/grimdark skin, **demo retired**), **single active profile** save = full-`S` serialize/hydrate behind a **storage-adapter seam** (`LocalStore` now → `RemoteStore` drop-in later), Settings (AI · save mgmt · export/import · about), and wire the built-but-dead **Founding rite** → `commitFounding(cc)`. Unblocks live accumulation the living-world tick + galaxy both defer as "needs Stage-2 persistence". | 🔥 engine + tests + docs | `in-progress` | frontdoor · sess:ceba401d-bd17-42e8-ba28-878c120b9d89 | 2026-07-20 | 🔥 LANE HELD. Building inline from `docs/superpowers/plans/2026-07-20-front-door-persistence.md` (9 TDD tasks). Pure SAVE core first (tests). Digest relocates to title (idempotent `catchUp`) — flag if living-world mid-edit. |
-| T-BF1 | Wire terrain **cover** into the damage step (`coverMod` written+tested but unapplied; `apply` `kind==='damage'` branch) | 🔥 engine + tests | `ready-to-push` | cover · sess:970009ad-d34c-4f64-9a2d-cd52fc53aac8 | 2026-07-20 | ✅ DONE @ `cf6f266` — `index.html` + `tests/grid-damage.test.js` (4 tests). 🔥 LANE RELEASED. Awaiting Daak push. |
 | T-BF4 | **Scout/aspect sight bonus** — `bfSetup` passes `0`; scan ability slots for scout/recon tag, pass `rules.grid.scout_sight_bonus` | 🔥 engine | `open` | — | — | Small once tag lookup settled; `Scout`/`Stealth` tags exist in GLOSS. |
 | T-BF5 | **Deploy respec drill-in + freeze gating** — deploy tray opens model overview + Armoury equip; gate equip to `phase==='deploy'`, block on `state.locked` | 🔥 engine | `open` | — | — | Medium; reuses Barracks overview + Armoury flow. |
 | T-BF2 | **Board from planet ⊕ location** — replace hardcoded `bfSetup` cfg with `bfBoardCfg(planetType,locationType,canon)` | 🔥 engine | `blocked` | — | — | **Blocked on T-GX galaxy accessors + `location_type.board` hint shape.** Safe default holds meanwhile. |
@@ -62,7 +61,7 @@ runs fully parallel). If two tasks both need `index.html`, they serialize — th
 
 | ID | Task | Lane | Status | Owner · session | Updated | Notes |
 |----|------|------|--------|-----------------|---------|-------|
-| T-GX-G1 | Author **Solar** segmentum planets/locations against the G0 minting contract | canon + tests | `in-progress` | galaxy · sess:406f1b0a-8f6e-4674-95ec-6d43178f11bd | 2026-07-20 | Reference segmentum — validates the contract + template for G2-G5. Contract locked in `galaxy-territory-mint-design.md`. Bump `meta.version`. |
+| T-GX-G1 | Author **Solar** segmentum planets/locations against the G0 minting contract | canon + tests | `ready-to-push` | galaxy · sess:406f1b0a-8f6e-4674-95ec-6d43178f11bd | 2026-07-20 | ✅ commit `3316733` · canon **v1.12** · 10 planets / 34 loc / 3 sectors · 121/121 tests. Reference done — validated the contract (fixed 2 spec errors: locations don't store `doors`; orbital stations allowed). **Template for G2-G5.** |
 | T-GX-G2 | Author **Pacificus** segmentum | canon + tests | `open` | — | — | Same contract; extend `tests/canon.test.js` counts. |
 | T-GX-G3 | Author **Obscurus** segmentum | canon + tests | `open` | — | — | |
 | T-GX-G4 | Author **Tempestus** segmentum | canon + tests | `open` | — | — | |
@@ -116,6 +115,7 @@ Commander in the same thread.
 
 | ID | Task | Merged |
 |----|------|--------|
+| T-BF1 | Wire terrain cover into the damage step (+ `tests/grid-damage.test.js`, 4 tests) | committed `cf6f266` · push pending |
 | — | Battlefield grid slices A–E (engine v18) | shipped |
 | — | Living-world tick + Digest (NPC Slice 2a, canon v1.11) | shipped |
 | — | Catalog migration slices 1–3 (tags/gear/rosters, canon v1.8–v1.10) | shipped |
