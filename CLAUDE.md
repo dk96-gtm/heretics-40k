@@ -3,7 +3,7 @@
 Project context and orientation for anyone (human or AI) working in this repo. Development lives here now; the Notion workspace is a read-only design archive.
 
 **Live:** https://dk96-gtm.github.io/heretics-40k/ · **Repo:** github.com/dk96-gtm/heretics-40k (public)
-**Current state:** engine **v17**, canon **data v1.7** — deployed and running.
+**Current state:** engine **v17**, canon **data v1.10** — deployed and running.
 
 ## What this is
 
@@ -37,6 +37,9 @@ The game = DATA + ENGINE. Nothing else ships.
 - **v1.4 — Travel passage-cost model:** `travel` tiers gain `base` + `words`, a `force_divisor` (250), the finer `same_sector_space` rung, and an explicit Warp-Gate waiver. Passage = `tier.base × (force total PC ÷ force_divisor)`; free through a Warp Gate.
 - **v1.5 — Element-sourced revival + no-revival:** `rules.death.revival_window.windows` retuned to travel time (Physical/Energy 8, Heat/Corrosive/Plasma/Warp 3 — harsh minimum = same-sector ride + 1); a `no_revival` tag set (+ an `Annihilation` forge tag) whose kills are permanent.
 - **v1.7 — Free-form slots + per-element armour:** `rules.loadout` (universal player-typed slots — no fixed weapon/item/ability split), `rules.growth.slot_gains_by_rank` (numeric slot growth), `rules.armour` (per-element Defense; a hit deals `max(0, dmg − def[element])`, corrosive-bypass expressed as data), a galaxy-wide `armour` catalog (143 pieces: 20 factions × class defaults + Light/Med/Heavy ladders + universal baseline), a 12th **Armoury** door, and a Forge `armour_upgrade` path (+1 Defense/element per tier I–III).
+- **v1.8 — Tag Registry (migration slice 1):** full 48-tag registry → `D.tags` (weapon 22 / item 11 / cast-gate 7 + mechanics), plus `D.equipment_alpha.forge_affinities` (per-faction weapon-tag affinity for all 20 factions; Black Legion = `["ALL"]`). Engine wired: GLOSS tooltips for every tag, `parseItem` recognises the full tag set, Forge offers the full weapon-tag list gated by faction affinity.
+- **v1.9 — Gear catalogs (migration slice 2):** the four standard-gear catalogs migrated out of Notion into canon, in the `parseItem` `{n,cat,d,pc,faction}` grammar — `D.weapons` (102), `D.items` (75), `D.abilities` (67), `D.casts` (71), `D.legendaries` (40 = one legendary weapon + one item per faction). Wired live: `doorCatalog()` draws from these, filtered to player faction + faction-null "common" — shop = weapons+items+abilities, altar = casts, reliquary = the LEGENDARY entries. The old 6-item `shop_catalog` stub is retired (the key remains in canon, unread).
+- **v1.10 — Full model rosters (migration slice 3):** replaced the 60-model deployed "alpha" (3/faction) with the full designed rosters — **100 models, 5/faction** (canonical 2 Core / 1 Assault / 1 Flying / 1 Armament). First canon appearance of the Armament class in a faction roster (deltas + slot growth already cover it). Model shape unchanged (`{n,cls,pc,w,sp,sl}`; AP is derived from `pc`). No engine change: the Death Guard demo commander's save-state base models all survive with identical stats.
 - Alpha galaxy: Vigilus Sector, Pallid Reach, Kraith Drift populated; rest sealed. Travel ladder + Travel-Thread arrival. Alpha equipment + forge tags. (No planet has a charted Warp-Gate/webway location yet — free gate travel is plumbed but has no destinations until portals are minted.)
 
 ## What the ENGINE does (built across v6 → v16)
@@ -79,12 +82,8 @@ The previously-parked **unified thread flow** design question is now RESOLVED an
 
 ## Still un-migrated from Notion (canon not yet extracted)
 
-The full catalogs still live only on the Notion archive and have NOT been pulled into the data file:
-- Full 5-model rosters (100 statted models) — "Base Model Rosters"
-- ~100 weapons + Tag Registry + Named/Legendary — "Tags" / "Basic Weapons" / "Named Weapons"
-- Full items (75) + abilities (55) — "Basic Items" / "Named & Legendary Items" / "Abilities"
-- Full casts (8 families) — "Warp Casting"
-- Minted planets / populated map / territory ownership — "Galaxy & Territory — v1"
+The gear catalogs, tag registry and full model rosters are now migrated (canon v1.8–v1.10 — see "What is IN canon"). What still lives only on the Notion archive:
+- Minted planets / populated map / territory ownership — "Galaxy & Territory — v1" (migration slices 4–6, not yet started)
 
 ## Notion archive pointers
 
