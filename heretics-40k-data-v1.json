@@ -4110,6 +4110,175 @@
           "status": null
          }
         ]
+       },
+       {
+        "id": "grymholddeep",
+        "name": "Grymhold Deep",
+        "status": "Peace",
+        "owner": "Xenos - Leagues of Votann",
+        "space": {
+         "id": "grymspace",
+         "name": "The Deep-Lanes",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "Cold, resource-rich void the Kin have mined for ten thousand years, their mining-fleets grinding through the dark."
+        },
+        "planets": [
+         {
+          "id": "grymhold",
+          "name": "Grymhold",
+          "type": "Kin Hold",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Leagues of Votann"
+          },
+          "desc": "The ancestral kin-hold of the Deep — a hollowed moon-vault where the Ancestor Cores keep the League's memory.",
+          "locations": [
+           {
+            "id": "grymholdorbit",
+            "name": "Grymhold — Void Docks",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Kin mining-fleet 'Deepdelver'"
+            ],
+            "desc": "A vault-orbit of ore-cradles and armoured freighters."
+           },
+           {
+            "id": "grymholdcrown",
+            "name": "The Hall of Ancestor Cores",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Where the Kindred's judges rule and the ancestral memory is kept.",
+            "door_names": {
+             "throne_room": "The Hall of Ancestor Cores"
+            }
+           },
+           {
+            "id": "grymholdmek",
+            "name": "The Grand Karlgarr",
+            "type": "mek_shop",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The kin-hold's master workshop — void-suits and bolt-guns beyond mon-keigh craft."
+           },
+           {
+            "id": "grymholdcity",
+            "name": "Vault-City Undern",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A sealed sub-surface city of hab-vaults and brew-halls."
+           }
+          ],
+          "resources": 104,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "ymir",
+          "name": "Ymir Lode",
+          "type": "Mining World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Leagues of Votann"
+          },
+          "desc": "A frozen ore-moon the Kin have honeycombed to its core.",
+          "locations": [
+           {
+            "id": "ymirorbit",
+            "name": "Ymir Lode — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Ore-barge line"
+            ],
+            "desc": "An orbit of drifting slag and patient ore-barges."
+           },
+           {
+            "id": "ymirmek",
+            "name": "The Cutting-Floor",
+            "type": "mek_shop",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Where raw lode is rendered into ingots and machine-parts."
+           },
+           {
+            "id": "ymircity",
+            "name": "Pressure-Hab Nord",
+            "type": "city",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A hardy under-ice settlement of miner-kin."
+           }
+          ],
+          "resources": 68,
+          "status": null
+         },
+         {
+          "id": "borehold",
+          "name": "Borehold Kalt",
+          "type": "Dead World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Leagues of Votann"
+          },
+          "desc": "A burnt-out world the Kin strip for rare metals, working it down to the mantle.",
+          "locations": [
+           {
+            "id": "boreholdorbit",
+            "name": "Borehold Kalt — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Salvage-tug pack"
+            ],
+            "desc": "A bleak orbit over a dead grey ball, dotted with strip-mine rigs."
+           },
+           {
+            "id": "boreholdoutpost",
+            "name": "Deep-Bore Station Kalt",
+            "type": "military_outpost",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "An armoured pithead driving into the dead world's heart."
+           },
+           {
+            "id": "boreholdcity",
+            "name": "Rig-Town",
+            "type": "city",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A temporary hab-sprawl that has stood for four centuries."
+           }
+          ],
+          "resources": 44,
+          "status": null
+         }
+        ]
        }
       ]
      },
