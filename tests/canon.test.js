@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.7', () => {
-  assert.strictEqual(canon.meta.version, '1.7');
+test('canon is v1.8', () => {
+  assert.strictEqual(canon.meta.version, '1.8');
 });
 
 test('v1.7: numeric slot growth is present for every class', () => {
@@ -90,7 +90,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.7');
+  assert.equal(canon.meta.version, '1.8');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -126,4 +126,22 @@ test('canon: every placed NPC has a persona and behavior_seed', () => {
       assert.ok(b[ax].floor <= b[ax].value && b[ax].value <= b[ax].ceiling, n.id + ' ' + ax + ' in range');
     });
   });
+});
+
+test('v1.8: tag registry migrated (weapon 22, item 11, cast_gate 7)', () => {
+  const t = canon.tags;
+  assert.ok(t, 'D.tags present');
+  assert.strictEqual(t.weapon.length, 22, 'weapon tags');
+  assert.strictEqual(t.item.length, 11, 'item tags');
+  assert.strictEqual(t.cast_gate.length, 7, 'cast-gate tags');
+  t.weapon.forEach((w) => assert.ok(w.tag && w.mechanic, 'weapon tag shape ' + w.tag));
+});
+
+test('v1.8: forge affinities cover all 20 factions', () => {
+  const aff = canon.equipment_alpha.forge_affinities;
+  assert.ok(aff, 'forge_affinities present');
+  canon.factions.forEach((f) => {
+    assert.ok(Array.isArray(aff[f.id]) && aff[f.id].length, 'affinity for ' + f.id);
+  });
+  assert.deepStrictEqual(aff.black_legion, ['ALL'], 'Black Legion broad access');
 });

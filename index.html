@@ -573,6 +573,7 @@ var THREAD=(function(){
           if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
           else{var Wd=RWd.windows||{};c.revivalWindow=(e.element&&Wd[e.element])||Wd.Physical||3;c.permaDeath=false;}}}
       else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
+      else if(e.kind==='move'){var mw=state.combatants[e.who];if(mw&&e.to){mw.x=e.to.x;mw.y=e.to.y;}}
       else if(e.kind==='cond'&&c){c.conds=c.conds||[];c.conds.push(e.add);}
       else if(e.kind==='slay'&&c){c.dead=true;c.intact=!!e.intact;c.killElement=e.element||null;
         var RW=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
@@ -1566,8 +1567,10 @@ function bfSetup(t){
   ids.forEach(function(id){var c=C[id],z=zoneOf[c.party]||board.zones.A,k=n[c.party]=(n[c.party]||0);
     c.x=(c.party===parties[0])?z.x1:z.x0;           // inner edge of the party's zone
     c.y=Math.min(z.y1,1+k*2);n[c.party]=k+1;
-    c.sight=THREAD.sightOf(bfWeaponBand(c)||c.band||'MEDIUM',0);});
+    c.sight=THREAD.sightOf(bfWeaponBand(c)||c.band||'MEDIUM',0);
+    c.spd=(c.model&&(c.model.spd||c.model.speed))||3;});
   t.state.board=board;t.state.phase='battle';        // interactive blind deploy is Slice E
+  t.state.poolsBase={};for(var p in (t.state.pools||{}))t.state.poolsBase[p]=t.state.pools[p];  // for per-turn AP refresh
 }
 function bfBoardEl(t,party){
   var st=t.state,board=st.board,W=board.w,H=board.h;
@@ -1923,6 +1926,38 @@ var GLOSS={
  'Rapid':function(t){t=t||1;return 'Fires '+t+' extra attack'+(t>1?'s':'')+' at Short range (tier '+t+').'},
  'Venting':function(t){t=t||1;return 'Overheats — wielder takes '+t+' backlash damage, or must cool down '+t+' post'+(t>1?'s':'')+' after firing.'},
  'Regen':function(t){t=t||1;return 'Regenerates '+t+' wound'+(t>1?'s':'')+' each post while active (tier '+t+').'},
+ 'Slowing':function(t){t=t||1;return 'Hit target loses '+t+' Speed on its next post (tier '+t+').'},
+ 'Draining':function(t){t=t||1;return 'Hit target loses '+t+' AP (tier '+t+').'},
+ 'Leech':function(t){t=t||1;return 'Wielder heals '+t+' wound'+(t>1?'s':'')+' per damaging hit (tier '+t+').'},
+ 'Reclaim':function(t){t=t||1;return 'On a kill, wielder heals '+t+' wound'+(t>1?'s':'')+' (tier '+t+').'},
+ 'Refund':function(t){t=t||1;return 'On a kill, refund '+t+' AP (tier '+t+').'},
+ 'Momentum':function(t){t=t||1;return '+1 damage per consecutive post attacking, capped at +'+t+' (tier '+t+').'},
+ 'Slayer':function(t){t=t||1;return '+'+t+' damage vs models carrying the stated tag (tier '+t+').'},
+ 'Ambush':function(t){t=t||1;return '+'+t+' damage when attacking from Stealth (tier '+t+').'},
+ 'Grudge':function(t){t=t||1;return '+'+t+' damage vs Forces that damaged yours this thread (tier '+t+').'},
+ 'Shield':function(t){t=t||1;var v=[0,1,2,4][t]||t;return 'Absorbs the next '+v+' damage, then depleted for the thread (tier '+t+').'},
+ 'Ward':function(t){t=t||1;return 'Reduces incoming damage of one element by '+t+' (tier '+t+').'},
+ 'Decoy':function(t){t=t||1;return 'The next '+t+' attack'+(t>1?'s':'')+' that would hit the bearer miss (tier '+t+').'},
+ 'Marked':function(t){t=t||1;return 'Target is marked — your Force deals +'+t+' damage to it (tier '+t+').'},
+ 'Rally':function(t){t=t||1;return 'Allied models in the Force deal +'+t+' damage on their next post (tier '+t+').'},
+ 'Reach':'Melee weapon that strikes out to Short range.',
+ 'Guided':'Ignores the Stealth tag — can target hidden models.',
+ 'First Strike':'Resolves before the target can respond.',
+ 'Overcharge':'May add +1 damage; the weapon gains Venting 1 that post.',
+ 'Bypass':'Ignores the immunities and defences of the stated tag.',
+ 'Dual-profile':'Two statlines on one weapon — choose which per action.',
+ 'Free Move':'On a kill, the wielder makes a free move.',
+ 'Cleanse':'Removes all DoT and status tags (self / touch / Force-wide by tier).',
+ 'Revive':'Returns a slain model to the thread at 1 wound.',
+ 'Blink':'Reposition anywhere in the location without spending a move action.',
+ 'Immunity':'Bearer is unaffected by the stated tag.',
+ 'Charging':'+1 damage on melee attacks this post (granted by a Charge action).',
+ 'Injured':'Below half wounds — reduced to 2 actions per post.',
+ 'Critical':'Badly wounded — reduced to 1 action per post.',
+ 'Psyker':'May slot Warp Casts.',
+ 'Leader':'May lead a Force — inherent to Commanders; granted to a Named by dispatched AP.',
+ 'Grouped':'Carried by every model currently in a Force.',
+ 'Stealth':'Hidden — interacts with Guided, Ambush, and detection rules.',
  'Effortless':'Costs only the model own AP — no equipment AP modifier is added.',
  'Unwieldy':'Heavy — costs +1 AP and cannot be used the post after moving.',
  'Suppressing':'Pins the target: it loses 1 action on its next post.',
@@ -1949,7 +1984,7 @@ function parseItem(it){var d=(it.d||''),parts=d.split(/\s*[-·+]\s*/).map(functi
   if(m=p.match(/^(\d+)\s*AP$/i)){out.ap=m[1]+' AP';return}
   if(/^effortless$/i.test(p)){out.ap='Effortless (model AP only)';return}
   if(m=p.match(/^R(\d)$/i)){out.rank=m[1];return}
-  if(m=p.match(/^(DoT|Multihit|Rapid|Venting|Regen|Suppressing|Unwieldy|Consumable|Stimm)\s*(I{1,3}|IV|V|\d+)?$/i)){var tv=m[2]||'';var roman=/^\d+$/.test(tv)?['','I','II','III','IV','V'][parseInt(tv,10)]||tv:tv.toUpperCase();out.tags.push({tag:cap(m[1]),tier:roman});return}
+  if(m=p.match(/^(DoT|Multihit|Rapid|Venting|Regen|Suppressing|Unwieldy|Consumable|Stimm|Slowing|Draining|Leech|Reclaim|Refund|Momentum|Ambush|Grudge|Guided|Reach|First Strike|Free Move|Overcharge|Bypass|Shield|Ward|Decoy|Blink|Immunity|Marked|Rally|Cleanse|Revive|Charging|Injured|Critical)\s*(I{1,3}|IV|V|\d+)?$/i)){var tv=m[2]||'';var roman=/^\d+$/.test(tv)?['','I','II','III','IV','V'][parseInt(tv,10)]||tv:tv.toUpperCase();out.tags.push({tag:cap(m[1]),tier:roman});return}
   out.notes.push(p)});
  return out}
 function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
@@ -2189,7 +2224,9 @@ function renderForge(c,dr){
  c.insertAdjacentHTML('beforeend','<label class="f">Weapon to modify</label>');
  var bs=E('select');bs.style.cssText='width:100%';ws.forEach(function(x,i){bs.add(new Option(x.n+' — '+x.d,i))});c.appendChild(bs);
  c.insertAdjacentHTML('beforeend','<label class="f">Affinity tag</label>');var tw=E('div');c.appendChild(tw);
- var tags=D.equipment_alpha.forge_tags_alpha.map(function(t){return{t:t.tag,c:t.cost,d:t.d,lk:t.access!=='open'&&!(t.access.indexOf('Drukhari')>=0&&S.dru),rq:'requires '+t.access}});
+ var _aff=(D.equipment_alpha.forge_affinities&&D.equipment_alpha.forge_affinities[S.player.faction])||[],_affAll=_aff.indexOf('ALL')>=0;
+ var tags=((D.tags&&D.tags.weapon)||[]).filter(function(t){return t.forge_cost!=null&&t.forgeable!==false}).map(function(t){var open=_affAll||_aff.indexOf(t.tag)>=0;return{t:t.tag,c:t.forge_cost,d:t.mechanic,lk:!open,rq:'not your forge affinity — needs an allied '+t.tag+'-forge'}});
+ (D.equipment_alpha.forge_tags_alpha||[]).forEach(function(t){if(!tags.some(function(x){return x.t===t.tag})){tags.push({t:t.tag,c:t.cost,d:t.d,lk:t.access!=='open'&&!(t.access.indexOf('Drukhari')>=0&&S.dru),rq:'requires '+t.access})}});
  var st=tags[0];
  tags.forEach(function(t){var d=E('div','tg'+(t===st?' sel':'')+(t.lk?' lk':''),'<span data-tip="<b>'+t.t+'</b> — '+t.d+'">'+t.t+' — '+t.d+'</span>'+(t.lk?'<span class="rq">'+t.rq+'</span>':'<span class="mono">+'+t.c+'</span>'));
   if(!t.lk)d.onclick=function(){st=t;tw.querySelectorAll('.tg').forEach(function(x){x.classList.remove('sel')});d.classList.add('sel');pr()};tw.appendChild(d)});
