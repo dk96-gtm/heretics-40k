@@ -928,10 +928,25 @@ function hasProfile(){return !!STORE.get(PROFILE_KEY);}
 function loadProfile(){return STORE.get(PROFILE_KEY);}
 function saveProfile(s){return STORE.set(PROFILE_KEY,SAVE.snapshot(s||S));}
 function clearProfile(){STORE.del(PROFILE_KEY);}
-var _persistT=null;
+var _persistT=null,_noPersist=false;
 function persist(){ if(_persistT)clearTimeout(_persistT);
   _persistT=setTimeout(function(){_persistT=null;saveProfile(S);},800); }
-try{window.addEventListener('beforeunload',function(){if(S&&S.player)saveProfile(S);});}catch(e){}
+try{window.addEventListener('beforeunload',function(){if(!_noPersist&&S&&S.player)saveProfile(S);});}catch(e){}
+function exportSave(){
+  if(!hasProfile()){T('No save to export.');return;}
+  var blob=STORE.get(PROFILE_KEY),nm=((blob.player&&blob.player.name)||'commander').split(',')[0].replace(/\W+/g,'_');
+  var a=document.createElement('a');
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(blob,null,2));
+  a.download='heretics_'+nm+'.json';document.body.appendChild(a);a.click();a.remove();T('Save exported.');
+}
+function importSaveText(txt){
+  try{var blob=JSON.parse(txt);
+    if(!blob||!blob.player||!blob.roster)throw new Error('not a Heretics save');
+    _noPersist=true;STORE.set(PROFILE_KEY,blob);T('Save imported. Reloading…');location.reload();
+  }catch(e){T('Import failed: '+e.message);}
+}
+function deleteProfile(){ if(!confirm('Permanently delete this commander from this browser?'))return;
+  _noPersist=true;clearProfile();T('Save deleted.');location.reload(); }
 var LS_NPC='heretics_npc_state_v1';
 function saveNPC(){try{localStorage.setItem(LS_NPC,JSON.stringify({npcState:S.npcState,time:S.time}));}catch(e){}}
 function loadNPC(){try{var r=localStorage.getItem(LS_NPC);return r?JSON.parse(r):null;}catch(e){return null;}}
@@ -951,15 +966,28 @@ function aiModel(){try{return localStorage.getItem(LS_MODEL)||(D.ai&&D.ai.model)
 function openSettings(){mkEntity();
   var models=['claude-sonnet-5','claude-opus-4-8','claude-haiku-4-5'],cur=aiModel();
   ENT.innerHTML='<div class="entc"><div class="entb">'
-   +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>AI Settings</h3><button class="movbk" id="entx">Close</button></div>'
+   +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>Settings</h3><button class="movbk" id="entx">Close</button></div>'
+   +'<h4 style="margin:6px 0;color:var(--dim);font-size:11px;letter-spacing:.1em">AI</h4>'
    +'<div class="entrow"><div class="k">Anthropic API key</div><div class="vv"><input id="aikey" type="password" style="width:100%" value="'+esc(aiKey())+'" placeholder="sk-ant-…"></div></div>'
    +'<div class="entrow"><div class="k">Model</div><div class="vv"><select id="aimodel">'+models.map(function(m){return '<option'+(m===cur?' selected':'')+'>'+m+'</option>';}).join('')+'</select></div></div>'
    +'<div style="font-size:11px;color:var(--dim)">Stored only in this browser and sent directly to Anthropic — it never leaves your machine except to the API. You pay for your own usage.</div>'
    +'<div style="display:flex;gap:8px;margin-top:8px"><button class="btn sm" id="aisave">Save</button><button class="btn gh sm" id="aiclear">Clear key</button></div>'
+   +'<div style="border-top:1px solid var(--br);margin:14px 0 8px"></div><h4 style="margin:6px 0;color:var(--dim);font-size:11px;letter-spacing:.1em">SAVE</h4>'
+   +'<div style="font-size:11px;color:var(--dim);margin-bottom:6px">One commander per browser. Export to back up or move it; New Commander replaces the current one.</div>'
+   +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn gh sm" id="svexp">⬇ Export</button><button class="btn gh sm" id="svimp">⬆ Import</button><button class="btn gh sm" id="svret">⌂ Title</button><button class="btn bl sm" id="svdel">✕ Delete</button></div>'
+   +'<input id="svfile" type="file" accept=".json" style="display:none">'
+   +'<div style="border-top:1px solid var(--br);margin:14px 0 8px"></div><h4 style="margin:6px 0;color:var(--dim);font-size:11px;letter-spacing:.1em">ABOUT</h4>'
+   +'<div style="font-size:11px;color:var(--dim)">Canon '+D.meta.version+' · engine v18 · local sandbox. Your game is saved in this browser.</div>'
    +'</div></div>';
   document.getElementById('entx').onclick=function(){ENT.classList.remove('on');};
   document.getElementById('aisave').onclick=function(){try{localStorage.setItem(LS_KEY,document.getElementById('aikey').value.trim());localStorage.setItem(LS_MODEL,document.getElementById('aimodel').value);}catch(e){}T('AI settings saved.');ENT.classList.remove('on');};
   document.getElementById('aiclear').onclick=function(){try{localStorage.removeItem(LS_KEY);}catch(e){}document.getElementById('aikey').value='';T('Key cleared.');};
+  document.getElementById('svexp').onclick=exportSave;
+  document.getElementById('svdel').onclick=deleteProfile;
+  document.getElementById('svret').onclick=function(){ENT.classList.remove('on');if(S&&S.player)saveProfile(S);location.reload();};
+  var _fi=document.getElementById('svfile');
+  document.getElementById('svimp').onclick=function(){_fi.click();};
+  _fi.onchange=function(){var f=_fi.files[0];if(!f)return;var r=new FileReader();r.onload=function(){importSaveText(r.result);};r.readAsText(f);};
   ENT.classList.add('on');
 }
 function threadNPC(t){
