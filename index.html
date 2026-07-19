@@ -908,6 +908,23 @@ var SAVE=(function(){
 })();
 /*</save-core>*/
 /* ---- AI engine (impure: localStorage, fetch, DOM — CALLS the pure NPCAI core) ---- */
+/* ---- persistence shell (impure: localStorage; CALLS the pure SAVE core) ---- */
+var PROFILE_KEY='heretics_profile_v1';
+var LocalStore={
+  get:function(k){try{var r=localStorage.getItem(k);return r?JSON.parse(r):null;}catch(e){return null;}},
+  set:function(k,o){try{localStorage.setItem(k,JSON.stringify(o));return true;}catch(e){return false;}},
+  del:function(k){try{localStorage.removeItem(k);}catch(e){}},
+  keys:function(){try{var a=[];for(var i=0;i<localStorage.length;i++)a.push(localStorage.key(i));return a;}catch(e){return [];}}
+};
+var STORE=LocalStore;                    // swap point: RemoteStore drops in here later
+function hasProfile(){return !!STORE.get(PROFILE_KEY);}
+function loadProfile(){return STORE.get(PROFILE_KEY);}
+function saveProfile(s){return STORE.set(PROFILE_KEY,SAVE.snapshot(s||S));}
+function clearProfile(){STORE.del(PROFILE_KEY);}
+var _persistT=null;
+function persist(){ if(_persistT)clearTimeout(_persistT);
+  _persistT=setTimeout(function(){_persistT=null;saveProfile(S);},800); }
+try{window.addEventListener('beforeunload',function(){if(S&&S.player)saveProfile(S);});}catch(e){}
 var LS_NPC='heretics_npc_state_v1';
 function saveNPC(){try{localStorage.setItem(LS_NPC,JSON.stringify({npcState:S.npcState,time:S.time}));}catch(e){}}
 function loadNPC(){try{var r=localStorage.getItem(LS_NPC);return r?JSON.parse(r):null;}catch(e){return null;}}

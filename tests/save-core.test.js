@@ -60,3 +60,19 @@ test('relink tolerates a combatant with no matching roster id', () => {
   assert.doesNotThrow(() => SAVE.relink(loaded));
   assert.strictEqual(loaded.threads[0].state.combatants.ghost.model, undefined);
 });
+
+test('a snapshot round-trips through an in-memory store unchanged', () => {
+  const { S } = fixtureS();
+  const mem = {};
+  const MockStore = {
+    get: (k) => (k in mem ? JSON.parse(mem[k]) : null),
+    set: (k, o) => { mem[k] = JSON.stringify(o); },
+    del: (k) => { delete mem[k]; },
+    keys: () => Object.keys(mem),
+  };
+  MockStore.set('heretics_profile_v1', SAVE.snapshot(S));
+  const back = MockStore.get('heretics_profile_v1');
+  assert.strictEqual(back.player.name, 'Kane');
+  assert.strictEqual(back.threads[0].state.combatants.kane.model, undefined);
+  assert.deepStrictEqual(MockStore.keys(), ['heretics_profile_v1']);
+});
