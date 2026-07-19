@@ -1567,8 +1567,11 @@ function bfSetup(t){
   ids.forEach(function(id){var c=C[id],z=zoneOf[c.party]||board.zones.A,k=n[c.party]=(n[c.party]||0);
     c.x=(c.party===parties[0])?z.x1:z.x0;           // inner edge of the party's zone
     c.y=Math.min(z.y1,1+k*2);n[c.party]=k+1;
-    c.sight=THREAD.sightOf(bfWeaponBand(c)||c.band||'MEDIUM',0);});
-  t.state.board=board;t.state.phase='battle';        // interactive blind deploy is Slice E
+    c.sight=THREAD.sightOf(bfWeaponBand(c)||c.band||'MEDIUM',0);
+    c.spd=(c.model&&(c.model.spd||c.model.speed))||3;});
+  t.state.board=board;t.state.phase='deploy';        // Slice E: blind deploy first, then Lock In → battle
+  t.state.zones=zoneOf;                              // party → its deployment-zone rect
+  t.state.poolsBase={};for(var p in (t.state.pools||{}))t.state.poolsBase[p]=t.state.pools[p];  // for per-turn AP refresh
 }
 /* Slice D3: the board IS the action composer for grid combat — select a
    model → reachable squares → click to stage a free Move; click a spotted
@@ -1584,6 +1587,46 @@ function bfStaged(t){
   Object.keys(ui.moves).forEach(function(id){out.push({actor:id,action:bfTag(id,C[id])+' Move → '+bfCellLabel(ui.moves[id]),cost:0,effect:{kind:'move',who:id,to:ui.moves[id]}});});
   (ui.acts||[]).forEach(function(a){out.push(a);});
   return out;
+}
+/* Slice E: blind deployment — set your line in your own zone (enemy hidden),
+   then Lock In freezes loadout + roster and starts the battle. */
+function bfDeployUI(t,party){
+  var st=t.state,board=st.board,W=board.w,H=board.h,C=st.combatants;
+  var ui=t._bfd=t._bfd||{sel:null};
+  var zone=(st.zones&&st.zones[party])||board.zones.A;
+  function inZone(x,y){return x>=zone.x0&&x<=zone.x1&&y>=zone.y0&&y<=zone.y1;}
+  function inEnemyZone(x,y){for(var pn in (st.zones||{})){if(pn===party)continue;var z=st.zones[pn];if(x>=z.x0&&x<=z.x1&&y>=z.y0&&y<=z.y1)return true;}return false;}
+  function myAt(x,y){var r=null;Object.keys(C).forEach(function(id){if(C[id].party===party&&C[id].x===x&&C[id].y===y)r=id;});return r;}
+  function occupied(x,y){return Object.keys(C).some(function(id){return C[id].x===x&&C[id].y===y;});}
+  function placeable(x,y){var tk=board.tiles[y*W+x].t;return inZone(x,y)&&!occupied(x,y)&&tk!=='mtn'&&tk!=='fort';}
+  var GL={open:'·',forest:'♣',ruins:'▓',mtn:'▲',fort:'█'},CL={forest:'bf-forest',ruins:'bf-ruins',mtn:'bf-mtn',fort:'bf-fort'};
+  var mine=Object.keys(C).filter(function(id){return C[id].party===party;});
+  var placed=mine.filter(function(id){return C[id].x!=null;}).length;
+  var bh='<div class="bf-board" style="grid-template-columns:repeat('+W+',31px)">';
+  for(var y=0;y<H;y++)for(var x=0;x<W;x++){
+    var tk=board.tiles[y*W+x].t,cls='bf-cell '+(CL[tk]||''),inner=GL[tk]==='·'?'':GL[tk],tok='';
+    if(inZone(x,y))cls+=' bf-zone'+(ui.sel&&placeable(x,y)?' bf-reach':'');
+    if(inEnemyZone(x,y)){cls+=' bf-fog';inner='?';}
+    var mid=myAt(x,y);if(mid)tok='<span class="bf-tok bf-mine'+(ui.sel===mid?' sel':'')+'" data-dm="'+mid+'">'+bfTag(mid,C[mid])+'</span>';
+    bh+='<div class="'+cls+'" data-dx="'+x+'" data-dy="'+y+'">'+inner+tok+'</div>';
+  }
+  bh+='</div>';
+  var panel='<div class="bf-panel"><div class="bf-blk"><h4>Deployment · blind</h4>'+
+    '<div class="bf-ro">Set your line in <b style="color:var(--vdh)">your zone</b> — the enemy deploys hidden. Click a model, then a lit tile to reposition it. This is the last chance to refit loadout before it locks.</div>'+
+    '<div class="bf-tray">'+mine.map(function(id){var c=C[id];return '<div class="bf-tm'+(c.x!=null?' done':'')+(ui.sel===id?' next':'')+'"><span data-dm="'+id+'"><b>'+bfTag(id,c)+'</b> '+(c.model?c.model.n:id)+'</span><span class="mono">@'+(c.x!=null?bfCellLabel({x:c.x,y:c.y}):'—')+'</span></div>';}).join('')+'</div>'+
+    '<div class="bf-ro">Placed <b>'+placed+' / '+mine.length+'</b></div>'+
+    '<button class="btn" data-lockin'+(placed<mine.length?' disabled':'')+'>Lock in line ▸</button></div></div>';
+  var el=E('div','card');
+  el.innerHTML='<h3>Battlefield · Deployment · '+party+'</h3><div class="bf-wrap">'+bh+panel+'</div>';
+  el.addEventListener('click',function(ev){
+    var b=ev.target.closest('[data-dm],[data-dx],[data-lockin]');if(!b)return;
+    if(b.hasAttribute('data-lockin')){st.phase='battle';st.locked={loadout:true};t._bfd=null;
+      T('Lines locked — battle begins. Loadout & roster frozen until it ends.');return openT(t.id);}
+    if(b.hasAttribute('data-dm')){ui.sel=(ui.sel===b.getAttribute('data-dm'))?null:b.getAttribute('data-dm');return openT(t.id);}
+    if(b.hasAttribute('data-dx')){var x=+b.getAttribute('data-dx'),y=+b.getAttribute('data-dy');
+      if(ui.sel&&placeable(x,y)){C[ui.sel].x=x;C[ui.sel].y=y;return openT(t.id);}}
+  });
+  return el;
 }
 function bfCombatUI(t,party){
   var st=t.state,board=st.board,W=board.w,H=board.h,C=st.combatants;
@@ -1704,7 +1747,7 @@ function threadView(V,t){
       if(t.state.poolsBase&&t.state.poolsBase[party]!=null)t.state.pools[party]=t.state.poolsBase[party];}
     openT(t.id);T('Posted to '+t.n+'.');};
   if(isCombat){
-    if(t.state.board)V.appendChild(bfCombatUI(t,party));   // Slice D3: interactive board = the action composer
+    if(t.state.board)V.appendChild(t.state.phase==='deploy'?bfDeployUI(t,party):bfCombatUI(t,party));  // E: deploy then D3 battle
     var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);lf.appendChild(comp.el);
     wrap.appendChild(lf);wrap.appendChild(threadSidebar(t));V.appendChild(wrap);
   }else{
