@@ -2018,7 +2018,7 @@ if(RS.st===3&&c.md===null){T('Choose a model.');return}
 if(RS.st===4&&c.pk.length<2){T('Choose two origins.');return}
 if(RS.st===5){if(c.ap===null){T('Choose your reflection.');return}if(c.ap===F.appearances.length&&!c.apT.trim()){T('Describe yourself, or choose.');return}}
 if(RS.st===last){if(!c.nm.trim()){T('The name must be spoken.');return}
-RB.classList.remove('on');T(c.nm.trim()+' awakens. The first thread begins.');go('threads');return}}
+RB.classList.remove('on');commitFounding(c);return}}
 else{if(RS.st===0&&RS.nm.md===null){T('Choose the one who rises.');return}
 if(RS.st===last){if(!RS.nm.name.trim()){T('The name must be spoken.');return}
 if(RS.nm.pk.length<2){T('Choose two origins.');return}
@@ -2088,6 +2088,36 @@ function enterShell(S){
  var _gear=E('button','btn gh sm','⚙ AI');_gear.style.cssText='position:fixed;right:12px;bottom:12px;z-index:60';_gear.onclick=openSettings;document.body.appendChild(_gear);
  saveProfile(S);
  renderDigest();
+}
+/* the built-but-dead Founding rite finally spawns a real, saved commander */
+function commitFounding(cc){
+ var A=AK[cc.al],F=FACS(A)[cc.fa],m=F.models[cc.md];
+ var cd=D.rules.deltas.commander[m.cls]||{w:0,sp:0,sl:0};
+ var w=m.w+cd.w,sp=m.sp+cd.sp,sl=m.sl+cd.sl,eco=D.rules.economy.founding_start,cur=eco.currency,tags=['Leader','Commander'];
+ cc.pk.forEach(function(i){var fx=F.origin_perks[i][1];if(fx==='w')w++;if(fx==='sp')sp++;if(fx==='sl')sl++;if(fx==='cur')cur+=250;if(fx==='psy')tags.push('Psyker');if(fx==='dem')tags.push('DEMON');});
+ var cmdrPc=Math.round(m.pc*D.rules.premiums.commander_pc_multiplier);
+ function emptySl(n){var a=[];for(var i=0;i<n;i++)a.push({k:null,it:null});return a;}
+ var commander={id:'cmdr',n:cc.nm.trim(),tag:tags.join(' · '),cls:m.cls,rk:1,pc:cmdrPc,w:w+'/'+w,st:'GARRISON',loc:'—',fo:'The Founding',sub:m.n+' — R1 — '+sl+' slots',spd:sp,sl:emptySl(sl)};
+ var base=F.models.filter(function(x,ix){return ix!==cc.md;}).slice(0,2).map(function(bm,ix){
+  return {id:'fm'+ix,n:bm.n+' '+(ix+1),tag:'',cls:bm.cls,rk:1,pc:bm.pc,w:bm.w+'/'+bm.w,st:'GARRISON',loc:'—',fo:'The Founding',sub:bm.n+' — R1',spd:bm.sp,sl:emptySl(bm.sl)};
+ });
+ var roster=[commander].concat(base);
+ roster.forEach(function(mm){migrateLoadout(mm,F.id);});
+ S={
+  player:{name:cc.nm.trim(),allegiance:A,faction:F.id,model:m.n,cmdRank:1,mdlRank:1,w:w+'/'+w,xp:'0/40'},
+  pos:{pl:'vigilus',sp:'ashravine'},tr:null,   // Pass 2: seed faction homeworld
+  cur:cur,infl:eco.influence,army:0,dom:eco.dominance,dru:false,vess:false,
+  ships:{sys:null,warp:null},inv:[],convos:[],
+  roster:roster,
+  forces:[{id:'founding',n:'The Founding',lead:'cmdr',ap:26}],
+  succ:[{n:commander.n,fid:'founding'}],
+  world:foundingWorld(),threads:[],
+  time:{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60,lastTick:Date.now()},
+  npcState:{},active:'cmdr',cart:[]
+ };
+ saveProfile(S);
+ T(commander.n+' is founded. The saga begins.');
+ enterShell(S);
 }
 /* World Digest — the player-facing output of the deterministic world-tick (slice 2a) */
 function renderDigest(){
