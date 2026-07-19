@@ -206,6 +206,45 @@ player acts in a thread ─► post ─► foreground AI (unchanged) ─► time
   renders relevance-ordered, a border siege appears, resources/taint moved, 0 console errors;
   a thread with a 24h window shows a live countdown and an EXPIRED badge when back-dated.
 
+## Coordination — touch-points for concurrent agents
+
+> **Read this if you are another agent working this repo.** Multiple sessions build on
+> `main` at once (see memory: concurrent-sessions-share-main). This is the blast radius of
+> this slice so you can route around it. I will likewise avoid your regions.
+
+**What this slice OWNS (safe — additive, mine):**
+- New canon top-level key **`tick`** (`heretics-40k-data-v1.json`). I do **not** modify any
+  existing canon key except the `meta.version` bump.
+- New `index.html` region **`/*<world-core>*/ … /*</world-core>*/`** (a `WORLD` object),
+  placed adjacent to the existing `/*<thread-core>*/` / `/*<loadout-core>*/` / `/*<ai-core>*/`
+  regions. Purely additive.
+- New engine functions: `renderDigest()`, `renderWorldLog()`, the thread-timer picker/badge
+  helpers. New test files `tests/_load-world.js`, `tests/world-core.test.js`.
+- New save-state fields: `S.time.lastTick`, `S.world` territory overlays (`{owner,hold,siege}`),
+  world event log, and per-thread `t.timer`.
+
+**HOT / shared — I will touch these; coordinate before you do:**
+- **`meta.version`** — this slice bumps it (v1.10 → next free number at implementation time,
+  not hardcoded here). If you also bump it, last writer wins → reconcile. **This is the #1
+  collision point.**
+- **`init()`** boot function — I add one `WORLD.catchUp(S,D,now)` call after migration. Small,
+  but it is a shared hot spot.
+- **Threads render** — thread board (`index.html:~1403`) and thread-view header gain a timer
+  countdown/badge; thread creation gains a `[24h][48h][96h][Open]` picker; `demoSave` thread
+  objects gain an optional `t.timer`. If you edit the threads UI, expect overlap here.
+
+**Explicitly NOT mine (your territory — I will not touch):**
+- Battlefield grid (`GRID_BANDS`/terrain/fog, the battlefield screen).
+- Tag registry / gear catalogs / model rosters (canon `tags`, `weapons`, `items`, `abilities`,
+  `casts`, `legendaries`, `forge_affinities`) — migration slices 1–3, done by the sibling.
+- Armour system (`armour`, `rules.armour`, `LOADOUT` core) — shipped by this same session.
+- The map/territory migration (slices 4–6) — **I depend on it but do not build it**; my tick
+  reads whatever territory model you land.
+
+**Guardrails (both directions):** keep the tree `node --test`-green at every pause so any
+`git add -A` sweep captures only a consistent tree; commit JSON-only and test-only work by
+explicit path where a sub-slice does not need `index.html`.
+
 ## Suggested implementation sub-slices
 
 1. **2a — Tick spine + Digest:** `WORLD` core (`catchUp`/`stepDay`/`produce`/`driftStats`/
