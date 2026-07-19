@@ -3781,6 +3781,166 @@
           "status": null
          }
         ]
+       },
+       {
+        "id": "saimreach",
+        "name": "Saim-Reach",
+        "status": "Peace",
+        "owner": "Xenos - Aeldari",
+        "space": {
+         "id": "saimspace",
+         "name": "The Silent Reach",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A hushed stretch of void where mon-keigh sensors return nothing — and Aeldari craft slip between the stars."
+        },
+        "planets": [
+         {
+          "id": "saimhael",
+          "name": "Saim-Reach",
+          "type": "Xenos World",
+          "rift": "Sanctus",
+          "canon": true,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Aeldari"
+          },
+          "desc": "A craftworld-anchored maiden system; its webway-gate is the only sanctioned road in, and the Aeldari guard it jealously.",
+          "locations": [
+           {
+            "id": "saimhaelorbit",
+            "name": "Saim-Reach — High Anchorage",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Craftworld picket 'Wraithsong'"
+            ],
+            "desc": "Wraithbone spires drift in a slow orbit, singing to those who can hear."
+           },
+           {
+            "id": "saimcrown",
+            "name": "The Dome of Crystal Seers",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Where the craftworld's Seer Council reads the skein and rules the Reach.",
+            "door_names": {
+             "throne_room": "The Dome of Crystal Seers"
+            }
+           },
+           {
+            "id": "saimwebway",
+            "name": "The Moonstone Gate",
+            "type": "webway_portal",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A guarded webway-portal — the Reach's front door onto the whole galaxy."
+           }
+          ],
+          "resources": 95,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "ashmaiden",
+          "name": "Ash-Maiden",
+          "type": "Exodite World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Aeldari"
+          },
+          "desc": "An Exodite world of dinosaur-herders and dragon-knights, warded from Slaanesh by its world-spirit.",
+          "locations": [
+           {
+            "id": "ashmaidenorbit",
+            "name": "Ash-Maiden — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Exodite skyboat flight"
+            ],
+            "desc": "A pristine orbit; no mon-keigh hull has ever swung here uninvited."
+           },
+           {
+            "id": "ashmaidencity",
+            "name": "The Dragon-Halls",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Living wraithbone settlements grown among the herd-plains."
+           },
+           {
+            "id": "ashmaidenwebway",
+            "name": "The Vine-Gate",
+            "type": "webway_portal",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "An overgrown portal the dragon-knights ride out from."
+           }
+          ],
+          "resources": 48,
+          "status": null
+         },
+         {
+          "id": "kurnous",
+          "name": "Kurnous Wild",
+          "type": "Death World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Aeldari"
+          },
+          "desc": "A maiden-world hunting preserve, its jungles seeded with the predators of a dozen dead worlds.",
+          "locations": [
+           {
+            "id": "kurnousorbit",
+            "name": "Kurnous Wild — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Ranger star-skiff"
+            ],
+            "desc": "A watchful, empty-seeming orbit; the Rangers see you long before you see them."
+           },
+           {
+            "id": "kurnouslair",
+            "name": "The Howling Coverts",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Deep-jungle hunting lairs where the Aeldari cull the unworthy."
+           },
+           {
+            "id": "kurnousruins",
+            "name": "The Fallen Spire",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A toppled wraithbone spire, half-swallowed by the wild."
+           }
+          ],
+          "resources": 38,
+          "status": null
+         }
+        ]
        }
       ]
      },
