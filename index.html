@@ -573,6 +573,7 @@ var THREAD=(function(){
           if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
           else{var Wd=RWd.windows||{};c.revivalWindow=(e.element&&Wd[e.element])||Wd.Physical||3;c.permaDeath=false;}}}
       else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
+      else if(e.kind==='move'){var mw=state.combatants[e.who];if(mw&&e.to){mw.x=e.to.x;mw.y=e.to.y;}}
       else if(e.kind==='cond'&&c){c.conds=c.conds||[];c.conds.push(e.add);}
       else if(e.kind==='slay'&&c){c.dead=true;c.intact=!!e.intact;c.killElement=e.element||null;
         var RW=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
@@ -1569,31 +1570,84 @@ function bfSetup(t){
     c.sight=THREAD.sightOf(bfWeaponBand(c)||c.band||'MEDIUM',0);});
   t.state.board=board;t.state.phase='battle';        // interactive blind deploy is Slice E
 }
-function bfBoardEl(t,party){
-  var st=t.state,board=st.board,W=board.w,H=board.h;
+/* Slice D3: the board IS the action composer for grid combat — select a
+   model → reachable squares → click to stage a free Move; click a spotted
+   enemy → target → an in-range weapon button stages an attack. All feed the
+   same staged block the POST pipeline (validate/apply) already consumes. */
+var BF_RANK={MELEE:0,SHORT:1,MEDIUM:2,LONG:3};
+function bfItemBand(it){var map={Melee:'MELEE',Short:'SHORT',Medium:'MEDIUM',Long:'LONG'};return map[parseItem(it).range]||'MEDIUM';}
+function bfAP(it){var m=((it&&it.d)||'').match(/(\d+)\s*AP/);return m?parseInt(m[1],10):1;}
+function bfCellLabel(p){return String.fromCharCode(65+p.x)+(p.y+1);}
+function bfWeaponsOf(c){var out=[];if(!c.model)return out;((c.model.loadout&&c.model.loadout.slots)||c.model.sl||[]).forEach(function(s){if(s.it&&(s.type||s.k)==='WEAPON')out.push(s.it);});return out;}
+function bfStaged(t){
+  var ui=t._bf||{moves:{},acts:[]},out=[],C=t.state.combatants;
+  Object.keys(ui.moves).forEach(function(id){out.push({actor:id,action:bfTag(id,C[id])+' Move → '+bfCellLabel(ui.moves[id]),cost:0,effect:{kind:'move',who:id,to:ui.moves[id]}});});
+  (ui.acts||[]).forEach(function(a){out.push(a);});
+  return out;
+}
+function bfCombatUI(t,party){
+  var st=t.state,board=st.board,W=board.w,H=board.h,C=st.combatants;
+  var ui=t._bf=t._bf||{sel:null,tgt:null,moves:{},acts:[]};
+  function posOf(id){var m=ui.moves[id];return m?{x:m.x,y:m.y}:{x:C[id].x,y:C[id].y};}
+  function occExcept(id){var o=[];Object.keys(C).forEach(function(k){if(k===id||C[k].dead||C[k].x==null)return;o.push(posOf(k));});return o;}
   var fog=THREAD.refreshFog(party,st,board),spotted={},ghostAt={};
   fog.spotted.forEach(function(id){spotted[id]=1;});
   fog.ghosts.forEach(function(g){ghostAt[g.x+','+g.y]=g;});
-  var friends=[];Object.keys(st.combatants).forEach(function(id){var c=st.combatants[id];if(c.party===party&&!c.dead&&c.x!=null)friends.push(c);});
+  var friends=[];Object.keys(C).forEach(function(id){if(C[id].party===party&&!C[id].dead){var p=posOf(id);friends.push({x:p.x,y:p.y,sight:C[id].sight});}});
   function lit(x,y){return friends.some(function(fr){return THREAD.cheb(fr,{x:x,y:y})<=(fr.sight||0)&&THREAD.lineOfSight(fr,{x:x,y:y},board);});}
-  function at(x,y,mine){var r=null;Object.keys(st.combatants).forEach(function(id){var c=st.combatants[id];
-    var own=c.party===party;if(own!==mine||c.x!==x||c.y!==y)return;if(!mine&&!spotted[id])return;r={id:id,c:c};});return r;}
+  var reach=ui.sel?THREAD.reachable(posOf(ui.sel),C[ui.sel].spd||3,board,occExcept(ui.sel)):{};
+  function myAt(x,y){var r=null;Object.keys(C).forEach(function(id){if(C[id].party!==party||C[id].dead)return;var p=posOf(id);if(p.x===x&&p.y===y)r=id;});return r;}
+  function foeAt(x,y){var r=null;Object.keys(C).forEach(function(id){if(C[id].party===party||!spotted[id])return;var p=posOf(id);if(p.x===x&&p.y===y)r=id;});return r;}
   var GL={open:'·',forest:'♣',ruins:'▓',mtn:'▲',fort:'█'},CL={forest:'bf-forest',ruins:'bf-ruins',mtn:'bf-mtn',fort:'bf-fort'};
-  var h='<div class="bf-board" style="grid-template-columns:repeat('+W+',31px)">';
+  var bh='<div class="bf-board" style="grid-template-columns:repeat('+W+',31px)">';
   for(var y=0;y<H;y++)for(var x=0;x<W;x++){
     var tk=board.tiles[y*W+x].t,cls='bf-cell '+(CL[tk]||''),inner=GL[tk]==='·'?'':GL[tk],tok='';
     if(!lit(x,y))cls+=' bf-fog';
-    var mm=at(x,y,true);if(mm)tok='<span class="bf-tok bf-mine">'+bfTag(mm.id,mm.c)+'</span>';
-    var fo=at(x,y,false);if(fo)tok+='<span class="bf-tok bf-foe">'+bfTag(fo.id,fo.c)+'</span>';
-    if(ghostAt[x+','+y]&&!fo)tok+='<span class="bf-ghost">◌</span>';
-    h+='<div class="'+cls+'">'+inner+tok+'</div>';
+    if(reach[x+','+y])cls+=' bf-reach';
+    var mid=myAt(x,y);if(mid)tok='<span class="bf-tok bf-mine'+(ui.sel===mid?' sel':'')+'" data-m="'+mid+'">'+bfTag(mid,C[mid])+'</span>';
+    var fid=foeAt(x,y);if(fid)tok+='<span class="bf-tok bf-foe'+(ui.tgt===fid?' tgt':'')+'" data-f="'+fid+'">'+bfTag(fid,C[fid])+'</span>';
+    if(ghostAt[x+','+y]&&!fid)tok+='<span class="bf-ghost">◌</span>';
+    bh+='<div class="'+cls+'" data-bx="'+x+'" data-by="'+y+'">'+inner+tok+'</div>';
   }
-  h+='</div>';
+  bh+='</div>';
+  var pool=(st.pools&&st.pools[party]!=null)?st.pools[party]:null,spent=(ui.acts||[]).reduce(function(a,x){return a+(x.cost||0);},0);
+  var panel='<div class="bf-panel">'+
+    '<div class="bf-ro" style="margin-bottom:6px"><b style="color:var(--brh)">'+party+'</b> to move'+(pool!=null?' · <span class="bf-ap">AP '+(pool-spent)+'/'+pool+'</span>':'')+'</div>';
+  if(!ui.sel)panel+='<div class="bf-blk bf-ro">Click one of <b>your</b> models — reachable squares light up. Click a lit square to stage a free move; click a spotted enemy to target it.</div>';
+  else{var sc=C[ui.sel],sp=posOf(ui.sel);
+    panel+='<div class="bf-blk"><h4>'+bfTag(ui.sel,sc)+' · '+(sc.model?sc.model.n:ui.sel)+'</h4>'+
+      '<div class="bf-ro">@'+bfCellLabel(sp)+' · Speed '+(sc.spd||3)+(ui.moves[ui.sel]?' · <span class="bf-ok">move → '+bfCellLabel(ui.moves[ui.sel])+'</span> <button class="btn gh sm" data-clr="'+ui.sel+'">✕</button>':'')+'</div>';
+    var wpns=bfWeaponsOf(sc);
+    if(!ui.tgt)panel+='<div class="bf-ro">Click a spotted enemy to target.</div>';
+    else{var tc=C[ui.tgt],tp=posOf(ui.tgt),d=THREAD.cheb(sp,tp),bnd=THREAD.bandOf(d);
+      panel+='<div class="bf-ro">Target <b>'+(tc.model?tc.model.n:ui.tgt)+'</b> @'+bfCellLabel(tp)+' · '+d+' sq → '+bnd+'</div>';
+      if(!wpns.length)panel+='<div class="bf-ro" style="color:var(--faint)">No weapon equipped.</div>';
+      wpns.forEach(function(it,i){var wb=bfItemBand(it),ok=BF_RANK[wb]>=BF_RANK[bnd];
+        panel+='<button class="btn sm" data-atk="'+i+'"'+(ok?'':' disabled')+' style="margin:5px 5px 0 0">'+it.n+' · '+wb+' · '+bfAP(it)+'AP '+(ok?'✓':'✗')+'</button>';});
+    }
+    panel+='</div>';}
+  if(Object.keys(ui.moves).length||(ui.acts||[]).length){
+    panel+='<div class="bf-blk"><h4>Staged this turn</h4>';
+    Object.keys(ui.moves).forEach(function(id){panel+='<div class="bf-ro">'+bfTag(id,C[id])+' Move → '+bfCellLabel(ui.moves[id])+' <button class="btn gh sm" data-clr="'+id+'">✕</button></div>';});
+    (ui.acts||[]).forEach(function(a,i){panel+='<div class="bf-ro">'+a.action+' · '+a.cost+'AP <button class="btn gh sm" data-rma="'+i+'">✕</button></div>';});
+    panel+='</div>';}
+  panel+='</div>';
   var el=E('div','card');
-  el.innerHTML='<h3>Battlefield · '+party+'’s view</h3>'+h+
-    '<div style="font-size:11px;color:var(--dim);margin-top:7px">Fog of war — your knowledge only. '+
-    fog.spotted.length+' spotted · '+fog.ghosts.length+' ghost'+(fog.ghosts.length===1?'':'s')+
-    ' · <span style="color:var(--faint)">move/target wiring next (D3)</span></div>';
+  el.innerHTML='<h3>Battlefield · '+party+'’s view</h3><div class="bf-wrap">'+bh+panel+'</div>'+
+    '<div style="font-size:11px;color:var(--dim);margin-top:6px">Fog — your knowledge · '+fog.spotted.length+' spotted · '+fog.ghosts.length+' ghost'+(fog.ghosts.length===1?'':'s')+' · moves/attacks stage into your post below</div>';
+  el.addEventListener('click',function(ev){
+    var b=ev.target.closest('[data-atk],[data-clr],[data-rma],[data-m],[data-f],[data-bx]');if(!b)return;
+    if(b.hasAttribute('data-m')){ui.sel=(ui.sel===b.getAttribute('data-m'))?null:b.getAttribute('data-m');return openT(t.id);}
+    if(b.hasAttribute('data-f')){ui.tgt=(ui.tgt===b.getAttribute('data-f'))?null:b.getAttribute('data-f');return openT(t.id);}
+    if(b.hasAttribute('data-clr')){delete ui.moves[b.getAttribute('data-clr')];return openT(t.id);}
+    if(b.hasAttribute('data-rma')){ui.acts.splice(+b.getAttribute('data-rma'),1);return openT(t.id);}
+    if(b.hasAttribute('data-atk')){var it=bfWeaponsOf(C[ui.sel])[+b.getAttribute('data-atk')];
+      if(it&&ui.tgt){var d2=THREAD.cheb(posOf(ui.sel),posOf(ui.tgt)),bnd2=THREAD.bandOf(d2);
+        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2])ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D)}});}
+      return openT(t.id);}
+    if(b.hasAttribute('data-bx')){var x=+b.getAttribute('data-bx'),y=+b.getAttribute('data-by');
+      if(ui.sel&&reach[x+','+y]){ui.moves[ui.sel]={x:x,y:y};return openT(t.id);}}
+  });
   return el;
 }
 function threadView(V,t){
@@ -1616,7 +1670,7 @@ function threadView(V,t){
   var comp=threadComposer(t,function(){});
   var party=partyOf(t);
   var cat=THREAD.catalog(t,t.state,party,D);
-  var builder=(cat.length && t.type!=='TRAVEL')?threadBlockBuilder(t,party):null;
+  var builder=(cat.length && t.type!=='TRAVEL' && !t.state.board)?threadBlockBuilder(t,party):null;  // grid combat uses the board composer, not the dropdown
   if(builder)comp.el.appendChild(builder.el);
   var pb=comp.el.querySelector('.btn.bl');
   pb.onclick=function(){var v=comp.field.innerHTML.trim();if(!v||v==='<br>'){T('Write something first.');return}
@@ -1633,7 +1687,7 @@ function threadView(V,t){
       }
       openT(t.id);T('Transit post written — '+t.state.transit.wordsWritten+'/'+t.state.transit.wordsReq+' words.');return;
     }
-    var staged=builder?builder.staged:[];
+    var staged=t.state.board?bfStaged(t):(builder?builder.staged:[]);   // board composer or dropdown
     var val=THREAD.validate(t,t.state,party,staged,D);
     if(!val.ok){T(val.reason);return}
     THREAD.apply(t,t.state,staged,D);
@@ -1646,9 +1700,11 @@ function threadView(V,t){
     }
     if(!t.posts)t.posts=[];
     t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you',stamp:nowStamp(),block:staged.map(function(s){return {actor:s.actor,action:s.action,cost:s.cost,effect:s.effect}})});
+    if(t.state.board){t._bf={sel:null,tgt:null,moves:{},acts:[]};   // clear staging; refresh AP for the next turn
+      if(t.state.poolsBase&&t.state.poolsBase[party]!=null)t.state.pools[party]=t.state.poolsBase[party];}
     openT(t.id);T('Posted to '+t.n+'.');};
   if(isCombat){
-    if(t.state.board)V.appendChild(bfBoardEl(t,party));   // Slice D2: fog board atop the combat thread
+    if(t.state.board)V.appendChild(bfCombatUI(t,party));   // Slice D3: interactive board = the action composer
     var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);lf.appendChild(comp.el);
     wrap.appendChild(lf);wrap.appendChild(threadSidebar(t));V.appendChild(wrap);
   }else{
