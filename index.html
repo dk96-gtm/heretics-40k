@@ -890,7 +890,21 @@ var SAVE=(function(){
     });
     return out;
   }
-  return { DENY:DENY, snapshot:snapshot };
+  function relink(S){
+    var roster=S.roster||[];
+    (S.threads||[]).forEach(function(t){
+      if(!t||!t.state||!t.state.combatants)return;
+      Object.keys(t.state.combatants).forEach(function(id){
+        var c=t.state.combatants[id]; if(!c)return;
+        var m=null;for(var i=0;i<roster.length;i++){if(roster[i].id===id){m=roster[i];break;}}
+        if(m){ c.model=m;
+          var a=m.loadout&&m.loadout.armour&&m.loadout.armour.it;
+          c.armour=a?a.def:null; }
+      });
+    });
+    return S;
+  }
+  return { DENY:DENY, snapshot:snapshot, relink:relink };
 })();
 /*</save-core>*/
 /* ---- AI engine (impure: localStorage, fetch, DOM — CALLS the pure NPCAI core) ---- */

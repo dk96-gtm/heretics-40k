@@ -43,3 +43,20 @@ test('snapshot is a deep clone — mutating the blob does not touch S', () => {
   blob.world.met.push('X');
   assert.deepStrictEqual(S.world.met, ['vess'], 'original untouched');
 });
+
+test('relink re-attaches combatant.model from roster by id, and armour def', () => {
+  const { S } = fixtureS();
+  const blob = SAVE.snapshot(S);                 // refs stripped
+  // simulate a fresh load: blob is the persisted S with no combatant.model
+  const loaded = JSON.parse(JSON.stringify(blob));
+  SAVE.relink(loaded);
+  const c = loaded.threads[0].state.combatants.kane;
+  assert.strictEqual(c.model, loaded.roster[0], 'model re-points at the roster instance');
+  assert.deepStrictEqual(c.armour, { Physical: 2 }, 'armour def rebuilt from loadout');
+});
+
+test('relink tolerates a combatant with no matching roster id', () => {
+  const loaded = { roster: [], threads: [{ state: { combatants: { ghost: { band: 'LONG' } } } }] };
+  assert.doesNotThrow(() => SAVE.relink(loaded));
+  assert.strictEqual(loaded.threads[0].state.combatants.ghost.model, undefined);
+});
