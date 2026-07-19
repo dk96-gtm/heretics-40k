@@ -287,3 +287,54 @@ test('G1: each Solar sector has exactly one crown capital', () => {
     assert.ok(cr.length >= 1, s.id + ' crown planet holds a crown location');
   }));
 });
+
+// ── T-GX-G2: Segmentum Pacificus authored to the minting contract ─────
+// (minted sector-by-sector; invariants below check only POPULATED sectors so
+//  they stay green while the un-minted baseline stub still sits in the zone)
+function pacificusSegmentum() {
+  return canon.galaxy.segmentums.find((g) => g.id === 'pacificus');
+}
+function pacificusPlanets() {
+  const out = [];
+  (pacificusSegmentum().zones || []).forEach((z) => z.sectors.forEach((s) =>
+    (s.planets || []).forEach((p) => out.push({ p, s }))));
+  return out;
+}
+function pacificusMintedSectors() {
+  return pacificusSegmentum().zones
+    .flatMap((z) => z.sectors)
+    .filter((s) => (s.planets || []).length > 0);
+}
+
+test('G2: every Pacificus planet obeys the minting contract', () => {
+  const planetTypes = new Set(canon.galaxy.planet_types.map((p) => p.name));
+  const LT = Object.fromEntries(canon.galaxy.location_types.map((l) => [l.id, l]));
+  pacificusPlanets().forEach(({ p }) => {
+    assert.ok(planetTypes.has(p.type), p.id + ' valid planet type');
+    const primaryOrbit = p.locations.filter((l) => l.type === 'orbit');
+    assert.strictEqual(primaryOrbit.length, 1, p.id + ' has exactly one primary orbit');
+    const surface = p.locations.filter((l) => l.tier === 'surface');
+    assert.ok(surface.length >= 2, p.id + ' has >=2 surface locations');
+    assert.ok(p.locations.length >= 3 && p.locations.length <= 5, p.id + ' has 3-5 locations');
+    p.locations.forEach((l) => {
+      const lt = LT[l.type];
+      assert.ok(lt, p.id + ' location type ' + l.type + ' exists');
+      const legal = lt.planet_types || ['*'];
+      assert.ok(legal.includes('*') || legal.includes(p.type),
+        l.id + ' (' + l.type + ') legal on ' + p.type);
+    });
+  });
+});
+
+test('G2: each minted Pacificus sector has one crown capital + plurality owner', () => {
+  pacificusMintedSectors().forEach((s) => {
+    const crowns = s.planets.filter((p) => p.crown);
+    assert.strictEqual(crowns.length, 1, s.id + ' has one crown');
+    assert.ok(crowns[0].locations.some((l) => l.type === 'crown'),
+      s.id + ' crown planet holds a crown location');
+    const tally = {};
+    s.planets.forEach((p) => { tally[p.ruler.faction] = (tally[p.ruler.faction] || 0) + 1; });
+    const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+    assert.ok(s.owner.includes(top), s.id + " owner '" + s.owner + "' matches plurality " + top);
+  });
+});

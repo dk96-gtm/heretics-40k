@@ -3348,8 +3348,217 @@
         "id": "hydra",
         "name": "Hydraphur Sector",
         "status": "Thriving",
-        "owner": "Imperial - Navy",
-        "sealed": true
+        "owner": "Imperial - Adepta Sororitas",
+        "space": {
+         "id": "hydraphurspace",
+         "name": "The Hydraphur Anchorage",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "Home port of Battlefleet Pacificus — void-docks and picket-fortresses ring the wandering star."
+        },
+        "planets": [
+         {
+          "id": "hydraphur",
+          "name": "Hydraphur",
+          "type": "Shrine World",
+          "rift": "Sanctus",
+          "canon": true,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adepta Sororitas"
+          },
+          "desc": "The naval and ecclesiastical heart of the segmentum — a shrine-world girdled by orbital dockyards, where the Adepta Sororitas keep the Emperor's peace over Battlefleet Pacificus.",
+          "locations": [
+           {
+            "id": "hydraphurorbit",
+            "name": "Hydraphur — Fleet Anchorage",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 2,
+            "ships": [
+             "Battlefleet Pacificus flagship 'Sword of Faith'",
+             "Convent picket-squadron"
+            ],
+            "desc": "A cathedral of void-docks; every hull is blessed before it dares the warp."
+           },
+           {
+            "id": "hydraphurconvent",
+            "name": "Convent Sanctorum of the Wandering Star",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Seat of the Canoness Superior and the sector's ruling shrine — its bells are heard fleet-wide.",
+            "door_names": {
+             "throne_room": "Convent Sanctorum of the Wandering Star"
+            }
+           },
+           {
+            "id": "hydraphurshrine",
+            "name": "The Martyr's Reliquary",
+            "type": "shrine",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A pilgrim-shrine holding the ashes of a thousand Sisters; the faithful queue for leagues."
+           },
+           {
+            "id": "hydraphurbulwark",
+            "name": "Ward-Bastion Sanctus",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The picket-fortress that has never let a heretic hull make planetfall."
+           }
+          ],
+          "resources": 118,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "ophelia",
+          "name": "Ophelia Reach",
+          "type": "Shrine World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adepta Sororitas"
+          },
+          "desc": "A convent-world of endless cloisters where Orders Militant are raised and drilled.",
+          "locations": [
+           {
+            "id": "opheliaorbit",
+            "name": "Ophelia Reach — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Pilgrim tithe-barque"
+            ],
+            "desc": "A quiet orbit thick with pilgrim-tenders and relic-craft."
+           },
+           {
+            "id": "opheliashrine",
+            "name": "The Grand Cloister",
+            "type": "shrine",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Mile upon mile of vaulted dormitory-chapels where novices take the vow."
+           },
+           {
+            "id": "opheliafort",
+            "name": "The Argent Drill-Yards",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Where Sisters are broken and reforged into the Emperor's blade."
+           }
+          ],
+          "resources": 62,
+          "status": null
+         },
+         {
+          "id": "brahmos",
+          "name": "Brahmos Muster",
+          "type": "Fortress World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Astra Militarum"
+          },
+          "desc": "A Militarum muster-world leased into the sector to raise regiments for the fleet's ground wars.",
+          "locations": [
+           {
+            "id": "brahmosorbit",
+            "name": "Brahmos Muster — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Troop-lift flotilla"
+            ],
+            "desc": "Orbit choked with grey mass-conveyors, embarking regiments by the million."
+           },
+           {
+            "id": "brahmosbulwark",
+            "name": "Rampart of the Ten Thousand",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The drill-bastion where whole armies form up before embarkation."
+           },
+           {
+            "id": "brahmosfort",
+            "name": "The Conscript Reaches",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Barrack-cities without end, feeding the tithe of blood."
+           }
+          ],
+          "resources": 70,
+          "status": null
+         },
+         {
+          "id": "trisandane",
+          "name": "Trisandane",
+          "type": "Agri World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adepta Sororitas"
+          },
+          "desc": "The breadbasket that victuals Battlefleet Pacificus — its harvests feed a hundred void-holds.",
+          "locations": [
+           {
+            "id": "trisandaneorbit",
+            "name": "Trisandane — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Grain-hauler convoy"
+            ],
+            "desc": "A busy orbit of bulk-lifters, hauling the harvest to the anchorage."
+           },
+           {
+            "id": "trisandanevillage",
+            "name": "The Sept-Granges",
+            "type": "village",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Fortified estate-villages worked by tithe-bonded serfs."
+           },
+           {
+            "id": "trisandanecity",
+            "name": "Cargo-Port Sanctus",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "The single great port where the harvest is weighed, blessed, and shipped."
+           }
+          ],
+          "resources": 55,
+          "status": null
+         }
+        ]
        }
       ]
      },
