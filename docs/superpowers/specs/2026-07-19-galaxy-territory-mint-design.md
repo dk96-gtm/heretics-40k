@@ -132,23 +132,53 @@ demo worlds). Authoring slices enrich toward the **~100 target** by adding 3rd�
 
 ## 4. Trait Subsystems (define + wire)
 
-### 4.1 The Rift — home-relative cross-Rift penalty (locked)
+### 4.1 The Rift — home/away model (locked)
 
-Stored as a `canon.rules.rift` block; each location carries its `rift` tag; the penalty is **relational**
-(computed from the acting Force's faction home side vs the location's side), not a flat location debuff.
+Stored as a `canon.rules.rift` block; each location carries its `rift` tag and each sector its `owner`.
+Effects are **relational** — computed from the acting Force's faction (home side, or neutral) against the
+location's side and the sector's owner. Two forces are in play, a **home bonus** and an **away penalty**;
+they never double-stack the same lever (take the single better/worse value).
 
+**Sided factions (Sanctus / Nihilus):**
 ```
-On a faction's HOME side (or any side, if Rift-neutral) → BASELINE.
-Operating ACROSS the Rift from home → cross-Rift penalty (all four, each moderate):
-   · Comms range         −1 tier
-   · Travel words/passage +25%
-   · Muster cost +  ·  Apothecarion revival window −1   (supply lines strained)
-   · Requisition (shop/forge) +25%                       (foreign-side isolation)
-Rift-neutral factions (GSC, Necrons, Harlequins, Drukhari) are EXEMPT everywhere.
+On your HOME side (anywhere on it)     → HOME BONUS
+Across the Rift (the opposite side)    → AWAY PENALTY
 ```
 
-Engine hooks: comms range calc, `passageCost`/travel words, muster & apothecarion cost, `doorCatalog`
-pricing. Effects apply to the Force's controlling faction.
+**Rift-neutral factions (GSC, Necrons, Harlequins, Drukhari):**
+```
+Anywhere                 → never suffer the AWAY penalty (free-movers)
+In sectors THEY own      → HOME BONUS (their concentrated turf)
+Their owned sectors      → impose the AWAY PENALTY on every non-owner visitor,
+                           regardless of that visitor's side (hostile ground to all)
+```
+
+**HOME BONUS** (each moderate):
+```
+  · Comms range              +1 tier
+  · Travel word-count        −25%
+  · Muster cost −25%   ·   Apothecarion revival window +1
+  · Production               +25%   (couples to the v1.11 tick production stream)
+```
+
+**AWAY PENALTY** (each moderate):
+```
+  · Comms range              −1 tier
+  · Travel word-count/passage +25%
+  · Muster cost +25%   ·   Apothecarion revival window −1
+  · Requisition (shop/forge)  +25%
+```
+
+Home swaps the away's *requisition surcharge* for a *production bonus* — intentional. Note the emergent loop:
+home **production +25%** feeds the tick hoard, which (via §4.3) fields a bigger **garrison** — a faction's
+heartland is both richer and harder to invade. Magnitudes are tunable in G0's trait-design step.
+
+Scope: a sided faction's home bonus applies **anywhere on its home side**; a neutral faction's applies **only
+in sectors it owns**. The away penalty is **side-relative** for sided factions and **sector-relative** (neutral
+turf) for everyone entering a neutral-owned sector.
+
+Engine hooks: comms range calc, `passageCost`/travel words, muster & apothecarion cost, `doorCatalog` pricing,
+and the tick production rate. Effects apply to the Force's controlling faction / the sector owner.
 
 ### 4.2 Home-turf ruling trait (locked)
 
