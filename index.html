@@ -340,6 +340,13 @@ canvas.smap{display:block;width:100%;height:auto}
 .foldcard:not(.on) .foldar{transform:rotate(-90deg);display:inline-block}
 </style></head><body>
 <div id="boot"><div><h1 style="color:var(--brh);font-size:22px;margin-bottom:10px">HERETICS 40K</h1><div id="bootmsg" style="color:var(--dim);font-size:14px">Loading canon…</div></div></div>
+<div id="title" style="display:none;position:fixed;inset:0;background:var(--void);z-index:90;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px">
+  <h1 style="color:var(--brh);letter-spacing:.18em;font-size:26px;margin-bottom:6px">HERETICS 40K</h1>
+  <div style="color:var(--dim);font-size:11px;letter-spacing:.2em;margin-bottom:22px">▓ THE LONG WAR ▓</div>
+  <div id="titlemenu" style="display:flex;flex-direction:column;gap:10px;min-width:290px"></div>
+  <div id="titledigest" style="max-width:380px;margin-top:20px;color:var(--brh);font-size:11px;line-height:1.6;text-align:left"></div>
+  <div style="color:var(--dim);font-size:10px;margin-top:22px">local sandbox · saved to this browser</div>
+</div>
 <div class="shell" style="display:none" id="shell">
 <nav class="rail">
 <div class="brand"><h1>HERETICS 40K</h1><span>COMMAND INTERFACE</span></div>
@@ -2034,17 +2041,38 @@ function hydrate(blob){
  return S;
 }
 function init(){
- if(hasProfile()){ hydrate(loadProfile()); }
- else { hydrate(demoSave()); }   // TEMP: replaced by title screen (Task 6) / commitFounding (Task 7)
- S.active=S.active||'kane';S.cart=S.cart||[];
- S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
- if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch||Date.now();
- seedNPCState();
- var _wc=WORLD.catchUp(S,D,Date.now());
- S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
- enterShell(S);
+ mkRite();mkPicker();                 // creation wizard + picker available from the title (pre-shell)
+ if(hasProfile()){
+  hydrate(loadProfile());
+  S.active=S.active||'kane';S.cart=S.cart||[];
+  S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
+  if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch||Date.now();
+  var _wc=WORLD.catchUp(S,D,Date.now());
+  S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
+ }
+ document.getElementById('boot').style.display='none';
+ showTitle();
+}
+function showTitle(){
+ var t=document.getElementById('title');t.style.display='flex';
+ var menu=document.getElementById('titlemenu');menu.innerHTML='';
+ function row(label,sub,fn){var b=E('button','btn bl','<b>'+label+'</b>'+(sub?' <span style="opacity:.6;font-size:11px">'+sub+'</span>':''));b.style.textAlign='left';b.onclick=fn;menu.appendChild(b);}
+ if(hasProfile()&&S&&S.player){
+  var p=S.player;
+  row('CONTINUE',(p.name.split(',')[0])+' · '+(FAC(p.faction)?FAC(p.faction).name:p.faction)+' · R'+(p.cmdRank||1),function(){t.style.display='none';enterShell(S);});
+ }
+ row('NEW COMMANDER','found a lineage',function(){
+  if(hasProfile()&&S&&S.player&&!confirm('This replaces your current commander ('+S.player.name.split(',')[0]+'). Export your save first from Settings if you want to keep them. Continue?'))return;
+  t.style.display='none';document.getElementById('r-found').click();   // Task 7: → commitFounding on finish
+ });
+ row('SETTINGS','AI · saves · about',function(){openSettings();});
+ var dg=document.getElementById('titledigest');
+ dg.innerHTML=(hasProfile()&&S&&S._digest&&S._digest.lines.length)
+  ? '⚠ while you were away —<br>'+S._digest.lines.map(function(l){return '· '+l;}).join('<br>') : '';
 }
 function enterShell(S){
+ seedNPCState();
+ document.getElementById('title').style.display='none';
  enrichRoster();fixLeaderTags();mkOverview();initTips();mkEntity();mkHUD();mkCart();
  var f=fPl(S.pos.pl);MV={lv:'sector',seg:f.g.id,sec:f.s.id,pl:S.pos.pl,lc:S.pos.sp};
  document.getElementById('rname').textContent=S.player.name.split(',')[0];
@@ -2054,7 +2082,6 @@ function enterShell(S){
  ['fq','fc','fs','ff'].forEach(function(i){document.getElementById(i).addEventListener('input',rRos)});
  document.querySelectorAll('.navbtn').forEach(function(b){b.onclick=function(){go(b.dataset.s)}});
  document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on',x===b)});document.querySelectorAll('.sub').forEach(function(v){v.classList.remove('on')});document.getElementById('b-'+b.dataset.b).classList.add('on');if(b.dataset.b==='forces')rF();if(b.dataset.b==='armoury')rArm()}});
- mkPicker();mkRite();
  document.getElementById('boot').style.display='none';
  document.getElementById('shell').style.display='flex';
  rHQ();rRos();rLoad();rMap();rTL();rComms();rShop();
