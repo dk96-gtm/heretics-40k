@@ -566,7 +566,8 @@ var THREAD=(function(){
       var e=b.effect;if(!e)return;
       if(e.kind==='damage'&&c){
         var _def=c.armour||null;
-        var _taken=Math.max(0,e.amount-((_def&&_def[e.element])||0));
+        var _cov=(state.board&&typeof c.x==='number')?coverMod({x:c.x,y:c.y},state.board):0;
+        var _taken=Math.max(0,e.amount-((_def&&_def[e.element])||0)-_cov);
         c.w=[Math.max(0,c.w[0]-_taken),c.w[1]];
         if(c.w[0]<=0&&!c.dead){c.dead=true;c.killElement=e.element||null;
           var RWd=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
