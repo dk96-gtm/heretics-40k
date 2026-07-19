@@ -610,6 +610,31 @@ var THREAD=(function(){
   return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable };
 })();
 /*</thread-core>*/
+/*<loadout-core>*/
+var LOADOUT=(function(){
+  // Pure, DOM-free loadout rules. Canon/state arrive as arguments.
+  function slotCount(cls,rank,baseSl,canon){
+    var g=(((canon.rules||{}).growth||{}).slot_gains_by_rank||{})[cls]||[];
+    return (baseSl||0)+(g[(rank||1)-1]||0);
+  }
+  function legalItems(slotType,inventory){
+    return (inventory||[]).filter(function(it){return it.cat===slotType;});
+  }
+  function canEquip(slot,item){
+    return !!(slot&&slot.type&&item&&item.cat===slot.type);
+  }
+  function retypeSlot(slot,newType){
+    var displaced=slot.it||null;
+    slot.type=newType;slot.it=null;
+    return displaced;
+  }
+  function mitigate(raw,element,def){
+    return Math.max(0,(raw||0)-((def&&def[element])||0));
+  }
+  return { slotCount:slotCount, legalItems:legalItems, canEquip:canEquip,
+           retypeSlot:retypeSlot, mitigate:mitigate };
+})();
+/*</loadout-core>*/
 /*<ai-core>*/
 var NPCAI=(function(){
   var PHASES=['Early Morning','Morning','Noon','Afternoon','Evening','Night','Midnight','Dead of Night'];
