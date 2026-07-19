@@ -1542,8 +1542,63 @@ function threadSidebar(t){
   sb.querySelector('.foldh').onclick=function(){document.getElementById('report').classList.toggle('on')};
   return sb;
 }
+/* ── Battlefield grid in-thread (Slice D2) — board setup + fog render.
+   Reuses the bf-* styles injected by the battlefield module. Board is
+   engine-generated (genBoard + Math.random) once, combatants placed into
+   their party zones with a sight radius; the pure THREAD helpers drive
+   distance, LOS and fog. Move/target CLICK wiring is D3; blind deploy is E. */
+function bfWeaponBand(c){
+  if(!c.model)return null;
+  var slots=(c.model.loadout&&c.model.loadout.slots)||c.model.sl||[];
+  var map={Melee:0,Short:1,Medium:2,Long:3},keys=['MELEE','SHORT','MEDIUM','LONG'],best=-1;
+  slots.forEach(function(s){var it=s.it;if(!it)return;if((s.type||s.k)!=='WEAPON')return;
+    var r=parseItem(it).range;if(r&&map[r]!=null&&map[r]>best)best=map[r];});
+  return best>=0?keys[best]:null;
+}
+function bfTag(id,c){var n=(c.model?c.model.n:id)||'?';return n.charAt(0).toUpperCase();}
+function bfSetup(t){
+  if(!t.state||t.state.board)return;                 // idempotent — one board per thread
+  var C=t.state.combatants||{},ids=Object.keys(C);if(!ids.length)return;
+  var parties=[];ids.forEach(function(id){var p=C[id].party;if(parties.indexOf(p)<0)parties.push(p);});
+  var board=THREAD.genBoard({w:14,h:10,density:0.16,palette:['forest','ruins','mtn','fort'],zoneDepth:2},Math.random);
+  var zoneOf={};zoneOf[parties[0]]=board.zones.A;if(parties[1])zoneOf[parties[1]]=board.zones.B;
+  var n={};
+  ids.forEach(function(id){var c=C[id],z=zoneOf[c.party]||board.zones.A,k=n[c.party]=(n[c.party]||0);
+    c.x=(c.party===parties[0])?z.x1:z.x0;           // inner edge of the party's zone
+    c.y=Math.min(z.y1,1+k*2);n[c.party]=k+1;
+    c.sight=THREAD.sightOf(bfWeaponBand(c)||c.band||'MEDIUM',0);});
+  t.state.board=board;t.state.phase='battle';        // interactive blind deploy is Slice E
+}
+function bfBoardEl(t,party){
+  var st=t.state,board=st.board,W=board.w,H=board.h;
+  var fog=THREAD.refreshFog(party,st,board),spotted={},ghostAt={};
+  fog.spotted.forEach(function(id){spotted[id]=1;});
+  fog.ghosts.forEach(function(g){ghostAt[g.x+','+g.y]=g;});
+  var friends=[];Object.keys(st.combatants).forEach(function(id){var c=st.combatants[id];if(c.party===party&&!c.dead&&c.x!=null)friends.push(c);});
+  function lit(x,y){return friends.some(function(fr){return THREAD.cheb(fr,{x:x,y:y})<=(fr.sight||0)&&THREAD.lineOfSight(fr,{x:x,y:y},board);});}
+  function at(x,y,mine){var r=null;Object.keys(st.combatants).forEach(function(id){var c=st.combatants[id];
+    var own=c.party===party;if(own!==mine||c.x!==x||c.y!==y)return;if(!mine&&!spotted[id])return;r={id:id,c:c};});return r;}
+  var GL={open:'·',forest:'♣',ruins:'▓',mtn:'▲',fort:'█'},CL={forest:'bf-forest',ruins:'bf-ruins',mtn:'bf-mtn',fort:'bf-fort'};
+  var h='<div class="bf-board" style="grid-template-columns:repeat('+W+',31px)">';
+  for(var y=0;y<H;y++)for(var x=0;x<W;x++){
+    var tk=board.tiles[y*W+x].t,cls='bf-cell '+(CL[tk]||''),inner=GL[tk]==='·'?'':GL[tk],tok='';
+    if(!lit(x,y))cls+=' bf-fog';
+    var mm=at(x,y,true);if(mm)tok='<span class="bf-tok bf-mine">'+bfTag(mm.id,mm.c)+'</span>';
+    var fo=at(x,y,false);if(fo)tok+='<span class="bf-tok bf-foe">'+bfTag(fo.id,fo.c)+'</span>';
+    if(ghostAt[x+','+y]&&!fo)tok+='<span class="bf-ghost">◌</span>';
+    h+='<div class="'+cls+'">'+inner+tok+'</div>';
+  }
+  h+='</div>';
+  var el=E('div','card');
+  el.innerHTML='<h3>Battlefield · '+party+'’s view</h3>'+h+
+    '<div style="font-size:11px;color:var(--dim);margin-top:7px">Fog of war — your knowledge only. '+
+    fog.spotted.length+' spotted · '+fog.ghosts.length+' ghost'+(fog.ghosts.length===1?'':'s')+
+    ' · <span style="color:var(--faint)">move/target wiring next (D3)</span></div>';
+  return el;
+}
 function threadView(V,t){
   var isCombat=Object.keys(t.state.combatants||{}).length>0;
+  if(isCombat)bfSetup(t);
   if(t.type==='TRAVEL'&&t.state.transit){
     var m=t.state.transit;
     var meter=E('div','card');
@@ -1593,6 +1648,7 @@ function threadView(V,t){
     t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you',stamp:nowStamp(),block:staged.map(function(s){return {actor:s.actor,action:s.action,cost:s.cost,effect:s.effect}})});
     openT(t.id);T('Posted to '+t.n+'.');};
   if(isCombat){
+    if(t.state.board)V.appendChild(bfBoardEl(t,party));   // Slice D2: fog board atop the combat thread
     var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);lf.appendChild(comp.el);
     wrap.appendChild(lf);wrap.appendChild(threadSidebar(t));V.appendChild(wrap);
   }else{
