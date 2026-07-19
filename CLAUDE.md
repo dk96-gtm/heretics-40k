@@ -27,6 +27,39 @@ The game = DATA + ENGINE. Nothing else ships.
 - **⚠ JSON cache gotcha:** the engine fetches a fixed filename, so browsers cache the JSON. After a canon change, the local rail may show the old version until cache clears; the live CDN serves fresh to new sessions. Verify canon changes on the live URL, not a warm local tab.
 - Git identity on this repo uses the GitHub noreply email (no personal email in history).
 
+## Multi-Agent Coordination
+
+**Multiple agents build this repo at once, sharing ONE working folder and committing to `main`.**
+There is no branch isolation (one folder = one git HEAD; switching branches yanks every
+session). So the discipline below IS the safety layer. The live board is **`BACKLOG.md`** at
+the repo root — read it first, every session.
+
+**The lifecycle:** `open → claimed → in-progress → ready-to-push → merged` (+ `blocked`, `paused`).
+
+1. **Sync first.** `git pull` (or check `git log`) to get the newest `main` + newest `BACKLOG.md`
+   before doing anything. Re-sync periodically — watch for upstream commits that touch *your* files.
+2. **Claim before you work.** Pick an `open` task whose **lane is free**, edit *only its row* in
+   `BACKLOG.md` → `status`, `owner` = `<name> · sess:<your-session-uuid>`, timestamp. Then
+   `git add BACKLOG.md` (never `-A`) → commit `backlog: claim <ID>`. **First commit wins** — if it
+   conflicts, someone beat you; pull and pick another task.
+3. **Respect lanes.** A task's lane = the files it touches (see `BACKLOG.md` lane legend). 🔥 **The
+   `index.html` (engine) lane is HOT — only ONE `in-progress` task may hold it at a time.** Others
+   wait. JSON-only / tests-only / docs-only lanes run fully parallel. Design tasks to avoid the hot
+   file when you can.
+4. **Commit hygiene (this is what makes an accidental sweep harmless):**
+   - **`git add <explicit paths>` — NEVER `git add -A` / `git add .`.** That command sweeps other
+     sessions' work into your commit (verified: it has stolen whole commits + messages here).
+   - Commit promptly and **keep the tree test-passing (`node --test`) at every pause** — a swept
+     clean tree is merely misattributed, not broken.
+5. **Session-link.** Your claim's `sess:<uuid>` lets any other agent read your live progress at
+   `~/.claude/projects/-Users-daak-Projects-heretics-40k/<uuid>.jsonl`. Blocked on someone's lane?
+   Read their session instead of guessing or interrupting.
+6. **Push is gated to Daak.** When a task is verified done, set it `ready-to-push` in `BACKLOG.md`
+   and list the exact paths in your commits. **Do not push.** After Daak pushes, **every agent
+   re-syncs** (`git pull`) before continuing — post-push drift (local `main` behind remote) is the
+   other known hazard.
+7. **Finish the row.** On merge, move the task to the DONE table (trim it periodically).
+
 ## What is IN canon (data v1.0 → v1.5)
 
 - **Rules constants:** AP bands (PC→AP), Named/Commander premiums & deltas, rank growth curves (`rules.growth`: PC ×1.0/1.4/1.9/2.5/3.2, wounds %/rank by class, speed/slot gains), combat framework, death & succession (+ `revival_window`), economy, Force size tags, thread types, comms, both rites.
