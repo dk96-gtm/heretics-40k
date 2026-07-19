@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.8', () => {
-  assert.strictEqual(canon.meta.version, '1.8');
+test('canon is v1.9', () => {
+  assert.strictEqual(canon.meta.version, '1.9');
 });
 
 test('v1.7: numeric slot growth is present for every class', () => {
@@ -90,7 +90,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.8');
+  assert.equal(canon.meta.version, '1.9');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -144,4 +144,42 @@ test('v1.8: forge affinities cover all 20 factions', () => {
     assert.ok(Array.isArray(aff[f.id]) && aff[f.id].length, 'affinity for ' + f.id);
   });
   assert.deepStrictEqual(aff.black_legion, ['ALL'], 'Black Legion broad access');
+});
+
+test('v1.9: gear catalogs migrated with correct counts', () => {
+  assert.strictEqual(canon.weapons.length, 102, 'standard weapons');
+  assert.strictEqual(canon.items.length, 75, 'standard items');
+  assert.strictEqual(canon.abilities.length, 67, 'abilities');
+  assert.strictEqual(canon.casts.length, 71, 'casts');
+  assert.strictEqual(canon.legendaries.length, 40, 'legendaries (20 weapons + 20 items)');
+});
+
+test('v1.9: every gear entry has the {n,cat,d,pc,faction} shape', () => {
+  const CATS = { weapons: 'WEAPON', items: 'ITEM', abilities: 'ABILITY',
+                 casts: 'CAST', legendaries: 'LEGENDARY' };
+  const facIds = new Set(canon.factions.map((f) => f.id));
+  Object.keys(CATS).forEach((key) => {
+    canon[key].forEach((it) => {
+      assert.ok(it.n && typeof it.n === 'string', key + ' name');
+      assert.strictEqual(it.cat, CATS[key], key + ' cat ' + it.n);
+      assert.ok(typeof it.d === 'string', key + ' d ' + it.n);
+      assert.strictEqual(typeof it.pc, 'number', key + ' pc ' + it.n);
+      assert.ok(it.faction === null || facIds.has(it.faction), key + ' faction ' + it.n);
+    });
+  });
+});
+
+test('v1.9: legendaries are one weapon + one item per faction', () => {
+  const byFac = {};
+  canon.legendaries.forEach((l) => { byFac[l.faction] = (byFac[l.faction] || 0) + 1; });
+  canon.factions.forEach((f) => {
+    assert.strictEqual(byFac[f.id], 2, 'two legendaries for ' + f.id);
+  });
+});
+
+test('v1.9: faction-null "common" gear exists for shop/altar filtering', () => {
+  assert.ok(canon.weapons.some((w) => w.faction === null), 'common weapons');
+  assert.ok(canon.items.some((i) => i.faction === null), 'common items');
+  assert.ok(canon.abilities.some((a) => a.faction === null), 'common abilities');
+  assert.ok(canon.casts.some((c) => c.faction === null), 'common casts');
 });
