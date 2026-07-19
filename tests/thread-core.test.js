@@ -239,3 +239,18 @@ test('non-lethal damage does not kill', () => {
     effect:{kind:'damage',amount:2,to:'thresh',element:'Physical'}}], canon);
   assert.ok(!t.state.combatants.thresh.dead);
 });
+
+test('armour mitigates damage by element, floored at 0', () => {
+  const thread = { type:'SKIRMISH', seedState:{ joined:true,
+    pools:{ y:100, e:100 },
+    combatants:{
+      hero:{ party:'y', model:{n:'Hero'}, w:[6,6], armour:{Physical:3,Corrosive:0} },
+      foe:{ party:'e', model:{n:'Foe'}, w:[6,6] } } } };
+  const t = THREAD.create(thread, canon);
+  // Physical 2 vs Physical-3 armour -> 0 taken
+  THREAD.apply(t, t.state, [{actor:'foe',effect:{kind:'damage',amount:2,to:'hero',element:'Physical'}}], canon);
+  assert.strictEqual(t.state.combatants.hero.w[0], 6);
+  // Corrosive 2 vs Corrosive-0 armour -> full 2 taken
+  THREAD.apply(t, t.state, [{actor:'foe',effect:{kind:'damage',amount:2,to:'hero',element:'Corrosive'}}], canon);
+  assert.strictEqual(t.state.combatants.hero.w[0], 4);
+});

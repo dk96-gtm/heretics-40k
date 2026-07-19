@@ -512,11 +512,12 @@ var THREAD=(function(){
     var out=[];
     Object.keys(state.combatants).forEach(function(id){
       var c=state.combatants[id];if(c.party!==party||!c.model)return;
-      (c.model.sl||[]).forEach(function(s){if(!s.it)return;var it=s.it;
-        if(s.k==='WEAPON')out.push({actor:id,action:'Attack - '+it.n,group:'e',cost:apMod(it),kind:'damage',item:it});
-        else if(s.k==='ABILITY')out.push({actor:id,action:it.n,group:'y',cost:apMod(it),kind:'cond',item:it});
-        else if(s.k==='WARP CAST')out.push({actor:id,action:'Cast: '+it.n,group:'a',cost:apMod(it),kind:'cond',item:it});
-        else if(s.k==='ITEM'&&/consumable|stimm|grenade/i.test(it.d||''))
+      var slots=(c.model.loadout&&c.model.loadout.slots)||c.model.sl||[];
+      slots.forEach(function(s){if(!s.it)return;var it=s.it;var k=s.type||s.k;
+        if(k==='WEAPON')out.push({actor:id,action:'Attack - '+it.n,group:'e',cost:apMod(it),kind:'damage',item:it});
+        else if(k==='ABILITY')out.push({actor:id,action:it.n,group:'y',cost:apMod(it),kind:'cond',item:it});
+        else if(k==='CAST'||k==='WARP CAST')out.push({actor:id,action:'Cast: '+it.n,group:'a',cost:apMod(it),kind:'cond',item:it});
+        else if(k==='ITEM'&&/consumable|stimm|grenade/i.test(it.d||''))
           out.push({actor:id,action:'Use '+it.n,group:'a',cost:apMod(it),kind:'cond',item:it});
       });
       out.push({actor:id,action:'Move',group:'b',cost:0,kind:'band'});
@@ -556,7 +557,10 @@ var THREAD=(function(){
         if(actor){party=actor.party;state.pools[party]=(state.pools[party]||0)-b.cost;}
       }
       var e=b.effect;if(!e)return;
-      if(e.kind==='damage'&&c){c.w=[Math.max(0,c.w[0]-e.amount),c.w[1]];
+      if(e.kind==='damage'&&c){
+        var _def=c.armour||null;
+        var _taken=Math.max(0,e.amount-((_def&&_def[e.element])||0));
+        c.w=[Math.max(0,c.w[0]-_taken),c.w[1]];
         if(c.w[0]<=0&&!c.dead){c.dead=true;c.killElement=e.element||null;
           var RWd=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
           if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
@@ -1635,7 +1639,9 @@ S.threads.forEach(function(t){
  if(t.state&&t.state.combatants){
   Object.keys(t.state.combatants).forEach(function(id){
    var m=S.roster.filter(function(x){return x.id===id})[0];
-   if(m)t.state.combatants[id].model=m;
+   if(m){t.state.combatants[id].model=m;
+    var _a=m.loadout&&m.loadout.armour&&m.loadout.armour.it;
+    t.state.combatants[id].armour=_a?_a.def:null;}
   });
  }
 });
