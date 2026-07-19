@@ -544,6 +544,12 @@ var THREAD=(function(){
       if(spent>pool)return {ok:false,
         reason:'Exceeds AP pool ('+spent+'/'+pool+') - '+
                ((canon.rules.combat&&canon.rules.combat.desperation_action)||'desperation')};
+      if(state.board){                              // fog targeting gate (Slice C): attack only what you see
+        var vis=spottedEnemies(party,state,state.board);
+        for(var gi=0;gi<block.length;gi++){var ge=block[gi].effect;
+          if(ge&&ge.kind==='damage'&&ge.to&&vis.indexOf(ge.to)<0)
+            return {ok:false,reason:'Target not in sight - fog of war'};}
+      }
     }
     return {ok:true,reason:''};
   }
@@ -646,7 +652,28 @@ var THREAD=(function(){
       for(var y=z.y0;y<=z.y1;y++)for(var x=z.x0;x<=z.x1;x++)tiles[y*W+x].t='open';});
     return {w:W,h:H,tiles:tiles,zones:zones};
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard };
+  /* ── true per-side fog (Slice C) — sight radius + LOS, ghosts ── */
+  var SIGHT_SQ={MELEE:2,SHORT:4,MEDIUM:7,LONG:11};
+  function sightOf(band,scoutBonus){return (SIGHT_SQ[band]||0)+(scoutBonus||0);}
+  function spottedEnemies(side,state,board){        // enemies within a live friendly's sight radius + clear LOS
+    var C=state.combatants||{},friends=[],out=[];
+    for(var id in C){var c=C[id];if(c.party===side&&!c.dead&&c.x!=null)friends.push(c);}
+    for(var fid in C){var f=C[fid];if(f.party===side||f.x==null)continue;
+      var seen=friends.some(function(fr){return cheb(fr,f)<=(fr.sight||0)&&lineOfSight(fr,f,board);});
+      if(seen)out.push(fid);}
+    return out;
+  }
+  function refreshFog(side,state,board){            // update per-side seen+lastKnown; return {spotted,ghosts}
+    state.fog=state.fog||{};
+    var fog=state.fog[side]=state.fog[side]||{seen:[],lastKnown:{}};
+    var spotted=spottedEnemies(side,state,board);
+    spotted.forEach(function(id){if(fog.seen.indexOf(id)<0)fog.seen.push(id);
+      var c=state.combatants[id];fog.lastKnown[id]={x:c.x,y:c.y};});
+    var ghosts=[];
+    fog.seen.forEach(function(id){if(spotted.indexOf(id)<0){var lk=fog.lastKnown[id];if(lk)ghosts.push({id:id,x:lk.x,y:lk.y});}});
+    return {spotted:spotted,ghosts:ghosts};
+  }
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog };
 })();
 /*</thread-core>*/
 /*<loadout-core>*/
