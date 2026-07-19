@@ -3559,6 +3559,228 @@
           "status": null
          }
         ]
+       },
+       {
+        "id": "cogmarches",
+        "name": "The Cog-Marches",
+        "status": "Peace",
+        "owner": "Imperial - Adeptus Mechanicus",
+        "space": {
+         "id": "cogspace",
+         "name": "The Rust Lanes",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "Refinery-lit void-lanes where Ark Mechanicus vessels haul ore between the forge-holdings."
+        },
+        "planets": [
+         {
+          "id": "metalica_reach",
+          "name": "Metalica-Reach",
+          "type": "Forge World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Mechanicus"
+          },
+          "desc": "A daughter-forge of Metalica and the ruling holding of the Cog-Marches — its foundries never cool.",
+          "locations": [
+           {
+            "id": "metalicaorbit",
+            "name": "Metalica-Reach — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 2,
+            "ships": [
+             "Ark Mechanicus 'Rationis Ferrum'",
+             "Ore-tug shoal"
+            ],
+            "desc": "Orbit strung with refinery-platforms and the running-lights of tithe-arks."
+           },
+           {
+            "id": "metalicacrown",
+            "name": "The Iron Cathedra",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Seat of the Fabricator-Marshal; cog-priests chant the Cog-Marches' rule from its spire.",
+            "door_names": {
+             "throne_room": "The Iron Cathedra"
+            }
+           },
+           {
+            "id": "metalicatemple",
+            "name": "Forge Temple Prime",
+            "type": "forge_temple",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A Tier-III forge-temple that arms the sector's regiments and blesses their war-plate.",
+            "door_names": {
+             "forge": "Forge Temple Prime"
+            }
+           },
+           {
+            "id": "metalicamanu",
+            "name": "The Ten-Thousand Anvils",
+            "type": "manufactorum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Volume manufactorum — lasguns and shells beyond counting."
+           }
+          ],
+          "resources": 120,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "anvilus",
+          "name": "Anvilus Nine",
+          "type": "Forge World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Mechanicus"
+          },
+          "desc": "A weapons-forge specialising in ordnance; its test-ranges scar the whole northern face.",
+          "locations": [
+           {
+            "id": "anvilusorbit",
+            "name": "Anvilus Nine — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Munitions-ark 'Percussor'"
+            ],
+            "desc": "A hazardous orbit; live ordnance rides the lifts day and night."
+           },
+           {
+            "id": "anvilustemple",
+            "name": "Forge Temple of the Hammerfall",
+            "type": "forge_temple",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Where macro-shells and battle-cannon are consecrated to the Omnissiah.",
+            "door_names": {
+             "forge": "Forge Temple of the Hammerfall"
+            }
+           },
+           {
+            "id": "anvilusmanu",
+            "name": "The Shell-Sprawl",
+            "type": "manufactorum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Endless casting-lines for artillery munitions."
+           }
+          ],
+          "resources": 108,
+          "status": null
+         },
+         {
+          "id": "slagreach",
+          "name": "Slag-Reach",
+          "type": "Mining World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Mechanicus"
+          },
+          "desc": "A gutted mining-world feeding ore to the forges; its people are born owing the Cult their next breath.",
+          "locations": [
+           {
+            "id": "slagreachorbit",
+            "name": "Slag-Reach — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Ore-hauler train"
+            ],
+            "desc": "A grim orbit of ore-cradles and slag-tugs."
+           },
+           {
+            "id": "slagreachoutpost",
+            "name": "Extraction Station Gamma",
+            "type": "military_outpost",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A skitarii-warded pithead driving the deep bore-shafts."
+           },
+           {
+            "id": "slagreachcity",
+            "name": "Undersump Hab-Stack",
+            "type": "city",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A vertical slum-city clinging to the refinery's flanks."
+           }
+          ],
+          "resources": 66,
+          "status": null
+         },
+         {
+          "id": "ferrousgit",
+          "name": "Ferrous Holt",
+          "type": "Industrial World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Mechanicus"
+          },
+          "desc": "A soot-choked industrial world stamping out the hulls and hab-plate the Cog-Marches runs on.",
+          "locations": [
+           {
+            "id": "ferrousgitorbit",
+            "name": "Ferrous Holt — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Bulk-freighter line"
+            ],
+            "desc": "Orbit hazed brown by the exhaust of a world that never stops working."
+           },
+           {
+            "id": "ferrousmanu",
+            "name": "The Girder-Works",
+            "type": "manufactorum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Structural manufactorum — the skeleton of a hundred void-stations came from here."
+           },
+           {
+            "id": "ferroushive",
+            "name": "Stack-Hive Ferrus",
+            "type": "hive",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A worker-hive of ten billion souls, riveted to the factory-floor."
+           }
+          ],
+          "resources": 84,
+          "status": null
+         }
+        ]
        }
       ]
      },
