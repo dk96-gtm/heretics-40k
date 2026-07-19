@@ -41,8 +41,10 @@ It is that **nothing accumulates.** Persistence is the unlock.
 |---|---|
 | Login model | **Local profile shell** — feels like login; no accounts/passwords/server in Pass 1. |
 | Scope | **Front-door first.** Populated-galaxy + fighting-NPCs are the *sequel* spec (§11). |
-| Profile | **Single active profile.** No slot picker. `NEW COMMANDER` guards overwrite. |
-| Demo | **Isolated `demo` sandbox**, separate key from the profile — trying Kane can never nuke your commander. |
+| Profile | **Single active profile.** No slot picker. `NEW COMMANDER` guards overwrite (confirm + "Export first?"). |
+| Voice | **Plain verbs, grimdark skin** (2026-07-20): `NEW COMMANDER` / `CONTINUE` / `SETTINGS`, GTM/40K styled (acid-green on void). Not in-fiction menu labels. |
+| Return | **World digest on the title** (2026-07-20): for a returning profile, `WORLD.catchUp` runs at boot and the "while you were away…" digest renders **on the title screen**, before entering — the front door is a living dashboard. |
+| Demo | **Retired** (2026-07-20). `NEW COMMANDER` is the only way in. Kane's **world** (Vigilus overlays/NPCs/threads) is kept as the shared **Pass-1 starting sector** (`foundingWorld()`); the Kane **player** demo is kept only as a test fixture, not a menu path. No `demo` save key. |
 | Online | **Seam now, online next.** SAVE core speaks to a storage *adapter*; `LocalStore` ships, `RemoteStore` (the NPC-AI CF Worker) drops into the same interface at Stage-2. Matches every sibling spec's `localStorage → backend` staging. |
 | Starter army | New commander = the commander model + a **small founding Force** (2 base models from the faction roster) so Barracks isn't empty. |
 | Autosave | **Debounced write + `beforeunload`**; manual **Export/Import JSON** in Settings as insurance. |
@@ -57,7 +59,7 @@ It is that **nothing accumulates.** Persistence is the unlock.
   │  STORE adapter  : get/set/del/keys (async-shaped)      │  LocalStore now · RemoteStore later
   │  serialize(S)   : structural clone − circular refs      │  → a flat, JSON-safe blob
   │  hydrate(blob,D): blob → live S (rebuild refs)          │  reuses init()'s existing rebuild
-  │  profile ops    : has/load/save/clear (single 'profile')│  + isolated 'demo' key
+  │  profile ops    : has/load/save/clear (single 'profile')│  + foundingWorld() seed
   └───────────────────────────┬───────────────────────────┘
          impure shell (index.html, DOM/localStorage) calls the pure core:
   ┌──────────────┬─────────────┴───────┬──────────────────┬────────────────────┐
@@ -81,19 +83,28 @@ It is that **nothing accumulates.** Persistence is the unlock.
   (lines ~1968–1980): `migrateLoadout`, `THREAD.create` per thread, re-attach
   `combatants[id].model` from roster + `.armour` from loadout, `enrichRoster`, `fixLeaderTags`.
   Returns a live `S` ready for `WORLD.catchUp`.
-- **profile ops:** `PROFILE_KEY='heretics_profile_v1'`, `DEMO_KEY='heretics_demo_v1'`.
-  `hasProfile()`, `loadProfile()`, `saveProfile(S)`, `clearProfile()`.
+- **profile ops:** one key, `PROFILE_KEY='heretics_profile_v1'`.
+  `hasProfile()`, `loadProfile()`, `saveProfile(S)`, `clearProfile()`. (No demo key — demo retired.)
+- **`foundingWorld()`:** extracted from today's `demoSave()` — the faction-agnostic **starting world**
+  (Vigilus overlays / NPC forces / seeded threads) any new commander drops into for Pass-1. The
+  Kane-specific player/roster half of `demoSave()` is retired from the boot path (kept as a test
+  fixture). The galaxy agent later replaces/extends this world; `foundingWorld()` just returns
+  whatever the current alpha sector is.
 
 ### 4.2 TITLE screen (new full-screen overlay, shown before `#shell`)
-Rows, gated by `hasProfile()`:
+Plain verbs, GTM/40K skin (acid-green on void-black), art slot = wireframe placeholder. Rows gated
+by `hasProfile()`:
 ```
-  ▸ CONTINUE       <commander · faction · rank>     (only if a profile exists)
-  ▸ NEW COMMANDER  found a lineage                  (guards overwrite if profile exists)
-  ▸ TRY THE DEMO   the Rotward sandbox              (isolated demo save)
-  ▸ SETTINGS       AI · saves · about
-  local sandbox · saved to this browser · canon v1.11 · engine v18
+  RETURNING (profile exists):              FIRST RUN (no profile):
+  ▸ CONTINUE   <commander·faction·rank>    ▸ NEW COMMANDER   found a lineage
+  ▸ NEW COMMANDER  (replaces current)      ▸ SETTINGS
+  ▸ SETTINGS
+  ⚠ while you were away — <digest lines>    saved to this browser · canon v1.11 · engine v18
 ```
-GTM skin (acid-green on void-black), art slot = wireframe placeholder for now.
+- **Digest on the title:** when a profile is loaded, `WORLD.catchUp` has already run (see §4.5), so
+  `S._digest` is available — render its lines beneath `CONTINUE` as the "living dashboard" beat. Empty
+  digest (no time passed) → no banner.
+- `CONTINUE` → `enterShell(S)`. `NEW COMMANDER` over an existing profile → overwrite confirm.
 
 ### 4.3 SETTINGS screen (upgrade the existing floating `⚙ AI` gear)
 - **AI** — key + model (move the existing `LS_KEY`/`LS_MODEL` flow here, unchanged behaviour).
@@ -110,23 +121,29 @@ writes `S`.** `commitFounding(cc)`:
 1. Reuse the existing step-6 math to build the commander model (deltas + origins + PC premium + tags).
 2. Build a fresh `S`: `player` identity from `cc`; `roster=[commander, …2 base models from the
    faction roster]`; a founding `Force` led by the commander; starting `cur/infl/dom` from
-   `rules.economy.founding_start`; `pos` = existing alpha start (`// Pass 2: seed faction homeworld`);
-   `threads:[]`; `world` = a minimal seed (or the demo world, faction-agnostic); `time` fresh.
+   `rules.economy.founding_start`; `pos` = the alpha start (`// Pass 2: seed faction homeworld`);
+   `threads:[]`; `world = foundingWorld()` (§4.1); `time` fresh (`lastTick = now` — owes no catch-up).
 3. `SAVE.saveProfile(S)` → enter the shell.
 
-### 4.5 BOOT reseq — minimal wrapper preserving the shipped order
+### 4.5 BOOT reseq — minimal wrapper preserving the shipped tick math
 ```
-  boot → fetch canon → build STORE →
-     TITLE:
-       CONTINUE → S = hydrate(loadProfile())
-       NEW      → commitFounding(cc) → S set
-       DEMO     → S = demoSave() (into DEMO_KEY)
-     → migrate/enrich (existing) → WORLD.catchUp(S,D,now) → digest (UNCHANGED ORDER) → renderShell()
+  boot → fetch canon → build STORE → hasProfile()?
+     ├─ YES: S = hydrate(loadProfile()) → migrate/enrich → WORLD.catchUp(S,D,now) → S._digest
+     │        → TITLE [CONTINUE + digest banner · NEW COMMANDER · SETTINGS]
+     │        CONTINUE → enterShell(S)                    (digest already shown on title)
+     │        NEW      → confirm-overwrite → commitFounding(cc) → enterShell(S)
+     └─ NO:  TITLE [NEW COMMANDER · SETTINGS]
+              NEW → commitFounding(cc) → enterShell(S)    (fresh S, lastTick=now, no catch-up)
   in-play → any S mutation → SAVE.persist() (debounced 800ms) + beforeunload flush
 ```
-Today's `init()` body (everything after `S=demoSave()`) becomes **`enterShell(S)`** — called once a
-profile is chosen. `init()` itself shrinks to: canon-ready → STORE → show TITLE. **`WORLD.catchUp`
-and `renderDigest` stay exactly where they are inside `enterShell`.** I do not reorder the tick.
+Today's `init()` body (everything after `S=demoSave()`) becomes **`enterShell(S)`**, called once a
+profile is chosen. `init()` shrinks to: canon-ready → STORE → (if profile: hydrate + tick) → show
+TITLE. **The tick math is unchanged — `WORLD.catchUp` still runs once per boot and stays idempotent;**
+the only move is *where its digest surfaces* — on the title for a returning player (the locked
+"living dashboard" beat) rather than only inside HQ. `enterShell` does not re-tick (idempotent
+`catchUp` makes a stray second call harmless anyway). **Coordination note:** this relocates the
+`renderDigest` call site the living-world author placed in `init()` — a touch-point to flag if that
+workstream is mid-edit.
 
 ---
 
@@ -135,8 +152,8 @@ and `renderDigest` stay exactly where they are inside `enterShell`.** I do not r
 - **Unify legacy `LS_NPC`.** `npcState` and `time` (incl. `time.lastTick`, the flywheel's field)
   are `S` fields — they persist through the profile save now. `saveNPC()`/`loadNPC()` are retired in
   favour of the unified profile save; on first Pass-1 boot, if an old `LS_NPC` exists and no profile
-  does, absorb its `{npcState,time}` into the demo/profile (one-time migration), then ignore it.
-- **`persist()`** serializes the *active* `S` to its key (`PROFILE_KEY` or `DEMO_KEY`), debounced;
+  does, absorb its `{npcState,time}` into the profile (one-time migration), then ignore it.
+- **`persist()`** serializes the *active* `S` to `PROFILE_KEY`, debounced;
   a `beforeunload` handler flushes synchronously. No autosave during the `deploy`/`battle` freeze is
   needed — state still serializes fine; the freeze is a loadout lock, not a save lock.
 - **Corruption safety:** `hydrate` is wrapped; a parse/shape failure surfaces a title-screen notice
@@ -182,8 +199,8 @@ rewrite — and the living-world tick, which reads the same `S`, goes shared at 
   - **corruption:** malformed blob → `hydrate` throws caught → sentinel, no crash.
 - **Boot proxy** `engine-syntax.test.js` still compiles the inline script (unchanged).
 - **In-browser (pre-commit):** New Commander → reload → same commander loads; buy gear → reload →
-  gear persists; Try Demo → reload → returns to demo, profile untouched; catch-up digest still fires;
-  0 console errors.
+  gear persists; back-date `lastTick` → reload → CONTINUE shows the digest banner on the title;
+  New Commander over an existing profile → confirm fires; 0 console errors.
 
 ---
 
@@ -193,7 +210,8 @@ rewrite — and the living-world tick, which reads the same `S`, goes shared at 
   FD-A · SAVE CORE (pure)   /*<save-core>*/ region: STORE iface + LocalStore + serialize/hydrate
                             + profile ops. tests/save-core.test.js. (Touches index.html once, small,
                             far from boot code — quick 🔥 in/out.)
-  FD-B · BOOT RESEQ         split init→init+enterShell; TITLE overlay; wire CONTINUE/DEMO; persist()
+  FD-B · BOOT RESEQ         split init→init+enterShell; TITLE overlay; wire CONTINUE + digest-on-title;
+                            foundingWorld() extract; persist()
                             + beforeunload; unify LS_NPC. Preserve catchUp→digest.
   FD-C · ONRAMP             commitFounding(cc); wire NEW COMMANDER; founding Force seed.
   FD-D · SETTINGS           Settings screen (AI moved in) + Export/Import/Delete/Return-to-title.
@@ -205,7 +223,7 @@ lane is released between slices if another engine task is waiting.
 
 ## 10. Error / edge handling
 
-- No profile + no demo → title shows only NEW/DEMO/SETTINGS (CONTINUE hidden).
+- No profile → title shows only NEW COMMANDER + SETTINGS (CONTINUE hidden).
 - `NEW COMMANDER` over an existing profile → confirm ("this replaces <name> — Export first?").
 - Import of a foreign/old blob → validate shape; reject with a message, never partial-load.
 - `localStorage` unavailable/full (private mode, quota) → in-memory fallback + a "saves disabled"
