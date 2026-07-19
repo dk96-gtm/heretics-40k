@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.12",
+  "version": "1.13",
   "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -4290,8 +4290,171 @@
         "id": "haloz",
         "name": "Halo Marches",
         "status": "Corrupted",
-        "owner": "Unknown",
-        "sealed": true
+        "owner": "Xenos - Necrons",
+        "space": {
+         "id": "halospace",
+         "name": "The Halo Dark",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "The lightless edge of the segmentum, where a Tomb World has begun to wake and something worse festers in the hive-deeps."
+        },
+        "planets": [
+         {
+          "id": "sepulchre",
+          "name": "Sepulchre Nought",
+          "type": "Tomb World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Necrons"
+          },
+          "desc": "A stirring tomb-world; whole legions rise from the sand as the Halo Zone's true owner shrugs off six million years of sleep.",
+          "locations": [
+           {
+            "id": "sepulchreorbit",
+            "name": "Sepulchre Nought — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Necron shroud-cruiser"
+            ],
+            "desc": "An orbit that swallows augur-returns; ships that linger are not heard from again."
+           },
+           {
+            "id": "sepulchrecrown",
+            "name": "The Silent Throne",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The awakening Overlord's court — a hall of green-lit obsidian that rules the Zone by dread.",
+            "door_names": {
+             "throne_room": "The Silent Throne"
+            }
+           },
+           {
+            "id": "sepulchretomb",
+            "name": "The Endless Catacombs",
+            "type": "tomb_vault",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Tier upon tier of dormant warriors, waking rank by rank."
+           },
+           {
+            "id": "sepulchrelair",
+            "name": "The Flayed Warrens",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Where the Flayed Ones den — even other Necrons shun it."
+           }
+          ],
+          "resources": 90,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "drayl",
+          "name": "Drayl's Rest",
+          "type": "Dead World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Necrons"
+          },
+          "desc": "A dead world seeded with dormant tomb-complexes, its dust hiding scarab-swarms.",
+          "locations": [
+           {
+            "id": "draylorbit",
+            "name": "Drayl's Rest — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Scarab tender-swarm"
+            ],
+            "desc": "A still orbit; the only movement is the slow drift of scarab-clouds."
+           },
+           {
+            "id": "drayltomb",
+            "name": "Sub-Vault Drayl",
+            "type": "tomb_vault",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A secondary tomb, its wards flickering awake."
+           },
+           {
+            "id": "draylruins",
+            "name": "The Glass Wastes",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "The fused ruins of whatever the Necrons killed here last time."
+           }
+          ],
+          "resources": 40,
+          "status": null
+         },
+         {
+          "id": "sumphaven",
+          "name": "Sump-Haven",
+          "type": "Hive World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Genestealer Cults"
+          },
+          "desc": "An Imperial hive-world on paper — but the under-sump belongs, sump by sump, to the Cult of the Waking Star.",
+          "locations": [
+           {
+            "id": "sumphavenorbit",
+            "name": "Sump-Haven — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Impounded ore-freighter",
+             "Cult smuggler-craft"
+            ],
+            "desc": "A neglected orbit; the sector fleet stopped watching a long time ago."
+           },
+           {
+            "id": "sumphavenhive",
+            "name": "Hive Vorash",
+            "type": "hive",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A crumbling Imperial hive whose lower fifty levels answer to another master."
+           },
+           {
+            "id": "sumphavencult",
+            "name": "The Waking Star Sanctum",
+            "type": "cult_sanctum",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The cult's hidden heart, where the Patriarch waits for the Zone's tomb-lords and the sky-devils both."
+           }
+          ],
+          "resources": 58,
+          "status": null
+         }
+        ]
        }
       ]
      }

@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.12', () => {
-  assert.strictEqual(canon.meta.version, '1.12');
+test('canon is v1.13', () => {
+  assert.strictEqual(canon.meta.version, '1.13');
 });
 
 test('tick: living-world cadence block present', () => {
@@ -100,7 +100,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.12');
+  assert.equal(canon.meta.version, '1.13');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -337,4 +337,12 @@ test('G2: each minted Pacificus sector has one crown capital + plurality owner',
     const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
     assert.ok(s.owner.includes(top), s.id + " owner '" + s.owner + "' matches plurality " + top);
   });
+});
+
+test('G2: Pacificus fully minted — 6 sectors, 20 planets, no sealed stubs', () => {
+  const sectors = pacificusSegmentum().zones.flatMap((z) => z.sectors);
+  assert.strictEqual(sectors.length, 6, 'Pacificus sector count');
+  assert.strictEqual(pacificusPlanets().length, 20, 'Pacificus planet count');
+  sectors.forEach((s) =>
+    assert.ok(!s.sealed && (s.planets || []).length > 0, s.id + ' minted, not a sealed stub'));
 });
