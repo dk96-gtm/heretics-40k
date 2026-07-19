@@ -850,7 +850,7 @@ convos:[{id:'herald',pc:false,pl:'nurth',l:'Faction broker · Nurth, Pallid Reac
 }}
 /* ---- nav ---- */
 function go(s){document.querySelectorAll('.screen').forEach(function(e){e.classList.remove('on')});document.getElementById('s-'+s).classList.add('on');document.querySelectorAll('.navbtn').forEach(function(b){b.classList.toggle('active',b.dataset.s===s)});
-if(s==='shop')rShop();if(s==='comms')rComms();if(s==='hq')rHQ();if(s==='map')rMap();if(s==='threads')rTL();
+if(s==='shop')rShop();if(s==='comms')rComms();if(s==='hq')rHQ();if(s==='map')rMap();if(s==='threads')rTL();if(s==='battle'&&window.rBattle)rBattle();
 if(HUD){if(s==='hq')HUD.classList.remove('on');else{updateHUD();HUD.classList.add('on')}}
 if(CART){if(s!=='shop')CART.classList.remove('on');else renderCart()}
 window.scrollTo(0,0)}
@@ -2045,6 +2045,269 @@ function shopDemo(b){
   if(nm==='—')nm=dr.name+' (n/a for faction)';
   w.appendChild(renderDoor({kind:dr.kind,name:nm,tiers:'I-III'},fakeLoc))});
  b.appendChild(w);renderCart()}
+/* ═══════════════════════════════════════════════════════════════════════
+   BATTLEFIELD GRID — VISUAL PROTOTYPE (v1)
+   Self-contained, additive, injected at runtime. Renders the deploy tray,
+   fog board, and move-then-act composer from HARDCODED demo fixtures.
+   NOT wired to the real engine: no procedural generator, no true LOS fog,
+   no cover damage math, no THREAD-core rewrite. Feel-first mock so the UI
+   can be judged before the engine slice is spec'd.
+   ═════════════════════════════════════════════════════════════════════ */
+(function(){
+var CSS=[
+'#s-battle .bf-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}',
+'#s-battle .bf-wrap{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}',
+'.bf-board{display:grid;gap:2px;background:#0a0806;padding:7px;border:1px solid var(--ln);border-radius:6px}',
+'.bf-cell{width:31px;height:31px;position:relative;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:13px;background:var(--void);color:var(--faint);user-select:none}',
+'.bf-forest{color:var(--vdh);background:rgba(74,122,107,.15)}',
+'.bf-ruins{color:#b58a55;background:rgba(130,95,50,.18)}',
+'.bf-mtn{color:var(--dim);background:rgba(255,255,255,.06)}',
+'.bf-fort{color:var(--brh);background:rgba(176,141,62,.16)}',
+'.bf-fog{filter:brightness(.42) saturate(.35)}',
+'.bf-fog::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.4) 4px,rgba(0,0,0,.4) 5px);pointer-events:none}',
+'.bf-zone{box-shadow:inset 0 0 0 1px rgba(111,168,147,.55)}',
+'.bf-zone.pl{cursor:pointer}.bf-zone.pl:hover{background:rgba(111,168,147,.14)}',
+'.bf-ezone{box-shadow:inset 0 0 0 1px rgba(196,80,63,.28);background:rgba(196,80,63,.05);color:var(--bl)}',
+'.bf-reach{box-shadow:inset 0 0 0 2px var(--br);cursor:pointer}.bf-reach:hover{background:rgba(176,141,62,.16)}',
+'.bf-tok{position:absolute;inset:3px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;z-index:2}',
+'.bf-mine{background:var(--raise);border:1.5px solid var(--brh);color:var(--brh);cursor:pointer}',
+'.bf-mine.sel{box-shadow:0 0 0 2px var(--brh),0 0 8px rgba(216,180,94,.5)}',
+'.bf-foe{background:rgba(142,47,35,.45);border:1.5px solid var(--blh);color:var(--blh);cursor:pointer}',
+'.bf-foe.tgt{box-shadow:0 0 0 2px var(--blh),0 0 8px rgba(196,80,63,.5)}',
+'.bf-ghost{position:absolute;inset:4px;border:1.5px dashed var(--bl);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--bl);opacity:.6;z-index:1;font-size:12px}',
+'.bf-panel{flex:1;min-width:290px;max-width:380px}',
+'.bf-legend{font-size:11px;color:var(--dim);line-height:1.95}',
+'.bf-legend b{color:var(--ink);font-weight:500}',
+'.bf-tray{display:flex;flex-direction:column;gap:6px;margin:10px 0}',
+'.bf-tm{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border:1px solid var(--ln);border-radius:5px;background:var(--p2);font-size:13px}',
+'.bf-tm.done{border-color:var(--vd);color:var(--vdh)}.bf-tm.next{border-color:var(--brh);box-shadow:inset 3px 0 0 var(--brh)}',
+'.bf-blk{border:1px solid var(--ln);border-radius:6px;padding:11px;margin-bottom:10px;background:var(--panel)}',
+'.bf-blk h4{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--br);margin-bottom:8px}',
+'.bf-ro{font-size:12px;color:var(--dim);line-height:1.8}.bf-ro b{color:var(--ink);font-weight:500}',
+'.bf-ok{color:var(--vdh)}.bf-no{color:var(--blh)}',
+'.bf-ap{font-family:"IBM Plex Mono",monospace;letter-spacing:1px;color:var(--brh);font-size:12px}',
+'.bf-coord{font-size:10px;color:var(--faint)}'
+].join('');
+var stEl=document.createElement('style');stEl.textContent=CSS;document.head.appendChild(stEl);
+
+/* inject nav button (before the .foot block) + the screen section */
+var foot=document.querySelector('.rail .foot');
+var nb=document.createElement('button');nb.className='navbtn';nb.dataset.s='battle';nb.textContent='VIII · Battlefield';
+foot.parentNode.insertBefore(nb,foot);
+var sec=document.createElement('section');sec.className='screen';sec.id='s-battle';
+sec.innerHTML='<div class="crumb">Tactical · prototype</div><h2>Battlefield</h2><div id="bf-mount"></div>';
+document.querySelector('.main').appendChild(sec);
+nb.onclick=function(){go('battle');rBattle();};
+
+/* ── fixtures ───────────────────────────────────────────────── */
+var W=12,H=10;
+var TER={
+ open :{g:'·',c:'',        pass:true, cover:0,name:'Open ground'},
+ forest:{g:'♣',c:'bf-forest',pass:true, cover:1,name:'Forest · difficult · light cover',opaque:false},
+ ruins:{g:'▓',c:'bf-ruins', pass:true, cover:2,name:'Ruins · difficult · heavy cover',opaque:false},
+ mtn  :{g:'▲',c:'bf-mtn',  pass:false,cover:0,name:'Mountain · impassable · blocks sight',opaque:true},
+ fort :{g:'█',c:'bf-fort', pass:false,cover:2,name:'Fortification · impassable · heavy cover',opaque:true}
+};
+var terr={};
+[['0,0','mtn'],['1,0','mtn'],['0,1','mtn'],
+ ['3,1','forest'],['4,1','forest'],['2,2','forest'],['3,2','forest'],
+ ['4,3','ruins'],['5,3','ruins'],['3,4','ruins'],['4,4','ruins'],
+ ['2,6','fort'],['3,6','fort'],['2,7','fort'],['3,7','fort']
+].forEach(function(p){terr[p[0]]=p[1];});
+function terAt(x,y){return TER[terr[x+','+y]||'open'];}
+var SIGHT={MELEE:2,SHORT:4,MEDIUM:7,LONG:11};
+var RANK ={MELEE:0,SHORT:1,MEDIUM:2,LONG:3};
+function cheb(a,b){return Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));}
+function bandOf(d){return d<=1?'MELEE':d<=3?'SHORT':d<=6?'MEDIUM':'LONG';}
+
+/* mutable prototype state (rebuilt on reset) */
+var BF;
+function seed(phase){
+ return {
+  phase:phase,                 // 'deploy' | 'battle'
+  turn:1, side:'Rotward', ap:26,
+  sel:null, tgt:null, act:null,
+  placeIdx:0,
+  mine:[
+   {id:'a',n:'Gharn', spd:3,wb:'MEDIUM',wpn:'Bolter',      wcost:4, x:null,y:null, dep:{x:1,y:3}},
+   {id:'b',n:'Skarn', spd:4,wb:'SHORT', wpn:'Chainblade',  wcost:3, x:null,y:null, dep:{x:0,y:5}},
+   {id:'c',n:'Vex',   spd:2,wb:'MEDIUM',wpn:'Reaper Cannon',wcost:5, x:null,y:null, dep:{x:0,y:7}}
+  ],
+  foe:[
+   {id:'X',n:'Thresh',   x:7,y:5,last:{x:7,y:5}},
+   {id:'Y',n:'Sskarith', x:8,y:3,last:{x:8,y:3}},
+   {id:'Z',n:'Ghoreth',  x:9,y:1,last:{x:9,y:1}}
+  ]
+ };
+}
+function autoDeploy(){BF.mine.forEach(function(m){m.x=m.dep.x;m.y=m.dep.y;});BF.placeIdx=BF.mine.length;}
+
+/* ── derived helpers (prototype-grade: radius reveal, no LOS) ── */
+function mineAt(x,y){return BF.mine.filter(function(m){return m.x===x&&m.y===y;})[0];}
+function lit(x,y){return BF.mine.some(function(m){return m.x!=null&&cheb({x:x,y:y},m)<=SIGHT[m.wb];});}
+function foeSpotted(f){return lit(f.x,f.y);}
+function occupied(x,y){return !!mineAt(x,y)||BF.foe.some(function(f){return foeSpotted(f)&&f.x===x&&f.y===y;});}
+function reachSet(m){
+ var s={};if(!m||m.x==null)return s;
+ for(var y=0;y<H;y++)for(var x=0;x<W;x++){
+  if(!terAt(x,y).pass)continue;
+  if(cheb({x:x,y:y},m)>m.spd)continue;
+  if(x===m.x&&y===m.y)continue;
+  if(occupied(x,y))continue;
+  s[x+','+y]=1;
+ }
+ return s;
+}
+
+/* ── render ─────────────────────────────────────────────────── */
+function boardHTML(){
+ var m=BF.sel?BF.mine.filter(function(o){return o.id===BF.sel;})[0]:null;
+ var reach=BF.phase==='battle'?reachSet(m):{};
+ var h='<div class="bf-board" style="grid-template-columns:repeat('+W+',31px)">';
+ for(var y=0;y<H;y++)for(var x=0;x<W;x++){
+  var t=terAt(x,y),cls='bf-cell '+t.c,inner=t.g==='·'?'':t.g,tok='';
+  var deploy=BF.phase==='deploy';
+  if(deploy){
+   if(x<=2){cls+=' bf-zone'+((t.pass&&!mineAt(x,y))?' pl':'');}
+   else if(x>=9){cls+=' bf-ezone';inner='?';}
+  }else{
+   if(!lit(x,y))cls+=' bf-fog';
+   if(reach[x+','+y])cls+=' bf-reach';
+  }
+  var mm=mineAt(x,y);
+  if(mm)tok='<span class="bf-tok bf-mine'+(BF.sel===mm.id?' sel':'')+'" data-mine="'+mm.id+'">'+mm.id+'</span>';
+  if(!deploy){
+   BF.foe.forEach(function(f){
+    if(foeSpotted(f)&&f.x===x&&f.y===y)tok+='<span class="bf-tok bf-foe'+(BF.tgt===f.id?' tgt':'')+'" data-foe="'+f.id+'">'+f.id+'</span>';
+    else if(!foeSpotted(f)&&f.last.x===x&&f.last.y===y)tok+='<span class="bf-ghost" title="'+f.n+' — last known">◌</span>';
+   });
+  }
+  h+='<div class="'+cls+'" data-x="'+x+'" data-y="'+y+'">'+inner+tok+'</div>';
+ }
+ return h+'</div>';
+}
+function panelHTML(){
+ if(BF.phase==='deploy')return deployPanel();
+ return battlePanel();
+}
+function deployPanel(){
+ var placed=BF.mine.filter(function(m){return m.x!=null;}).length;
+ var tray='<div class="bf-tray">'+BF.mine.map(function(m,i){
+  var done=m.x!=null,next=!done&&i===BF.placeIdx;
+  return '<div class="bf-tm'+(done?' done':'')+(next?' next':'')+'"><span><b>'+m.id+'</b> · '+m.n+'</span><span class="mono">SPD '+m.spd+' · '+m.wb+(done?' ✓':'')+'</span></div>';
+ }).join('')+'</div>';
+ return '<div class="bf-panel">'
+  +'<div class="bf-blk"><h4>Deployment · blind</h4>'
+  +'<div class="bf-ro">Drop each model into <b style="color:var(--vdh)">your zone</b> (cols A–C). The enemy deploys hidden — you never see their line until fog reveals it. Click a lit zone tile to place the <b>next</b> model.</div>'
+  +tray
+  +'<div class="bf-ro" style="margin-bottom:8px">Placed <b>'+placed+' / '+BF.mine.length+'</b></div>'
+  +'<button class="btn" data-bf="lockin"'+(placed<BF.mine.length?' disabled':'')+'>Lock in line ▸</button> '
+  +'<button class="btn gh sm" data-bf="reset">Reset</button>'
+  +'</div>'
+  +legendHTML()+'</div>';
+}
+function battlePanel(){
+ var m=BF.sel?BF.mine.filter(function(o){return o.id===BF.sel;})[0]:null;
+ var f=BF.tgt?BF.foe.filter(function(o){return o.id===BF.tgt;})[0]:null;
+ var spotted=BF.foe.filter(foeSpotted),ghosts=BF.foe.filter(function(x){return !foeSpotted(x);});
+ var moveB='<div class="bf-blk"><h4>1 · Move (free, ≤ Speed)</h4>';
+ if(!m)moveB+='<div class="bf-ro">Click one of <b>your</b> models to select it — its reachable squares light up. Click a lit square to move.</div>';
+ else moveB+='<div class="bf-ro">Selected <b>'+m.n+'</b> <span class="bf-coord">@'+cell(m.x,m.y)+'</span> · Speed <b>'+m.spd+'</b>. Click a gold-edged square to move; click it again elsewhere to reposition.</div>';
+ moveB+='</div>';
+ var actB='<div class="bf-blk"><h4>2 · Act (spend AP)</h4>';
+ if(!m){actB+='<div class="bf-ro">Select a model first.</div>';}
+ else{
+  actB+='<div class="bf-ro">Actor <b>'+m.n+'</b> · weapon <b>'+m.wpn+'</b> ('+m.wb+' · '+m.wcost+' AP)</div>';
+  actB+='<label class="f">Target — spotted only</label><select data-bf="tgt"><option value="">— choose —</option>'
+   +spotted.map(function(x){return '<option value="'+x.id+'"'+(BF.tgt===x.id?' selected':'')+'>'+x.id+' · '+x.n+'</option>';}).join('')+'</select>';
+  if(f){
+   var d=cheb(m,f),nb2=bandOf(d),reach=RANK[m.wb]>=RANK[nb2],cv=terAt(f.x,f.y).cover;
+   actB+='<div class="bf-ro" style="margin-top:9px">'
+    +'range <b>'+d+' sq</b> → band <b>'+nb2+'</b><br>'
+    +'weapon reaches '+m.wb+' → '+(reach?'<span class="bf-ok">in range ✓</span>':'<span class="bf-no">OUT of range ✗</span>')+'<br>'
+    +'cover '+(cv?('<b>'+(cv===2?'heavy':'light')+'</b> → <span class="bf-no">dmg −'+cv+'</span>'):'<b>none</b> → full dmg')
+    +'</div>'
+    +'<button class="btn sm" data-bf="fire" style="margin-top:9px"'+(reach?'':' disabled')+'>Resolve attack −'+m.wcost+' AP</button>';
+  }
+ }
+ actB+='</div>';
+ var contacts='<div class="bf-ro" style="margin:2px 0 10px"><b>Contacts:</b> '
+  +(spotted.length?spotted.map(function(x){return x.id+' ('+cell(x.x,x.y)+', '+bandOf(nearestMine(x))+')';}).join(' · '):'none in sight')
+  +(ghosts.length?(' · ghost '+ghosts.map(function(x){return '◌'+x.id;}).join(' ')):'')+'</div>';
+ return '<div class="bf-panel">'
+  +'<div class="bf-ro" style="margin-bottom:6px">Turn <b>'+BF.turn+'</b> · <b style="color:var(--brh)">'+BF.side+'</b> to move · <span class="bf-ap">AP '+BF.ap+'/26</span></div>'
+  +contacts+moveB+actB
+  +'<button class="btn" data-bf="post">Post turn ▸</button> '
+  +'<button class="btn gh sm" data-bf="redeploy">‹ Deploy</button> '
+  +'<button class="btn gh sm" data-bf="reset">Reset</button>'
+  +legendHTML()+'</div>';
+}
+function nearestMine(f){var b=99;BF.mine.forEach(function(m){if(m.x!=null)b=Math.min(b,cheb(m,f));});return b;}
+function cell(x,y){return String.fromCharCode(65+x)+(y+1);}
+function legendHTML(){
+ return '<div class="bf-blk"><h4>Legend</h4><div class="bf-legend">'
+  +'<b>·</b> open &nbsp; <span class="bf-forest">♣</span> forest &nbsp; <span class="bf-ruins">▓</span> ruins &nbsp; <span class="bf-mtn">▲</span> mountain &nbsp; <span class="bf-fort">█</span> fort<br>'
+  +'<b style="color:var(--brh)">■ a b c</b> your models &nbsp; <b style="color:var(--blh)">■ X Y</b> spotted foe<br>'
+  +'<span style="color:var(--bl)">◌</span> ghost (last-known) &nbsp; hatched = fog (out of sight)<br>'
+  +'<span class="bf-coord">dist→band 0-1 melee · 2-3 short · 4-6 medium · 7+ long</span>'
+  +'</div></div>';
+}
+function draw(){
+ var mount=document.getElementById('bf-mount');
+ mount.innerHTML='<div class="bf-top">'
+  +'<span class="pill vd">Craftworld surface</span><span class="pill br">Ruined Sector</span>'
+  +'<span class="mono" style="color:var(--dim)">board '+W+'×'+H+' · prototype</span></div>'
+  +'<div class="bf-wrap">'+boardHTML()+panelHTML()+'</div>';
+}
+
+/* ── interaction (single delegated handler) ─────────────────── */
+var wired=false;
+function rBattle(){
+ if(!BF)BF=seed('deploy');
+ if(!wired){
+  document.getElementById('bf-mount').addEventListener('click',onClick);
+  document.getElementById('bf-mount').addEventListener('change',onChange);
+  wired=true;
+ }
+ draw();
+}
+function onChange(e){
+ var t=e.target.closest('[data-bf]');if(!t)return;
+ if(t.getAttribute('data-bf')==='tgt'){BF.tgt=t.value||null;draw();}
+}
+function onClick(e){
+ var b=e.target.closest('[data-bf]');
+ if(b){
+  var k=b.getAttribute('data-bf');
+  if(k==='lockin'){autoDeploy&&0;BF.phase='battle';BF.sel=null;draw();T('Lines locked — battle begins. Fog now governs what you see.');return;}
+  if(k==='reset'){BF=seed('deploy');draw();return;}
+  if(k==='redeploy'){BF.phase='deploy';BF.sel=null;BF.tgt=null;draw();return;}
+  if(k==='post'){BF.turn++;BF.ap=26;BF.sel=null;BF.tgt=null;draw();T('Turn posted. Enemy responds — board redraws from their knowledge.');return;}
+  if(k==='fire'){var m=BF.mine.filter(function(o){return o.id===BF.sel;})[0];BF.ap=Math.max(0,BF.ap-(m?m.wcost:0));draw();T('Attack resolved (mock) — AP spent, cover applied.');return;}
+  return;
+ }
+ var foe=e.target.closest('[data-foe]');
+ if(foe&&BF.phase==='battle'){BF.tgt=foe.getAttribute('data-foe');draw();return;}
+ var mine=e.target.closest('[data-mine]');
+ if(mine&&BF.phase==='battle'){var id=mine.getAttribute('data-mine');BF.sel=BF.sel===id?null:id;draw();return;}
+ var cellEl=e.target.closest('.bf-cell');
+ if(!cellEl)return;
+ var x=+cellEl.getAttribute('data-x'),y=+cellEl.getAttribute('data-y');
+ if(BF.phase==='deploy'){
+  if(x>2||!terAt(x,y).pass||mineAt(x,y))return;
+  var next=BF.mine[BF.placeIdx];if(!next)return;
+  next.x=x;next.y=y;BF.placeIdx++;draw();return;
+ }
+ /* battle: move selected model onto a reachable tile */
+ if(BF.sel){
+  var mm=BF.mine.filter(function(o){return o.id===BF.sel;})[0];
+  if(reachSet(mm)[x+','+y]){mm.x=x;mm.y=y;BF.sel=null;draw();T(mm.n+' moved to '+cell(x,y)+'.');}
+  else BF.sel=null,draw();
+ }
+}
+window.rBattle=rBattle;
+})();
+
 fetch('./heretics-40k-data-v1.json').then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(d){D=d;init()}).catch(function(e){
 document.getElementById('bootmsg').innerHTML='<span style="color:var(--blh)">Could not load canon (heretics-40k-data-v1.json).</span><br><br>The engine and data file must sit in the same folder and be served over HTTP —<br>opening this file directly (file://) blocks the data fetch.<br><br><span class="mono" style="color:var(--dim)">Quick local test: run &nbsp;python -m http.server&nbsp; in the folder, open localhost:8000<br>Deploy: upload both files to GitHub Pages / Netlify / itch.io</span>'});
 </script></body></html>
