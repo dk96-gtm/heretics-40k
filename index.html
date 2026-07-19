@@ -1034,6 +1034,19 @@ function migrateLoadout(m,faction){
   delete m.sl;
   return m;
 }
+/* the shared Pass-1 starting sector — any new commander drops in here (Pass 2: per-faction homeworlds) */
+function foundingWorld(){return {
+ met:['vess','herald','sskarith','kryv','warden'],
+ stats:{vigilus:{taint:12},sangua:{taint:4},nurth:{taint:20},kraithv:{taint:16}},
+ log:[],
+ forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
+  sangua:[['89th Sanguan Garrison','NPC, Astra Militarum · COMPANY','Hive Primus']],
+  nurth:[['The Pallid Host','NPC, Death Guard · HOST','The Pallid Court']],
+  kraithv:[['The Verge Broods','NPC, Tyranids · BATTLEGROUP','The Gestation Vault']]},
+ history:{'vigilus/ashravine':['SKIRMISH — vs Sskarith · ACTIVE, post 7','MISSION — The First Landing · concluded, victory'],
+  'vigilus/carrion':['DIPLOMACY — The Carrion Bargain · ACTIVE'],'vigilus/voxbastion':['MISSION — open'],
+  'sangua/hiveprimus':['INVASION — requires COMPANY+ · open'],'nurth/court':['DIPLOMACY — open'],
+  'kraithv/vault':['MISSION — high risk · open'],'kraithv/reef':['RAID — open']}};}
 function demoSave(){var lA='Vigilus · Ash Ravine',lR='Vigilus · Rotforge Bastion',fo='The Rotward';
 return{
 player:{name:'Vexos Kane, the Rotforged',allegiance:'chaos',faction:'death_guard',model:'Plague Marine',cmdRank:3,mdlRank:3,w:'9/9',xp:'51/68'},
@@ -1058,18 +1071,7 @@ roster:[
 {id:'kraill',n:'Brother Kraill',tag:'Named',cls:'Core',rk:4,pc:80,w:'6/6',st:'GARRISON',loc:lR,fo:'—',sub:'Named Plague Marine - R4 - 5 slots',sl:[{k:'WEAPON',it:{n:'Boltgun',cat:'WEAPON',d:'Phys 2 - Med - 1 AP'}},{k:'WEAPON',it:{n:'Plague Knife',cat:'WEAPON',d:'Corr 2 - Effortless'}},{k:'ITEM',it:null},{k:'ABILITY',it:null},{k:'NAMED',it:null}]}],
 forces:[{id:'rw',n:'The Rotward',lead:'morvax',ap:26}],
 succ:[{n:'Brother Morvax',fid:'rw'},{n:'Gharn the Sevenfold',fid:null}],
-world:{
- met:['vess','herald','sskarith','kryv','warden'],
- stats:{vigilus:{taint:12},sangua:{taint:4},nurth:{taint:20},kraithv:{taint:16}},
- log:[],
- forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
-  sangua:[['89th Sanguan Garrison','NPC, Astra Militarum · COMPANY','Hive Primus']],
-  nurth:[['The Pallid Host','NPC, Death Guard · HOST','The Pallid Court']],
-  kraithv:[['The Verge Broods','NPC, Tyranids · BATTLEGROUP','The Gestation Vault']]},
- history:{'vigilus/ashravine':['SKIRMISH — vs Sskarith · ACTIVE, post 7','MISSION — The First Landing · concluded, victory'],
-  'vigilus/carrion':['DIPLOMACY — The Carrion Bargain · ACTIVE'],'vigilus/voxbastion':['MISSION — open'],
-  'sangua/hiveprimus':['INVASION — requires COMPANY+ · open'],'nurth/court':['DIPLOMACY — open'],
-  'kraithv/vault':['MISSION — high risk · open'],'kraithv/reef':['RAID — open']}},
+world:foundingWorld(),
 threads:[{id:'ash',type:'SKIRMISH',n:'Skirmish at the Ash Ravine',loc:'Vigilus · The Ash Ravine',turn:'you',vis:'public',initiator:"Brood-Tyrant Sskarith (NPC · Tyranids)",about:"Sskarith's brood boiled up out of the black sand to contest the Ash Ravine. Whoever still holds the ground when the posts run dry claims the field — and the Ravine feeds the sector's Conflict either way.",forces:['The Rotward',"Sskarith's Brood"],
  posts:[
   {who:'Brood-Tyrant Sskarith',tag:'',body:"The Ash Ravine was quiet until the sand began to breathe. Sskarith's vanguard breached the crust at dusk — the brood declaring this black gutter theirs."},
