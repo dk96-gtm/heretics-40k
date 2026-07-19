@@ -600,18 +600,53 @@ var THREAD=(function(){
   function cheb(a,b){return Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y));}
   var GRID_BANDS=[[1,'MELEE'],[3,'SHORT'],[6,'MEDIUM']];
   function bandOf(d){for(var i=0;i<GRID_BANDS.length;i++)if(d<=GRID_BANDS[i][0])return GRID_BANDS[i][1];return 'LONG';}
-  function reachable(pos,speed,board,occupied){
-    var occ={};(occupied||[]).forEach(function(o){occ[o.x+','+o.y]=1;});
-    var out={};                                  // a Chebyshev ball IS an axis-aligned box
-    for(var y=Math.max(0,pos.y-speed);y<=Math.min(board.h-1,pos.y+speed);y++)
-      for(var x=Math.max(0,pos.x-speed);x<=Math.min(board.w-1,pos.x+speed);x++){
-        if(x===pos.x&&y===pos.y)continue;        // own square is not a move
-        if(occ[x+','+y])continue;                // occupied cells are blocked
-        out[x+','+y]=true;
-      }
-    return out;
+  /* ── terrain + generator (Slice B) — built-in terrain config for now ── */
+  var TERRAIN={
+    open  :{pass:true,  cost:1,        cover:0, opaque:false},
+    forest:{pass:true,  cost:2,        cover:1, opaque:false},
+    ruins :{pass:true,  cost:2,        cover:2, opaque:false},
+    mtn   :{pass:false, cost:Infinity, cover:0, opaque:true},
+    fort  :{pass:false, cost:1,        cover:2, opaque:true}
+  };
+  function tileAt(board,x,y){return (board&&board.tiles)?TERRAIN[board.tiles[y*board.w+x].t]:TERRAIN.open;}
+  var DIRS8=[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
+  function reachable(pos,speed,board,occupied){   // cost-based flood-fill (Dijkstra); tile-less board = all open
+    var W=board.w,H=board.h,occ={};(occupied||[]).forEach(function(o){occ[o.x+','+o.y]=1;});
+    function passable(x,y){return x>=0&&y>=0&&x<W&&y<H&&!occ[x+','+y]&&tileAt(board,x,y).pass;}
+    var start=pos.x+','+pos.y,best={};best[start]=0;
+    var frontier=[{x:pos.x,y:pos.y,c:0}];
+    while(frontier.length){
+      var mi=0;for(var i=1;i<frontier.length;i++)if(frontier[i].c<frontier[mi].c)mi=i;
+      var cur=frontier.splice(mi,1)[0];if(cur.c>best[cur.x+','+cur.y])continue;
+      for(var d=0;d<8;d++){var nx=cur.x+DIRS8[d][0],ny=cur.y+DIRS8[d][1];
+        if(!passable(nx,ny))continue;
+        var nc=cur.c+tileAt(board,nx,ny).cost;if(nc>speed)continue;
+        var k=nx+','+ny;if(best[k]==null||nc<best[k]){best[k]=nc;frontier.push({x:nx,y:ny,c:nc});}}
+    }
+    var out={};for(var k2 in best)if(k2!==start)out[k2]=true;return out;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable };
+  function lineOfSight(a,b,board){                 // DDA sample; only opaque terrain BETWEEN the two blocks (v1)
+    var dx=b.x-a.x,dy=b.y-a.y,steps=Math.max(Math.abs(dx),Math.abs(dy));
+    for(var i=1;i<steps;i++){
+      var x=Math.round(a.x+dx*i/steps),y=Math.round(a.y+dy*i/steps);
+      if((x===a.x&&y===a.y)||(x===b.x&&y===b.y))continue;
+      if(tileAt(board,x,y).opaque)return false;
+    }
+    return true;
+  }
+  function coverMod(pos,board){return tileAt(board,pos.x,pos.y).cover;}
+  function genBoard(cfg,rng){                       // deterministic given injected rng(); pure
+    var W=cfg.w,H=cfg.h,density=cfg.density||0,palette=cfg.palette||[],
+        zd=cfg.zoneDepth||Math.max(1,Math.round(W*0.18)),tiles=[];
+    for(var i=0;i<W*H;i++){var t='open';
+      if(palette.length&&rng()<density)t=palette[Math.floor(rng()*palette.length)];
+      tiles.push({t:t});}
+    var zones={A:{x0:0,y0:0,x1:zd-1,y1:H-1},B:{x0:W-zd,y0:0,x1:W-1,y1:H-1}};
+    [zones.A,zones.B].forEach(function(z){          // keep deploy zones deployable (no impassable)
+      for(var y=z.y0;y<=z.y1;y++)for(var x=z.x0;x<=z.x1;x++)tiles[y*W+x].t='open';});
+    return {w:W,h:H,tiles:tiles,zones:zones};
+  }
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard };
 })();
 /*</thread-core>*/
 /*<loadout-core>*/
