@@ -62,7 +62,7 @@ runs fully parallel). If two tasks both need `index.html`, they serialize — th
 
 | ID | Task | Lane | Status | Owner · session | Updated | Notes |
 |----|------|------|--------|-----------------|---------|-------|
-| T-GX-G1 | Author **Solar** segmentum planets/locations against the G0 minting contract | canon + tests | `open` | — | — | Contract locked in `galaxy-territory-mint-design.md`. Bump `meta.version`. |
+| T-GX-G1 | Author **Solar** segmentum planets/locations against the G0 minting contract | canon + tests | `in-progress` | galaxy · sess:406f1b0a-8f6e-4674-95ec-6d43178f11bd | 2026-07-20 | Reference segmentum — validates the contract + template for G2-G5. Contract locked in `galaxy-territory-mint-design.md`. Bump `meta.version`. |
 | T-GX-G2 | Author **Pacificus** segmentum | canon + tests | `open` | — | — | Same contract; extend `tests/canon.test.js` counts. |
 | T-GX-G3 | Author **Obscurus** segmentum | canon + tests | `open` | — | — | |
 | T-GX-G4 | Author **Tempestus** segmentum | canon + tests | `open` | — | — | |
