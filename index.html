@@ -808,6 +808,60 @@ var NPCAI=(function(){
   return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope, buildBundle:buildBundle, validateReply:validateReply, applyDelta:applyDelta, retire:retire };
 })();
 /*</ai-core>*/
+/*<world-core>*/
+var WORLD=(function(){
+  // Pure, DOM-free deterministic world-tick. Canon/state/nowMs arrive as arguments;
+  // NO Date.now()/Math.random() inside — replayable. Slice 2a: production + taint drift.
+  function dayMs(canon){return ((canon.tick&&canon.tick.day_minutes)||240)*60000;}
+  function ticksElapsed(state,canon,nowMs){
+    var last=(state.time&&state.time.lastTick)||0;
+    var e=Math.floor((nowMs-last)/dayMs(canon));
+    return e>0?e:0;
+  }
+  function produce(state,canon,events){
+    var rate=(canon.tick&&canon.tick.production_per_day)||0;
+    state.cur=(state.cur||0)+rate;
+    if(rate)events.push({kind:'production',amount:rate});
+  }
+  function driftTaint(state,canon,events){
+    var rate=(canon.tick&&canon.tick.taint_per_day)||0;
+    var stats=(state.world&&state.world.stats)||{};
+    Object.keys(stats).forEach(function(sec){
+      if(typeof stats[sec].taint==='number'){stats[sec].taint+=rate;
+        if(rate)events.push({kind:'taint',sector:sec,delta:rate});}
+    });
+  }
+  function stepDay(state,canon,events){
+    produce(state,canon,events);
+    driftTaint(state,canon,events);
+  }
+  function catchUp(state,canon,nowMs){
+    var events=[];
+    var elapsed=ticksElapsed(state,canon,nowMs);
+    var cap=(canon.tick&&canon.tick.max_catchup_days)||30;
+    var run=Math.min(elapsed,cap);
+    for(var i=0;i<run;i++)stepDay(state,canon,events);
+    var compressed=Math.max(0,elapsed-run);
+    if(compressed>0)events.push({kind:'compressed',days:compressed});
+    if(!state.time)state.time={};
+    state.time.lastTick=(state.time.lastTick||0)+elapsed*dayMs(canon);
+    return {events:events,ticks:run,compressed:compressed};
+  }
+  function digest(events){
+    var lines=[];
+    var prod=events.filter(function(e){return e.kind==='production';})
+                   .reduce(function(a,e){return a+e.amount;},0);
+    if(prod)lines.push('Production banked: '+prod+'.');
+    events.filter(function(e){return e.kind==='taint';}).forEach(function(e){
+      lines.push('Taint rose '+e.delta+' in '+e.sector+'.');});
+    var comp=events.filter(function(e){return e.kind==='compressed';})[0];
+    if(comp)lines.push('Over ~'+comp.days+' earlier cycles the frontier settled quietly.');
+    return {lines:lines};
+  }
+  return { dayMs:dayMs, ticksElapsed:ticksElapsed, stepDay:stepDay,
+           catchUp:catchUp, digest:digest };
+})();
+/*</world-core>*/
 /* ---- AI engine (impure: localStorage, fetch, DOM — CALLS the pure NPCAI core) ---- */
 var LS_NPC='heretics_npc_state_v1';
 function saveNPC(){try{localStorage.setItem(LS_NPC,JSON.stringify({npcState:S.npcState,time:S.time}));}catch(e){}}
