@@ -2025,42 +2025,43 @@ S.succ.push({n:m.n,fid:null});
 RB.classList.remove('on');rRos();rW();T(m.n+' rises from the ranks. The Leader tag is theirs.');go('barracks');return}}
 RS.st++;rRite()}
 /* ---- boot ---- */
-function init(){S=demoSave();
-S.roster.forEach(function(m){migrateLoadout(m,S.player.faction);});
-S.threads=S.threads.map(function(t){return THREAD.create(t,D)});
-S.threads.forEach(function(t){
- if(t.state&&t.state.combatants){
-  Object.keys(t.state.combatants).forEach(function(id){
-   var m=S.roster.filter(function(x){return x.id===id})[0];
-   if(m){t.state.combatants[id].model=m;
-    var _a=m.loadout&&m.loadout.armour&&m.loadout.armour.it;
-    t.state.combatants[id].armour=_a?_a.def:null;}
-  });
- }
-});
-enrichRoster();fixLeaderTags();mkOverview();initTips();mkEntity();mkHUD();mkCart();
-S.active=S.active||'kane';S.cart=S.cart||[];
-S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
-if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch; // first boot owes no catch-up
-seedNPCState();
-var _sv=loadNPC();
-if(_sv){ if(_sv.time)S.time=_sv.time; if(_sv.npcState)Object.keys(_sv.npcState).forEach(function(k){S.npcState[k]=_sv.npcState[k];}); }
-if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch||Date.now();
-var _wc=WORLD.catchUp(S,D,Date.now());
-S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
-saveNPC();
-var f=fPl(S.pos.pl);MV={lv:'sector',seg:f.g.id,sec:f.s.id,pl:S.pos.pl,lc:S.pos.sp};
-document.getElementById('rname').textContent=S.player.name.split(',')[0];
-document.getElementById('rdata').textContent='Canon: '+D.meta.format+' v'+D.meta.version;
-CLASSES().forEach(function(c){document.getElementById('fc').add(new Option(c,c))});
-var ff=document.getElementById('ff');S.forces.forEach(function(fo){ff.add(new Option(fo.n,fo.n))});ff.add(new Option('— direct command','—'));
-['fq','fc','fs','ff'].forEach(function(i){document.getElementById(i).addEventListener('input',rRos)});
-document.querySelectorAll('.navbtn').forEach(function(b){b.onclick=function(){go(b.dataset.s)}});
-document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on',x===b)});document.querySelectorAll('.sub').forEach(function(v){v.classList.remove('on')});document.getElementById('b-'+b.dataset.b).classList.add('on');if(b.dataset.b==='forces')rF();if(b.dataset.b==='armoury')rArm()}});
-mkPicker();mkRite();
-document.getElementById('boot').style.display='none';
-document.getElementById('shell').style.display='flex';
-rHQ();rRos();rLoad();rMap();rTL();rComms();rShop();var _gear=E('button','btn gh sm','⚙ AI');_gear.style.cssText='position:fixed;right:12px;bottom:12px;z-index:60';_gear.onclick=openSettings;document.body.appendChild(_gear);renderDigest();}
+/* rebuild a loaded/created S's live refs — mirrors the old init() sequence exactly */
+function hydrate(blob){
+ S=blob;
+ S.roster.forEach(function(m){migrateLoadout(m,S.player.faction);});
+ S.threads=(S.threads||[]).map(function(t){return THREAD.create(t,D)});
+ SAVE.relink(S);
+ return S;
+}
+function init(){
+ if(hasProfile()){ hydrate(loadProfile()); }
+ else { hydrate(demoSave()); }   // TEMP: replaced by title screen (Task 6) / commitFounding (Task 7)
+ S.active=S.active||'kane';S.cart=S.cart||[];
+ S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
+ if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch||Date.now();
+ seedNPCState();
+ var _wc=WORLD.catchUp(S,D,Date.now());
+ S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
+ enterShell(S);
+}
+function enterShell(S){
+ enrichRoster();fixLeaderTags();mkOverview();initTips();mkEntity();mkHUD();mkCart();
+ var f=fPl(S.pos.pl);MV={lv:'sector',seg:f.g.id,sec:f.s.id,pl:S.pos.pl,lc:S.pos.sp};
+ document.getElementById('rname').textContent=S.player.name.split(',')[0];
+ document.getElementById('rdata').textContent='Canon: '+D.meta.format+' v'+D.meta.version;
+ CLASSES().forEach(function(c){document.getElementById('fc').add(new Option(c,c))});
+ var ff=document.getElementById('ff');S.forces.forEach(function(fo){ff.add(new Option(fo.n,fo.n))});ff.add(new Option('— direct command','—'));
+ ['fq','fc','fs','ff'].forEach(function(i){document.getElementById(i).addEventListener('input',rRos)});
+ document.querySelectorAll('.navbtn').forEach(function(b){b.onclick=function(){go(b.dataset.s)}});
+ document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.toggle('on',x===b)});document.querySelectorAll('.sub').forEach(function(v){v.classList.remove('on')});document.getElementById('b-'+b.dataset.b).classList.add('on');if(b.dataset.b==='forces')rF();if(b.dataset.b==='armoury')rArm()}});
+ mkPicker();mkRite();
+ document.getElementById('boot').style.display='none';
+ document.getElementById('shell').style.display='flex';
+ rHQ();rRos();rLoad();rMap();rTL();rComms();rShop();
+ var _gear=E('button','btn gh sm','⚙ AI');_gear.style.cssText='position:fixed;right:12px;bottom:12px;z-index:60';_gear.onclick=openSettings;document.body.appendChild(_gear);
+ saveProfile(S);
+ renderDigest();
+}
 /* World Digest — the player-facing output of the deterministic world-tick (slice 2a) */
 function renderDigest(){
   if(!S._digest||!S._digest.lines.length)return;
