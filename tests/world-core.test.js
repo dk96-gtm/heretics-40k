@@ -56,3 +56,16 @@ test('digest returns relevance-ordered lines from events', () => {
   ]);
   assert.ok(Array.isArray(d.lines) && d.lines.length >= 1);
 });
+
+test('digest aggregates taint per sector into one line, not per tick', () => {
+  const d = W.digest([
+    { kind: 'taint', sector: 'vigilus', delta: 1 },
+    { kind: 'taint', sector: 'vigilus', delta: 1 },
+    { kind: 'taint', sector: 'vigilus', delta: 1 },
+    { kind: 'taint', sector: 'nurth', delta: 1 },
+  ]);
+  const vig = d.lines.filter((l) => /vigilus/.test(l));
+  assert.strictEqual(vig.length, 1, 'one vigilus line');
+  assert.match(vig[0], /rose 3 in vigilus/);
+  assert.strictEqual(d.lines.filter((l) => /nurth/.test(l)).length, 1);
+});

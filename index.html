@@ -852,8 +852,10 @@ var WORLD=(function(){
     var prod=events.filter(function(e){return e.kind==='production';})
                    .reduce(function(a,e){return a+e.amount;},0);
     if(prod)lines.push('Production banked: '+prod+'.');
+    var taintBy={};   // aggregate per sector across all ticks (one line each, not per-tick)
     events.filter(function(e){return e.kind==='taint';}).forEach(function(e){
-      lines.push('Taint rose '+e.delta+' in '+e.sector+'.');});
+      taintBy[e.sector]=(taintBy[e.sector]||0)+e.delta;});
+    Object.keys(taintBy).forEach(function(s){lines.push('Taint rose '+taintBy[s]+' in '+s+'.');});
     var comp=events.filter(function(e){return e.kind==='compressed';})[0];
     if(comp)lines.push('Over ~'+comp.days+' earlier cycles the frontier settled quietly.');
     return {lines:lines};
@@ -998,6 +1000,8 @@ forces:[{id:'rw',n:'The Rotward',lead:'morvax',ap:26}],
 succ:[{n:'Brother Morvax',fid:'rw'},{n:'Gharn the Sevenfold',fid:null}],
 world:{
  met:['vess','herald','sskarith','kryv','warden'],
+ stats:{vigilus:{taint:12},sangua:{taint:4},nurth:{taint:20},kraithv:{taint:16}},
+ log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
   sangua:[['89th Sanguan Garrison','NPC, Astra Militarum · COMPANY','Hive Primus']],
   nurth:[['The Pallid Host','NPC, Death Guard · HOST','The Pallid Court']],
@@ -1835,6 +1839,10 @@ var L=document.getElementById('cl');L.innerHTML='';
 S.convos.forEach(function(c){var remote=c.pl!==S.pos.pl&&!inTransit();
 var d=E('div','cv'+(c.id===cSel?' sel':'')+(remote?'':' dis'),'<div class="cn">'+c.n+' <span class="npct"'+(c.pc?' style="color:var(--blh);border-color:var(--bl)"':'')+'>'+(c.pc?'PC':'NPC')+'</span></div><div class="cl">'+(remote?c.l:(inTransit()?'No vox mid-transit':'On your planet — march to them, open a Thread'))+'</div>');
 if(remote)d.onclick=function(){cSel=c.id;rComms()};L.appendChild(d)});
+if(S.world&&S.world.log&&S.world.log.length){
+ L.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>World Log — since you last looked</h5></div>');
+ S.world.log.slice(0,12).forEach(function(e){L.insertAdjacentHTML('beforeend','<div class="mr" style="font-size:11px;color:var(--dim)">'+e+'</div>');});
+}
 var P2=document.getElementById('cp');var c=S.convos.filter(function(x){return x.id===cSel})[0];
 if(!c||c.pl===S.pos.pl||inTransit()){P2.innerHTML='<div class="empty">No relay open.<br><b>Those near you are met in person — in a Thread.</b></div>';return}
 P2.innerHTML='<h3>'+c.n+' — astropathic relay</h3>';
@@ -1971,9 +1979,13 @@ S.threads.forEach(function(t){
 enrichRoster();fixLeaderTags();mkOverview();initTips();mkEntity();mkHUD();mkCart();
 S.active=S.active||'kane';S.cart=S.cart||[];
 S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
+if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch; // first boot owes no catch-up
 seedNPCState();
 var _sv=loadNPC();
 if(_sv){ if(_sv.time)S.time=_sv.time; if(_sv.npcState)Object.keys(_sv.npcState).forEach(function(k){S.npcState[k]=_sv.npcState[k];}); }
+if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch||Date.now();
+var _wc=WORLD.catchUp(S,D,Date.now());
+S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
 saveNPC();
 var f=fPl(S.pos.pl);MV={lv:'sector',seg:f.g.id,sec:f.s.id,pl:S.pos.pl,lc:S.pos.sp};
 document.getElementById('rname').textContent=S.player.name.split(',')[0];
@@ -1986,7 +1998,19 @@ document.querySelectorAll('.tab').forEach(function(b){b.onclick=function(){docum
 mkPicker();mkRite();
 document.getElementById('boot').style.display='none';
 document.getElementById('shell').style.display='flex';
-rHQ();rRos();rLoad();rMap();rTL();rComms();rShop();var _gear=E('button','btn gh sm','⚙ AI');_gear.style.cssText='position:fixed;right:12px;bottom:12px;z-index:60';_gear.onclick=openSettings;document.body.appendChild(_gear);}
+rHQ();rRos();rLoad();rMap();rTL();rComms();rShop();var _gear=E('button','btn gh sm','⚙ AI');_gear.style.cssText='position:fixed;right:12px;bottom:12px;z-index:60';_gear.onclick=openSettings;document.body.appendChild(_gear);renderDigest();}
+/* World Digest — the player-facing output of the deterministic world-tick (slice 2a) */
+function renderDigest(){
+  if(!S._digest||!S._digest.lines.length)return;
+  S.world.log=S.world.log||[];
+  var body=S._digest.lines.map(function(l){return '<div class="mr">▸ '+l+'</div>';}).join('');
+  var ov=E('div','ov on','<div class="movc" style="max-width:520px"><h3>Since you last looked…</h3>'+body+'<button class="btn" id="digx" style="margin-top:12px;width:100%">Acknowledged</button></div>');
+  document.body.appendChild(ov);
+  document.getElementById('digx').onclick=function(){
+    S._digest.lines.forEach(function(l){S.world.log.unshift(nowStamp()+' — '+l);});
+    S._digest=null;ov.remove();
+  };
+}
 
 /* ─── v8: the Model as a first-class entity ─── */
 function acts(m){var w=parseInt((m.w||'0/0').split('/')[0],10)||0;return Math.min(w,3)}
