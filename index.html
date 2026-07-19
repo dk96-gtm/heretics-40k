@@ -1537,7 +1537,7 @@ function threadSidebar(t){
     byParty[p].forEach(function(o){var pct=o.c.w[1]?Math.round(100*o.c.w[0]/o.c.w[1]):0;
       html+='<div class="mr"><div class="n"><span>'+(o.c.model?o.c.model.n:o.id)+(o.c.dead?' ✝':'')+'</span><span class="a">'+o.c.w[0]+'/'+o.c.w[1]+' W'+(o.c.permaDeath?' · no revival':o.c.dead?' · window '+o.c.revivalWindow:'')+'</span></div>'+
         '<div class="hp'+(pct<=50?' lo':'')+'"><i style="width:'+pct+'%"></i></div>'+
-        '<div class="band">'+o.c.band+(o.c.conds&&o.c.conds.length?' · '+o.c.conds.join(', '):'')+'</div></div>';});
+        '<div class="band">'+(o.c.x!=null?('▪ '+bfCellLabel({x:o.c.x,y:o.c.y})):(o.c.band||''))+(o.c.conds&&o.c.conds.length?' · '+o.c.conds.join(', '):'')+'</div></div>';});
     html+='</div>';});
   html+='</div></div>';sb.insertAdjacentHTML('beforeend',html);
   sb.querySelector('.foldh').onclick=function(){document.getElementById('report').classList.toggle('on')};
