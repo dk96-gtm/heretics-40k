@@ -31,21 +31,30 @@ The rules every planet and location obeys, so region-parallel authoring stays co
 
 ### 2.1 Records (must match the engine's `fPl`/`fLoc` readers)
 
+*(record shapes verified against the demo schema during G1 — a location does **not** store its doors.)*
 ```
 PLANET   { id, name, type(∈ 20 planet_types), rift: "Nihilus"|"Sanctus"|null,
            canon: bool, ruler: { allegiance, faction } | null, desc: lore,
-           locations: [ … ] }
-LOCATION { id, name, type(∈ 23 location_types), tier?: "orbit",
-           condition(∈ 9), level: int, desc: lore, doors: [ … ], ships?: [ … ] }
+           locations: [ … ], resources: int, status: null, crown?: true }
+SECTOR   { id, name, status, owner: "<Allegiance> - <Faction>", planets: [ … ],
+           space: { id, name, type:"space", tier:"space", condition, level:0, forces:[], desc } }
+LOCATION { id, name, type(∈ 23 location_types), tier: "orbit"|"surface",
+           condition(∈ 9), level: int, desc: lore, ships?: [ … ] (orbit only),
+           door_names?: { <doorKind>: "<custom name>" } }
 ```
 
 ### 2.2 Rules
 
-1. **Every planet has exactly one Orbit location** (`type:"orbit"`, `tier:"orbit"`) plus **3–4 surface locations**.
+1. **Every planet has exactly one primary Orbit** (`type:"orbit"`, `tier:"orbit"`) plus **≥2 surface
+   locations**; it may also carry **orbital stations** (`space_station`/`orbital_dock` at `tier:"orbit"`).
+   Target 3–5 locations per planet. **Every sector carries a `space` layer** (fleets translate there first).
+   One planet per sector is the **`crown:true`** capital (holds a `crown`-type location).
 2. **Location type must be legal for the planet type.** This is data-driven: `location_types[].planet_types`
    lists the planet types a location type may appear on (`"*"` = any). Authors pick only legal types.
-3. **Doors derive from the location type** (`location_types[].doors`) — never hand-set. A Hive grants
-   `shop, shop, muster, armoury`; a Forge Temple grants `forge(I–III), reliquary`; etc.
+3. **Doors are NOT stored on the location** — the engine derives them from the location type via `doorsAt()`
+   (`location_types[l.type].doors`, minus the condition's `doors_offline`). To rename a specific door, use the
+   optional `door_names: { <kind>: "<name>" }` map. A Hive grants `shop, shop, muster, armoury`; a Forge Temple
+   grants `forge, reliquary`; etc.
 4. **Condition** defaults `intact`; war-torn sectors seed degraded conditions (`besieged`/`sacked`/`ruined`/`infested`)
    consistent with sector status and the ruling war.
 5. **IDs:** planet id = short slug (`vigilus`); location id = planet slug + site (`vigilusashravine`), matching

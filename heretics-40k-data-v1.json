@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.11",
+  "version": "1.12",
   "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -2437,7 +2437,574 @@
         "name": "Sol Sector",
         "status": "Peace",
         "owner": "Imperial - Custodes",
-        "sealed": true
+        "space": {
+         "id": "solspace",
+         "name": "The Solar Gulf",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "The approaches to Holy Terra. No fleet translates here uninvited and lives to log it."
+        },
+        "planets": [
+         {
+          "id": "terra",
+          "name": "Terra",
+          "type": "Hive World",
+          "rift": "Sanctus",
+          "canon": true,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Custodes"
+          },
+          "desc": "The Throneworld. A single planet-spanning hive-palace where the Emperor endures on the Golden Throne, watched forever by the Ten Thousand.",
+          "locations": [
+           {
+            "id": "terraorbit",
+            "name": "Terra — High Anchorage",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Custodian Guardian Fleet - system-locked",
+             "Grey Knights strike frigate - unlisted"
+            ],
+            "desc": "The most heavily defended orbit in the galaxy. Descent is granted, never taken."
+           },
+           {
+            "id": "eternitygate",
+            "name": "The Eternity Gate",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The threshold of the Inner Palace and the seat of Sol Sector. What is decided here moves segmentums.",
+            "door_names": {
+             "throne_room": "The Senatorum Imperialis"
+            }
+           },
+           {
+            "id": "palacehive",
+            "name": "The Palace Districts",
+            "type": "hive",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Ten billion souls stacked from bedrock to smog-line in the Emperor's shadow."
+           },
+           {
+            "id": "innerpalace",
+            "name": "The Inner Palace Bulwark",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Adamantium ramparts manned by the Adeptus Custodes since before the Heresy."
+           }
+          ],
+          "resources": 220,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "luna",
+          "name": "Luna",
+          "type": "Civilized World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Custodes"
+          },
+          "desc": "Terra's ancient moon — gene-vaults, void-docks, and the Sisters of Silence enclaves.",
+          "locations": [
+           {
+            "id": "lunaorbit",
+            "name": "Luna — Dock Approach",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Lunar Void Wardens"
+            ],
+            "desc": "Cold, silent orbit thick with dry-docks and listening-arrays."
+           },
+           {
+            "id": "lunadocks",
+            "name": "The Somnus Docks",
+            "type": "space_station",
+            "condition": "intact",
+            "level": 2,
+            "tier": "orbit",
+            "desc": "Where the Throneworld's warships are cut and blessed.",
+            "door_names": {
+             "shop": "Somnus Requisition"
+            }
+           },
+           {
+            "id": "lunacity",
+            "name": "Gene-Vault Sprawl",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Habs and laboratoria clustered around the sealed gene-vaults of Old Night."
+           },
+           {
+            "id": "lunavaults",
+            "name": "The Selenar Vaults",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "The sealed gene-vaults of the Selenar cults, kept under Custodian seal since Unity."
+           }
+          ],
+          "resources": 80,
+          "status": null
+         },
+         {
+          "id": "custodwatch",
+          "name": "Custodian's Watch",
+          "type": "Fortress World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Custodes"
+          },
+          "desc": "A ring-fortress world holding the near-Solar approaches — the Ten Thousand's outer bastion.",
+          "locations": [
+           {
+            "id": "custodorbit",
+            "name": "Custodian's Watch — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Custodes Guardian squadron"
+            ],
+            "desc": "A gun-orbit. Every arriving hull is challenged, logged, and escorted."
+           },
+           {
+            "id": "watchbulwark",
+            "name": "The Unyielding Wall",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A continent-spanning rampart; its guns have never been silent."
+           },
+           {
+            "id": "watchfortress",
+            "name": "Aquila Redoubt",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Muster and armoury for the Watch's auxilia."
+           }
+          ],
+          "resources": 70,
+          "status": null
+         },
+         {
+          "id": "solanvil",
+          "name": "Sol's Anvil",
+          "type": "Fortress World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Astartes"
+          },
+          "desc": "A Chapter keep granted to the Astartes for their vigil over the Throneworld's flank.",
+          "locations": [
+           {
+            "id": "solanvilorbit",
+            "name": "Sol's Anvil — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Chapter strike cruiser 'Sword of Sol'"
+            ],
+            "desc": "A Space Marine anchorage; a single Chapter holds this world."
+           },
+           {
+            "id": "anvilkeep",
+            "name": "The Anvil Keep",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Fortress-monastery of the Chapter that watches the Anvil."
+           },
+           {
+            "id": "anviloutpost",
+            "name": "Watchpost Primus",
+            "type": "military_outpost",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A forward relay and field-forge on the Anvil's outer marches."
+           }
+          ],
+          "resources": 55,
+          "status": null
+         }
+        ]
+       },
+       {
+        "id": "solmarches",
+        "name": "Solar Marches",
+        "status": "Peace",
+        "owner": "Imperial - Astra Militarum",
+        "space": {
+         "id": "marchspace",
+         "name": "The Marching Void",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "Convoy lanes thick with troop-barques feeding the Emperor's endless wars."
+        },
+        "planets": [
+         {
+          "id": "cadmus",
+          "name": "Cadmus Prime",
+          "type": "Fortress World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Astra Militarum"
+          },
+          "desc": "Muster-fortress and sector capital of the Solar Marches — regiments are raised, drilled, and shipped from here without pause.",
+          "locations": [
+           {
+            "id": "cadmusorbit",
+            "name": "Cadmus Prime — Muster Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Segmentum Battlefleet detachment",
+             "Troop-barque flotilla"
+            ],
+            "desc": "A traffic-choked orbit; a thousand troopships wait their berth."
+           },
+           {
+            "id": "cadmusthrone",
+            "name": "The Marshal's Bastion",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Seat of the Solar Marches and the muster-command that drives it.",
+            "door_names": {
+             "throne_room": "The Marshal's Bastion"
+            }
+           },
+           {
+            "id": "cadmusbulwark",
+            "name": "Rampart Hold",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The drill-fortress where whole regiments are forged in a season."
+           },
+           {
+            "id": "cadmusfort",
+            "name": "The Conscript Yards",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Endless barracks, armouries, and parade-fields."
+           }
+          ],
+          "resources": 95,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "regis",
+          "name": "Regis Muster",
+          "type": "Feral World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Astra Militarum"
+          },
+          "desc": "A grim feral world whose clans are bled for the finest shock-troops in the Marches.",
+          "locations": [
+           {
+            "id": "regisorbit",
+            "name": "Regis Muster — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Recruitment tithe-ship"
+            ],
+            "desc": "A bleak orbit; landers ferry down empty and lift off packed with recruits."
+           },
+           {
+            "id": "regishold",
+            "name": "The Tithe-Keep",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Where clan-levies are gathered, counted, and drilled."
+           },
+           {
+            "id": "regisvillage",
+            "name": "The Clanholds",
+            "type": "village",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Fortified hill-villages that trade sons for salt and steel."
+           }
+          ],
+          "resources": 40,
+          "status": null
+         },
+         {
+          "id": "cogtheta",
+          "name": "Cog Bastion Theta",
+          "type": "Forge World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Mechanicus"
+          },
+          "desc": "A Mechanicus forge-holding leased into the Marches — the only Tier-III forge for many light-years.",
+          "locations": [
+           {
+            "id": "cogorbit",
+            "name": "Cog Bastion Theta — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Ark Mechanicus 'Ferrum Cantus'"
+            ],
+            "desc": "Orbit lit by refinery-glow and the running-lights of ore-haulers."
+           },
+           {
+            "id": "cogtemple",
+            "name": "Forge Temple Theta",
+            "type": "forge_temple",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A Tier-III forge-temple; the Marches' regiments are armed from its lines.",
+            "door_names": {
+             "forge": "Forge Temple Theta"
+            }
+           },
+           {
+            "id": "cogmanufactorum",
+            "name": "The Rivet-Sprawl",
+            "type": "manufactorum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Volume manufactorum — rifles and lasguns by the million."
+           }
+          ],
+          "resources": 110,
+          "status": null
+         }
+        ]
+       },
+       {
+        "id": "sanctusapp",
+        "name": "Sanctus Approaches",
+        "status": "Thriving",
+        "owner": "Imperial - Adeptus Astartes",
+        "space": {
+         "id": "appspace",
+         "name": "The Sanctus Approaches",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "The lit marches where the Astronomican burns brightest — a bastion-belt of Chapter fleets."
+        },
+        "planets": [
+         {
+          "id": "aurelian",
+          "name": "Aurelian's Rest",
+          "type": "Fortress World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Astartes"
+          },
+          "desc": "Fortress-monastery world and capital of the Sanctus Approaches, keep of an ancient Chapter that has never fallen.",
+          "locations": [
+           {
+            "id": "aurelianorbit",
+            "name": "Aurelian's Rest — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Battle-barge 'Aurelian's Wrath'",
+             "Chapter strike cruiser wing"
+            ],
+            "desc": "A Chapter anchorage bristling with battle-barges."
+           },
+           {
+            "id": "aureliancrown",
+            "name": "The Reclusiam Throne",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Seat of the Sanctus Approaches; the Chapter Master rules the marches from here.",
+            "door_names": {
+             "throne_room": "The Reclusiam Throne"
+            }
+           },
+           {
+            "id": "aurelianfortress",
+            "name": "The Fortress-Monastery",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Adamantium cloisters and gene-vaults carved into a mountain of rockcrete."
+           },
+           {
+            "id": "aurelianyard",
+            "name": "The Neophyte Wards",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Where aspirants are broken and remade into Astartes."
+           }
+          ],
+          "resources": 85,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "thessaly",
+          "name": "Thessaly",
+          "type": "Feudal World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Astartes"
+          },
+          "desc": "A knightly feudal world and the Chapter's finest recruiting ground — its warrior-lords ride to war in the Emperor's name.",
+          "locations": [
+           {
+            "id": "thessalyorbit",
+            "name": "Thessaly — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Chapter recruitment cutter"
+            ],
+            "desc": "A quiet orbit; the Chapter takes its due and departs."
+           },
+           {
+            "id": "thessalykeep",
+            "name": "The High Citadel",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Seat of the feudal lords who furnish the Chapter its aspirants."
+           },
+           {
+            "id": "thessalyvillage",
+            "name": "The Riven Holds",
+            "type": "village",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Stone hold-villages whose sons duel for the honour of the tithe."
+           }
+          ],
+          "resources": 45,
+          "status": null
+         },
+         {
+          "id": "sanctavigil",
+          "name": "Sancta Vigil",
+          "type": "Shrine World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adepta Sororitas"
+          },
+          "desc": "A shrine world tended by the Sisterhood — pilgrim-spires, reliquaries, and the Approaches' holiest altars.",
+          "locations": [
+           {
+            "id": "vigilorbit",
+            "name": "Sancta Vigil — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Ecclesiarchy pilgrim-fleet"
+            ],
+            "desc": "An orbit thick with pilgrim-barques come to pray at the shrine."
+           },
+           {
+            "id": "vigilshrine",
+            "name": "The Cathedral of the Vigil",
+            "type": "shrine",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The great shrine of the Approaches; its altars reach the highest rites.",
+            "door_names": {
+             "altar": "The Cathedral of the Vigil"
+            }
+           },
+           {
+            "id": "vigilcity",
+            "name": "The Pilgrim Sprawl",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A hab-sprawl of pilgrims, penitents, and those who feed them."
+           }
+          ],
+          "resources": 50,
+          "status": null
+         }
+        ]
        }
       ]
      }

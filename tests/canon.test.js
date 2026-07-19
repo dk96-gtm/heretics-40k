@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.11', () => {
-  assert.strictEqual(canon.meta.version, '1.11');
+test('canon is v1.12', () => {
+  assert.strictEqual(canon.meta.version, '1.12');
 });
 
 test('tick: living-world cadence block present', () => {
@@ -100,7 +100,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.11');
+  assert.equal(canon.meta.version, '1.12');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -224,4 +224,66 @@ test('v1.10: Death Guard demo base models survive the roster migration', () => {
   const names = new Set(dg.models.map((m) => m.n));
   ['Plague Marine', 'Poxwalker', 'Blightlord Terminator', 'Foetid Bloat-Drone']
     .forEach((n) => assert.ok(names.has(n), 'demo references ' + n));
+});
+
+// ── T-GX-G1: Segmentum Solar authored to the minting contract (v1.12) ──
+function solarSegmentum() {
+  return canon.galaxy.segmentums.find((g) => g.id === 'solar');
+}
+function solarPlanets() {
+  const out = [];
+  solarSegmentum().zones.forEach((z) => z.sectors.forEach((s) =>
+    (s.planets || []).forEach((p) => out.push({ p, s }))));
+  return out;
+}
+
+test('G1: Solar has 3 populated sectors and 10 planets', () => {
+  const solar = solarSegmentum();
+  const sectors = solar.zones.flatMap((z) => z.sectors);
+  assert.strictEqual(sectors.length, 3, 'Solar sector count');
+  sectors.forEach((s) => {
+    assert.ok(!s.sealed, s.id + ' should be unsealed');
+    assert.ok(s.space && s.space.type === 'space', s.id + ' has a space layer');
+    assert.ok(typeof s.owner === 'string' && s.owner.length, s.id + ' owner');
+    assert.ok((s.planets || []).length >= 3, s.id + ' has planets');
+  });
+  assert.strictEqual(solarPlanets().length, 10, 'Solar planet count');
+});
+
+test('G1: every Solar planet obeys the minting contract', () => {
+  const planetTypes = new Set(canon.galaxy.planet_types.map((p) => p.name));
+  const LT = Object.fromEntries(canon.galaxy.location_types.map((l) => [l.id, l]));
+  const facNames = new Set(canon.factions.map((f) => f.name));
+  const seenIds = new Set();
+  solarPlanets().forEach(({ p }) => {
+    assert.ok(planetTypes.has(p.type), p.id + ' valid planet type');
+    assert.strictEqual(p.rift, 'Sanctus', p.id + ' is Sanctus');
+    assert.ok(p.ruler && facNames.has(p.ruler.faction), p.id + ' ruler is a canon faction');
+    assert.strictEqual(typeof p.resources, 'number', p.id + ' resources');
+    const primaryOrbit = p.locations.filter((l) => l.type === 'orbit');
+    const surface = p.locations.filter((l) => l.tier === 'surface');
+    assert.strictEqual(primaryOrbit.length, 1, p.id + ' has exactly one primary orbit');
+    assert.ok(surface.length >= 2, p.id + ' has >=2 surface locations');
+    p.locations.forEach((l) => {
+      assert.ok(!seenIds.has(l.id), 'unique location id ' + l.id);
+      seenIds.add(l.id);
+      const lt = LT[l.type];
+      assert.ok(lt, l.id + ' known location type ' + l.type);
+      const legal = lt.planet_types || ['*'];
+      assert.ok(legal.includes('*') || legal.includes(p.type),
+        l.id + ' (' + l.type + ') legal on ' + p.type);
+      assert.ok(!l.doors, l.id + ' must NOT store doors (derived from type)');
+      Object.keys(l.door_names || {}).forEach((k) =>
+        assert.ok((lt.doors || []).includes(k), l.id + ' door_names ' + k + ' is a real door'));
+    });
+  });
+});
+
+test('G1: each Solar sector has exactly one crown capital', () => {
+  solarSegmentum().zones.forEach((z) => z.sectors.forEach((s) => {
+    const crowns = (s.planets || []).filter((p) => p.crown);
+    assert.strictEqual(crowns.length, 1, s.id + ' has one crown');
+    const cr = crowns[0].locations.filter((l) => l.type === 'crown');
+    assert.ok(cr.length >= 1, s.id + ' crown planet holds a crown location');
+  }));
 });
