@@ -391,7 +391,7 @@ canvas.smap{display:block;width:100%;height:auto}
 </main></div>
 <div class="toast" id="toast"></div>
 <script>
-/* HERETICS 40K — ENGINE v16. Contains NO canon: all rules & content load from heretics-40k-data-v1.json. This file holds only rendering logic and the demo save-state. */
+/* HERETICS 40K — ENGINE v17. Contains NO canon: all rules & content load from heretics-40k-data-v1.json. This file holds only rendering logic and the demo save-state. */
 var D=null; /* canon */
 var S=null; /* save-state (player, world overlays, threads) */
 function T(t){var e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(function(){e.classList.remove('show')},2700)}
@@ -869,6 +869,26 @@ function summonNPC(t,npc,mode,done){
 /* ---- demo save ---- */
 function pms(){return[{k:'WEAPON',it:{n:'Boltgun',cat:'WEAPON',d:'Phys 2 - Med'}},{k:'WEAPON',it:{n:'Plague Knife',cat:'WEAPON',d:'Corr 2 - Effortless'}},{k:'ITEM',it:null}]}
 function pxs(){return[{k:'WEAPON',it:{n:'Rusted Claws',cat:'WEAPON',d:'Phys 1 - Melee - Effortless'}}]}
+// ---- loadout migration + default armour (v1.7) ----
+// Roster models carry m.loadout = {slots:[{type,it}], armour:{it}}. Legacy demo/save
+// models use m.sl = [{k,it}]; migrate once on boot. Canon-model integer `.sl` is untouched.
+function defaultArmourFor(faction,cls){
+  var A=D.armour||[];
+  var hit=A.filter(function(p){return p.faction===faction&&p.cls===cls&&p.tier==='default';})[0]
+        ||A.filter(function(p){return p.faction===faction&&p.tier==='default';})[0]
+        ||A.filter(function(p){return p.faction===null&&p.tier==='light';})[0];
+  return hit?JSON.parse(JSON.stringify(hit)):null;
+}
+function migrateLoadout(m,faction){
+  if(m.loadout)return m;
+  var slots=(m.sl||[]).map(function(s){
+    var type=s.k==='WARP CAST'?'CAST':(s.k==='NAMED'?null:s.k);
+    return {type:type,it:s.it||null};
+  });
+  m.loadout={ slots:slots, armour:{ it:defaultArmourFor(faction,m.cls) } };
+  delete m.sl;
+  return m;
+}
 function demoSave(){var lA='Vigilus · Ash Ravine',lR='Vigilus · Rotforge Bastion',fo='The Rotward';
 return{
 player:{name:'Vexos Kane, the Rotforged',allegiance:'chaos',faction:'death_guard',model:'Plague Marine',cmdRank:3,mdlRank:3,w:'9/9',xp:'51/68'},
@@ -1000,24 +1020,54 @@ var q=(document.getElementById('fq').value||'').toLowerCase(),c=document.getElem
 S.roster.forEach(function(m){if(q&&m.n.toLowerCase().indexOf(q)<0)return;if(c&&m.cls!==c)return;if(s&&m.st!==s)return;if(f&&m.fo!==f)return;
 var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b></td><td style="color:var(--dim)">'+baseModel(m)+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.spd+'</td><td class="mono">'+m.slots+'</td><td class="mono">'+m.w+'</td><td style="font-size:11px">'+(m.fo==='—'?'<span style="color:var(--dim)">—</span>':m.fo)+'</td><td style="font-size:11px;color:var(--dim)">'+m.loc+'</td><td>'+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span> ':'')+chips(m)+'</td>');
 tr.onclick=function(){sel=m;rRos();rLoad();openModel(m.id)};tb.appendChild(tr)})}
+var SLOT_TYPES=[['WEAPON','Weapon'],['ITEM','Item'],['ABILITY','Ability'],['CAST','Warp Cast']];
+function slotLabel(type){var m=SLOT_TYPES.filter(function(t){return t[0]===type})[0];return m?m[1]:type;}
+var ELEM6=['Physical','Heat','Warp','Corrosive','Plasma','Energy'],ELAB={Physical:'P',Heat:'H',Warp:'W',Corrosive:'C',Plasma:'Pl',Energy:'E'};
+function armLine(def){if(!def)return '<span style="color:var(--dim)">unarmoured</span>';return ELEM6.map(function(e){var v=def[e]||0;return '<span class="mono" style="'+(v?'color:var(--brh)':'color:var(--faint)')+'">'+ELAB[e]+v+'</span>'}).join(' ')}
+function loLocked(){return !!(sel&&sel.st==='DEPLOYED')}
 function rLoad(){if(!sel)sel=S.roster[0];
-document.getElementById('lt').textContent='Loadout — '+sel.n;document.getElementById('ls').textContent=sel.sub;
+document.getElementById('lt').textContent='Loadout — '+sel.n;
+document.getElementById('ls').innerHTML=sel.sub+(loLocked()?' · <span style="color:var(--blh)">locked — in an active thread</span>':'');
 var g=document.getElementById('sg');g.innerHTML='';
-sel.sl.forEach(function(s,i){var d=E('div','slot'+(s.it?' fl':''),'<span class="sk">'+s.k+'</span>'+(s.it?'<b style="font-size:12.5px">'+s.it.n+'</b><div class="sm">'+s.it.d+'</div>':'<div class="sm">Empty — click to equip</div>'));d.onclick=function(){pick(i)};g.appendChild(d)});
+(sel.loadout.slots||[]).forEach(function(s,i){
+ var inner='<span class="sk">'+(s.type?slotLabel(s.type):'UNASSIGNED')+'</span>'+
+  (s.type?(s.it?'<b style="font-size:12.5px">'+s.it.n+'</b><div class="sm">'+annotate(s.it.d||'')+'</div>':'<div class="sm">Empty — click to equip</div>')
+        :'<div class="sm">＋ click to assign a type</div>');
+ var d=E('div','slot'+(s.it?' fl':''),inner);d.onclick=function(){pick(i)};g.appendChild(d)});
+var a=sel.loadout.armour&&sel.loadout.armour.it;
+var ad=E('div','slot'+(a?' fl':''),'<span class="sk">◈ ARMOUR</span>'+(a?'<b style="font-size:12.5px">'+a.n+'</b><div class="sm">'+armLine(a.def)+'</div>':'<div class="sm">Unarmoured — click to fit</div>'));
+ad.onclick=function(){pickArmour()};g.appendChild(ad);
 var il=document.getElementById('il');il.innerHTML=S.inv.length?'':'<div class="empty">Inventory empty.</div>';
-S.inv.forEach(function(it){il.appendChild(E('div','pki','<div><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+it.d+'</div></div>'))})}
+S.inv.forEach(function(it){il.appendChild(E('div','pki','<div><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+annotate(it.d||'')+'</div></div>'))})}
 var PB=null;
 function mkPicker(){PB=E('div','pb','<div class="pk"><h3 style="color:var(--br);font-size:13px;margin-bottom:10px" id="pkh"></h3><div id="pkl"></div><button class="btn gh" style="margin-top:8px" id="pkc">Close</button></div>');
 document.body.appendChild(PB);document.getElementById('pkc').onclick=function(){PB.classList.remove('on')};
 PB.onclick=function(e){if(e.target===PB)PB.classList.remove('on')}}
-function pick(i){var s=sel.sl[i];document.getElementById('pkh').textContent=sel.n+' — '+s.k+' slot';
+function pick(i){if(loLocked()){T('Loadout is locked while this model is in an active thread.');return}
+var s=sel.loadout.slots[i];var L=document.getElementById('pkl');L.innerHTML='';
+if(!s.type){document.getElementById('pkh').textContent=sel.n+' — assign slot type';
+ SLOT_TYPES.forEach(function(t){var r=E('div','pki','<div><b>'+t[1]+' slot</b></div>');var b=E('button','btn sm','Assign');
+  b.onclick=function(){s.type=t[0];PB.classList.remove('on');afterEquip();T(t[1]+' slot assigned — now equip an item.')};r.appendChild(b);L.appendChild(r)});
+ PB.classList.add('on');return;}
+document.getElementById('pkh').textContent=sel.n+' — '+slotLabel(s.type)+' slot';
+if(s.it){var ur=E('div','pki','<div><b>'+s.it.n+'</b><div class="d">'+annotate(s.it.d||'')+'</div></div>');var ub=E('button','btn gh sm','Unequip');ub.onclick=function(){S.inv.push(s.it);s.it=null;PB.classList.remove('on');afterEquip();T('Unequipped.')};ur.appendChild(ub);L.appendChild(ur)}
+var rt=E('div','pki','<div class="d">Change type (returns any equipped item):</div>');
+SLOT_TYPES.forEach(function(t){if(t[0]===s.type)return;var b=E('button','btn gh sm','→ '+t[1]);b.style.margin='2px 4px 0 0';
+ b.onclick=function(){var disp=LOADOUT.retypeSlot(s,t[0]);if(disp)S.inv.push(disp);PB.classList.remove('on');afterEquip();T('Slot re-typed to '+t[1]+'.')};rt.appendChild(b)});
+L.appendChild(rt);
+var lg=LOADOUT.legalItems(s.type,S.inv);
+if(!lg.length&&!s.it)L.appendChild(E('div','empty','Nothing legal in inventory for this slot.'));
+lg.forEach(function(it){var r=E('div','pki','<div><b>'+it.n+'</b><div class="d">'+annotate(it.d||'')+'</div></div>');var b=E('button','btn sm','Equip');
+ b.onclick=function(){if(s.it)S.inv.push(s.it);s.it=it;S.inv.splice(S.inv.indexOf(it),1);PB.classList.remove('on');afterEquip();T(it.n+' equipped.')};r.appendChild(b);L.appendChild(r)});
+PB.classList.add('on')}
+function pickArmour(){if(loLocked()){T('Loadout is locked while this model is in an active thread.');return}
+var slot=sel.loadout.armour;document.getElementById('pkh').textContent=sel.n+' — Armour slot';
 var L=document.getElementById('pkl');L.innerHTML='';
-if(s.it){var r=E('div','pki','<div><b>'+s.it.n+'</b><div class="d">'+s.it.d+'</div></div>');var b=E('button','btn gh sm','Unequip');b.onclick=function(){S.inv.push(s.it);s.it=null;PB.classList.remove('on');afterEquip();T('Unequipped.')};r.appendChild(b);L.appendChild(r)}
-var cat=s.k==='WARP CAST'?'CAST':s.k==='NAMED'?null:s.k;
-var lg=S.inv.filter(function(it){return cat===null||it.cat===cat});
-if(!lg.length&&!s.it)L.innerHTML='<div class="empty">Nothing legal in inventory for this slot.</div>';
-lg.forEach(function(it){var r=E('div','pki','<div><b>'+it.n+'</b><div class="d">'+it.d+'</div></div>');var b=E('button','btn sm','Equip');
-b.onclick=function(){if(s.it)S.inv.push(s.it);s.it=it;S.inv.splice(S.inv.indexOf(it),1);PB.classList.remove('on');afterEquip();T(it.n+' equipped.')};r.appendChild(b);L.appendChild(r)});
+if(slot.it){var r=E('div','pki','<div><b>'+slot.it.n+'</b><div class="d">'+armLine(slot.it.def)+'</div></div>');var b=E('button','btn gh sm','Unfit');b.onclick=function(){S.inv.push(slot.it);slot.it=null;PB.classList.remove('on');afterEquip();T('Armour removed — now unarmoured.')};r.appendChild(b);L.appendChild(r)}
+var lg=LOADOUT.legalItems('ARMOUR',S.inv);
+if(!lg.length&&!slot.it)L.appendChild(E('div','empty','No armour in inventory. Buy some at an Armoury.'));
+lg.forEach(function(it){var r=E('div','pki','<div><b>'+it.n+'</b><div class="d">'+armLine(it.def)+'</div></div>');var b=E('button','btn sm','Fit');
+ b.onclick=function(){if(slot.it)S.inv.push(slot.it);slot.it=it;S.inv.splice(S.inv.indexOf(it),1);PB.classList.remove('on');afterEquip();T(it.n+' fitted.')};r.appendChild(b);L.appendChild(r)});
 PB.classList.add('on')}
 function afterEquip(){if(document.getElementById('b-loadout'))rLoad();if(MOV&&MOV.classList.contains('on')&&sel)openModel(sel.id)}
 function fpc(f){var t=0;S.roster.forEach(function(m){if(m.fo===f.n)t+=m.pc});return t}
@@ -1037,7 +1087,7 @@ function makeForce(name,leadId){var ld=S.roster.filter(function(m){return m.id==
 var armF={q:'',cat:'',eq:''};
 function rArm(){var w=document.getElementById('arm');w.innerHTML='';
  var rows=[];(S.inv||[]).forEach(function(it){rows.push({it:it,eq:null})});
- S.roster.forEach(function(m){m.sl.forEach(function(s){if(s.it)rows.push({it:s.it,eq:m})})});
+ S.roster.forEach(function(m){(m.loadout.slots||[]).forEach(function(s){if(s.it)rows.push({it:s.it,eq:m})});if(m.loadout.armour&&m.loadout.armour.it)rows.push({it:m.loadout.armour.it,eq:m})});
  var card=E('div','card');
  card.innerHTML='<h3>Armoury — everything you own ('+rows.length+')</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:8px">Stats at a glance — no clicking needed. Click a name for the full card; click the equipped model to edit its loadout.</div>';
  var fb=E('div','fbar');
@@ -1661,14 +1711,15 @@ if(RS.nm.pk.length<2){T('Choose two origins.');return}
 var m=S.roster[RS.nm.md];if(!m||m.tag||m.rk<5){T('Not eligible.');return}
 var PF=FAC(S.player.faction),dl=D.rules.deltas.named[m.cls]||{sl:1};
 m.tag='Named';m.n=RS.nm.name.trim();m.pc=Math.round(m.pc*D.rules.premiums.named_pc_multiplier);
-for(var i=0;i<dl.sl;i++)m.sl.push({k:'NAMED',it:null});
-RS.nm.pk.forEach(function(i){var fx=PF.origin_perks[i][1];if(fx==='psy')m.sl.push({k:'WARP CAST',it:null});if(fx==='cur')S.cur+=250});
+for(var i=0;i<dl.sl;i++)m.loadout.slots.push({type:null,it:null});
+RS.nm.pk.forEach(function(i){var fx=PF.origin_perks[i][1];if(fx==='psy')m.loadout.slots.push({type:'CAST',it:null});if(fx==='cur')S.cur+=250});
 m.sub='Named '+m.sub+' - '+RS.nm.pk.map(function(i){return PF.origin_perks[i][0]}).join(', ');
 S.succ.push({n:m.n,fid:null});
 RB.classList.remove('on');rRos();rW();T(m.n+' rises from the ranks. The Leader tag is theirs.');go('barracks');return}}
 RS.st++;rRite()}
 /* ---- boot ---- */
 function init(){S=demoSave();
+S.roster.forEach(function(m){migrateLoadout(m,S.player.faction);});
 S.threads=S.threads.map(function(t){return THREAD.create(t,D)});
 S.threads.forEach(function(t){
  if(t.state&&t.state.combatants){
@@ -1716,7 +1767,7 @@ function enrichRoster(){var lore={
  var spdByClass={Core:2,Flying:4,Assault:2,Armament:3},killSeed={kane:23,morvax:41,gharn:12};
  S.roster.forEach(function(m){
   if(m.spd===undefined)m.spd=spdByClass[m.cls]||2;
-  if(m.slots===undefined)m.slots=(m.sl||[]).length;
+  if(m.slots===undefined)m.slots=((m.loadout&&m.loadout.slots)||[]).length;
   if(m.kills===undefined)m.kills=killSeed[m.id]!==undefined?killSeed[m.id]:(m.st==='DEAD'?0:m.rk);
   if(m.xp===undefined)m.xp=isLeader(m)?(m.rk*10+18)+'/'+(m.rk*10+40):'—';
   if(m.lore===undefined)m.lore=lore[m.id]||'A rank-and-file servant of the Plague God. No saga recorded — yet.';
@@ -1739,13 +1790,16 @@ function factionFrame(m,big){var col=frameColor(),rk=m.rk||1;
 function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];if(!m)return;
  var stcol=m.st==='DEAD'?'var(--blh)':m.st==='DEPLOYED'?'var(--brh)':'var(--dim)';
  var threads=(m.th&&m.th.length)?m.th.map(function(t){return '<div>'+t+'</div>'}).join(''):'<div style="color:var(--dim)">No threads recorded.</div>';
- /* slots grouped by type, wrapping grid — scales to 6+ slots */
- var order=['WEAPON','ITEM','ABILITY','WARP CAST','NAMED'],names={WEAPON:'Weapons',ITEM:'Items',ABILITY:'Abilities','WARP CAST':'Warp Casts',NAMED:'Named'};
- var groups='';order.forEach(function(k){var idxs=[];m.sl.forEach(function(s,i){if(s.k===k)idxs.push(i)});if(!idxs.length)return;
-  groups+='<div class="slotgroup"><h5>'+names[k]+' ('+idxs.length+')</h5><div class="slotgrid">';
-  idxs.forEach(function(i){var s=m.sl[i];
-   groups+='<div class="slotcard'+(s.it?'':' empty')+'" data-si="'+i+'"><div style="display:flex;justify-content:space-between;align-items:flex-start"><span class="sk">'+s.k+'</span>'+(s.it?'<button class="slotchg" data-chg="'+i+'">✎ change</button>':'')+'</div>'+(s.it?'<div class="sn">'+s.it.n+'</div><div class="sd">'+annotate(s.it.d)+'</div>':'<div class="sd">empty — click to equip</div>')+'</div>'});
+ /* free-form slots grouped by assigned type; untyped fall under Unassigned; armour is its own card */
+ var order=['WEAPON','ITEM','ABILITY','CAST',null],names={WEAPON:'Weapons',ITEM:'Items',ABILITY:'Abilities',CAST:'Warp Casts'};
+ var slots=(m.loadout&&m.loadout.slots)||[];
+ var groups='';order.forEach(function(k){var idxs=[];slots.forEach(function(s,i){if((s.type||null)===k)idxs.push(i)});if(!idxs.length)return;
+  groups+='<div class="slotgroup"><h5>'+(k?names[k]:'Unassigned')+' ('+idxs.length+')</h5><div class="slotgrid">';
+  idxs.forEach(function(i){var s=slots[i];
+   groups+='<div class="slotcard'+(s.it?'':' empty')+'" data-si="'+i+'"><div style="display:flex;justify-content:space-between;align-items:flex-start"><span class="sk">'+(s.type?slotLabel(s.type):'—')+'</span>'+(s.it?'<button class="slotchg" data-chg="'+i+'">✎ change</button>':'')+'</div>'+(s.it?'<div class="sn">'+s.it.n+'</div><div class="sd">'+annotate(s.it.d)+'</div>':'<div class="sd">'+(s.type?'empty — click to equip':'click to assign a type')+'</div>')+'</div>'});
   groups+='</div></div>'});
+ var _am=m.loadout&&m.loadout.armour&&m.loadout.armour.it;
+ groups+='<div class="slotgroup"><h5>Armour</h5><div class="slotgrid"><div class="slotcard'+(_am?'':' empty')+'" data-armour="1"><span class="sk">◈ ARMOUR</span>'+(_am?'<div class="sn">'+_am.n+'</div><div class="sd">'+armLine(_am.def)+'</div>':'<div class="sd">unarmoured — click to fit</div>')+'</div></div></div>';
  MOV.innerHTML='<div class="movc"><div class="movh">'
  +'<div style="display:flex;flex-direction:column;gap:8px"><button class="movbk" id="movx">← Back</button>'+factionFrame(m,true).replace('mframe','mframe big')+'</div>'
  +'<div class="movtitle" style="flex:1"><h2>'+m.n+'</h2>'
@@ -1768,8 +1822,10 @@ function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];i
  document.getElementById('movx').onclick=function(){MOV.classList.remove('on')};
  sel=m;
  MOV.querySelectorAll('.slotchg').forEach(function(b){b.onclick=function(e){e.stopPropagation();sel=m;pick(+b.dataset.chg)}});
- MOV.querySelectorAll('.slotcard').forEach(function(el){var i=+el.dataset.si,s=m.sl[i];
-  el.onclick=function(){sel=m;if(s.it)openEntity(s.it,{owner:m.n.split(',')[0],origin:m.loc,threads:m.th,onChange:function(){sel=m;pick(i)}});else pick(i)}});
+ MOV.querySelectorAll('.slotcard').forEach(function(el){
+  if(el.dataset.armour){el.onclick=function(){sel=m;pickArmour()};return;}
+  var i=+el.dataset.si,s=(m.loadout.slots||[])[i];
+  el.onclick=function(){sel=m;if(s&&s.it)openEntity(s.it,{owner:m.n.split(',')[0],origin:m.loc,threads:m.th,onChange:function(){sel=m;pick(i)}});else pick(i)}});
  MOV.classList.add('on');}
 /* leader switcher — swap the active playable figure */
 function switchTo(id){S.active=id;rHQ();T('Now commanding: '+S.roster.filter(function(m){return m.id===id})[0].n.split(',')[0]);}
@@ -1929,7 +1985,7 @@ function pctW(w){var p=(w||'0/0').split('/');return +p[1]>0?Math.round(+p[0]/+p[
 function devTable(m){var g=D.rules.growth,curve=g.pc_curve_by_rank,rk=Math.min(m.rk||1,5);
  var baseP=m.pc/curve[rk-1],wpct=g.wounds_pct_of_baseline_per_rankup[m.cls]||0.15;
  var baseW=(parseInt((m.w||'1/1').split('/')[1],10)||1)/(1+wpct*(rk-1));
- function slotsAt(r){var addNow=m.cls==='Armament'?(rk-1):((rk>=2?1:0)+(rk>=4?1:0));var base=(m.slots||m.sl.length)-addNow;var addR=m.cls==='Armament'?(r-1):((r>=2?1:0)+(r>=4?1:0));return Math.max(1,base+addR)}
+ function slotsAt(r){var addNow=m.cls==='Armament'?(rk-1):((rk>=2?1:0)+(rk>=4?1:0));var base=(m.slots||m.loadout.slots.length)-addNow;var addR=m.cls==='Armament'?(r-1):((r>=2?1:0)+(r>=4?1:0));return Math.max(1,base+addR)}
  function spdAt(r){var addNow=m.cls==='Flying'?(rk-1):m.cls==='Core'?((rk>=3?1:0)+(rk>=5?1:0)):0;var base=(m.spd||2)-addNow;var addR=m.cls==='Flying'?(r-1):m.cls==='Core'?((r>=3?1:0)+(r>=5?1:0)):0;return Math.max(1,base+addR)}
  var rows='';for(var r=1;r<=5;r++){var pc=Math.round(baseP*curve[r-1]/5)*5||5,w=Math.max(1,Math.round(baseW*(1+wpct*(r-1))));
   rows+='<tr'+(r===rk?' class="rknow"':'')+'><td>R'+r+(r===rk?' ◄ now':'')+'</td><td class="mono">'+pc+'</td><td class="mono">'+w+'</td><td class="mono">'+slotsAt(r)+'</td><td class="mono">'+spdAt(r)+'</td><td class="mono">'+AP(pc)+'</td></tr>'}
@@ -1993,11 +2049,12 @@ function renderDoor(dr,h){var c=E('div','card');
     rr.appendChild(bt);r.appendChild(rr);c.appendChild(r)})}
  }
  else if(kind==='forge'){renderForge(c,dr)}
+ else if(kind==='armoury'){renderArmoury(c,dr)}
  else if(kind==='muster'){c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Recruit rank-and-file into your army. They arrive garrisoned at '+h.name+'.</div>');
   [{n:'Plague Marine',cls:'Core',pc:34,w:'5/5'},{n:'Poxwalker',cls:'Core',pc:4,w:'1/1'},{n:'Foetid Bloat-Drone',cls:'Flying',pc:90,w:'6/6'}].forEach(function(rec){
    var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+rec.n+'</b> <span class="pill">'+rec.cls+'</span></span><span class="price">'+rec.pc+'</span></div>');
    var bt=E('button','btn gh sm','Recruit');bt.style.marginTop='5px';bt.onclick=function(){if(S.cur<rec.pc){T('Not enough '+curName()+'.');return}S.cur-=rec.pc;
-    var id='r'+S.roster.length+'_'+Date.now();S.roster.push({id:id,n:rec.n+' '+(S.roster.length),tag:'',cls:rec.cls,rk:1,pc:rec.pc,w:rec.w,st:'GARRISON',loc:fPl(S.pos.pl).p.name+' · '+h.name,fo:'—',sub:rec.n+' - R1 - 2 slots',sl:[{k:'WEAPON',it:null},{k:'ITEM',it:null}]});
+    var id='r'+S.roster.length+'_'+Date.now();var nm={id:id,n:rec.n+' '+(S.roster.length),tag:'',cls:rec.cls,rk:1,pc:rec.pc,w:rec.w,st:'GARRISON',loc:fPl(S.pos.pl).p.name+' · '+h.name,fo:'—',sub:rec.n+' - R1 - 2 slots',sl:[{k:'WEAPON',it:null},{k:'ITEM',it:null}]};migrateLoadout(nm,S.player.faction);S.roster.push(nm);
     enrichRoster();rW();rRos();rShop();T(rec.n+' recruited — garrisoned at '+h.name+'.')};r.appendChild(bt);c.appendChild(r)})}
  else if(kind==='apothecarion'){var dead=(S.roster||[]).filter(function(m){return m.st==='DEAD'});
   c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Revive fallen models within their revival window — any element, at a cost scaled to point cost.</div>');
@@ -2024,6 +2081,24 @@ function renderDoor(dr,h){var c=E('div','card');
  else c.insertAdjacentHTML('beforeend','<div class="d">This door stands open.</div>');
  return c}
 function renderForge(c,dr){
+ /* armour upgrade path (v1.7): +1 Defense to one element, tiers I-III */
+ var armPieces=[];
+ (S.inv||[]).forEach(function(it){if(it.cat==='ARMOUR')armPieces.push({it:it,where:'inventory'})});
+ (S.roster||[]).forEach(function(m){var a=m.loadout&&m.loadout.armour&&m.loadout.armour.it;if(a)armPieces.push({it:a,where:m.n.split(',')[0]})});
+ if(armPieces.length){
+  c.insertAdjacentHTML('beforeend','<div class="lsec"><h5>Upgrade Armour — +1 Defense to one element (tiers I–III)</h5></div>');
+  c.insertAdjacentHTML('beforeend','<label class="f">Armour piece</label>');
+  var as=E('select');as.style.cssText='width:100%';armPieces.forEach(function(p,i){as.add(new Option(p.it.n+' ('+p.where+')  ·  '+armLine(p.it.def).replace(/<[^>]+>/g,''),i))});c.appendChild(as);
+  c.insertAdjacentHTML('beforeend','<label class="f">Element to harden</label>');
+  var es=E('select');es.style.cssText='width:100%';ELEM6.forEach(function(e){es.add(new Option(e,e))});c.appendChild(es);
+  var acost=E('div','apt','<span style="font-size:11px;color:var(--dim)">Cost</span><span class="n" id="apx">—</span>');c.appendChild(acost);
+  var abase=D.equipment_alpha.forge_rules.base_cost;
+  function apr(){var p=armPieces[as.value];var tier=((p&&p.it.upg)||0)+1;acost.querySelector('#apx').textContent=(tier>3?'MAXED (tier III)':(abase*tier)+' '+curName());}
+  as.onchange=apr;apr();
+  var ago=E('button','btn','HARDEN');ago.style.cssText='width:100%;margin-top:9px';c.appendChild(ago);
+  ago.onclick=function(){var p=armPieces[as.value];if(!p)return;var tier=(p.it.upg||0)+1;if(tier>3){T('Already hardened to tier III.');return}var cost=abase*tier;if(S.cur<cost){T('Not enough '+curName()+'.');return}var e=es.value;S.cur-=cost;p.it.def[e]=(p.it.def[e]||0)+1;p.it.upg=tier;rW();rShop();T(p.it.n+' hardened — +1 '+e+' Defense (tier '+['I','II','III'][tier-1]+').')};
+  c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Forge a Weapon Tag</h5></div>');
+ }
  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Insert a weapon from your inventory and forge an affinity tag onto it — tiers '+(dr.tiers||'I')+'.</div>');
  var ws=(S.inv||[]).filter(function(i){return i.cat==='WEAPON'});
  if(!ws.length){c.insertAdjacentHTML('beforeend','<div class="empty">No weapon in your inventory to modify. Buy or unequip one first.</div>');return}
@@ -2042,6 +2117,28 @@ function renderForge(c,dr){
  go2.onclick=function(){var x=ws[bs.value];if(!x){T('No base weapon.');return}var n=nm.value.trim();if(!n){T('A Named weapon needs a name.');return}
   var cost=base+st.c;if(S.cur<cost){T('Not enough '+curName()+'.');return}
   S.cur-=cost;S.inv.splice(S.inv.indexOf(x),1);S.inv.push({n:n,cat:'WEAPON',d:'Named '+x.n+' - '+st.t+' I',pc:(x.pc||6)+st.c,origin:dr.name});rW();rShop();T('The forge tolls once. "'+n+'" is made.')}}
+function renderArmoury(c,dr){
+ var fac=S.player.faction;var who=(sel||S.roster[0]);
+ var list=(D.armour||[]).filter(function(p){return p.faction===fac||p.faction===null;});
+ c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Buy and fit Armour. Defense is per-element ('+ELEM6.map(function(e){return ELAB[e]}).join(' ')+'); a hit deals max(0, damage − Defense). A <b>0</b> means that element bypasses the plate.</div>');
+ var byTier={};list.forEach(function(p){(byTier[p.tier]=byTier[p.tier]||[]).push(p)});
+ ['default','light','medium','heavy'].forEach(function(tier){var ps=byTier[tier];if(!ps||!ps.length)return;
+  c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:10px"><h5>'+tier.toUpperCase()+(tier==='default'?' — issued by class':'')+'</h5></div>');
+  ps.forEach(function(p){var r=E('div','shopc');
+   r.innerHTML='<div><b>'+p.n+'</b>'+(p.cls?' <span class="pill">'+p.cls+'</span>':'')+'<div class="d">'+armLine(p.def)+'</div><div class="d" style="color:var(--dim)">'+annotate(p.d||'')+'</div></div>';
+   var rr=E('div',null,'<span class="price">'+p.pc+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px;gap:4px';
+   var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<p.pc){T('Not enough '+curName()+'.');return}S.cur-=p.pc;S.inv.push(JSON.parse(JSON.stringify(p)));rW();rShop();T('Bought '+p.n+'.')};
+   var ft=E('button','btn sm','Buy & Fit');ft.onclick=function(){if(!who){T('No model selected.');return}if(who.st==='DEPLOYED'){T(who.n.split(',')[0]+' is in an active thread — cannot refit.');return}if(S.cur<p.pc){T('Not enough '+curName()+'.');return}S.cur-=p.pc;var copy=JSON.parse(JSON.stringify(p));if(who.loadout.armour.it)S.inv.push(who.loadout.armour.it);who.loadout.armour.it=copy;rW();rShop();T(p.n+' fitted to '+who.n.split(',')[0]+'.')};
+   rr.appendChild(bt);rr.appendChild(ft);r.appendChild(rr);c.appendChild(r)})});
+ var owned=(S.inv||[]).filter(function(it){return it.cat==='ARMOUR'});
+ if(owned.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — buys armour at 60%</h5></div>');
+  owned.forEach(function(it){var r=E('div','shopc');var sp=sellPrice(it);
+   r.innerHTML='<div><b>'+it.n+'</b><div class="d">'+armLine(it.def)+'</div></div>';
+   var rr=E('div',null,'<span class="price" style="color:var(--vdh)">+'+sp+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:4px';
+   var bt=E('button','btn gh sm','Sell');bt.onclick=function(){S.cur+=sp;S.inv.splice(S.inv.indexOf(it),1);rW();rShop();T('Sold '+it.n+'.')};
+   rr.appendChild(bt);r.appendChild(rr);c.appendChild(r)})}
+ c.insertAdjacentHTML('beforeend','<div class="d" style="margin-top:10px;color:var(--dim)">Fitting to <b>'+(who?who.n.split(',')[0]:'—')+'</b> — change the selected model in the Barracks loadout tab.</div>');
+}
 /* ─── v8: procedural sector chart (first real map visual) ─── */
 var ALCOL={imperial:'#D8B45E',chaos:'#C4503F',xenos:'#6FA893',con:'#8F8674'};
 var STCOL={Thriving:'#D8B45E',Peace:'#6f8fa3',Warring:'#C4503F',Famine:'#9c7b2e',Corrupted:'#6d8339'};
