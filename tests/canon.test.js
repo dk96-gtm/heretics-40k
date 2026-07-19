@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.9', () => {
-  assert.strictEqual(canon.meta.version, '1.9');
+test('canon is v1.10', () => {
+  assert.strictEqual(canon.meta.version, '1.10');
 });
 
 test('v1.7: numeric slot growth is present for every class', () => {
@@ -90,7 +90,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.9');
+  assert.equal(canon.meta.version, '1.10');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -182,4 +182,36 @@ test('v1.9: faction-null "common" gear exists for shop/altar filtering', () => {
   assert.ok(canon.items.some((i) => i.faction === null), 'common items');
   assert.ok(canon.abilities.some((a) => a.faction === null), 'common abilities');
   assert.ok(canon.casts.some((c) => c.faction === null), 'common casts');
+});
+
+test('v1.10: every faction fields the full 5-model roster (100 total)', () => {
+  let total = 0;
+  canon.factions.forEach((f) => {
+    assert.strictEqual(f.models.length, 5, f.id + ' roster size');
+    total += f.models.length;
+  });
+  assert.strictEqual(total, 100, 'full 100-model roster');
+});
+
+test('v1.10: every model has the {n,cls,pc,w,sp,sl} shape and 2/1/1/1 class mix', () => {
+  const CLS = ['Core', 'Assault', 'Flying', 'Armament'];
+  canon.factions.forEach((f) => {
+    const mix = { Core: 0, Assault: 0, Flying: 0, Armament: 0 };
+    f.models.forEach((m) => {
+      assert.ok(m.n && typeof m.n === 'string', f.id + ' model name');
+      assert.ok(CLS.includes(m.cls), f.id + ' class ' + m.cls);
+      ['pc', 'w', 'sp', 'sl'].forEach((k) =>
+        assert.ok(typeof m[k] === 'number' && m[k] >= 0, f.id + ' ' + m.n + ' ' + k));
+      mix[m.cls]++;
+    });
+    assert.deepStrictEqual(mix, { Core: 2, Assault: 1, Flying: 1, Armament: 1 },
+      f.id + ' class composition');
+  });
+});
+
+test('v1.10: Death Guard demo base models survive the roster migration', () => {
+  const dg = canon.factions.find((f) => f.id === 'death_guard');
+  const names = new Set(dg.models.map((m) => m.n));
+  ['Plague Marine', 'Poxwalker', 'Blightlord Terminator', 'Foetid Bloat-Drone']
+    .forEach((n) => assert.ok(names.has(n), 'demo references ' + n));
 });

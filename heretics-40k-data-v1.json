@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.9",
+  "version": "1.10",
   "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -556,28 +556,44 @@
    ],
    "models": [
     {
-     "n": "Legionnaire",
+     "n": "Legionary",
      "cls": "Core",
-     "pc": 24,
-     "w": 4,
-     "sp": 5,
+     "pc": 20,
+     "w": 3,
+     "sp": 6,
      "sl": 2
     },
     {
-     "n": "Chosen Terminator",
+     "n": "Chaos Cultist",
+     "cls": "Core",
+     "pc": 5,
+     "w": 1,
+     "sp": 5,
+     "sl": 1
+    },
+    {
+     "n": "Chaos Terminator",
      "cls": "Assault",
-     "pc": 52,
-     "w": 6,
-     "sp": 3,
+     "pc": 45,
+     "w": 5,
+     "sp": 4,
      "sl": 3
     },
     {
-     "n": "Warp Talon",
+     "n": "Raptor",
      "cls": "Flying",
-     "pc": 36,
-     "w": 4,
+     "pc": 28,
+     "w": 3,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Havoc",
+     "cls": "Armament",
+     "pc": 32,
+     "w": 3,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -643,6 +659,14 @@
      "sl": 2
     },
     {
+     "n": "Poxwalker",
+     "cls": "Core",
+     "pc": 4,
+     "w": 1,
+     "sp": 4,
+     "sl": 1
+    },
+    {
      "n": "Blightlord Terminator",
      "cls": "Assault",
      "pc": 50,
@@ -657,6 +681,14 @@
      "w": 6,
      "sp": 8,
      "sl": 2
+    },
+    {
+     "n": "Plagueburst Crawler",
+     "cls": "Armament",
+     "pc": 140,
+     "w": 8,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -717,25 +749,41 @@
      "n": "Khorne Berzerker",
      "cls": "Core",
      "pc": 22,
-     "w": 4,
-     "sp": 6,
+     "w": 3,
+     "sp": 7,
      "sl": 2
+    },
+    {
+     "n": "Jakhal",
+     "cls": "Core",
+     "pc": 6,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
     },
     {
      "n": "Exalted Eightbound",
      "cls": "Assault",
-     "pc": 58,
-     "w": 7,
-     "sp": 5,
-     "sl": 3
+     "pc": 70,
+     "w": 6,
+     "sp": 6,
+     "sl": 2
     },
     {
-     "n": "Chaos Raptor",
+     "n": "Skyrender",
      "cls": "Flying",
-     "pc": 34,
-     "w": 4,
+     "pc": 30,
+     "w": 3,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Forgefiend",
+     "cls": "Armament",
+     "pc": 130,
+     "w": 8,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -795,26 +843,42 @@
     {
      "n": "Rubric Marine",
      "cls": "Core",
-     "pc": 26,
-     "w": 4,
-     "sp": 4,
+     "pc": 23,
+     "w": 3,
+     "sp": 5,
      "sl": 2
+    },
+    {
+     "n": "Tzaangor",
+     "cls": "Core",
+     "pc": 7,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
     },
     {
      "n": "Scarab Occult Terminator",
      "cls": "Assault",
-     "pc": 55,
-     "w": 6,
-     "sp": 3,
+     "pc": 48,
+     "w": 5,
+     "sp": 4,
      "sl": 3
     },
     {
-     "n": "Tzaangor Skyflock Alpha",
+     "n": "Tzaangor Enlightened",
      "cls": "Flying",
-     "pc": 30,
-     "w": 4,
-     "sp": 8,
+     "pc": 26,
+     "w": 2,
+     "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Mutalith Vortex Beast",
+     "cls": "Armament",
+     "pc": 150,
+     "w": 9,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -874,26 +938,42 @@
     {
      "n": "Noise Marine",
      "cls": "Core",
-     "pc": 26,
-     "w": 4,
-     "sp": 5,
+     "pc": 22,
+     "w": 3,
+     "sp": 6,
      "sl": 2
     },
     {
-     "n": "Flawless Terminator",
+     "n": "Tormentor",
+     "cls": "Core",
+     "pc": 6,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
+    },
+    {
+     "n": "Flawless Blade",
      "cls": "Assault",
-     "pc": 50,
-     "w": 6,
-     "sp": 3,
-     "sl": 3
+     "pc": 40,
+     "w": 4,
+     "sp": 7,
+     "sl": 2
     },
     {
      "n": "Sonancer",
      "cls": "Flying",
-     "pc": 32,
-     "w": 4,
+     "pc": 28,
+     "w": 3,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Kakophonist",
+     "cls": "Armament",
+     "pc": 35,
+     "w": 3,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -953,26 +1033,42 @@
     {
      "n": "Bloodletter",
      "cls": "Core",
-     "pc": 20,
-     "w": 4,
+     "pc": 12,
+     "w": 2,
      "sp": 6,
-     "sl": 2
+     "sl": 1
     },
     {
-     "n": "Great Beast of Nurgle",
+     "n": "Nurgling Swarm",
+     "cls": "Core",
+     "pc": 5,
+     "w": 1,
+     "sp": 4,
+     "sl": 1
+    },
+    {
+     "n": "Bloodcrusher",
      "cls": "Assault",
-     "pc": 56,
-     "w": 7,
-     "sp": 3,
-     "sl": 3
+     "pc": 55,
+     "w": 5,
+     "sp": 7,
+     "sl": 2
     },
     {
      "n": "Screamer of Tzeentch",
      "cls": "Flying",
-     "pc": 30,
-     "w": 4,
-     "sp": 10,
-     "sl": 2
+     "pc": 25,
+     "w": 2,
+     "sp": 11,
+     "sl": 1
+    },
+    {
+     "n": "Soul Grinder",
+     "cls": "Armament",
+     "pc": 160,
+     "w": 9,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1032,26 +1128,42 @@
     {
      "n": "Intercessor",
      "cls": "Core",
-     "pc": 20,
-     "w": 4,
-     "sp": 5,
+     "pc": 21,
+     "w": 3,
+     "sp": 6,
      "sl": 2
     },
     {
-     "n": "Aggressor",
+     "n": "Scout",
+     "cls": "Core",
+     "pc": 12,
+     "w": 2,
+     "sp": 7,
+     "sl": 2
+    },
+    {
+     "n": "Assault Terminator",
      "cls": "Assault",
-     "pc": 45,
-     "w": 6,
-     "sp": 3,
+     "pc": 46,
+     "w": 5,
+     "sp": 4,
      "sl": 3
     },
     {
      "n": "Inceptor",
      "cls": "Flying",
-     "pc": 60,
-     "w": 5,
+     "pc": 35,
+     "w": 3,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Hellblaster",
+     "cls": "Armament",
+     "pc": 30,
+     "w": 3,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1109,28 +1221,44 @@
    ],
    "models": [
     {
-     "n": "Tempestus Scion",
+     "n": "Cadian Shock Trooper",
      "cls": "Core",
-     "pc": 9,
-     "w": 2,
+     "pc": 6,
+     "w": 1,
      "sp": 5,
      "sl": 2
     },
     {
+     "n": "Catachan Jungle Fighter",
+     "cls": "Core",
+     "pc": 7,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
+    },
+    {
      "n": "Bullgryn",
      "cls": "Assault",
-     "pc": 28,
-     "w": 6,
-     "sp": 4,
+     "pc": 30,
+     "w": 4,
+     "sp": 5,
+     "sl": 2
+    },
+    {
+     "n": "Valkyrie",
+     "cls": "Flying",
+     "pc": 110,
+     "w": 8,
+     "sp": 10,
      "sl": 3
     },
     {
-     "n": "Skyhammer Exo-Rig",
-     "cls": "Flying",
-     "pc": 36,
-     "w": 4,
-     "sp": 8,
-     "sl": 2
+     "n": "Heavy Weapons Team",
+     "cls": "Armament",
+     "pc": 15,
+     "w": 2,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -1190,26 +1318,42 @@
     {
      "n": "Skitarii Ranger",
      "cls": "Core",
-     "pc": 12,
-     "w": 3,
+     "pc": 10,
+     "w": 2,
      "sp": 5,
      "sl": 2
     },
     {
-     "n": "Kastelan Punisher",
+     "n": "Skitarii Vanguard",
+     "cls": "Core",
+     "pc": 11,
+     "w": 2,
+     "sp": 6,
+     "sl": 2
+    },
+    {
+     "n": "Sicarian Ruststalker",
      "cls": "Assault",
-     "pc": 46,
-     "w": 7,
-     "sp": 3,
-     "sl": 3
+     "pc": 28,
+     "w": 3,
+     "sp": 8,
+     "sl": 2
     },
     {
      "n": "Pteraxii Sterylizor",
      "cls": "Flying",
-     "pc": 24,
-     "w": 3,
+     "pc": 26,
+     "w": 2,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Kastelan Robot",
+     "cls": "Armament",
+     "pc": 95,
+     "w": 7,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -1269,26 +1413,42 @@
     {
      "n": "Battle Sister",
      "cls": "Core",
-     "pc": 12,
-     "w": 3,
+     "pc": 11,
+     "w": 2,
      "sp": 5,
      "sl": 2
     },
     {
-     "n": "Celestian Sacresant",
-     "cls": "Assault",
-     "pc": 26,
-     "w": 5,
-     "sp": 4,
-     "sl": 3
+     "n": "Novitiate",
+     "cls": "Core",
+     "pc": 7,
+     "w": 1,
+     "sp": 5,
+     "sl": 1
     },
     {
-     "n": "Zephyrim",
+     "n": "Sister Repentia",
+     "cls": "Assault",
+     "pc": 16,
+     "w": 2,
+     "sp": 7,
+     "sl": 1
+    },
+    {
+     "n": "Seraphim",
      "cls": "Flying",
-     "pc": 30,
-     "w": 4,
+     "pc": 20,
+     "w": 2,
      "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Retributor",
+     "cls": "Armament",
+     "pc": 18,
+     "w": 2,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1350,24 +1510,40 @@
      "cls": "Core",
      "pc": 60,
      "w": 6,
+     "sp": 6,
+     "sl": 3
+    },
+    {
+     "n": "Sagittarum Guard",
+     "cls": "Core",
+     "pc": 62,
+     "w": 6,
      "sp": 5,
-     "sl": 2
+     "sl": 3
     },
     {
      "n": "Allarus Terminator",
      "cls": "Assault",
-     "pc": 88,
-     "w": 8,
+     "pc": 85,
+     "w": 7,
      "sp": 4,
      "sl": 3
     },
     {
      "n": "Vertus Praetor",
      "cls": "Flying",
-     "pc": 92,
+     "pc": 90,
      "w": 6,
-     "sp": 10,
+     "sp": 11,
      "sl": 2
+    },
+    {
+     "n": "Contemptor Dreadnought",
+     "cls": "Armament",
+     "pc": 130,
+     "w": 9,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1427,26 +1603,42 @@
     {
      "n": "Tyranid Warrior",
      "cls": "Core",
-     "pc": 30,
-     "w": 5,
+     "pc": 25,
+     "w": 3,
      "sp": 6,
      "sl": 2
     },
     {
-     "n": "Tyrant Guard",
+     "n": "Termagant",
+     "cls": "Core",
+     "pc": 6,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
+    },
+    {
+     "n": "Carnifex",
      "cls": "Assault",
-     "pc": 48,
-     "w": 7,
-     "sp": 4,
+     "pc": 180,
+     "w": 8,
+     "sp": 5,
      "sl": 3
     },
     {
-     "n": "Winged Prime",
+     "n": "Gargoyle",
      "cls": "Flying",
-     "pc": 52,
-     "w": 5,
-     "sp": 9,
-     "sl": 2
+     "pc": 8,
+     "w": 1,
+     "sp": 12,
+     "sl": 1
+    },
+    {
+     "n": "Hive Guard",
+     "cls": "Armament",
+     "pc": 50,
+     "w": 4,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -1504,28 +1696,44 @@
    ],
    "models": [
     {
-     "n": "Ork Nob",
+     "n": "Boy",
      "cls": "Core",
-     "pc": 18,
-     "w": 5,
+     "pc": 10,
+     "w": 2,
+     "sp": 6,
+     "sl": 1
+    },
+    {
+     "n": "Gretchin",
+     "cls": "Core",
+     "pc": 3,
+     "w": 1,
      "sp": 5,
-     "sl": 2
+     "sl": 1
     },
     {
      "n": "Meganob",
      "cls": "Assault",
      "pc": 42,
-     "w": 7,
-     "sp": 3,
-     "sl": 3
+     "w": 5,
+     "sp": 4,
+     "sl": 2
     },
     {
-     "n": "Stormboy Nob",
+     "n": "Stormboy",
      "cls": "Flying",
-     "pc": 26,
-     "w": 4,
+     "pc": 14,
+     "w": 2,
      "sp": 9,
-     "sl": 2
+     "sl": 1
+    },
+    {
+     "n": "Loota",
+     "cls": "Armament",
+     "pc": 16,
+     "w": 2,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1583,28 +1791,44 @@
    ],
    "models": [
     {
+     "n": "Necron Warrior",
+     "cls": "Core",
+     "pc": 14,
+     "w": 2,
+     "sp": 4,
+     "sl": 1
+    },
+    {
      "n": "Immortal",
      "cls": "Core",
-     "pc": 16,
-     "w": 4,
+     "pc": 20,
+     "w": 3,
      "sp": 4,
      "sl": 2
     },
     {
-     "n": "Lychguard",
+     "n": "Skorpekh Destroyer",
      "cls": "Assault",
-     "pc": 38,
-     "w": 6,
-     "sp": 4,
-     "sl": 3
+     "pc": 45,
+     "w": 5,
+     "sp": 6,
+     "sl": 2
     },
     {
-     "n": "Canoptek Skyrender",
+     "n": "Tomb Blade",
      "cls": "Flying",
-     "pc": 44,
-     "w": 5,
-     "sp": 9,
+     "pc": 30,
+     "w": 3,
+     "sp": 10,
      "sl": 2
+    },
+    {
+     "n": "Lokhust Heavy Destroyer",
+     "cls": "Armament",
+     "pc": 65,
+     "w": 5,
+     "sp": 6,
+     "sl": 3
     }
    ]
   },
@@ -1662,28 +1886,44 @@
    ],
    "models": [
     {
-     "n": "Guardian Storm-Lead",
+     "n": "Dire Avenger",
      "cls": "Core",
-     "pc": 14,
-     "w": 3,
-     "sp": 6,
+     "pc": 13,
+     "w": 2,
+     "sp": 7,
      "sl": 2
     },
     {
-     "n": "Wraithblade",
-     "cls": "Assault",
-     "pc": 44,
-     "w": 6,
-     "sp": 4,
-     "sl": 3
+     "n": "Guardian Defender",
+     "cls": "Core",
+     "pc": 8,
+     "w": 1,
+     "sp": 7,
+     "sl": 1
     },
     {
-     "n": "Swooping Hawk Exarch",
+     "n": "Howling Banshee",
+     "cls": "Assault",
+     "pc": 18,
+     "w": 2,
+     "sp": 9,
+     "sl": 1
+    },
+    {
+     "n": "Swooping Hawk",
      "cls": "Flying",
-     "pc": 30,
-     "w": 4,
+     "pc": 17,
+     "w": 2,
      "sp": 10,
      "sl": 2
+    },
+    {
+     "n": "Dark Reaper",
+     "cls": "Armament",
+     "pc": 22,
+     "w": 2,
+     "sp": 5,
+     "sl": 3
     }
    ]
   },
@@ -1743,26 +1983,42 @@
     {
      "n": "Kabalite Warrior",
      "cls": "Core",
-     "pc": 12,
-     "w": 3,
-     "sp": 6,
+     "pc": 10,
+     "w": 2,
+     "sp": 7,
      "sl": 2
+    },
+    {
+     "n": "Wrack",
+     "cls": "Core",
+     "pc": 9,
+     "w": 1,
+     "sp": 6,
+     "sl": 1
     },
     {
      "n": "Incubus",
      "cls": "Assault",
-     "pc": 30,
-     "w": 5,
-     "sp": 5,
-     "sl": 3
+     "pc": 24,
+     "w": 2,
+     "sp": 7,
+     "sl": 2
     },
     {
      "n": "Scourge",
      "cls": "Flying",
-     "pc": 26,
-     "w": 4,
+     "pc": 18,
+     "w": 2,
      "sp": 10,
      "sl": 2
+    },
+    {
+     "n": "Ravager",
+     "cls": "Armament",
+     "pc": 100,
+     "w": 6,
+     "sp": 9,
+     "sl": 3
     }
    ]
   },
@@ -1822,26 +2078,42 @@
     {
      "n": "Fire Warrior",
      "cls": "Core",
-     "pc": 10,
+     "pc": 11,
      "w": 2,
      "sp": 5,
      "sl": 2
     },
     {
-     "n": "Crisis Battlesuit",
-     "cls": "Assault",
-     "pc": 40,
-     "w": 5,
-     "sp": 5,
-     "sl": 3
+     "n": "Kroot Carnivore",
+     "cls": "Core",
+     "pc": 6,
+     "w": 1,
+     "sp": 7,
+     "sl": 1
     },
     {
-     "n": "Stealth Suit VX",
-     "cls": "Flying",
-     "pc": 28,
-     "w": 4,
-     "sp": 8,
+     "n": "Crisis Battlesuit",
+     "cls": "Assault",
+     "pc": 65,
+     "w": 5,
+     "sp": 7,
      "sl": 2
+    },
+    {
+     "n": "Vespid Stingwing",
+     "cls": "Flying",
+     "pc": 15,
+     "w": 2,
+     "sp": 10,
+     "sl": 1
+    },
+    {
+     "n": "Broadside Battlesuit",
+     "cls": "Armament",
+     "pc": 90,
+     "w": 6,
+     "sp": 3,
+     "sl": 3
     }
    ]
   },
@@ -1899,28 +2171,44 @@
    ],
    "models": [
     {
-     "n": "Acolyte Hybrid",
+     "n": "Neophyte Hybrid",
      "cls": "Core",
-     "pc": 10,
-     "w": 2,
+     "pc": 6,
+     "w": 1,
      "sp": 5,
      "sl": 2
+    },
+    {
+     "n": "Acolyte Hybrid",
+     "cls": "Core",
+     "pc": 11,
+     "w": 2,
+     "sp": 7,
+     "sl": 1
     },
     {
      "n": "Aberrant",
      "cls": "Assault",
      "pc": 26,
-     "w": 6,
-     "sp": 4,
-     "sl": 3
+     "w": 3,
+     "sp": 5,
+     "sl": 1
     },
     {
      "n": "Chiropteran Hybrid",
      "cls": "Flying",
-     "pc": 24,
-     "w": 3,
+     "pc": 14,
+     "w": 2,
      "sp": 9,
-     "sl": 2
+     "sl": 1
+    },
+    {
+     "n": "Mining Laser Team",
+     "cls": "Armament",
+     "pc": 14,
+     "w": 2,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -1981,25 +2269,41 @@
      "n": "Hearthkyn Warrior",
      "cls": "Core",
      "pc": 12,
-     "w": 3,
+     "w": 2,
      "sp": 4,
+     "sl": 2
+    },
+    {
+     "n": "Hearthkyn Yaegir",
+     "cls": "Core",
+     "pc": 10,
+     "w": 2,
+     "sp": 5,
      "sl": 2
     },
     {
      "n": "Einhyr Champion",
      "cls": "Assault",
-     "pc": 44,
-     "w": 6,
-     "sp": 3,
+     "pc": 55,
+     "w": 5,
+     "sp": 4,
      "sl": 3
     },
     {
-     "n": "Hernkyn Sky-Jager",
+     "n": "Skyhammer Exo-Rig",
      "cls": "Flying",
-     "pc": 28,
-     "w": 4,
-     "sp": 9,
+     "pc": 32,
+     "w": 3,
+     "sp": 8,
      "sl": 2
+    },
+    {
+     "n": "Cthonian Beserk",
+     "cls": "Armament",
+     "pc": 28,
+     "w": 3,
+     "sp": 4,
+     "sl": 3
     }
    ]
   },
@@ -2057,28 +2361,44 @@
    ],
    "models": [
     {
-     "n": "Player of the Troupe",
+     "n": "Player",
      "cls": "Core",
      "pc": 22,
-     "w": 3,
-     "sp": 8,
+     "w": 2,
+     "sp": 9,
      "sl": 2
+    },
+    {
+     "n": "Shadowseer",
+     "cls": "Core",
+     "pc": 35,
+     "w": 2,
+     "sp": 9,
+     "sl": 3
     },
     {
      "n": "Solitaire",
      "cls": "Assault",
-     "pc": 60,
-     "w": 4,
-     "sp": 10,
-     "sl": 3
+     "pc": 75,
+     "w": 3,
+     "sp": 12,
+     "sl": 2
     },
     {
-     "n": "Skyweaver Rider",
+     "n": "Skyweaver",
      "cls": "Flying",
-     "pc": 34,
-     "w": 4,
-     "sp": 10,
+     "pc": 40,
+     "w": 2,
+     "sp": 12,
      "sl": 2
+    },
+    {
+     "n": "Death Jester",
+     "cls": "Armament",
+     "pc": 38,
+     "w": 2,
+     "sp": 8,
+     "sl": 3
     }
    ]
   }
