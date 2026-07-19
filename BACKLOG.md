@@ -45,6 +45,7 @@ runs fully parallel). If two tasks both need `index.html`, they serialize — th
 | T-BF5 | **Deploy respec drill-in + freeze gating** — deploy tray opens model overview + Armoury equip; gate equip to `phase==='deploy'`, block on `state.locked` | 🔥 engine | `open` | — | — | Medium; reuses Barracks overview + Armoury flow. |
 | T-BF2 | **Board from planet ⊕ location** — replace hardcoded `bfSetup` cfg with `bfBoardCfg(planetType,locationType,canon)` | 🔥 engine | `blocked` | — | — | **Blocked on T-GX galaxy accessors + `location_type.board` hint shape.** Safe default holds meanwhile. |
 | T-NPC-2b | **NPC combat turn** — enemy AI picks moves+attacks via `reachable`/`spottedEnemies`/`bandOf`, stages a block, posts through `threadView`. Makes the enemy fight back. | 🔥 engine | `open` | — | — | No new engine surface needed — grid already exposes everything. |
+| T-THR-1 | **Speaker-attributed thread log** — a readable in-thread speech/thought convention so conversations (NPC↔PC, OC↔OC, multiple models of one PC) are legible about *who says what to whom* | 🔥 engine | `open` | — | — | See the **Log formatting convention** block below for the full rule. High value, well-specced. |
 | T-ENG-1 | **Throne Room world-ender** resolution (acknowledges but doesn't resolve) | 🔥 engine | `open` | — | — | Stubbed; needs design pass. |
 | T-ENG-2 | **Trade escrow / dispute→combat** — Comms trade transfers gear with no escrow | 🔥 engine | `open` | — | — | Stubbed; Stage-2-adjacent. |
 | T-ENG-3 | **Grid-aware Exit pursuit** — replace flat `enemySpd=3` heuristic with position/speed-ranked rule | 🔥 engine | `open` | — | — | Low priority polish. |
@@ -72,6 +73,41 @@ runs fully parallel). If two tasks both need `index.html`, they serialize — th
 |----|------|------|--------|-----------------|---------|-------|
 | T-DOC-1 | **Compendium PDF → v1.8** fold-in (battlefield grid + armour + slots already at 58pp; add tag registry + gear catalogs) | docs | `open` | — | — | `md-to-pdf`; source in `docs/superpowers/specs/`. |
 | T-DOC-2 | Retire the standalone **screen-VIII prototype** doc/notes once the engine prototype is folded in | docs | `open` | — | — | Pairs with an engine polish task; docs half only here. |
+
+---
+
+## Log formatting convention (spec for T-THR-1)
+
+The thread log needs to make **dialogue and inner life legible** — who is speaking, to
+whom, and what a model is thinking — across NPC↔PC talk, two OCs, or several models of one
+Commander in the same thread.
+
+**The three signals:**
+
+```
+● **bold**      = SPOKEN WORD — anything said aloud: conversation, monologue, a shout,
+                   a hail. If a model's mouth is making it, it's bold.
+● *italics*     = INTERNAL THOUGHT — inner monologue, what a model (NPC or PC) is thinking
+                   but not saying. Never heard by others in-fiction.
+● speech COLOR  = SPEAKER IDENTITY — every model that can speak picks a colour on its
+                   **model overview**; that colour tints its spoken (bold) lines so a
+                   multi-speaker exchange is instantly attributable to the right mouth.
+```
+
+**Implementation shape (for whoever claims it):**
+- **Colour is per-model instance state** (save-state `S`, not canon) — a `speechColor`
+  field set from the model-overview overlay (a small swatch/picker next to the name).
+  Default: assign a distinct colour per model on first speak, editable by the player.
+- **Model overview:** add the colour picker; gate to models the player owns (NPC colours
+  are authored/assigned server-side later — Stage 2/3).
+- **Thread renderer:** when rendering a post, colourise `**bold**` runs with the speaking
+  model's `speechColor`; leave `*italics*` in a neutral "thought" style (dimmed/muted, not
+  colourised — thought has no audience). Plain text = narration/action, unstyled.
+- **Attribution:** a post is authored by a Commander, but a single post may voice several
+  of their models — so colour resolves per **speaker**, not per post. Consider a lightweight
+  inline speaker tag (e.g. the model's colour swatch + name) when a post switches speakers.
+- Keep it inside the existing `threadView` render path; no THREAD-core rule change needed
+  (this is presentation, not state). Verify 0 console errors + a multi-speaker sample thread.
 
 ---
 
