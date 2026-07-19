@@ -160,6 +160,57 @@ If you're editing `index.html` / canon, these are the battlefield contracts:
 
 ---
 
+## 3.5 FUTURE EPIC — Multi-layer battlefields (nested + destructible environment)
+
+A whole new dimension, bigger than the ❶–❺ items above. Three interlocking systems:
+
+**① Nested grids (enterable environment).** Some environment types are *portals*, not just
+cover. A model can **Enter** an enterable piece (building/space) → a **new interior
+battlegrid** is generated. The interior is a **sealed** combat space — only models that
+entered fight there; the exterior can't target inside and vice-versa. The battlefield
+becomes a **tree of grids**: the main board + N interiors linked by portal tiles.
+
+**② Destructible environment (terrain has HP).** Every environment feature — mountain,
+tree, lake, building — carries **Wounds** and is a valid attack target. Destroying it
+mutates the tile (cover removed, LOS opened, passability changed; building → rubble,
+forest → cleared).
+
+**③ Collapse-death (① × ② collide).** Destroying an enterable piece's *exterior* HP while
+models occupy its *interior* → the structure collapses → **everyone inside dies** (new
+death cause, no revival — buried). You can't shoot into a sealed building, but you can
+bring it down on the occupants.
+
+### How it extends the shipped grid
+```
+  terrain tile   {t}          → {t, hp, maxHp, enterable?, interiorId?}
+  state.board    (one grid)   → state.boards {id → grid}; combatant gains a `layer`/boardId
+  apply          + 'enter' (portal traverse) + 'damage-terrain' + collapse cascade
+  catalog        + "Enter <space>" + "Attack terrain"
+  fog            per-board, per-side (each interior has its own fog)
+  death          + cause 'interior collapse'
+  reachable / bandOf / lineOfSight / refreshFog  already operate per-board — reuse as-is,
+    scoped to the combatant's current board. The new work is the BOARD GRAPH + terrain-
+    as-target + the collapse cascade.
+```
+
+### Open design questions (resolve at build time — brainstorm first)
+- **Which types are enterable?** Buildings clearly. Forests (into the woods)? Lakes
+  (underwater layer)? Mountains (caves)? Or only "structure" types?
+- **Interior size:** fixed-small, or scaled to the piece's footprint on the parent grid?
+- **HP coverage:** all tiles, or only feature tiles (open ground stays indestructible)?
+- **Cross-layer:** fully sealed (enter/exit only) vs. shoot-in-through-windows. The vision
+  implies sealed + collapse-only.
+- **Nesting depth:** can an interior hold its own sub-spaces (basement)? Cap at 1 level?
+- **HP scale / balance:** a tree (~2) vs a mountain (~effectively indestructible); do some
+  feature types have so much HP they're only cosmetically destructible?
+- **Action economy:** Enter costs a move? Attack-terrain costs AP like an attack?
+
+### Sequencing
+This epic depends on the base grid (shipped) but is **independent of ❶–❺** — it can be
+brainstormed and built as its own spec → plan → slices cycle. Suggest tackling it AFTER
+❶ (cover-into-damage) and ③ (terrain config → canon), since terrain-with-HP is a natural
+extension of the terrain_types canon block. Big enough to warrant its own design doc.
+
 ## 4. Suggested order when picked back up
 1. ① cover-into-damage (tiny, finishes the damage model).
 2. ③ terrain config → canon (unblocks ② and ④ being data-driven).
