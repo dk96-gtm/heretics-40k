@@ -1644,7 +1644,8 @@ function threadHeader(t){var h=E('div','thhdr');
  +'<div class="thhdr-meta"><span><b>Initiated by</b> '+(t.initiator||'—')+'</span><span><b>Forces in play</b> '+((t.forces&&t.forces.length)?t.forces.join(' · '):'none committed')+'</span></div>'
  +(t.about?'<div class="thhdr-about">'+t.about+'</div>':'');
  return h}
-function openT(id){var L=document.getElementById('tl'),V=document.getElementById('tv');
+var _openThread=null;
+function openT(id){_openThread=id;var L=document.getElementById('tl'),V=document.getElementById('tv');
 L.style.display='none';V.style.display='block';V.innerHTML='';
 var bk=E('button','btn gh sm','← All threads');bk.onclick=rTL;V.appendChild(bk);
 var t=S.threads.filter(function(x){return x.id===id})[0];
@@ -2292,6 +2293,7 @@ function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];i
  +'<div style="display:flex;flex-direction:column;gap:8px"><button class="movbk" id="movx">← Back</button>'+factionFrame(m,true).replace('mframe','mframe big')+'</div>'
  +'<div class="movtitle" style="flex:1"><h2>'+m.n+'</h2>'
  +'<div class="sub">'+(m.tag?m.tag+' · ':'')+FAC(S.player.faction).name+' · '+baseModel(m)+' · '+m.cls+'</div>'
+ +'<div class="swrow" style="display:flex;gap:5px;margin-top:6px;align-items:center"><span style="font-size:10px;color:var(--dim);letter-spacing:.1em">SPEECH</span>'+SPEECH_PALETTE.map(function(c){return '<button class="sw" data-c="'+c+'" title="speech colour" style="width:15px;height:15px;border-radius:50%;background:'+c+';border:2px solid '+(pickSpeechColor(m.n,S.roster,SPEECH_PALETTE)===c?'#fff':'transparent')+';cursor:pointer;padding:0"></button>';}).join('')+'</div>'
  +'<div class="ovstats">'
  +'<div><div class="k">Rank</div><div class="v">R'+m.rk+'</div></div>'
  +'<div><div class="k">Status</div><div class="v" style="color:'+stcol+';font-size:12px">'+m.st+'</div></div>'
@@ -2308,6 +2310,7 @@ function openModel(id){var m=S.roster.filter(function(x){return x.id===id})[0];i
  +'<div><h4>Loadout <span style="color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0">— click filled to inspect, empty to equip</span></h4>'+groups+'</div></div>'
  +'<div class="movdev"><h4>Rank development — how '+m.n.split(',')[0]+' grows</h4>'+devTable(m)+'<div style="font-size:11px;color:var(--dim);margin-top:6px">Rank-ups cost Influence equal to the model\'s current PC. Slots: '+(D.rules.growth.slot_gains[m.cls]||'—')+' · Speed: '+(D.rules.growth.speed_gains[m.cls]||'—')+'.</div></div></div>';
  document.getElementById('movx').onclick=function(){MOV.classList.remove('on')};
+ MOV.querySelectorAll('.sw').forEach(function(b){b.onclick=function(e){e.stopPropagation();m.speechColor=b.dataset.c;persist();openModel(m.id);if(_openThread)openT(_openThread);};});
  sel=m;
  MOV.querySelectorAll('.slotchg').forEach(function(b){b.onclick=function(e){e.stopPropagation();sel=m;pick(+b.dataset.chg)}});
  MOV.querySelectorAll('.slotcard').forEach(function(el){
