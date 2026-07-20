@@ -744,7 +744,12 @@ var RIFT=(function(){
     }
     return 'neutral';
   }
-  return { standing:standing };
+  function mods(st,canon){var R=canon.rules.rift;
+    if(st==='home')return {commsTier:R.home.comms_tier,travelMult:R.home.travel_mult,musterMult:R.home.muster_mult,revivalDelta:R.home.revival_delta,prodMult:R.home.prod_mult,reqMult:1};
+    if(st==='away')return {commsTier:R.away.comms_tier,travelMult:R.away.travel_mult,musterMult:R.away.muster_mult,revivalDelta:R.away.revival_delta,prodMult:1,reqMult:R.away.req_mult};
+    return {commsTier:0,travelMult:1,musterMult:1,revivalDelta:0,prodMult:1,reqMult:1};
+  }
+  return { standing:standing, mods:mods };
 })();
 /*</rift-core>*/
 /*<loadout-core>*/

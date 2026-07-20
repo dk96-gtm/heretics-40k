@@ -31,3 +31,29 @@ test('standing: a neutral-owned sector is AWAY for a sided visitor (hostile turf
   const f = { faction: 'Adepta Sororitas', side: 'Sanctus' };
   assert.strictEqual(RIFT.standing(f, { rift: 'Sanctus' }, { owner: 'Xenos - Necrons' }, canon), 'away');
 });
+
+// ── mods(standing, canon) → effect multipliers ──
+const modCanon = { rules: { rift: {
+  home: { comms_tier: 1, travel_mult: 0.75, muster_mult: 0.75, revival_delta: 1, prod_mult: 1.25 },
+  away: { comms_tier: -1, travel_mult: 1.25, muster_mult: 1.25, revival_delta: -1, req_mult: 1.25 } } } };
+
+test('mods: home gives the production bonus, no requisition surcharge', () => {
+  const m = RIFT.mods('home', modCanon);
+  assert.strictEqual(m.prodMult, 1.25);
+  assert.strictEqual(m.reqMult, 1);
+  assert.strictEqual(m.commsTier, 1);
+  assert.strictEqual(m.travelMult, 0.75);
+});
+
+test('mods: away gives the requisition surcharge, no production bonus', () => {
+  const m = RIFT.mods('away', modCanon);
+  assert.strictEqual(m.reqMult, 1.25);
+  assert.strictEqual(m.prodMult, 1);
+  assert.strictEqual(m.travelMult, 1.25);
+  assert.strictEqual(m.revivalDelta, -1);
+});
+
+test('mods: neutral is all-neutral', () => {
+  assert.deepStrictEqual(RIFT.mods('neutral', modCanon),
+    { commsTier: 0, travelMult: 1, musterMult: 1, revivalDelta: 0, prodMult: 1, reqMult: 1 });
+});
