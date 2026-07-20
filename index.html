@@ -1666,6 +1666,17 @@ function partyOf(t){
   var mine=(t.forces||[]).filter(function(f){return S.forces.some(function(x){return x.n===f})});
   return mine[0]||(t.forces&&t.forces[0])||'You';
 }
+/*<speech-core>*/
+var SPEECH_PALETTE=['#9fef00','#37d6ff','#ffb347','#c792ea','#ff6b8a','#4ec9b0','#e0e060','#7aa2f7'];
+function pickSpeechColor(name,roster,palette){
+  roster=roster||[];
+  var idx=-1,mm=null;
+  for(var i=0;i<roster.length;i++){var n=roster[i].n||'';if(n===name||n.split(',')[0]===name){mm=roster[i];idx=i;break;}}
+  if(mm){ if(!mm.speechColor)mm.speechColor=palette[idx%palette.length]; return mm.speechColor; }
+  var h=0;for(var j=0;j<name.length;j++)h=(h*31+name.charCodeAt(j))>>>0;
+  return palette[h%palette.length];
+}
+/*</speech-core>*/
 function threadComposer(t,onPost){
   var cp=E('div','comp');
   cp.innerHTML='<div class="ch">Your post — '+activeModel().n.split(',')[0]+' · <span class="tp '+t.type+'" style="margin:0">'+t.type+'</span></div>';
