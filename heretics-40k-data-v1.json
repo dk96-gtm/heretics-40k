@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.14",
+  "version": "1.15",
   "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -4077,10 +4077,406 @@
       "sectors": [
        {
         "id": "bakka",
-        "name": "Bakka Sector",
-        "status": "Peace",
-        "owner": "Imperial - Navy",
-        "sealed": true
+        "name": "Bakka Marches",
+        "status": "Warring",
+        "owner": "Chaos - Emperor's Children",
+        "space": {
+         "id": "bakkaspace",
+         "name": "The Perfumed Deeps",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A void that reeks of incense and ozone — the Emperor's Children make even the vacuum a sensation."
+        },
+        "planets": [
+         {
+          "id": "bakkaprime",
+          "name": "Bakka Prime",
+          "type": "Hive World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Emperor's Children"
+          },
+          "desc": "A once-loyal hive-world fallen to excess — its spires now a cathedral to sensation, and the seat of the Marches.",
+          "locations": [
+           {
+            "id": "bakkaprimeorbit",
+            "name": "Bakka Prime — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Emperor's Children flagship 'Perfect Note'",
+             "Sonic cruiser wing"
+            ],
+            "desc": "An orbit that sings — the fleet's hulls chime as they move."
+           },
+           {
+            "id": "rapturouscourt",
+            "name": "The Rapturous Court",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The seat of the Marches, where every decree is a performance.",
+            "door_names": {
+             "throne_room": "The Rapturous Court"
+            }
+           },
+           {
+            "id": "excesshive",
+            "name": "The Excess-Hive",
+            "type": "hive",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A hab-hive drowned in indulgence, worked and pleasured to death."
+           },
+           {
+            "id": "fleshspire",
+            "name": "The Fleshspire Wall",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A rampart of fused ceramite and screaming faces."
+           }
+          ],
+          "resources": 115,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "slaaneshmirror",
+          "name": "Slaanesh's Mirror",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Emperor's Children"
+          },
+          "desc": "A warp-touched world of endless reflections where the Neverborn of pleasure hold court.",
+          "locations": [
+           {
+            "id": "mirrororbit",
+            "name": "Slaanesh's Mirror — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Daemon-barque 'Sixth Sense'"
+            ],
+            "desc": "An orbit of shattered light and impossible colour."
+           },
+           {
+            "id": "palacesensation",
+            "name": "The Palace of Sensation",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A daemon-palace where agony and ecstasy are the same currency.",
+            "door_names": {
+             "altar": "The Palace of Sensation"
+            }
+           },
+           {
+            "id": "conservatory",
+            "name": "The Shattered Conservatory",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A ruined pleasure-garden the warp keeps replaying."
+           }
+          ],
+          "resources": 55,
+          "status": null
+         },
+         {
+          "id": "chemos",
+          "name": "Chemos Secundus",
+          "type": "Industrial World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Emperor's Children"
+          },
+          "desc": "A grim manufactorum-world twisted into a forge of sonic weapons and gilded plate.",
+          "locations": [
+           {
+            "id": "chemosorbit",
+            "name": "Chemos Secundus — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Sonic-arms convoy"
+            ],
+            "desc": "An orbit humming at frequencies that loosen teeth."
+           },
+           {
+            "id": "sculptureforges",
+            "name": "The Sculpture-Forges",
+            "type": "manufactorum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Forges that shape weapons as works of terrible art.",
+            "door_names": {
+             "forge": "The Sculpture-Forges"
+            }
+           },
+           {
+            "id": "silkhab",
+            "name": "The Silk Hab",
+            "type": "hive",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A hab-hive draped in stolen finery over rusted decay."
+           }
+          ],
+          "resources": 80,
+          "status": null
+         },
+         {
+          "id": "vaunt",
+          "name": "Vaunt",
+          "type": "Civilized World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Emperor's Children"
+          },
+          "desc": "A civilized world given wholly to revel — the Marches' playground and its hidden knife.",
+          "locations": [
+           {
+            "id": "vauntorbit",
+            "name": "Vaunt — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Pleasure-yacht flotilla"
+            ],
+            "desc": "An orbit thick with gilded barques and drifting music."
+           },
+           {
+            "id": "endlessrevel",
+            "name": "The Endless Revel",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A city that has not stopped its festival in three hundred years."
+           },
+           {
+            "id": "hiddenchorus",
+            "name": "The Hidden Chorus",
+            "type": "cult_sanctum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A hidden cult-sanctum beneath the revel, where worse things are sung.",
+            "door_names": {
+             "altar": "The Hidden Chorus"
+            }
+           }
+          ],
+          "resources": 60,
+          "status": null
+         }
+        ]
+       },
+       {
+        "id": "screamingsinks",
+        "name": "The Screaming Sinks",
+        "status": "Corrupted",
+        "owner": "Chaos - Emperor's Children",
+        "space": {
+         "id": "sinksspace",
+         "name": "The Dissonant Void",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A void where sound carries impossibly, and the screams of dead worlds never quite fade."
+        },
+        "planets": [
+         {
+          "id": "screamsink",
+          "name": "The Screaming Sinks",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Emperor's Children"
+          },
+          "desc": "A drowned Daemon World of sinkholes and endless echoing choirs — capital of a corrupted reach.",
+          "locations": [
+           {
+            "id": "screamorbit",
+            "name": "The Screaming Sinks — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Daemon-choir hulk"
+            ],
+            "desc": "An orbit that will not stop ringing."
+           },
+           {
+            "id": "choirthrone",
+            "name": "The Choir-Throne",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A throne at the heart of the great sink, ruling through perfect dissonance.",
+            "door_names": {
+             "throne_room": "The Choir-Throne"
+            }
+           },
+           {
+            "id": "sonicwarren",
+            "name": "The Sonic Warren",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A daemon-warren carved by sound into the sink walls.",
+            "door_names": {
+             "muster": "The Sonic Warren"
+            }
+           },
+           {
+            "id": "deafenedhalls",
+            "name": "The Deafened Halls",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Silent ruins at the sink's bottom, where sound goes to die."
+           }
+          ],
+          "resources": 60,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "discordia",
+          "name": "Discordia",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Emperor's Children"
+          },
+          "desc": "A maze-world of echoes where invaders lose themselves in mirrored corridors.",
+          "locations": [
+           {
+            "id": "discordiaorbit",
+            "name": "Discordia — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Reflecting daemon-shoal"
+            ],
+            "desc": "An orbit of maddening, repeating starlight."
+           },
+           {
+            "id": "mazeechoes",
+            "name": "The Maze of Echoes",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A living labyrinth that answers every step with a hundred.",
+            "door_names": {
+             "altar": "The Maze of Echoes"
+            }
+           },
+           {
+            "id": "amphitheatre",
+            "name": "The Broken Amphitheatre",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A shattered arena still applauding its own collapse."
+           }
+          ],
+          "resources": 45,
+          "status": null
+         },
+         {
+          "id": "raptureedge",
+          "name": "Rapture's Edge",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Daemons"
+          },
+          "desc": "A raw warp-wound the Neverborn hold in the Sinks — the Emperor's Children's uneasy daemon-allies.",
+          "locations": [
+           {
+            "id": "raptureorbit",
+            "name": "Rapture's Edge — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Neverborn incursion-shoal"
+            ],
+            "desc": "An orbit where reality thins to a held breath."
+           },
+           {
+            "id": "edgewarren",
+            "name": "The Rapture-Warren",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A daemon-warren of pure sensation given form.",
+            "door_names": {
+             "muster": "The Rapture-Warren"
+            }
+           },
+           {
+            "id": "edgeruins",
+            "name": "The Unmade Halls",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Halls the warp remakes and unmakes with each post."
+           }
+          ],
+          "resources": 40,
+          "status": null
+         }
+        ]
        }
       ]
      },
@@ -4092,8 +4488,539 @@
         "id": "veil",
         "name": "Veil Reach",
         "status": "Warring",
-        "owner": "Unknown",
-        "sealed": true
+        "owner": "Chaos - Daemons",
+        "space": {
+         "id": "veilspace",
+         "name": "The Veiled Deeps",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A becalmed frontier void where the Veil between real space and the warp wears dangerously thin."
+        },
+        "planets": [
+         {
+          "id": "veilworld",
+          "name": "The Veilworld",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Daemons"
+          },
+          "desc": "A world that is barely a world — a stable-seeming crust over a raw warp-rift, and the throne of the Reach.",
+          "locations": [
+           {
+            "id": "veilworldorbit",
+            "name": "The Veilworld — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Daemon-hulk 'Unreality'"
+            ],
+            "desc": "An orbit where the stars rearrange themselves when unobserved."
+           },
+           {
+            "id": "unrealitythrone",
+            "name": "The Throne of Unreality",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A throne that exists only while it is believed in — and it is always believed in.",
+            "door_names": {
+             "throne_room": "The Throne of Unreality"
+            }
+           },
+           {
+            "id": "warpmaw",
+            "name": "The Warp-Maw",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A daemon-warren around the open rift; the Neverborn boil out endlessly.",
+            "door_names": {
+             "muster": "The Warp-Maw"
+            }
+           },
+           {
+            "id": "impossiblecity",
+            "name": "The Impossible City",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A city of angles that should not hold, and somehow do."
+           }
+          ],
+          "resources": 65,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "formless",
+          "name": "Formless",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Daemons"
+          },
+          "desc": "A shifting world that never keeps a shape long enough to map.",
+          "locations": [
+           {
+            "id": "formlessorbit",
+            "name": "Formless — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Shapeless daemon-shoal"
+            ],
+            "desc": "An orbit whose contents refuse to be counted twice."
+           },
+           {
+            "id": "shiftingwarren",
+            "name": "The Shifting Warren",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A daemon-warren that rewrites its own corridors.",
+            "door_names": {
+             "altar": "The Shifting Warren"
+            }
+           },
+           {
+            "id": "meltingspires",
+            "name": "The Melting Spires",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Spires that run like wax and never finish falling."
+           }
+          ],
+          "resources": 40,
+          "status": null
+         },
+         {
+          "id": "ghyre",
+          "name": "Ghyre",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Daemons"
+          },
+          "desc": "A war-torn daemon world where the Neverborn wage their own endless internecine slaughter.",
+          "locations": [
+           {
+            "id": "ghyreorbit",
+            "name": "Ghyre — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Warring daemon-hosts"
+            ],
+            "desc": "An orbit lit by the flash of the ever-war below."
+           },
+           {
+            "id": "gibberingpit",
+            "name": "The Gibbering Pit",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A pit-warren from which fresh daemons crawl each post.",
+            "door_names": {
+             "muster": "The Gibbering Pit"
+            }
+           },
+           {
+            "id": "everwar",
+            "name": "The Ever-War",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Open ground where the Neverborn slaughter one another for sport."
+           }
+          ],
+          "resources": 35,
+          "status": null
+         }
+        ]
+       },
+       {
+        "id": "commorrite",
+        "name": "Commorrite Approach",
+        "status": "Peace",
+        "owner": "Xenos - Drukhari",
+        "space": {
+         "id": "commorritespace",
+         "name": "The Shadow Lanes",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "Webway-shadowed void-lanes the Drukhari raid from and vanish back into — here one moment, gone the next."
+        },
+        "planets": [
+         {
+          "id": "shaadom",
+          "name": "Shaa-Dom",
+          "type": "Xenos World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Drukhari"
+          },
+          "desc": "A splinter-realm port of the dark kin — a fortress of pleasure-pain and the Approach's dark court.",
+          "locations": [
+           {
+            "id": "shaadomorbit",
+            "name": "Shaa-Dom — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Drukhari raider-fleet 'Silent Blades'"
+            ],
+            "desc": "An orbit that is empty until, suddenly, it is not."
+           },
+           {
+            "id": "darkcourt",
+            "name": "The Dark Court",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The court of the archon who holds the Approach.",
+            "door_names": {
+             "throne_room": "The Dark Court"
+            }
+           },
+           {
+            "id": "commorritegate",
+            "name": "The Commorrite Gate",
+            "type": "webway_portal",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A webway mouth onto Commorragh itself — passage without conquest.",
+            "door_names": {
+             "warp_gate": "The Commorrite Gate"
+            }
+           },
+           {
+            "id": "slavepens",
+            "name": "The Slave-Pens",
+            "type": "lair",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Pens where the raids' harvest is kept and rendered.",
+            "door_names": {
+             "muster": "The Slave-Pens"
+            }
+           }
+          ],
+          "resources": 70,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "palewracks",
+          "name": "The Pale Wracks",
+          "type": "Xenos World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Drukhari"
+          },
+          "desc": "A haemonculus fiefdom of flesh-gardens where the kin buy back their fading immortality in pain.",
+          "locations": [
+           {
+            "id": "wracksorbit",
+            "name": "The Pale Wracks — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Haemonculus barque"
+            ],
+            "desc": "An orbit that smells, somehow, of antiseptic and rot."
+           },
+           {
+            "id": "covens",
+            "name": "The Haemonculus Covens",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Flesh-forges where the dark kin are remade.",
+            "door_names": {
+             "forge": "The Haemonculus Covens"
+            }
+           },
+           {
+            "id": "fleshgardens",
+            "name": "The Flesh-Gardens",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Gardens grown from screaming things, tended with knives."
+           }
+          ],
+          "resources": 45,
+          "status": null
+         },
+         {
+          "id": "aelindrach",
+          "name": "Aelindrach",
+          "type": "Dead World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Drukhari"
+          },
+          "desc": "A realm of living shadow the Drukhari use as a hidden dock — no light survives here, and neither do intruders.",
+          "locations": [
+           {
+            "id": "aelindorbit",
+            "name": "Aelindrach — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Shadow-cloaked raider wing"
+            ],
+            "desc": "An orbit swallowed in a dark that hunts."
+           },
+           {
+            "id": "shadowgate",
+            "name": "The Shadow Gate",
+            "type": "webway_portal",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A webway gate cloaked in living shadow.",
+            "door_names": {
+             "warp_gate": "The Shadow Gate"
+            }
+           },
+           {
+            "id": "silentwharves",
+            "name": "The Silent Wharves",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Docks where raider-craft rest between harvests."
+           }
+          ],
+          "resources": 25,
+          "status": null
+         }
+        ]
+       },
+       {
+        "id": "hivefleetverge",
+        "name": "Hive-Fleet Verge",
+        "status": "Famine",
+        "owner": "Xenos - Tyranids",
+        "space": {
+         "id": "vergespace",
+         "name": "The Consumed Deeps",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A void stripped of everything — a hive fleet has already passed through, and only the husks remain."
+        },
+        "planets": [
+         {
+          "id": "devourermaw",
+          "name": "The Devourer's Maw",
+          "type": "Xenos World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Tyranids"
+          },
+          "desc": "A world being digested alive by a hive-fleet splinter — its crust a living reef of chitin and hunger, and the fleet's command-node.",
+          "locations": [
+           {
+            "id": "maworbit",
+            "name": "The Devourer's Maw — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Hive ship 'Verge-Maw'",
+             "Kraken escort-shoal"
+            ],
+            "desc": "An orbit thick with drifting spores and the shadow of a hive ship."
+           },
+           {
+            "id": "hivenode",
+            "name": "The Hive-Node",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The synaptic command-node from which the splinter's hunger is directed.",
+            "door_names": {
+             "throne_room": "The Hive-Node"
+            }
+           },
+           {
+            "id": "digestionpools",
+            "name": "The Digestion Pools",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Bio-pools where the world is rendered into the fleet.",
+            "door_names": {
+             "muster": "The Digestion Pools"
+            }
+           },
+           {
+            "id": "feedinggrounds",
+            "name": "The Feeding Grounds",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Open ground where the swarm strips everything that moves."
+           }
+          ],
+          "resources": 50,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "splinterworld",
+          "name": "Splinter-World",
+          "type": "Dead World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Tyranids"
+          },
+          "desc": "A world already consumed — a dead husk the fleet left behind, still crawling with stragglers.",
+          "locations": [
+           {
+            "id": "splinterorbit",
+            "name": "Splinter-World — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Straggler spore-cloud"
+            ],
+            "desc": "A silent orbit above a stripped, grey world."
+           },
+           {
+            "id": "sporechimneys",
+            "name": "The Spore-Chimneys",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Chimneys venting the last biomass into the void.",
+            "door_names": {
+             "muster": "The Spore-Chimneys"
+            }
+           },
+           {
+            "id": "strippedcrust",
+            "name": "The Stripped Crust",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Bare rock where a biosphere used to be."
+           }
+          ],
+          "resources": 15,
+          "status": null
+         },
+         {
+          "id": "bioreef",
+          "name": "Bioreef",
+          "type": "Xenos World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Tyranids"
+          },
+          "desc": "A living reef-world the fleet is growing into a new spawning-ground.",
+          "locations": [
+           {
+            "id": "bioreeforbit",
+            "name": "Bioreef — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Growing bio-reef nodes"
+            ],
+            "desc": "An orbit where new hive-forms are still budding into the dark."
+           },
+           {
+            "id": "capillarytowers",
+            "name": "The Capillary Towers",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Towers of pulsing bio-matter that birth new swarms.",
+            "door_names": {
+             "muster": "The Capillary Towers"
+            }
+           },
+           {
+            "id": "livingreef",
+            "name": "The Living Reef",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Ground that is itself alive, and hostile."
+           }
+          ],
+          "resources": 30,
+          "status": null
+         }
+        ]
        }
       ]
      }

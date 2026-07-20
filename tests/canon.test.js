@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.14', () => {
-  assert.strictEqual(canon.meta.version, '1.14');
+test('canon is v1.15', () => {
+  assert.strictEqual(canon.meta.version, '1.15');
 });
 
 test('tick: living-world cadence block present', () => {
@@ -100,7 +100,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.14');
+  assert.equal(canon.meta.version, '1.15');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -405,4 +405,58 @@ test('galaxy: every planet/location/sector id is globally unique', () => {
   const seen = new Set(), dupes = new Set();
   ids.forEach((id) => (seen.has(id) ? dupes.add(id) : seen.add(id)));
   assert.deepStrictEqual([...dupes], [], 'duplicate galaxy ids: ' + [...dupes].join(', '));
+});
+
+// ── T-GX-G4: Segmentum Tempestus authored (v1.15) — Nihilus heartland ──
+function tempestusSegmentum() {
+  return canon.galaxy.segmentums.find((g) => g.id === 'tempestus');
+}
+function tempestusSectors() {
+  return tempestusSegmentum().zones.flatMap((z) => z.sectors);
+}
+
+test('G4: Tempestus fully minted — 5 sectors, 16 planets, no sealed stubs', () => {
+  const sectors = tempestusSectors();
+  assert.strictEqual(sectors.length, 5, 'Tempestus sector count');
+  const planets = sectors.flatMap((s) => s.planets || []);
+  assert.strictEqual(planets.length, 16, 'Tempestus planet count');
+  sectors.forEach((s) => {
+    assert.ok(!s.sealed && (s.planets || []).length > 0, s.id + ' minted, not a sealed stub');
+    assert.ok(s.space && s.space.type === 'space', s.id + ' has a space layer');
+  });
+});
+
+test('G4: every Tempestus planet obeys the contract (Nihilus) + one crown/sector', () => {
+  const planetTypes = new Set(canon.galaxy.planet_types.map((p) => p.name));
+  const LT = Object.fromEntries(canon.galaxy.location_types.map((l) => [l.id, l]));
+  const facNames = new Set(canon.factions.map((f) => f.name));
+  tempestusSectors().forEach((s) => {
+    let crowns = 0;
+    (s.planets || []).forEach((p) => {
+      assert.ok(planetTypes.has(p.type), p.id + ' valid planet type');
+      assert.strictEqual(p.rift, 'Nihilus', p.id + ' is Nihilus');
+      assert.ok(p.ruler && facNames.has(p.ruler.faction), p.id + ' ruler is a canon faction');
+      assert.strictEqual(p.locations.filter((l) => l.type === 'orbit').length, 1, p.id + ' one orbit');
+      assert.ok(p.locations.filter((l) => l.tier === 'surface').length >= 2, p.id + ' >=2 surface');
+      p.locations.forEach((l) => {
+        const lt = LT[l.type];
+        assert.ok(lt, l.id + ' known location type');
+        const legal = lt.planet_types || ['*'];
+        assert.ok(legal.includes('*') || legal.includes(p.type), l.id + ' legal on ' + p.type);
+        assert.ok(!l.doors, l.id + ' must not store doors');
+      });
+      if (p.crown) crowns++;
+    });
+    assert.strictEqual(crowns, 1, s.id + ' has one crown');
+  });
+});
+
+test('G4: Tempestus seats Emperor\'s Children — all 8 Nihilus factions now homed', () => {
+  const nihilusFactions = ['Black Legion', 'Death Guard', 'World Eaters', 'Thousand Sons',
+    "Emperor's Children", 'Daemons', 'Tyranids', 'Orks'];
+  const rulers = new Set();
+  canon.galaxy.segmentums.forEach((g) => g.zones.forEach((z) => z.sectors.forEach((s) =>
+    (s.planets || []).forEach((p) => p.ruler && rulers.add(p.ruler.faction)))));
+  nihilusFactions.forEach((f) =>
+    assert.ok(rulers.has(f), f + ' has a foothold in the minted galaxy'));
 });
