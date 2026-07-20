@@ -724,6 +724,29 @@ var THREAD=(function(){
   return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn };
 })();
 /*</thread-core>*/
+/*<rift-core>*/
+/* ── T-GX-G6 §4.1 · Rift home/away modifier core (pure, DOM-free) ──────
+   standing() resolves a Force's relation to a location/sector; mods()
+   maps that standing to effect multipliers. Reads canon.rules.rift only —
+   no globals. Sided factions are home on their own Rift side; neutral
+   free-movers are home only in sectors they own and never suffer the away
+   penalty; a neutral-owned sector is hostile ground to every visitor. */
+var RIFT=(function(){
+  function ownerFaction(sector){var o=(sector&&sector.owner)||'';var i=o.indexOf(' - ');return i<0?'':o.slice(i+3);}
+  function isNeutral(faction,canon){var n=(canon.rules.rift&&canon.rules.rift.neutral_factions)||[];return n.indexOf(faction)>=0;}
+  function standing(force,loc,sector,canon){
+    var of=ownerFaction(sector);
+    if(isNeutral(of,canon)&&of!==force.faction)return 'away';       // neutral-owned turf = hostile to all
+    if(isNeutral(force.faction,canon))return of===force.faction?'home':'neutral';
+    if(force.side){
+      if(loc&&loc.rift===force.side)return 'home';
+      if(loc&&loc.rift&&loc.rift!==force.side)return 'away';
+    }
+    return 'neutral';
+  }
+  return { standing:standing };
+})();
+/*</rift-core>*/
 /*<loadout-core>*/
 var LOADOUT=(function(){
   // Pure, DOM-free loadout rules. Canon/state arrive as arguments.
