@@ -3,7 +3,7 @@
 Project context and orientation for anyone (human or AI) working in this repo. Development lives here now; the Notion workspace is a read-only design archive.
 
 **Live:** https://dk96-gtm.github.io/heretics-40k/ · **Repo:** github.com/dk96-gtm/heretics-40k (public)
-**Current state:** engine **v18**, canon **data v1.11** — deployed and running.
+**Current state:** engine **v18**, canon **data v1.16** — deployed and running. The full galaxy is minted (v1.12–v1.16): **5 segmentums · 27 sectors · 87 planets · 287 walkable locations · all 20 factions homed**.
 
 ## What this is
 
@@ -116,10 +116,11 @@ The previously-parked **unified thread flow** design question is now RESOLVED an
 - **Stage 2:** persistence backend (Supabase/Firebase class) — accounts, shared world, real threads. The data file becomes server seed content; the flywheel scores go live.
 - **Stage 3:** AI layer — NPC posting + Action Block refereeing + real thread summaries via API.
 
-## Still un-migrated from Notion (canon not yet extracted)
+## Notion migration — COMPLETE
 
-The gear catalogs, tag registry and full model rosters are now migrated (canon v1.8–v1.10 — see "What is IN canon"). What still lives only on the Notion archive:
-- Minted planets / populated map / territory ownership — "Galaxy & Territory — v1" (migration slices 4–6, not yet started)
+The full Notion catalog migration is done — nothing substantive remains un-extracted:
+- **v1.8** tag registry · **v1.9** gear catalogs (weapons/items/abilities/casts/legendaries) · **v1.10** full 100-model rosters.
+- **v1.12–v1.16** the galaxy mint — since "Galaxy & Territory — v1" was a design dictation (not an authored roster), the map was **authored fresh** to a locked contract (`docs/superpowers/specs/2026-07-19-galaxy-territory-mint-design.md`): 5 segmentums, 27 sectors, 87 planets, 287 walkable locations, all 20 factions homed, Sanctus/Nihilus home sides + a contested Cicatrix Scar. Trait *mechanics* (cross-Rift penalty, home bonus, home-turf, arrival garrison) are specced but not yet wired live — that's **T-GX-G6** on `BACKLOG.md`.
 
 ## Notion archive pointers
 
