@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.16",
+  "version": "1.17",
   "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -463,6 +463,28 @@
     "Leader tag",
     "starting wallets (rules.economy.founding_start)"
    ]
+  },
+  "rift": {
+   "neutral_factions": [
+    "Genestealer Cults",
+    "Necrons",
+    "Harlequins",
+    "Drukhari"
+   ],
+   "home": {
+    "comms_tier": 1,
+    "travel_mult": 0.75,
+    "muster_mult": 0.75,
+    "revival_delta": 1,
+    "prod_mult": 1.25
+   },
+   "away": {
+    "comms_tier": -1,
+    "travel_mult": 1.25,
+    "muster_mult": 1.25,
+    "revival_delta": -1,
+    "req_mult": 1.25
+   }
   }
  },
  "perk_effects": {

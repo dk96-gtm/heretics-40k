@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.16', () => {
-  assert.strictEqual(canon.meta.version, '1.16');
+test('canon is v1.17', () => {
+  assert.strictEqual(canon.meta.version, '1.17');
 });
 
 test('tick: living-world cadence block present', () => {
@@ -100,7 +100,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.16');
+  assert.equal(canon.meta.version, '1.17');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -524,4 +524,16 @@ test('GALAXY MINT COMPLETE: all 20 factions homed across 5 minted segmentums', (
   });
   assert.ok(sectors >= 27, 'galaxy has 27+ minted sectors, got ' + sectors);
   assert.ok(planets >= 80, 'galaxy has 80+ planets, got ' + planets);
+});
+
+// ── T-GX-G6 slice 1 · rules.rift home/away magnitudes ────────────────
+test('rules.rift: home/away magnitudes + neutral factions present', () => {
+  const r = canon.rules.rift;
+  assert.ok(r, 'rules.rift exists');
+  assert.deepStrictEqual(r.neutral_factions.slice().sort(),
+    ['Drukhari', 'Genestealer Cults', 'Harlequins', 'Necrons']);
+  assert.strictEqual(r.home.prod_mult, 1.25);
+  assert.strictEqual(r.away.travel_mult, 1.25);
+  assert.strictEqual(r.home.comms_tier, 1);
+  assert.strictEqual(r.away.comms_tier, -1);
 });
