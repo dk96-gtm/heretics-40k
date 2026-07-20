@@ -683,7 +683,43 @@ var THREAD=(function(){
     fog.seen.forEach(function(id){if(spotted.indexOf(id)<0){var lk=fog.lastKnown[id];if(lk)ghosts.push({id:id,x:lk.x,y:lk.y});}});
     return {spotted:spotted,ghosts:ghosts};
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog };
+  /* ── T-NPC-2b · NPC combat turn (pure) — fog-honest greedy tactician ──
+     weaponsOf(c) → [{band,ap,damage,element,noRevival}] is injected (weapon
+     stats live in engine glue), keeping this pure/testable. Returns a
+     move+attack block for `side` that the existing validate→apply→post
+     pipeline consumes: close on the nearest SEEN enemy, then hit with the
+     best affordable in-range weapon, bounded by the shared AP pool. */
+  var NPC_RANK={MELEE:0,SHORT:1,MEDIUM:2,LONG:3};
+  function npcReaches(reach,fromPos,tgtPos){return reach>=NPC_RANK[bandOf(cheb(fromPos,tgtPos))];}
+  function npcTurn(side,state,board,weaponsOf){
+    var C=state.combatants||{},block=[],id;
+    var pool=(state.pools&&state.pools[side]!=null)?state.pools[side]:0;
+    var spotted=board?spottedEnemies(side,state,board):[];
+    if(!spotted.length)return block;                 // fog-honest: sees nothing → holds
+    var pos={};for(id in C)if(C[id].x!=null)pos[id]={x:C[id].x,y:C[id].y};
+    for(var aid in C){var me=C[aid];
+      if(me.party!==side||me.dead||me.x==null)continue;
+      var tgt=null,td=Infinity;                       // nearest SEEN enemy by working positions
+      spotted.forEach(function(eid){var e=C[eid];if(!e||e.dead)return;
+        var d=cheb(pos[aid],pos[eid]);if(d<td){td=d;tgt=eid;}});
+      if(!tgt)continue;
+      var weps=weaponsOf(me)||[];
+      var reach=weps.reduce(function(m,w){var r=NPC_RANK[w.band];return r>m?r:m;},-1);
+      if(weps.length&&!npcReaches(reach,pos[aid],pos[tgt])){   // MOVE (free): close the gap
+        var occ=[];for(var oid in pos)if(oid!==aid&&C[oid]&&!C[oid].dead)occ.push(pos[oid]);
+        var reachSet=reachable(pos[aid],me.spd||0,board,occ),bestCell=null,bestD=cheb(pos[aid],pos[tgt]),k;
+        for(k in reachSet){var xy=k.split(','),cell={x:+xy[0],y:+xy[1]},d2=cheb(cell,pos[tgt]);
+          if(d2<bestD){bestD=d2;bestCell=cell;}}
+        if(bestCell){block.push({actor:aid,cost:0,effect:{kind:'move',who:aid,to:bestCell}});pos[aid]=bestCell;}
+      }
+      var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;  // ATTACK (AP): best affordable reaching weapon
+      weps.forEach(function(w){if(NPC_RANK[w.band]>=NPC_RANK[db]&&(w.ap||0)<=pool){
+        if(!pick||(w.damage||0)>(pick.damage||0))pick=w;}});
+      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival}});pool-=(pick.ap||0);}
+    }
+    return block;
+  }
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn };
 })();
 /*</thread-core>*/
 /*<loadout-core>*/
@@ -1736,6 +1772,36 @@ function bfItemBand(it){var map={Melee:'MELEE',Short:'SHORT',Medium:'MEDIUM',Lon
 function bfAP(it){var m=((it&&it.d)||'').match(/(\d+)\s*AP/);return m?parseInt(m[1],10):1;}
 function bfCellLabel(p){return String.fromCharCode(65+p.x)+(p.y+1);}
 function bfWeaponsOf(c){var out=[];if(!c.model)return out;((c.model.loadout&&c.model.loadout.slots)||c.model.sl||[]).forEach(function(s){if(s.it&&(s.type||s.k)==='WEAPON')out.push(s.it);});return out;}
+/* ── T-NPC-2b · engine glue for the pure THREAD.npcTurn ──────────────── */
+// weapon capabilities (band/ap/damage/element) — the injected weaponsOf
+function bfWeaponCaps(c){return bfWeaponsOf(c).map(function(it){return {
+  name:it.n,band:bfItemBand(it),ap:bfAP(it),damage:damageOf(it),
+  element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D)};});}
+function bfFoeName(st,foe){for(var id in st.combatants){var c=st.combatants[id];
+  if(c.party===foe&&!c.dead&&c.model)return c.model.n.split(',')[0];}return 'The enemy';}
+// the non-player side answers the player's combat post (single-player: foe is NPC-run;
+// Stage-2 gates this to NPC-controlled forces — a drop-in at this seam)
+function npcRespond(t,playerParty){
+  var st=t.state;if(!st||!st.board||st.phase==='deploy')return;
+  var sides={};for(var id in (st.combatants||{})){var p=st.combatants[id].party;if(p)sides[p]=1;}
+  var foe=Object.keys(sides).filter(function(s){return s!==playerParty;})[0];
+  if(!foe)return;
+  var alive=Object.keys(st.combatants).some(function(k){var c=st.combatants[k];return c.party===foe&&!c.dead&&c.x!=null;});
+  if(!alive)return;
+  var block=THREAD.npcTurn(foe,st,st.board,bfWeaponCaps);
+  if(!block.length)return;                         // sees nothing / can't act → holds silently
+  if(!THREAD.validate(t,st,foe,block,D).ok)return;
+  THREAD.apply(t,st,block,D);
+  if(st.poolsBase&&st.poolsBase[foe]!=null)st.pools[foe]=st.poolsBase[foe];   // refresh foe AP
+  var who=bfFoeName(st,foe),lines=block.map(function(b){var e=b.effect;
+    if(e.kind==='move')return 'repositions';
+    if(e.kind==='damage'){var tn=(st.combatants[e.to]&&st.combatants[e.to].model)?st.combatants[e.to].model.n.split(',')[0]:e.to;
+      return 'strikes '+tn+' ('+e.amount+(e.element?' '+e.element:'')+')';}
+    return '';}).filter(Boolean);
+  if(!t.posts)t.posts=[];
+  t.posts.push({who:who,body:esc(who+' '+lines.join('; ')+'.'),tag:'',stamp:nowStamp(),
+    block:block.map(function(b){return {actor:b.actor,action:(b.effect.kind==='move'?'Move':'Attack'),cost:b.cost,effect:b.effect};})});
+}
 function bfStaged(t){
   var ui=t._bf||{moves:{},acts:[]},out=[],C=t.state.combatants;
   Object.keys(ui.moves).forEach(function(id){out.push({actor:id,action:bfTag(id,C[id])+' Move → '+bfCellLabel(ui.moves[id]),cost:0,effect:{kind:'move',who:id,to:ui.moves[id]}});});
@@ -1898,7 +1964,8 @@ function threadView(V,t){
     if(!t.posts)t.posts=[];
     t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you',stamp:nowStamp(),block:staged.map(function(s){return {actor:s.actor,action:s.action,cost:s.cost,effect:s.effect}})});
     if(t.state.board){t._bf={sel:null,tgt:null,moves:{},acts:[]};   // clear staging; refresh AP for the next turn
-      if(t.state.poolsBase&&t.state.poolsBase[party]!=null)t.state.pools[party]=t.state.poolsBase[party];}
+      if(t.state.poolsBase&&t.state.poolsBase[party]!=null)t.state.pools[party]=t.state.poolsBase[party];
+      npcRespond(t,party);}   // T-NPC-2b: the enemy side answers — it fights back
     openT(t.id);T('Posted to '+t.n+'.');};
   if(isCombat){
     if(t.state.board)V.appendChild(t.state.phase==='deploy'?bfDeployUI(t,party):bfCombatUI(t,party));  // E: deploy then D3 battle
