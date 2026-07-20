@@ -94,10 +94,12 @@ input[type=range]{width:100%;accent-color:var(--br)}
 .tp.SKIRMISH,.tp.INVASION{border-color:var(--bl);color:var(--blh)}.tp.DIPLOMACY{border-color:var(--br);color:var(--brh)}.tp.MISSION{border-color:var(--vd);color:var(--vdh)}.tp.TRAVEL{color:var(--dim)}
 .tw{display:grid;grid-template-columns:1fr 290px;gap:14px;align-items:start;margin-top:12px}
 .tw.solo{grid-template-columns:1fr}
-.post{border:1px solid var(--ln);border-radius:6px;background:var(--panel);margin-bottom:12px;overflow:hidden}
+.post{border:1px solid var(--ln);border-left:3px solid var(--speech,var(--ln));border-radius:6px;background:var(--panel);margin-bottom:12px;overflow:hidden}
 .post .ph{display:flex;justify-content:space-between;padding:8px 13px;background:var(--p2);border-bottom:1px solid var(--ln);font-size:12px}
-.post .ph .who{font-weight:700}.who.en{color:var(--vdh)}.who.you{color:var(--blh)}
-.post .body{padding:13px;font-size:14px;font-style:italic;line-height:1.6}
+.post .ph .who{font-weight:700;color:var(--speech,var(--brh))}
+.post .body{padding:13px;font-size:14px;line-height:1.6}
+.post .body b,.post .body strong,.post .body span[style*="bold"]{color:var(--speech,inherit);font-weight:600}
+.post .body i,.post .body em,.post .body span[style*="italic"]{color:var(--dim);font-style:italic;font-weight:400}
 .ab{margin:0 13px 13px;border:1px solid var(--br);border-radius:5px;background:rgba(176,141,62,.05)}
 .ab .ah{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--br);padding:5px 9px;border-bottom:1px solid rgba(176,141,62,.3)}
 .ab ul{list-style:none;padding:7px 9px}
@@ -1936,7 +1938,7 @@ function threadView(V,t){
   var scroll=E('div','threadscroll');
   (t.posts||[]).forEach(function(p,i){
     scroll.insertAdjacentHTML('beforeend',
-      '<div class="post"><div class="ph"><span class="who '+(p.tag==='you'?'you':'en')+'">'+p.who+'</span>'+
+      '<div class="post" style="--speech:'+pickSpeechColor(p.who,S.roster,SPEECH_PALETTE)+'"><div class="ph"><span class="who">'+p.who+'</span>'+
       '<span class="mono" style="color:var(--dim)">'+(p.stamp?p.stamp+' · ':'')+'Post '+(i+1)+'</span></div><div class="body">'+p.body+'</div>'+
       (p.block?'<div class="ab"><div class="ah">Action Block</div><ul>'+p.block.map(function(b){
         return '<li><b>'+b.action+'</b>'+(b.cost?' ('+b.cost+' AP)':'')+'</li>'}).join('')+'</ul></div>':'')+'</div>');
