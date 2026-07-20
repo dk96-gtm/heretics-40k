@@ -98,7 +98,7 @@ runs fully parallel). If two tasks both need `index.html`, they serialize — th
 | ID | Task | Lane | Status | Owner · session | Updated | Notes |
 |----|------|------|--------|-----------------|---------|-------|
 | T-BF3 | **Move terrain/grid config into canon** — add `rules.grid` + `terrain_types`; helpers read from canon w/ current constants as fallback | canon + 🔥 engine + tests | `open` | — | — | Touches `index.html` too → takes the 🔥 lane. Coordinate the canon edit. |
-| T-GX-G6 | **Wire G0 trait mechanics** — cross-Rift supply penalty, home-turf ruling trait, arrival & garrison scaling | canon + 🔥 engine | `blocked` | — | — | Blocked until authoring slices G1–G5 land the planet/location data. |
+| T-GX-G6 | **Wire G0 trait mechanics** — cross-Rift supply penalty, home-turf ruling trait, arrival & garrison scaling | canon + 🔥 engine | `blocked` | — | — | Blocked on G5 (Ultima) + 🔥 engine lane. **📋 Slice-1 plan ready:** `docs/superpowers/plans/2026-07-20-gx-g6-rift-modifier-core.md` (RIFT core + production flywheel, TDD, shovel-ready). §4.2/§4.3 = follow-on slices. |
 
 ### canon + tests lane — galaxy authoring (parallel-safe per segmentum)
 
