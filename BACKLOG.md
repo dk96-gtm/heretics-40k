@@ -42,9 +42,11 @@ P0 · THE GATE — finish before "playable at all"
   └─ T-FD1 ✅ MERGED — full-S persistence · title/CONTINUE/digest · Founding onramp · Settings · demo+LS_NPC retired  (pushed 8a8f61d)
 
 P1 · MAKES SOLO WORTH PLAYING — the world must respond to a lone player
-  ├─ T-NPC-2b  Enemy AI takes combat turns (fights back) — reuse the grid THREAD core, no new surface
-  └─ T-GX-G3/4/5 → T-GX-G6  Author remaining galaxy, then wire holdings→production/taint
-                            so the persistent world ACCUMULATES between sessions (the flywheel)
+  ├─ T-NPC-2b ✅ MERGED — enemy AI takes combat turns (fights back)
+  ├─ galaxy G1–G5 ✅ MERGED (v1.16) · T-GX-G6 slice 1a ✅ RIFT core (v1.18)
+  ├─ T-RIFT-1b  felt Rift penalties (travel/requisition ±25%) — shovel-ready on the RIFT core
+  └─ T-TERR-1   territory persistence + per-sector production = THE FLYWHEEL (the "world
+                accumulates" payoff). NB: G6's production bonus is blocked on THIS, not on galaxy authoring.
 
 P2 · DEPTH & FEEL — elevate the loop, extend existing cores only
   ├─ T-THR-1   Speaker-attributed thread log (core to the play-by-post feel; presentation-only)
@@ -92,6 +94,8 @@ runs fully parallel). If two tasks both need `index.html`, they serialize — th
 | T-ENG-1 | **Throne Room world-ender** resolution (acknowledges but doesn't resolve) | 🔥 engine | `open` | — | — | Stubbed; needs design pass. |
 | T-ENG-2 | **Trade escrow / dispute→combat** — Comms trade transfers gear with no escrow | 🔥 engine | `open` | — | — | Stubbed; Stage-2-adjacent. |
 | T-ENG-3 | **Grid-aware Exit pursuit** — replace flat `enemySpd=3` heuristic with position/speed-ranked rule | 🔥 engine | `open` | — | — | Low priority polish. |
+| T-RIFT-1b | **Rift supply penalties — felt hooks (G6 slice 1b)** — apply the shipped `RIFT` core at existing seams so the Rift is felt in play | 🔥 engine | `open` | — | — | **Shovel-ready — pure core DONE (v1.18).** Travel: `passageCost` × `RIFT.mods(standing).travelMult` (home −25% / away +25%). Requisition: `doorCatalog`/shop pricing × `reqMult` (away +25%). Build force via `RIFT.forceOf(S.player.faction, D)`; standing from dest location `rift` + sector `owner` (`fPl`/`fLoc`). Thin glue at 2 sites; TDD each multiplier. See `docs/superpowers/plans/2026-07-20-gx-g6-rift-modifier-core.md` §follow-on. |
+| T-TERR-1 | **Territory persistence + per-sector production (THE FLYWHEEL)** — save-state ownership of sectors/worlds so the living-world tick accrues by HOLDINGS, not a flat demo constant | 🔥 engine + canon | `open` | — | — | **P1 — the "world accumulates" payoff + unblocks G6 production coupling & §4.3 garrison.** (1) add owned-holdings to `S`; (2) drive `WORLD` production per-sector from `planet_types.prod_mult` × holdings × `RIFT.mods('home').prodMult`; (3) surface in the Digest. Extends the shipped `WORLD` tick + storage-adapter seam (real accumulation lands with Stage-2 persistence; structure buildable now). |
 
 ### canon lane (heretics-40k-data-v1.json)
 
