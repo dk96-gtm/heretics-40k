@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.17', () => {
-  assert.strictEqual(canon.meta.version, '1.17');
+test('canon is v1.18', () => {
+  assert.strictEqual(canon.meta.version, '1.18');
 });
 
 test('tick: living-world cadence block present', () => {
@@ -100,7 +100,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.17');
+  assert.equal(canon.meta.version, '1.18');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -536,4 +536,14 @@ test('rules.rift: home/away magnitudes + neutral factions present', () => {
   assert.strictEqual(r.away.travel_mult, 1.25);
   assert.strictEqual(r.home.comms_tier, 1);
   assert.strictEqual(r.away.comms_tier, -1);
+});
+
+test('rules.rift.sides: every faction is seated Sanctus/Nihilus or neutral (8/8/4)', () => {
+  const s = canon.rules.rift.sides;
+  assert.strictEqual(s.Sanctus.length, 8, 'eight Sanctus factions');
+  assert.strictEqual(s.Nihilus.length, 8, 'eight Nihilus factions');
+  const seated = new Set([...s.Sanctus, ...s.Nihilus, ...canon.rules.rift.neutral_factions]);
+  const factions = new Set(canon.factions.map((f) => f.name));
+  assert.strictEqual(seated.size, 20, 'no dup across seating');
+  factions.forEach((f) => assert.ok(seated.has(f), f + ' is seated or neutral'));
 });

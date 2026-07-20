@@ -57,3 +57,17 @@ test('mods: neutral is all-neutral', () => {
   assert.deepStrictEqual(RIFT.mods('neutral', modCanon),
     { commsTier: 0, travelMult: 1, musterMult: 1, revivalDelta: 0, prodMult: 1, reqMult: 1 });
 });
+
+// ── sideOf / forceOf — faction → Rift side (from canon seating) ──
+const seatCanon = { rules: { rift: { sides: {
+  Sanctus: ['Adeptus Astartes', "T'au"], Nihilus: ['Black Legion', 'Orks'] } } } };
+
+test('sideOf: resolves a faction to its Rift side, null for free-movers', () => {
+  assert.strictEqual(RIFT.sideOf("T'au", seatCanon), 'Sanctus');
+  assert.strictEqual(RIFT.sideOf('Black Legion', seatCanon), 'Nihilus');
+  assert.strictEqual(RIFT.sideOf('Necrons', seatCanon), null);
+});
+
+test('forceOf: builds a {faction, side} force for standing()', () => {
+  assert.deepStrictEqual(RIFT.forceOf('Orks', seatCanon), { faction: 'Orks', side: 'Nihilus' });
+});

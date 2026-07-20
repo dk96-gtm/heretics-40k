@@ -749,7 +749,13 @@ var RIFT=(function(){
     if(st==='away')return {commsTier:R.away.comms_tier,travelMult:R.away.travel_mult,musterMult:R.away.muster_mult,revivalDelta:R.away.revival_delta,prodMult:1,reqMult:R.away.req_mult};
     return {commsTier:0,travelMult:1,musterMult:1,revivalDelta:0,prodMult:1,reqMult:1};
   }
-  return { standing:standing, mods:mods };
+  function sideOf(faction,canon){var s=(canon.rules.rift&&canon.rules.rift.sides)||{};
+    if((s.Sanctus||[]).indexOf(faction)>=0)return 'Sanctus';
+    if((s.Nihilus||[]).indexOf(faction)>=0)return 'Nihilus';
+    return null;                                     // free-movers (neutral) are side-less
+  }
+  function forceOf(faction,canon){return {faction:faction,side:sideOf(faction,canon)};}
+  return { standing:standing, mods:mods, sideOf:sideOf, forceOf:forceOf };
 })();
 /*</rift-core>*/
 /*<loadout-core>*/
