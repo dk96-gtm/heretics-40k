@@ -98,7 +98,7 @@ runs fully parallel). If two tasks both need `index.html`, they serialize — th
 | ID | Task | Lane | Status | Owner · session | Updated | Notes |
 |----|------|------|--------|-----------------|---------|-------|
 | T-BF3 | **Move terrain/grid config into canon** — add `rules.grid` + `terrain_types`; helpers read from canon w/ current constants as fallback | canon + 🔥 engine + tests | `open` | — | — | Touches `index.html` too → takes the 🔥 lane. Coordinate the canon edit. |
-| T-GX-G6 | **Wire G0 trait mechanics** — cross-Rift supply penalty, home-turf ruling trait, arrival & garrison scaling | canon + 🔥 engine | `in-progress` | rift · sess:970009ad-d34c-4f64-9a2d-cd52fc53aac8 | 2026-07-20 | 🔥 CANON+ENGINE LANES HELD (slice 1). Executing `docs/superpowers/plans/2026-07-20-gx-g6-rift-modifier-core.md` — RIFT core + production flywheel, TDD. Releasing after slice 1; §4.2/§4.3 follow-on. |
+| T-GX-G6 | **Wire G0 trait mechanics** — cross-Rift supply penalty, home-turf ruling trait, arrival & garrison scaling | canon + 🔥 engine | `ready-to-push` | rift · sess:970009ad-d34c-4f64-9a2d-cd52fc53aac8 | 2026-07-20 | ✅ **Slice 1a (RIFT core) DONE** · canon v1.18 · pure `RIFT.standing/mods/sideOf/forceOf` + `rules.rift` (magnitudes + 8/8/4 seating) · 11 tests · 161/161. **LANES RELEASED.** ⚠ **FINDING:** the production FLYWHEEL is blocked on **territory persistence (Stage 2)** — tick production is a flat demo constant, no per-sector/owner stream to boost. Wireable-now hooks (travel/requisition ±25% via the core) = slice 1b; §4.2 ruling / §4.3 garrison = follow-on. |
 
 ### canon + tests lane — galaxy authoring (parallel-safe per segmentum)
 
