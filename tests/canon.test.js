@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.15', () => {
-  assert.strictEqual(canon.meta.version, '1.15');
+test('canon is v1.16', () => {
+  assert.strictEqual(canon.meta.version, '1.16');
 });
 
 test('tick: living-world cadence block present', () => {
@@ -100,7 +100,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.15');
+  assert.equal(canon.meta.version, '1.16');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -459,4 +459,69 @@ test('G4: Tempestus seats Emperor\'s Children — all 8 Nihilus factions now hom
     (s.planets || []).forEach((p) => p.ruler && rulers.add(p.ruler.faction)))));
   nihilusFactions.forEach((f) =>
     assert.ok(rulers.has(f), f + ' has a foothold in the minted galaxy'));
+});
+
+// ── T-GX-G5: Segmentum Ultima (the Front) — the galaxy-mint finale (v1.16) ──
+function ultimaSectors() {
+  return canon.galaxy.segmentums.find((g) => g.id === 'ultima').zones.flatMap((z) => z.sectors);
+}
+
+test('G5: Ultima fully minted — 6 sectors, 24 planets, no sealed stubs', () => {
+  const sectors = ultimaSectors();
+  assert.strictEqual(sectors.length, 6, 'Ultima sector count');
+  assert.strictEqual(sectors.flatMap((s) => s.planets || []).length, 24, 'Ultima planet count');
+  sectors.forEach((s) => {
+    assert.ok(!s.sealed && (s.planets || []).length > 0, s.id + ' minted');
+    assert.ok(s.space && s.space.type === 'space', s.id + ' has a space layer');
+  });
+});
+
+test('G5: Ultima is a MIXED-rift front (both Sanctus and Nihilus worlds)', () => {
+  const rifts = new Set(ultimaSectors().flatMap((s) => s.planets || []).map((p) => p.rift));
+  assert.ok(rifts.has('Sanctus') && rifts.has('Nihilus'),
+    'the Front holds worlds on both sides of the Rift');
+  // the Cicatrix Scar is genuinely contested (not owned by one faction)
+  const scar = ultimaSectors().find((s) => s.id === 'cicatrix');
+  assert.ok(scar && /contested/i.test(scar.owner), 'the Cicatrix Scar is contested');
+});
+
+test('G5: every Ultima planet obeys the contract + one crown/sector', () => {
+  const planetTypes = new Set(canon.galaxy.planet_types.map((p) => p.name));
+  const LT = Object.fromEntries(canon.galaxy.location_types.map((l) => [l.id, l]));
+  ultimaSectors().forEach((s) => {
+    let crowns = 0;
+    (s.planets || []).forEach((p) => {
+      assert.ok(planetTypes.has(p.type), p.id + ' valid planet type');
+      assert.ok(['Sanctus', 'Nihilus'].includes(p.rift), p.id + ' rift');
+      assert.strictEqual(p.locations.filter((l) => l.type === 'orbit').length, 1, p.id + ' one orbit');
+      assert.ok(p.locations.filter((l) => l.tier === 'surface').length >= 2, p.id + ' >=2 surface');
+      p.locations.forEach((l) => {
+        const lt = LT[l.type];
+        assert.ok(lt, l.id + ' known type');
+        const legal = lt.planet_types || ['*'];
+        assert.ok(legal.includes('*') || legal.includes(p.type), l.id + ' legal on ' + p.type);
+        assert.ok(!l.doors, l.id + ' must not store doors');
+      });
+      if (p.crown) crowns++;
+    });
+    assert.strictEqual(crowns, 1, s.id + ' has one crown');
+  });
+});
+
+test('GALAXY MINT COMPLETE: all 20 factions homed across 5 minted segmentums', () => {
+  const rulers = new Set();
+  let planets = 0, sectors = 0;
+  canon.galaxy.segmentums.forEach((g) => g.zones.forEach((z) => z.sectors.forEach((s) => {
+    sectors++;
+    (s.planets || []).forEach((p) => { planets++; if (p.ruler) rulers.add(p.ruler.faction); });
+  })));
+  canon.factions.forEach((f) =>
+    assert.ok(rulers.has(f.name), f.name + ' has a foothold'));
+  // five segmentums each carry at least one populated sector
+  canon.galaxy.segmentums.forEach((g) => {
+    const pl = g.zones.flatMap((z) => z.sectors).flatMap((s) => s.planets || []);
+    assert.ok(pl.length > 0, g.id + ' is populated');
+  });
+  assert.ok(sectors >= 27, 'galaxy has 27+ minted sectors, got ' + sectors);
+  assert.ok(planets >= 80, 'galaxy has 80+ planets, got ' + planets);
 });

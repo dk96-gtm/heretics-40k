@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.15",
+  "version": "1.16",
   "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -6162,8 +6162,524 @@
         "id": "ultra",
         "name": "Ultramar Sector",
         "status": "Thriving",
-        "owner": "Imperial - Astartes",
-        "sealed": true
+        "owner": "Imperial - Adeptus Astartes",
+        "space": {
+         "id": "ultraspace",
+         "name": "The Ultramar Approaches",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "The best-defended void in the segmentum — a realm of five hundred worlds that guards the Rift's edge."
+        },
+        "planets": [
+         {
+          "id": "macragge",
+          "name": "Macragge",
+          "type": "Fortress World",
+          "rift": "Sanctus",
+          "canon": true,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Astartes"
+          },
+          "desc": "The jewel of Ultramar and seat of the sector — a fortress-world of blue-and-gold that has held the eastern marches unbroken.",
+          "locations": [
+           {
+            "id": "macraggeorbit",
+            "name": "Macragge — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Battle-barge 'Octavian'",
+             "Ultramar defence fleet"
+            ],
+            "desc": "A disciplined orbit patrolled by an entire Chapter fleet."
+           },
+           {
+            "id": "fortressmacragge",
+            "name": "The Fortress of Hera",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The Chapter's seat and the sector capital, throne of the eastern realm.",
+            "door_names": {
+             "throne_room": "The Fortress of Hera"
+            }
+           },
+           {
+            "id": "civitasmac",
+            "name": "Civitas Ultramaris",
+            "type": "city",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A model civitas, orderly even in its billions."
+           },
+           {
+            "id": "macraggewall",
+            "name": "The Northern Wastes Wall",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The rampart that broke a hive fleet."
+           }
+          ],
+          "resources": 180,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "calth",
+          "name": "Calth",
+          "type": "Hive World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Astartes"
+          },
+          "desc": "A cavern-world of arcologies, its people driven underground long ago and thriving there still.",
+          "locations": [
+           {
+            "id": "calthorbit",
+            "name": "Calth — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "System monitor squadron"
+            ],
+            "desc": "An orbit above a scarred but living world."
+           },
+           {
+            "id": "caltharco",
+            "name": "The Arcologies",
+            "type": "hive",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Sun-lit cavern-cities miles beneath the poisoned surface."
+           },
+           {
+            "id": "calthfort",
+            "name": "Numinus Bastion",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A muster-fortress raising Ultramar's auxilia."
+           }
+          ],
+          "resources": 95,
+          "status": null
+         },
+         {
+          "id": "iax",
+          "name": "Iax",
+          "type": "Agri World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Astra Militarum"
+          },
+          "desc": "The garden of Ultramar — an agri-world that feeds the sector's armies, held by the Guard.",
+          "locations": [
+           {
+            "id": "iaxorbit",
+            "name": "Iax — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Bulk grain-haulers"
+            ],
+            "desc": "A placid orbit thick with harvest-freighters."
+           },
+           {
+            "id": "iaxcity",
+            "name": "First Landing",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A green-belted city ringed by endless cropfields."
+           },
+           {
+            "id": "iaxvillage",
+            "name": "The Estate-Holds",
+            "type": "village",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Agri-estates that muster hardy line-regiments."
+           }
+          ],
+          "resources": 70,
+          "status": null
+         },
+         {
+          "id": "konor",
+          "name": "Konor",
+          "type": "Industrial World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Mechanicus"
+          },
+          "desc": "A civilised world leased to the Mechanicus, its manufactorums arming the Ultramar marches.",
+          "locations": [
+           {
+            "id": "konororbit",
+            "name": "Konor — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Mechanicus freighters"
+            ],
+            "desc": "An orbit lit by manufactorum-glow."
+           },
+           {
+            "id": "konorforge",
+            "name": "The Konor Manufactorum",
+            "type": "manufactorum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Volume-forges under the Cog.",
+            "door_names": {
+             "forge": "The Konor Manufactorum"
+            }
+           },
+           {
+            "id": "konorcity",
+            "name": "Spire Konoris",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A trade-city between the forge-stacks."
+           }
+          ],
+          "resources": 85,
+          "status": null
+         },
+         {
+          "id": "prandium",
+          "name": "Prandium",
+          "type": "Dead World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Astartes"
+          },
+          "desc": "Once Ultramar's paradise, devoured by a hive fleet — now a memorial the Chapter refuses to abandon.",
+          "locations": [
+           {
+            "id": "prandiumorbit",
+            "name": "Prandium — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Vigil-picket"
+            ],
+            "desc": "A silent orbit kept under eternal watch."
+           },
+           {
+            "id": "prandiummem",
+            "name": "The Memorial Wastes",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "The stripped remains of a lost paradise."
+           },
+           {
+            "id": "prandiumwatch",
+            "name": "Vigil Outpost",
+            "type": "military_outpost",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A lone watchpost that will not stand down."
+           }
+          ],
+          "resources": 10,
+          "status": null
+         }
+        ]
+       },
+       {
+        "id": "cicatrix",
+        "name": "The Cicatrix Scar",
+        "status": "Warring",
+        "owner": "Contested - the Scar",
+        "space": {
+         "id": "cicatrixspace",
+         "name": "The Scar",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "Where the Great Rift itself cuts the segmentum — a wound in reality both sides bleed into. No one holds the Scar; everyone dies for it."
+        },
+        "planets": [
+         {
+          "id": "aureliscar",
+          "name": "Aurelis Hold",
+          "type": "Fortress World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adeptus Astartes"
+          },
+          "desc": "A Sanctus-side bastion clinging to the lit edge of the Scar — the last ordered ground before the wound.",
+          "locations": [
+           {
+            "id": "aurelisorbit",
+            "name": "Aurelis Hold — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Crusade battlegroup"
+            ],
+            "desc": "An orbit that stares across the Rift into the dark."
+           },
+           {
+            "id": "aurelisbulwark",
+            "name": "The Dawnward Wall",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A rampart facing the Rift, guns never cold."
+           },
+           {
+            "id": "aurelisfort",
+            "name": "The Crusade Muster",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Where relief crusades are gathered and spent."
+           }
+          ],
+          "resources": 70,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "mordathscar",
+          "name": "Mordath",
+          "type": "War World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "Black Legion"
+          },
+          "desc": "A Nihilus-side war-world the Black Legion drives across the Scar, spearhead of every incursion.",
+          "locations": [
+           {
+            "id": "mordathorbit",
+            "name": "Mordath — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Black Legion vanguard"
+            ],
+            "desc": "A dark orbit massing for the next push across the wound."
+           },
+           {
+            "id": "mordathwar",
+            "name": "The Breaching Grounds",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Staging fields for assaults on the lit side."
+           },
+           {
+            "id": "mordathbastion",
+            "name": "Iron Beachhead",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A traitor bastion gouged into the Scar's dark rim."
+           }
+          ],
+          "resources": 60,
+          "status": null
+         },
+         {
+          "id": "khorvashscar",
+          "name": "Khorvash",
+          "type": "Daemon World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "chaos",
+           "faction": "World Eaters"
+          },
+          "desc": "A skull-heaped daemon world where the World Eaters feed the Scar its endless blood.",
+          "locations": [
+           {
+            "id": "khorvashorbit",
+            "name": "Khorvash — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "World Eaters reaver-shoal"
+            ],
+            "desc": "An orbit red with the reflected fires below."
+           },
+           {
+            "id": "khorvashpit",
+            "name": "The Blood-Scar",
+            "type": "lair",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A daemon-warren gorged on the Front's slaughter.",
+            "door_names": {
+             "muster": "The Blood-Scar"
+            }
+           },
+           {
+            "id": "khorvashwar",
+            "name": "The Skull Fields",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Ground carpeted in the tally of the Front."
+           }
+          ],
+          "resources": 45,
+          "status": null
+         },
+         {
+          "id": "veridscar",
+          "name": "Verid Gate",
+          "type": "Tomb World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Necrons"
+          },
+          "desc": "A dormant tomb world woken by the Scar's carnage — the Necrons reclaim what both sides bleed away.",
+          "locations": [
+           {
+            "id": "veridorbit",
+            "name": "Verid Gate — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Necron scythe-picket"
+            ],
+            "desc": "An orbit where derelict tomb-craft drift, not quite dead."
+           },
+           {
+            "id": "veridvault",
+            "name": "The Verid Vault",
+            "type": "tomb_vault",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A tomb-vault waking to the sound of the Front.",
+            "door_names": {
+             "forge": "The Verid Vault"
+            }
+           },
+           {
+            "id": "veridruin",
+            "name": "The Silent Necropolis",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Necron ruins between wakings."
+           }
+          ],
+          "resources": 30,
+          "status": null
+         },
+         {
+          "id": "solacescar",
+          "name": "Solace",
+          "type": "Shrine World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "imperial",
+           "faction": "Adepta Sororitas"
+          },
+          "desc": "A Sanctus shrine world the Sisters hold as a hospice and last rite for the Front's endless dead.",
+          "locations": [
+           {
+            "id": "solaceorbit",
+            "name": "Solace — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Ecclesiarchy hospital-ships"
+            ],
+            "desc": "An orbit of white hospital-barques."
+           },
+           {
+            "id": "solaceshrine",
+            "name": "The Shrine of the Fallen",
+            "type": "shrine",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Altars for the countless dead of the Scar.",
+            "door_names": {
+             "altar": "The Shrine of the Fallen"
+            }
+           },
+           {
+            "id": "solacebulwark",
+            "name": "The Martyr's Wall",
+            "type": "bulwark",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A rampart the Sisters have never yielded."
+           }
+          ],
+          "resources": 40,
+          "status": null
+         }
+        ]
        }
       ]
      },
@@ -6175,8 +6691,409 @@
         "id": "ghoul",
         "name": "Ghoul Fringe",
         "status": "Famine",
-        "owner": "Unknown",
-        "sealed": true
+        "owner": "Xenos - Necrons",
+        "space": {
+         "id": "ghoulspace",
+         "name": "The Ghoul Deeps",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A dead, star-poor void of tomb worlds waking one by one — the galaxy's oldest silence, ending."
+        },
+        "planets": [
+         {
+          "id": "zapedra",
+          "name": "Zapedra",
+          "type": "Tomb World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Necrons"
+          },
+          "desc": "The dynastic seat of the Fringe — a crownworld tomb-complex stirring after sixty million years.",
+          "locations": [
+           {
+            "id": "zapedraorbit",
+            "name": "Zapedra — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Necron cairn-fleet"
+            ],
+            "desc": "An orbit of geometric derelicts blinking slowly awake."
+           },
+           {
+            "id": "zapedracrown",
+            "name": "The Silent King's Court",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A resurrected throne-vault directing the dynasty's wakening.",
+            "door_names": {
+             "throne_room": "The Silent King's Court"
+            }
+           },
+           {
+            "id": "zapedravault",
+            "name": "The Grand Necropolis",
+            "type": "tomb_vault",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "Legions of the deathless waiting on the reactor-glow.",
+            "door_names": {
+             "forge": "The Grand Necropolis"
+            }
+           },
+           {
+            "id": "zapedraruin",
+            "name": "The Obsidian Wastes",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Blackstone plains between the tomb-cities."
+           }
+          ],
+          "resources": 55,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "mandragora",
+          "name": "Mandragora",
+          "type": "Tomb World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Necrons"
+          },
+          "desc": "A phaeron's fastness of scarab-swarms and dormant war-constructs.",
+          "locations": [
+           {
+            "id": "mandragoraorbit",
+            "name": "Mandragora — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Scarab construct-cloud"
+            ],
+            "desc": "An orbit that repairs itself faster than it decays."
+           },
+           {
+            "id": "mandragoravault",
+            "name": "The Scarab Vaults",
+            "type": "tomb_vault",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Self-repairing forges beneath the dust.",
+            "door_names": {
+             "muster": "The Scarab Vaults"
+            }
+           },
+           {
+            "id": "mandragoralair",
+            "name": "The Flayed Warrens",
+            "type": "lair",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Warrens of the dynasty's maddened Flayed Ones."
+           }
+          ],
+          "resources": 35,
+          "status": null
+         },
+         {
+          "id": "thanatos",
+          "name": "Thanatos",
+          "type": "Dead World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Necrons"
+          },
+          "desc": "A husk long stripped by its own owners, kept as a killing-ground for trespassers.",
+          "locations": [
+           {
+            "id": "thanatosorbit",
+            "name": "Thanatos — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Sentry-monolith"
+            ],
+            "desc": "An orbit guarded by a single, patient monolith."
+           },
+           {
+            "id": "thanatosruin",
+            "name": "The Sundered Cities",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Geometric ruins under a dead red sun."
+           },
+           {
+            "id": "thanatosvault",
+            "name": "The Deep Vault",
+            "type": "tomb_vault",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A last sealed vault none have opened and left.",
+            "door_names": {
+             "reliquary": "The Deep Vault"
+            }
+           }
+          ],
+          "resources": 20,
+          "status": null
+         },
+         {
+          "id": "caelum",
+          "name": "Caelum Reach",
+          "type": "Tomb World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Necrons"
+          },
+          "desc": "A contested rim-world where human settlers dig too deep and wake what sleeps below.",
+          "locations": [
+           {
+            "id": "caelumorbit",
+            "name": "Caelum Reach — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Derelict colony-ships"
+            ],
+            "desc": "An orbit of dead colony hulks and blinking tomb-lights."
+           },
+           {
+            "id": "caelumcity",
+            "name": "Deepdelve",
+            "type": "city",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A doomed mining-city built atop a tomb."
+           },
+           {
+            "id": "caelumvault",
+            "name": "The Waking Vault",
+            "type": "tomb_vault",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "The tomb the delvers should not have found.",
+            "door_names": {
+             "muster": "The Waking Vault"
+            }
+           }
+          ],
+          "resources": 25,
+          "status": null
+         }
+        ]
+       },
+       {
+        "id": "infestus",
+        "name": "Sanctum Infestus",
+        "status": "Corrupted",
+        "owner": "Xenos - Genestealer Cults",
+        "space": {
+         "id": "infestusspace",
+         "name": "The Whispering Deeps",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A void that looks empty and human — and is neither. The cult is already here, in the walls, in the crews."
+        },
+        "planets": [
+         {
+          "id": "sanctumprime",
+          "name": "Sanctum Prime",
+          "type": "Hive World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Genestealer Cults"
+          },
+          "desc": "A hive-world hollowed from within — its Imperial masters still think they rule, and the cult lets them, for now.",
+          "locations": [
+           {
+            "id": "sanctumorbit",
+            "name": "Sanctum Prime — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "'Loyal' system flotilla (compromised)"
+            ],
+            "desc": "An orbit that looks perfectly, deceptively ordinary."
+           },
+           {
+            "id": "sanctumcrown",
+            "name": "The Fourfold Court",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The hidden throne of the Patriarch beneath the Governor's palace.",
+            "door_names": {
+             "throne_room": "The Fourfold Court"
+            }
+           },
+           {
+            "id": "sanctumsanctum",
+            "name": "The Undercult",
+            "type": "cult_sanctum",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A hidden sanctum threaded through the hive's sump.",
+            "door_names": {
+             "altar": "The Undercult"
+            }
+           },
+           {
+            "id": "sanctumhive",
+            "name": "Spire Loyalis",
+            "type": "hive",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The 'loyal' upper hive, blind to the rot beneath."
+           }
+          ],
+          "resources": 90,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "brood",
+          "name": "Broodhome",
+          "type": "Mining World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Genestealer Cults"
+          },
+          "desc": "A mining world where the cult runs the machinery — and breeds in the deep galleries.",
+          "locations": [
+           {
+            "id": "broodorbit",
+            "name": "Broodhome — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Ore-hauler convoy (cult-crewed)"
+            ],
+            "desc": "An orbit of ore-barques run by unblinking crews."
+           },
+           {
+            "id": "broodsanctum",
+            "name": "The Deep Galleries",
+            "type": "cult_sanctum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Breeding-warrens masked as mine-workings.",
+            "door_names": {
+             "muster": "The Deep Galleries"
+            }
+           },
+           {
+            "id": "broodmek",
+            "name": "The Rig-Sprawl",
+            "type": "mek_shop",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Jury-rigged forges of demolition-charges and mining rigs."
+           }
+          ],
+          "resources": 45,
+          "status": null
+         },
+         {
+          "id": "cominor",
+          "name": "Cominor",
+          "type": "Industrial World",
+          "rift": "Nihilus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Genestealer Cults"
+          },
+          "desc": "An industrial world where a full uprising is one signal away — the cult already holds the manufactorums.",
+          "locations": [
+           {
+            "id": "cominororbit",
+            "name": "Cominor — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Compromised defence platforms"
+            ],
+            "desc": "An orbit whose guns may not fire the way their crews expect."
+           },
+           {
+            "id": "cominorsanctum",
+            "name": "The Signal-Deep",
+            "type": "cult_sanctum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Where the uprising's first signal waits.",
+            "door_names": {
+             "altar": "The Signal-Deep"
+            }
+           },
+           {
+            "id": "cominormanu",
+            "name": "The Red Manufactorums",
+            "type": "manufactorum",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Forges turning out arms for a rising nobody sees coming.",
+            "door_names": {
+             "forge": "The Red Manufactorums"
+            }
+           }
+          ],
+          "resources": 60,
+          "status": null
+         }
+        ]
        }
       ]
      },
@@ -6189,7 +7106,396 @@
         "name": "Fringe March",
         "status": "Warring",
         "owner": "Xenos - T'au",
-        "sealed": true
+        "space": {
+         "id": "efrspace",
+         "name": "The Expansion Deeps",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "The frontier the T'au sept-fleets push into — orderly, patient, and always advancing."
+        },
+        "planets": [
+         {
+          "id": "tauceti",
+          "name": "Tau'ceti",
+          "type": "Sept World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "T'au"
+          },
+          "desc": "A thriving sept-world and the seat of the March's expansion — the Greater Good made concrete.",
+          "locations": [
+           {
+            "id": "taucetiorbit",
+            "name": "Tau'ceti — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Sept expansion-fleet 'Kauyon'"
+            ],
+            "desc": "A disciplined orbit of gleaming, purposeful hulls."
+           },
+           {
+            "id": "taucetiship",
+            "name": "The Aun Court",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The ethereal seat directing the March's careful conquest.",
+            "door_names": {
+             "throne_room": "The Aun Court"
+            }
+           },
+           {
+            "id": "taucetihive",
+            "name": "Sept City Kel",
+            "type": "city",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "A clean, tiered sept-city of every caste."
+           },
+           {
+            "id": "taucetifort",
+            "name": "The Kauyon Bastion",
+            "type": "fortress",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A patient fortress that fights only on its own terms."
+           }
+          ],
+          "resources": 100,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "vespid",
+          "name": "Vespid Reach",
+          "type": "Civilized World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "T'au"
+          },
+          "desc": "An auxiliary world of client-species drawn into the Greater Good.",
+          "locations": [
+           {
+            "id": "vespidorbit",
+            "name": "Vespid Reach — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Auxiliary cadre-transports"
+            ],
+            "desc": "An orbit busy with client-species craft."
+           },
+           {
+            "id": "vespidcity",
+            "name": "Concord Landing",
+            "type": "city",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A polyglot city of a dozen species."
+           },
+           {
+            "id": "vespidfort",
+            "name": "Cadre Post",
+            "type": "military_outpost",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "A forward relay for the auxiliaries."
+           }
+          ],
+          "resources": 55,
+          "status": null
+         },
+         {
+          "id": "dolumar",
+          "name": "Dolumar",
+          "type": "Frontier World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "T'au"
+          },
+          "desc": "A contested frontier world the March is prying from Imperial hands one hab-block at a time.",
+          "locations": [
+           {
+            "id": "dolumarorbit",
+            "name": "Dolumar — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Blockade cordon"
+            ],
+            "desc": "An orbit split between two flags."
+           },
+           {
+            "id": "dolumarwar",
+            "name": "The Contested Sprawl",
+            "type": "warzone",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Block-by-block urban war."
+           },
+           {
+            "id": "dolumarcity",
+            "name": "New Concord",
+            "type": "city",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "The half the March already holds."
+           }
+          ],
+          "resources": 40,
+          "status": null
+         },
+         {
+          "id": "mubris",
+          "name": "Mu'bris",
+          "type": "Mining World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "T'au"
+          },
+          "desc": "A resource world feeding the expansion's forges.",
+          "locations": [
+           {
+            "id": "mubrisorbit",
+            "name": "Mu'bris — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Resource-cadre haulers"
+            ],
+            "desc": "An orbit thick with ore-transports."
+           },
+           {
+            "id": "mubrismek",
+            "name": "The Earth Caste Yards",
+            "type": "mek_shop",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "Earth-caste fabricators of drones and rifles.",
+            "door_names": {
+             "forge": "The Earth Caste Yards"
+            }
+           },
+           {
+            "id": "mubrisvillage",
+            "name": "The Labour Holds",
+            "type": "city",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Worker-settlements of the mining cadres."
+           }
+          ],
+          "resources": 50,
+          "status": null
+         }
+        ]
+       },
+       {
+        "id": "carnival",
+        "name": "The Black Carnival",
+        "status": "Peace",
+        "owner": "Xenos - Harlequins",
+        "space": {
+         "id": "carnivalspace",
+         "name": "The Laughing Void",
+         "type": "space",
+         "tier": "space",
+         "condition": "intact",
+         "level": 0,
+         "forces": [],
+         "desc": "A stretch of void that opens onto the webway in a hundred hidden places — the Harlequins pass through and are gone."
+        },
+        "planets": [
+         {
+          "id": "masque",
+          "name": "The Masque",
+          "type": "Exodite World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Harlequins"
+          },
+          "desc": "A maiden-world dressed as a stage — the troupe's home and the door onto ten thousand webway paths.",
+          "locations": [
+           {
+            "id": "masqueorbit",
+            "name": "The Masque — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Starweaver troupe-craft"
+            ],
+            "desc": "An orbit that shimmers and is suddenly empty."
+           },
+           {
+            "id": "masquecrown",
+            "name": "The Grand Stage",
+            "type": "crown",
+            "condition": "intact",
+            "level": 3,
+            "tier": "surface",
+            "desc": "The heart of the Carnival, where the troupes gather between performances.",
+            "door_names": {
+             "throne_room": "The Grand Stage"
+            }
+           },
+           {
+            "id": "masqueportal",
+            "name": "The Laughing Gate",
+            "type": "webway_portal",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A webway gate onto paths no other faction can walk.",
+            "door_names": {
+             "warp_gate": "The Laughing Gate"
+            }
+           },
+           {
+            "id": "masquegrove",
+            "name": "The Dreaming Groves",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Exodite groves where the World Spirit sleeps."
+           }
+          ],
+          "resources": 45,
+          "status": null,
+          "crown": true
+         },
+         {
+          "id": "harlekin",
+          "name": "Harlekin",
+          "type": "Exodite World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Harlequins"
+          },
+          "desc": "A wild maiden-world of masque and dinosaur-herds, guarded by exodite knights and hidden mirths.",
+          "locations": [
+           {
+            "id": "harlekinorbit",
+            "name": "Harlekin — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Voidweaver escort"
+            ],
+            "desc": "A quiet orbit above a green, untamed world."
+           },
+           {
+            "id": "harlekinvillage",
+            "name": "The Painted Holds",
+            "type": "city",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "Exodite hold-villages beneath the masque-banners."
+           },
+           {
+            "id": "harlekinportal",
+            "name": "The Mirthgate",
+            "type": "webway_portal",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A lesser webway gate onto the troupe's paths.",
+            "door_names": {
+             "warp_gate": "The Mirthgate"
+            }
+           }
+          ],
+          "resources": 35,
+          "status": null
+         },
+         {
+          "id": "sorrow",
+          "name": "The World of Sorrow",
+          "type": "Dead World",
+          "rift": "Sanctus",
+          "canon": false,
+          "ruler": {
+           "allegiance": "xenos",
+           "faction": "Harlequins"
+          },
+          "desc": "A tomb of a dead craftworld the troupes keep as their theatre of memory and the Fall.",
+          "locations": [
+           {
+            "id": "sorroworbit",
+            "name": "The World of Sorrow — Orbit",
+            "type": "orbit",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "ships": [
+             "Silent troupe-vigil"
+            ],
+            "desc": "An orbit of drifting, darkened craftworld-wreckage."
+           },
+           {
+            "id": "sorrowruin",
+            "name": "The Broken Dome",
+            "type": "ruins",
+            "condition": "intact",
+            "level": 1,
+            "tier": "surface",
+            "desc": "The shattered wraithbone of a craftworld that died at the Fall."
+           },
+           {
+            "id": "sorrowportal",
+            "name": "The Last Door",
+            "type": "webway_portal",
+            "condition": "intact",
+            "level": 2,
+            "tier": "surface",
+            "desc": "A hidden gate few in the troupe will speak of.",
+            "door_names": {
+             "warp_gate": "The Last Door"
+            }
+           }
+          ],
+          "resources": 15,
+          "status": null
+         }
+        ]
        }
       ]
      }
