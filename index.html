@@ -755,7 +755,11 @@ var RIFT=(function(){
     return null;                                     // free-movers (neutral) are side-less
   }
   function forceOf(faction,canon){return {faction:faction,side:sideOf(faction,canon)};}
-  return { standing:standing, mods:mods, sideOf:sideOf, forceOf:forceOf };
+  /* felt-hook consumers (T-RIFT-1b): compose standing→mods so the engine seam stays one call.
+     loc carries .rift (the PLANET in the live game); sector .owner. */
+  function travelCost(base,force,loc,sector,canon){return Math.round((base||0)*mods(standing(force,loc,sector,canon),canon).travelMult);}
+  function reqPrice(base,force,loc,sector,canon){return Math.round((base||0)*mods(standing(force,loc,sector,canon),canon).reqMult);}
+  return { standing:standing, mods:mods, sideOf:sideOf, forceOf:forceOf, travelCost:travelCost, reqPrice:reqPrice };
 })();
 /*</rift-core>*/
 /*<loadout-core>*/
@@ -1478,16 +1482,22 @@ return S.ships.warp?{m:'s',p:tv.cross_segmentum.posts,c:tv.cross_segmentum.own_v
 function arrTxt(p){if(!p.ruler)return null;var a=D.travel.arrival_at_controlled_planet;
 if(p.ruler.allegiance===S.player.allegiance)return{k:'f',t:'CONTROLLED — '+p.ruler.faction+'. '+a.friendly};
 return{k:'h',t:'CONTROLLED — '+p.ruler.faction+'. '+a.hostile}}
+/* T-RIFT-1b felt hooks: scale by the player's Rift standing at the destination /
+   current location. Free-mover / adrift / pre-founding cases fall through to base. */
+function riftPassage(base,pl){var d=fPl(pl);if(!d||!S.player)return base;
+  return RIFT.travelCost(base, RIFT.forceOf(S.player.faction,D), d.p, d.s, D);}
+function riftPrice(pc){var d=fPl(S.pos.pl);if(!d||!S.player)return pc;
+  return RIFT.reqPrice(pc, RIFT.forceOf(S.player.faction,D), d.p, d.s, D);}
 function passagePreview(pl,sp){
   var tier=travelTier(S.pos.pl,S.pos.sp,pl,sp);
   var force=S.roster.filter(function(m){return m.st==='DEPLOYED'});
-  return {tier:tier, cost:THREAD.passageCost(D,tier,THREAD.forcePC(force),false), words:(D.travel[tier]||{}).words||0};
+  return {tier:tier, cost:riftPassage(THREAD.passageCost(D,tier,THREAD.forcePC(force),false),pl), words:(D.travel[tier]||{}).words||0};
 }
 function travel(pl,sp){var r=route(pl,sp);if(!r||r.m==='x'){T(r?r.d:'Already there.');return}
   if(inTransit()){T('Already in transit.');return}
   var tier=travelTier(S.pos.pl,S.pos.sp,pl,sp);
   var force=S.roster.filter(function(m){return m.st==='DEPLOYED'});
-  var cost=THREAD.passageCost(D,tier,THREAD.forcePC(force),false);
+  var cost=riftPassage(THREAD.passageCost(D,tier,THREAD.forcePC(force),false),pl);
   if(cost>S.cur){T('Passage costs '+cost+' '+curName()+' — not enough.');return}
   S.cur-=cost;
   var t=THREAD.create({id:'travel_'+Date.now(),type:'TRAVEL',
@@ -2580,11 +2590,11 @@ function renderCart(){mkCart();var c=S.cart||[];if(!c.length){CART.classList.rem
    altar = casts, reliquary = the LEGENDARY entries (one weapon + one item per faction). */
 function doorCatalog(kind){var pf=(S.player&&S.player.faction)||null;
  function pick(arr){return (arr||[]).filter(function(it){return it.faction==null||it.faction===pf})
-   .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}})}
+   .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:riftPrice(it.pc)}})}
  if(kind==='shop')return pick(D.weapons).concat(pick(D.items)).concat(pick(D.abilities));
  if(kind==='altar')return pick(D.casts);
  if(kind==='reliquary')return (D.legendaries||[]).filter(function(it){return it.faction===pf})
-   .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}});
+   .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:riftPrice(it.pc)}});
  return []}
 function sellPrice(it){var pc=it.pc||0;if(!pc){var c=doorCatalog('shop').concat(doorCatalog('altar')).filter(function(x){return x.n===it.n})[0];pc=c?c.pc:6}return Math.max(1,Math.round(pc*0.6))}
 function doorSells(kind,cat){if(kind==='shop')return cat==='WEAPON'||cat==='ITEM'||cat==='ABILITY';if(kind==='altar')return cat==='CAST';if(kind==='reliquary')return cat==='LEGENDARY';return false}
