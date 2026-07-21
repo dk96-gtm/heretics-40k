@@ -11,6 +11,20 @@ test('canon is v1.19', () => {
   assert.strictEqual(canon.meta.version, '1.19');
 });
 
+test('every faction has a crown world with a walkable surface start (Founding spawn)', () => {
+  const byName = {};
+  canon.factions.forEach((f) => { byName[f.name] = f.id; });
+  const crowned = new Set();
+  canon.galaxy.segmentums.forEach((g) => g.zones.forEach((z) => z.sectors.forEach((s) =>
+    (s.planets || []).forEach((p) => {
+      if (!p.crown || !p.ruler || !byName[p.ruler.faction]) return;
+      const surface = (p.locations || []).filter((l) => l.tier !== 'orbit');
+      if (surface.length) crowned.add(byName[p.ruler.faction]);
+    }))));
+  canon.factions.forEach((f) =>
+    assert.ok(crowned.has(f.id), `${f.id} needs a crown world with a surface location`));
+});
+
 test('v1.19: territory rules + holding production knobs (T-TERR-1)', () => {
   const terr = canon.rules.territory;
   assert.ok(terr && terr.capture, 'rules.territory.capture present');

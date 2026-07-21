@@ -1857,6 +1857,11 @@ function pRuler(pl){var ov=S.world&&S.world.rulers&&S.world.rulers[pl.id];return
 function crownOf(facId){var f=FAC(facId);if(!f)return null;var r=null;
  D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){
   if(!r&&p.crown&&p.ruler&&p.ruler.faction===f.name)r=p.id})})})});return r}
+/* where a new Commander of this faction wakes: crown world, first surface location */
+function crownStart(facId){var pid=crownOf(facId);
+ if(!pid)return {pl:'vigilus',sp:'ashravine'};        // canon guarantees a crown; belt-and-braces
+ var p=fPl(pid).p,l=(p.locations||[]).filter(function(x){return x.tier!=='orbit'})[0];
+ return l?{pl:pid,sp:l.id}:{pl:'vigilus',sp:'ashravine'};}
 function secOwner(s){ // absolute majority of planet rulers (overlay-aware); untouched sectors keep the canon string
  if(!(S.world&&S.world.rulers))return s.owner;
  var touched=(s.planets||[]).some(function(p){return S.world.rulers[p.id]});
@@ -2472,7 +2477,7 @@ function commitFounding(cc){
  roster.forEach(function(mm){migrateLoadout(mm,F.id);});
  S={
   player:{name:cc.nm.trim(),allegiance:A,faction:F.id,model:m.n,cmdRank:1,mdlRank:1,w:w+'/'+w,xp:'0/40'},
-  pos:{pl:'vigilus',sp:'ashravine'},tr:null,   // Pass 2: seed faction homeworld
+  pos:crownStart(F.id),tr:null,                // you wake on your faction's crown world
   cur:cur,infl:eco.influence,army:0,dom:eco.dominance,dru:false,vess:false,
   ships:{sys:null,warp:null},inv:[],convos:[],
   roster:roster,
