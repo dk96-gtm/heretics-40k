@@ -582,12 +582,21 @@ var THREAD=(function(){
       if(e.kind==='damage'&&c){
         var _def=c.armour||null;
         var _cov=(state.board&&typeof c.x==='number')?coverMod({x:c.x,y:c.y},state.board):0;
-        var _taken=Math.max(0,e.amount-((_def&&_def[e.element])||0)-_cov);
+        var _dv=(_def&&_def[e.element])||0;
+        var _taken=Math.max(0,e.amount-_dv-_cov);
+        var _abs=Math.max(0,Math.min(_dv,e.amount-_cov));   // what the plate actually ate
+        var _ai=c.model&&c.model.loadout&&c.model.loadout.armour&&c.model.loadout.armour.it;
+        if(_ai&&_abs>0)_ai.absorbed=(_ai.absorbed||0)+_abs; // gear battle record (T-ECO-1 prereq)
         c.w=[Math.max(0,c.w[0]-_taken),c.w[1]];
         if(c.w[0]<=0&&!c.dead){c.dead=true;c.killElement=e.element||null;
           var RWd=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
           if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
-          else{var Wd=RWd.windows||{};c.revivalWindow=(e.element&&Wd[e.element])||Wd.Physical||3;c.permaDeath=false;}}}
+          else{var Wd=RWd.windows||{};c.revivalWindow=(e.element&&Wd[e.element])||Wd.Physical||3;c.permaDeath=false;}
+          if(e.weapon){                                     // the killing weapon takes the credit
+            var _am=state.combatants[b.actor]&&state.combatants[b.actor].model;
+            var _sl=(_am&&((_am.loadout&&_am.loadout.slots)||_am.sl))||[];
+            for(var _wi=0;_wi<_sl.length;_wi++){var _wit=_sl[_wi].it;
+              if(_wit&&_wit.n===e.weapon){_wit.kills=(_wit.kills||0)+1;break;}}}}}
       else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
       else if(e.kind==='move'){var mw=state.combatants[e.who];if(mw&&e.to){mw.x=e.to.x;mw.y=e.to.y;}}
       else if(e.kind==='cond'&&c){c.conds=c.conds||[];c.conds.push(e.add);}
@@ -742,7 +751,7 @@ var THREAD=(function(){
       var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;  // ATTACK (AP): best affordable reaching weapon
       weps.forEach(function(w){if(NPC_RANK[w.band]>=NPC_RANK[db]&&(w.ap||0)<=pool){
         if(!pick||(w.damage||0)>(pick.damage||0))pick=w;}});
-      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival}});pool-=(pick.ap||0);}
+      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,weapon:pick.name||null}});pool-=(pick.ap||0);}
     }
     return block;
   }
@@ -1948,7 +1957,7 @@ function threadBlockBuilder(t,party){
   var pool=(t.state.pools&&t.state.pools[party]!=null)?t.state.pools[party]:null;
   if(pool!=null)box.insertAdjacentHTML('beforeend','<div class="apt"><span style="font-size:11px;color:var(--dim)">AP pool: <span class="mono">'+pool+'</span></span><span class="n" id="bbtot">0 AP</span></div>');
   function effFor(a,tgt){
-    if(a.group==='e')return {kind:'damage',amount:damageOf(a.item),to:tgt,element:THREAD.elementOf(a.item),noRevival:THREAD.isNoRevival(a.item,D)};
+    if(a.group==='e')return {kind:'damage',amount:damageOf(a.item),to:tgt,element:THREAD.elementOf(a.item),noRevival:THREAD.isNoRevival(a.item,D),weapon:a.item.n};
     if(a.group==='b')return {kind:'band',to:tgt,who:a.actor};
     if(a.group==='y'||a.group==='a')return {kind:'cond',add:a.action,to:a.actor};
     if(a.group==='t'){
@@ -2157,7 +2166,7 @@ function bfCombatUI(t,party){
     if(b.hasAttribute('data-rma')){ui.acts.splice(+b.getAttribute('data-rma'),1);return openT(t.id);}
     if(b.hasAttribute('data-atk')){var it=bfWeaponsOf(C[ui.sel])[+b.getAttribute('data-atk')];
       if(it&&ui.tgt){var d2=THREAD.cheb(posOf(ui.sel),posOf(ui.tgt)),bnd2=THREAD.bandOf(d2);
-        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2])ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D)}});}
+        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2])ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),weapon:it.n}});}
       return openT(t.id);}
     if(b.hasAttribute('data-bx')){var x=+b.getAttribute('data-bx'),y=+b.getAttribute('data-by');
       if(ui.sel&&reach[x+','+y]){ui.moves[ui.sel]={x:x,y:y};return openT(t.id);}}
@@ -2677,7 +2686,9 @@ function openEntity(it,ctx){mkEntity();ctx=ctx||{};
  +'<div class="entb"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>'+it.n+'</h3><button class="movbk" id="entx">Close</button></div>'
  +'<span class="pill">'+it.cat+'</span>'
  +'<div class="entrow"><div class="k">Full stats</div><div class="vv">'+itemStatsHTML(it)+'</div></div>'
- +'<div class="entrow"><div class="k">Ownership</div><div class="vv">'+owner+(origin?' · acquired at '+origin:'')+'</div></div>'
+ +'<div class="entrow"><div class="k">Ownership</div><div class="vv">'+owner+(origin?' · acquired at '+(it.origin||origin):'')+'</div></div>'
+ +(it.cat==='WEAPON'?'<div class="entrow"><div class="k">Battle record</div><div class="vv">'+((it.kills||0)>0?('<b style="color:var(--blh)">'+it.kills+'</b> confirmed kill'+(it.kills>1?'s':'')):'<span style="color:var(--dim)">No confirmed kills yet.</span>')+'</div></div>':'')
+ +(it.cat==='ARMOUR'?'<div class="entrow"><div class="k">Battle record</div><div class="vv">'+((it.absorbed||0)>0?('<b style="color:var(--vdh)">'+it.absorbed+'</b> damage absorbed'):'<span style="color:var(--dim)">Unblooded plate.</span>')+'</div></div>':'')
  +'<div class="entrow"><div class="k">Threads it has seen</div><div class="vv">'+(threads.length?threads.map(function(t){return '· '+t}).join('<br>'):'<span style="color:var(--dim)">None recorded yet.</span>')+'</div></div>'
  +(ctx.onChange?'<div style="display:flex;gap:8px;margin-top:4px"><button class="btn gh sm" id="entchg">Change this slot</button></div>':'')
  +'</div></div>';
@@ -2797,7 +2808,11 @@ function renderCart(){mkCart();var c=S.cart||[];if(!c.length){CART.classList.rem
 /* v1.9: door catalogs drawn from the full migrated canon, filtered to the
    player's faction + faction-null "common" gear. shop = weapons+items+abilities,
    altar = casts, reliquary = the LEGENDARY entries (one weapon + one item per faction). */
-function doorCatalog(kind){var pf=(S.player&&S.player.faction)||null;
+/* T-ECO-1 prereq: a door sells the RULING faction's arsenal, not the visitor's.
+   Contested ground stocks only common gear; conquest changes what's on the shelves. */
+function doorFactionId(){var f=fPl(S.pos.pl),r=f?pRuler(f.p):null;
+ var fac=r?facByName(r.faction):null;return fac?fac.id:null}
+function doorCatalog(kind){var pf=doorFactionId();
  function pick(arr){return (arr||[]).filter(function(it){return it.faction==null||it.faction===pf})
    .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}})}
  if(kind==='shop')return pick(D.weapons).concat(pick(D.items)).concat(pick(D.abilities));
@@ -2902,7 +2917,7 @@ function renderForge(c,dr){
   var cost=base+st.c;if(S.cur<cost){T('Not enough '+curName()+'.');return}
   S.cur-=cost;S.inv.splice(S.inv.indexOf(x),1);S.inv.push({n:n,cat:'WEAPON',d:'Named '+x.n+' - '+st.t+' I',pc:(x.pc||6)+st.c,origin:dr.name});rW();rShop();T('The forge tolls once. "'+n+'" is made.')}}
 function renderArmoury(c,dr){
- var fac=S.player.faction;var who=(sel||S.roster[0]);
+ var fac=doorFactionId();var who=(sel||S.roster[0]);   // the ruler's plate, not yours
  var list=(D.armour||[]).filter(function(p){return p.faction===fac||p.faction===null;});
  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Buy and fit Armour. Defense is per-element ('+ELEM6.map(function(e){return ELAB[e]}).join(' ')+'); a hit deals max(0, damage − Defense). A <b>0</b> means that element bypasses the plate.</div>');
  var byTier={};list.forEach(function(p){(byTier[p.tier]=byTier[p.tier]||[]).push(p)});
@@ -2912,8 +2927,8 @@ function renderArmoury(c,dr){
    r.innerHTML='<div><b>'+p.n+'</b>'+(p.cls?' <span class="pill">'+p.cls+'</span>':'')+'<div class="d">'+armLine(p.def)+'</div><div class="d" style="color:var(--dim)">'+annotate(p.d||'')+'</div></div>';
    var pcR=reqPrice(p.pc);
    var rr=E('div',null,'<span class="price">'+pcR+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px;gap:4px';
-   var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<pcR){T('Not enough '+curName()+'.');return}S.cur-=pcR;S.inv.push(JSON.parse(JSON.stringify(p)));rW();rShop();T('Bought '+p.n+'.')};
-   var ft=E('button','btn sm','Buy & Fit');ft.onclick=function(){if(!who){T('No model selected.');return}if(who.st==='DEPLOYED'){T(who.n.split(',')[0]+' is in an active thread — cannot refit.');return}if(S.cur<pcR){T('Not enough '+curName()+'.');return}S.cur-=pcR;var copy=JSON.parse(JSON.stringify(p));if(who.loadout.armour.it)S.inv.push(who.loadout.armour.it);who.loadout.armour.it=copy;rW();rShop();T(p.n+' fitted to '+who.n.split(',')[0]+'.')};
+   var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<pcR){T('Not enough '+curName()+'.');return}S.cur-=pcR;var cp=JSON.parse(JSON.stringify(p));cp.origin=fLoc(S.pos.pl,S.pos.sp).name;S.inv.push(cp);rW();rShop();T('Bought '+p.n+'.')};
+   var ft=E('button','btn sm','Buy & Fit');ft.onclick=function(){if(!who){T('No model selected.');return}if(who.st==='DEPLOYED'){T(who.n.split(',')[0]+' is in an active thread — cannot refit.');return}if(S.cur<pcR){T('Not enough '+curName()+'.');return}S.cur-=pcR;var copy=JSON.parse(JSON.stringify(p));copy.origin=fLoc(S.pos.pl,S.pos.sp).name;if(who.loadout.armour.it)S.inv.push(who.loadout.armour.it);who.loadout.armour.it=copy;rW();rShop();T(p.n+' fitted to '+who.n.split(',')[0]+'.')};
    rr.appendChild(bt);rr.appendChild(ft);r.appendChild(rr);c.appendChild(r)})});
  var owned=(S.inv||[]).filter(function(it){return it.cat==='ARMOUR'});
  if(owned.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — buys armour at 60%</h5></div>');
