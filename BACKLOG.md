@@ -146,6 +146,7 @@ System epics are `blocked` (not holding the 🔥 lane) until their spikes + upst
 |----|------|------|--------|-----------------|---------|-------|
 | T-DOC-1 | **Compendium PDF → v1.8** fold-in (battlefield grid + armour + slots already at 58pp; add tag registry + gear catalogs) | docs | `open` | — | — | `md-to-pdf`; source in `docs/superpowers/specs/`. |
 | T-DOC-2 | Retire the standalone **screen-VIII prototype** doc/notes once the engine prototype is folded in | docs | `open` | — | — | Pairs with an engine polish task; docs half only here. |
+| T-THR-2 | **Thread-types deep spec — adapt/expand remaining types.** Travel/Skirmish/Duel/Raid definitions LOCKED (2026-07-21, in-progress w/ Daak). This task = deepen the rest to the same fidelity: **Invasion, Diplomacy, Mission, Events** — each anchored in world hooks, NPC action, other-PC action, resolution/rewards. **Mission is the deepest net-new work** (currently a shell: `catalog()`→`[]`, no objective state/clock/payout). Feeds `rules.thread_types` canon + THREAD core. | docs → canon | `open` | — | — | Working capture in session scratchpad; fold into `docs/superpowers/specs/`. Blocks/pairs w/ Mission engine work. |
 
 ---
 
