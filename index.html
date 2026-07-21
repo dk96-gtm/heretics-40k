@@ -780,7 +780,11 @@ var RIFT=(function(){
     return null;                                     // free-movers (neutral) are side-less
   }
   function forceOf(faction,canon){return {faction:faction,side:sideOf(faction,canon)};}
-  return { standing:standing, mods:mods, sideOf:sideOf, forceOf:forceOf };
+  /* felt hooks (T-RIFT-1b): the two multipliers play actually pays */
+  function applyTravel(base,st,canon){return Math.round((base||0)*mods(st,canon).travelMult);}
+  function applyReq(price,st,canon){return Math.round((price||0)*mods(st,canon).reqMult);}
+  return { standing:standing, mods:mods, sideOf:sideOf, forceOf:forceOf,
+           applyTravel:applyTravel, applyReq:applyReq };
 })();
 /*</rift-core>*/
 /*<loadout-core>*/
@@ -1602,16 +1606,25 @@ return S.ships.warp?{m:'s',p:tv.cross_segmentum.posts,c:tv.cross_segmentum.own_v
 function arrTxt(p){var r=pRuler(p);if(!r)return null;var a=D.travel.arrival_at_controlled_planet;
 if(r.allegiance===S.player.allegiance)return{k:'f',t:'CONTROLLED — '+r.faction+'. '+a.friendly};
 return{k:'h',t:'CONTROLLED — '+r.faction+'. '+a.hostile}}
+/* T-RIFT-1b: your Force's Rift standing at a planet — overlay-aware sector owner */
+function riftStandingAt(pid){var f=fPl(pid);if(!f)return 'neutral';
+  var force=RIFT.forceOf(FAC(S.player.faction).name,D);
+  return RIFT.standing(force,f.p,{owner:secOwner(f.s)},D);}
+function passageCostTo(pl,tier,force){
+  var base=THREAD.passageCost(D,tier,THREAD.forcePC(force),false);
+  return RIFT.applyTravel(base,riftStandingAt(pl),D);}
+function riftMark(st){return st==='home'?' · ▼ Rift-home −25%':st==='away'?' · ▲ Rift-away +25%':''}
 function passagePreview(pl,sp){
   var tier=travelTier(S.pos.pl,S.pos.sp,pl,sp);
   var force=S.roster.filter(function(m){return m.st==='DEPLOYED'});
-  return {tier:tier, cost:THREAD.passageCost(D,tier,THREAD.forcePC(force),false), words:(D.travel[tier]||{}).words||0};
+  var st=riftStandingAt(pl);
+  return {tier:tier, cost:passageCostTo(pl,tier,force), words:(D.travel[tier]||{}).words||0, standing:st};
 }
 function travel(pl,sp){var r=route(pl,sp);if(!r||r.m==='x'){T(r?r.d:'Already there.');return}
   if(inTransit()){T('Already in transit.');return}
   var tier=travelTier(S.pos.pl,S.pos.sp,pl,sp);
   var force=S.roster.filter(function(m){return m.st==='DEPLOYED'});
-  var cost=THREAD.passageCost(D,tier,THREAD.forcePC(force),false);
+  var cost=passageCostTo(pl,tier,force);
   if(cost>S.cur){T('Passage costs '+cost+' '+curName()+' — not enough.');return}
   S.cur-=cost;
   var t=THREAD.create({id:'travel_'+Date.now(),type:'TRAVEL',
@@ -1727,7 +1740,7 @@ if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){
   tm.appendChild(row)};}
 var r=route(pl.id,l.id);
 if(r&&!inTransit()){var pp=(r.m!=='x')?passagePreview(pl.id,l.id):null;
-p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(pp?' · <span class="mono">'+pp.cost+' '+curName()+'</span> · <span class="mono">'+pp.words+' words</span>':'')+'</div>');
+p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(pp?' · <span class="mono">'+pp.cost+' '+curName()+'</span> · <span class="mono">'+pp.words+' words</span>'+riftMark(pp.standing):'')+'</div>');
 var at=arrTxt(pl);if(at&&S.pos.pl!==pl.id)p.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;margin-top:5px;color:'+(at.k==='h'?'var(--blh)':'var(--vdh)')+'">'+at.t+'</div>');
 var bx=E('div');bx.style.cssText='display:flex;gap:8px;margin-top:10px';
 if(r.m==='x'){var nb=E('button','btn',r.d);nb.disabled=true;bx.appendChild(nb)}
@@ -2766,7 +2779,9 @@ function updateHUD(){if(!HUD||!S)return;var m=activeModel();var sig=m.n.split(' 
 /* ─── v12: requisition — cart, catalogs, per-door renderers ─── */
 var CART=null;
 function mkCart(){if(CART)return;CART=document.createElement('div');CART.id='cart';document.body.appendChild(CART)}
-function cartAdd(it,origin){S.cart=S.cart||[];S.cart.push({n:it.n,cat:it.cat,d:it.d,pc:it.pc||0,origin:origin});renderCart();T(it.n+' added to cart.')}
+/* T-RIFT-1b: cross-Rift supply lines cost — prices at an away-side door run +25% */
+function reqPrice(pc){return RIFT.applyReq(pc||0,riftStandingAt(S.pos.pl),D)}
+function cartAdd(it,origin){S.cart=S.cart||[];S.cart.push({n:it.n,cat:it.cat,d:it.d,pc:reqPrice(it.pc),origin:origin});renderCart();T(it.n+' added to cart.')}
 function cartTotal(){return (S.cart||[]).reduce(function(a,x){return a+(x.pc||0)},0)}
 function renderCart(){mkCart();var c=S.cart||[];if(!c.length){CART.classList.remove('on');CART.innerHTML='';return}
  CART.innerHTML='<h4>Checkout — '+c.length+' item'+(c.length>1?'s':'')+'</h4>'
@@ -2801,7 +2816,7 @@ function renderDoor(dr,h){var c=E('div','card');
   var cat=doorCatalog(kind);
   cat.forEach(function(it){var r=E('div','shopc');
    r.innerHTML='<div class="clk" data-ent="1"><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+annotate(it.d)+'</div></div>';
-   var rr=E('div',null,'<span class="price">'+it.pc+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px';
+   var rr=E('div',null,'<span class="price">'+reqPrice(it.pc)+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px';
    var bt=E('button','btn gh sm','Add to cart');bt.onclick=function(){cartAdd(it,dr.name)};
    rr.appendChild(bt);r.appendChild(rr);
    r.querySelector('[data-ent]').onclick=function(){openEntity(it,{owner:'This door ('+dr.name+')',origin:h.name,threads:[]})};
@@ -2895,9 +2910,10 @@ function renderArmoury(c,dr){
   c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:10px"><h5>'+tier.toUpperCase()+(tier==='default'?' — issued by class':'')+'</h5></div>');
   ps.forEach(function(p){var r=E('div','shopc');
    r.innerHTML='<div><b>'+p.n+'</b>'+(p.cls?' <span class="pill">'+p.cls+'</span>':'')+'<div class="d">'+armLine(p.def)+'</div><div class="d" style="color:var(--dim)">'+annotate(p.d||'')+'</div></div>';
-   var rr=E('div',null,'<span class="price">'+p.pc+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px;gap:4px';
-   var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<p.pc){T('Not enough '+curName()+'.');return}S.cur-=p.pc;S.inv.push(JSON.parse(JSON.stringify(p)));rW();rShop();T('Bought '+p.n+'.')};
-   var ft=E('button','btn sm','Buy & Fit');ft.onclick=function(){if(!who){T('No model selected.');return}if(who.st==='DEPLOYED'){T(who.n.split(',')[0]+' is in an active thread — cannot refit.');return}if(S.cur<p.pc){T('Not enough '+curName()+'.');return}S.cur-=p.pc;var copy=JSON.parse(JSON.stringify(p));if(who.loadout.armour.it)S.inv.push(who.loadout.armour.it);who.loadout.armour.it=copy;rW();rShop();T(p.n+' fitted to '+who.n.split(',')[0]+'.')};
+   var pcR=reqPrice(p.pc);
+   var rr=E('div',null,'<span class="price">'+pcR+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px;gap:4px';
+   var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<pcR){T('Not enough '+curName()+'.');return}S.cur-=pcR;S.inv.push(JSON.parse(JSON.stringify(p)));rW();rShop();T('Bought '+p.n+'.')};
+   var ft=E('button','btn sm','Buy & Fit');ft.onclick=function(){if(!who){T('No model selected.');return}if(who.st==='DEPLOYED'){T(who.n.split(',')[0]+' is in an active thread — cannot refit.');return}if(S.cur<pcR){T('Not enough '+curName()+'.');return}S.cur-=pcR;var copy=JSON.parse(JSON.stringify(p));if(who.loadout.armour.it)S.inv.push(who.loadout.armour.it);who.loadout.armour.it=copy;rW();rShop();T(p.n+' fitted to '+who.n.split(',')[0]+'.')};
    rr.appendChild(bt);rr.appendChild(ft);r.appendChild(rr);c.appendChild(r)})});
  var owned=(S.inv||[]).filter(function(it){return it.cat==='ARMOUR'});
  if(owned.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — buys armour at 60%</h5></div>');
