@@ -599,6 +599,25 @@ var THREAD=(function(){
   function arrivalReady(state){
     return !!(state.transit&&state.transit.wordsWritten>=state.transit.wordsReq);
   }
+  /* ── resolution (T-TERR-1 slice A) — when does a thread END with a result? ──
+     Combat: a side with no living combatant is broken; last side standing wins
+     (annihilation), nobody standing = mutual. Never during blind deploy.
+     Diplomacy: agreed terms = accord. Travel/Mission resolve elsewhere. */
+  function outcome(thread,state){
+    if(!state||thread.done)return null;
+    if(thread.type==='DIPLOMACY')
+      return (state.terms&&state.terms.agreed)?{kind:'accord',victor:null,defeated:[]}:null;
+    if(thread.type!=='SKIRMISH'&&thread.type!=='INVASION')return null;
+    if(state.phase==='deploy')return null;
+    var C=state.combatants||{},parties={},alive={};
+    Object.keys(C).forEach(function(id){var c=C[id];if(!c.party)return;
+      parties[c.party]=1;if(!c.dead)alive[c.party]=1;});
+    var pn=Object.keys(parties);if(pn.length<2)return null;
+    var an=Object.keys(alive);
+    if(an.length===1)return {kind:'annihilation',victor:an[0],defeated:pn.filter(function(p){return p!==an[0];})};
+    if(an.length===0)return {kind:'mutual',victor:null,defeated:pn};
+    return null;
+  }
   var ELEMAP={phys:'Physical',physical:'Physical',energy:'Energy',heat:'Heat',
     corr:'Corrosive',corrosive:'Corrosive',plasma:'Plasma',warp:'Warp'};
   function elementOf(item){
@@ -721,7 +740,7 @@ var THREAD=(function(){
     }
     return block;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
