@@ -457,7 +457,7 @@ return ' · '+ax('Prosperity',sc.prosperity,sc.prosperity<=25)
 function sectorHeader(f){var sc=SCORES[f.s.id],st=f.s.status;
  var el=E('div','sechdr');
  var zone=f.z.kind==='core'?'CORE':'EXPANSE · '+f.z.name;
- var h='<div class="sh-top"><span class="sh-zone">'+zone+'</span><span class="stt '+st+'" style="font-size:12px;padding:4px 12px">'+readStatus(st).toUpperCase()+'</span><span class="sh-own">'+f.s.owner+'</span></div>';
+ var h='<div class="sh-top"><span class="sh-zone">'+zone+'</span><span class="stt '+st+'" style="font-size:12px;padding:4px 12px">'+readStatus(st).toUpperCase()+'</span><span class="sh-own">'+secOwner(f.s)+'</span></div>';
  if(sc){function meter(n,v,warn,hint){return '<div class="sh-score"><div class="sh-k">'+n+'</div><div class="sh-v" style="color:'+(warn?'var(--blh)':'var(--brh)')+'">'+v+'<small>/100</small></div><div class="sh-bar"><i style="width:'+v+'%;background:'+(warn?'var(--blh)':'var(--brh)')+'"></i></div><div class="sh-hint">'+hint+'</div></div>'}
   h+='<div class="sh-scores">'+meter('Prosperity',sc.prosperity,sc.prosperity<=25,'output &amp; trade')+meter('Conflict',sc.conflict,sc.conflict>=60,'active war')+meter('Taint',sc.taint,sc.taint>=70,'warp / xenos corruption')+'</div>';}
  el.innerHTML=h;return el}
@@ -1164,6 +1164,7 @@ function migrateLoadout(m,faction){
 function foundingWorld(){return {
  met:['vess','herald','sskarith','kryv','warden'],
  stats:{vigilus:{taint:12},sangua:{taint:4},nurth:{taint:20},kraithv:{taint:16}},
+ rulers:{},holdings:[],
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
   sangua:[['89th Sanguan Garrison','NPC, Astra Militarum · COMPANY','Hive Primus']],
@@ -1538,9 +1539,9 @@ if(S.pos.pl===pl){if(S.pos.sp===sp)return null;return{m:'g',p:tv.same_planet.pos
 if(f.s.id===t.s.id)return S.ships.sys?{m:'s',p:tv.same_sector.posts,c:0,d:'In-system course — '+S.ships.sys}:{m:'x',d:'Requires: '+tv.same_sector.requires};
 if(f.g.id===t.g.id)return S.ships.warp?{m:'s',p:tv.cross_sector_same_segmentum.posts,c:0,d:'Warp jump'}:{m:'c',p:tv.cross_sector_same_segmentum.posts,c:tv.cross_sector_same_segmentum.charter_cost,d:'Chartered warp passage — cross-sector'};
 return S.ships.warp?{m:'s',p:tv.cross_segmentum.posts,c:tv.cross_segmentum.own_vessel_toll,d:'Warp crossing + Segmentum toll'}:{m:'c',p:tv.cross_segmentum.posts,c:tv.cross_segmentum.charter_cost,d:'Chartered warp crossing + Segmentum toll'}}
-function arrTxt(p){if(!p.ruler)return null;var a=D.travel.arrival_at_controlled_planet;
-if(p.ruler.allegiance===S.player.allegiance)return{k:'f',t:'CONTROLLED — '+p.ruler.faction+'. '+a.friendly};
-return{k:'h',t:'CONTROLLED — '+p.ruler.faction+'. '+a.hostile}}
+function arrTxt(p){var r=pRuler(p);if(!r)return null;var a=D.travel.arrival_at_controlled_planet;
+if(r.allegiance===S.player.allegiance)return{k:'f',t:'CONTROLLED — '+r.faction+'. '+a.friendly};
+return{k:'h',t:'CONTROLLED — '+r.faction+'. '+a.hostile}}
 function passagePreview(pl,sp){
   var tier=travelTier(S.pos.pl,S.pos.sp,pl,sp);
   var force=S.roster.filter(function(m){return m.st==='DEPLOYED'});
@@ -1591,7 +1592,7 @@ z.appendChild(sectorChart(f.s));
 var g4=E('div','mg');
 (f.s.planets||[]).forEach(function(pl){var h=S.pos.pl===pl.id&&!inTransit();var r=route(pl.id,pl.locations[0].id);
 var pp=(!h&&r&&r.m!=='x')?passagePreview(pl.id,pl.locations[0].id):null;
-var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(pp?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+pp.cost+'⛁ · '+pp.words+'w</div>':''));
+var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pRuler(pl)?pRuler(pl).allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pRuler(pl)?pRuler(pl).faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(pp?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+pp.cost+'⛁ · '+pp.words+'w</div>':''));
 d.onclick=function(){MV.pl=pl.id;MV.lc=pl.locations[0].id;MV.spaceSel=false;MV.lv='planet';rMap()};g4.appendChild(d)});
 z.appendChild(g4);
 var sp=f.s.space,inVoid=(S.pos.void===f.s.id);
@@ -1629,7 +1630,7 @@ var fr=forcesAt(pl.id),hi=histAt(pl.id,l.id),np=npcsAt(pl.id,l.id);
 var _lt=LT(l.type)||{name:l.type},_dz=doorsAt(l),_cd=CD(l.condition)||{},isOrbit=(l.tier==='orbit');
 var frLoc=fr.filter(function(x){return x[2]===l.name});
 var h2='<h3>'+pl.name+' — '+pl.type+'</h3>';
-h2+='<div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pl.ruler?(pl.ruler.allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pl.ruler?'RULED: '+pl.ruler.faction:'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+readStatus(f2.s.status)+'</span></div>';
+h2+='<div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pRuler(pl)?(pRuler(pl).allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pRuler(pl)?'RULED: '+pRuler(pl).faction+(S.world.holdings&&S.world.holdings.indexOf(pl.id)>=0?' (YOURS)':''):'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+readStatus(f2.s.status)+'</span></div>';
 h2+='<div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">'+pl.desc+'</div>';
 /* the named-location page — broken into sections */
 h2+='<div class="locpage"><div class="locimg">'+l.name+'<span>location image — art slot</span></div><div class="locbody">';
@@ -1768,7 +1769,39 @@ function concludeThread(t,oc){
  S.world.log.unshift(nowStamp()+' — '+t.n+' concluded: '+(oc.kind==='accord'?'accord struck':mineWon?'victory':oc.victor?('defeat — '+oc.victor+' holds the field'):'mutual ruin')+'.');
  persist();
 }
-function captureOnVictory(t,oc,mineWon){}   // T-TERR-1 slice B lands here
+/* ── T-TERR-1 slice B: territory. Canon rulers are the baseline map; the save-state
+   overlay S.world.rulers records flips, S.world.holdings is what YOU hold. ── */
+function pRuler(pl){var ov=S.world&&S.world.rulers&&S.world.rulers[pl.id];return ov||pl.ruler||null}
+function crownOf(facId){var f=FAC(facId);if(!f)return null;var r=null;
+ D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){
+  if(!r&&p.crown&&p.ruler&&p.ruler.faction===f.name)r=p.id})})})});return r}
+function secOwner(s){ // absolute majority of planet rulers (overlay-aware); untouched sectors keep the canon string
+ if(!(S.world&&S.world.rulers))return s.owner;
+ var touched=(s.planets||[]).some(function(p){return S.world.rulers[p.id]});
+ if(!touched)return s.owner;
+ var by={},n=(s.planets||[]).length;
+ (s.planets||[]).forEach(function(p){var r=pRuler(p);if(r&&r.faction)by[r.faction]=(by[r.faction]||0)+1});
+ for(var f in by)if(by[f]*2>n){var al=null;
+  (s.planets||[]).some(function(p){var r=pRuler(p);if(r&&r.faction===f){al=r.allegiance;return true}return false});
+  return (al==='imperial'?'Imperial':al==='chaos'?'Chaos':'Xenos')+' - '+f;}
+ return 'Contested';
+}
+function captureOnVictory(t,oc,mineWon){
+ var cap=(D.rules.territory&&D.rules.territory.capture)||{thread_type:'INVASION'};
+ if(!mineWon||!t.pl||t.type!==cap.thread_type)return;
+ var fp=fPl(t.pl);if(!fp)return;
+ var me=FAC(S.player.faction),cur=pRuler(fp.p);
+ if(cur&&cur.faction===me.name)return;               // already yours
+ S.world.rulers=S.world.rulers||{};
+ S.world.rulers[t.pl]={allegiance:me.allegiance,faction:me.name};
+ S.world.holdings=S.world.holdings||[];
+ if(S.world.holdings.indexOf(t.pl)<0)S.world.holdings.push(t.pl);
+ t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+  body:'🏴 CONQUEST — '+fp.p.name+' falls to '+me.name+'. The planet enters your holdings; its tithe now flows to you.'});
+ S.world.log=S.world.log||[];
+ S.world.log.unshift(nowStamp()+' — CONQUEST: '+fp.p.name+' taken — it now tithes to your coffers.');
+ T('🏴 '+fp.p.name+' is yours.');
+}
 function threadHeader(t){var h=E('div','thhdr');
  h.innerHTML='<div class="thhdr-top"><span class="tp '+t.type+'">'+t.type+'</span><h3>'+t.n+'</h3></div>'
  +'<div class="thhdr-loc">◉ '+(t.loc||'—')+'</div>'
@@ -2297,6 +2330,8 @@ function init(){
   S.active=S.active||'kane';S.cart=S.cart||[];
   S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
   if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch||Date.now();
+  if(!S.world.rulers)S.world.rulers={};                                  // T-TERR-1: older saves
+  if(!S.world.holdings)S.world.holdings=[crownOf(S.player.faction)].filter(Boolean);
   var _wc=WORLD.catchUp(S,D,Date.now());
   S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
  }
@@ -2365,6 +2400,7 @@ function commitFounding(cc){
   time:{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60,lastTick:Date.now()},
   npcState:{},active:'cmdr',cart:[]
  };
+ S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
  saveProfile(S);
  T(commander.n+' is founded. The saga begins.');
  enterShell(S);
@@ -2871,7 +2907,7 @@ function sectorChart(sec){
  ctx.fillStyle='rgba(176,141,62,.5)';ctx.font='11px ui-monospace,monospace';ctx.textAlign='center';
  ctx.fillText(sec.name.toUpperCase(),cx,cy+4);
  /* planet nodes */
- nodes.forEach(function(n){var col=ALCOL[n.pl.ruler?n.pl.ruler.allegiance:'con'];
+ nodes.forEach(function(n){var col=ALCOL[pRuler(n.pl)?pRuler(n.pl).allegiance:'con'];
   var here=n.pl.id===S.pos.pl;
   ctx.beginPath();ctx.arc(n.x,n.y,here?13:9,0,Math.PI*2);
   ctx.fillStyle=col+'22';ctx.fill();

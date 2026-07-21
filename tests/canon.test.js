@@ -7,8 +7,16 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.18', () => {
-  assert.strictEqual(canon.meta.version, '1.18');
+test('canon is v1.19', () => {
+  assert.strictEqual(canon.meta.version, '1.19');
+});
+
+test('v1.19: territory rules + holding production knobs (T-TERR-1)', () => {
+  const terr = canon.rules.territory;
+  assert.ok(terr && terr.capture, 'rules.territory.capture present');
+  assert.strictEqual(terr.capture.thread_type, 'INVASION');
+  assert.ok(canon.tick.holding_divisor >= 1, 'tick.holding_divisor');
+  assert.ok(canon.tick.holding_min_per_day >= 0, 'tick.holding_min_per_day');
 });
 
 test('tick: living-world cadence block present', () => {
@@ -100,7 +108,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.18');
+  assert.equal(canon.meta.version, '1.19');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
