@@ -998,6 +998,7 @@ var SAVE=(function(){
         if(m){ c.model=m;
           var a=m.loadout&&m.loadout.armour&&m.loadout.armour.it;
           c.armour=a?a.def:null; }
+        else if(c.gen){ c.model=c.gen; c.armour=null; }   // generated hostiles (T-TERR-1 muster)
       });
     });
     return S;
@@ -1229,15 +1230,58 @@ if(CART){if(s!=='shop')CART.classList.remove('on');else renderCart()}
 window.scrollTo(0,0)}
 /* ---- HQ ---- */
 function voidName(sid){var n=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){if(s.id===sid&&s.space)n=s.space.name})})});return n||'the void'}
-/* a Force may be in only one thread at a time (a thread may hold many Forces) */
-function threadOfForce(fname){return S.threads.filter(function(t){return (t.forces||[]).indexOf(fname)>=0})[0]}
+/* a Force may be in only one LIVE thread at a time (concluded threads release it) */
+function threadOfForce(fname){return S.threads.filter(function(t){return !t.done&&(t.forces||[]).indexOf(fname)>=0})[0]}
+/* ── T-TERR-1: muster the opposition — a combat thread needs two real sides ── */
+function facByName(name){return (D.factions||[]).filter(function(f){return f.name===name})[0]||null}
+function npcForceAt(pid,lname){var rows=S.world.forces[pid]||[];
+ for(var i=0;i<rows.length;i++){var r=rows[i];
+  if(/NPC/i.test(r[1]||'')&&(!lname||r[2]===lname))return {name:r[0],desc:r[1]};}
+ return null;}
+function npcFactionOf(desc){var m=(desc||'').match(/NPC,\s*([^·]+)/);return m?m[1].trim():null}
+function npcWeaponFor(facId){
+ var ws=(D.weapons||[]).filter(function(w){return w.faction===facId});
+ if(!ws.length)ws=(D.weapons||[]).filter(function(w){return !w.faction});
+ ws=ws.slice().sort(function(a,b){return (a.pc||0)-(b.pc||0)});
+ var w=ws[0]||{n:'Rending Claws',cat:'WEAPON',d:'Phys 2 - Melee'};
+ return {n:w.n,cat:'WEAPON',d:w.d};}
+/* seed both sides: your committed force's models vs a detachment generated from
+   the local NPC force's faction roster. Enemy models persist via c.gen (SAVE.relink). */
+function seedCombat(t,pid,l,npcId,force){
+ if(!force)return;
+ var mine=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'});
+ if(!mine.length)return;
+ var C={},pools={};
+ mine.forEach(function(m){var p=(m.w||'1/1').split('/');
+  C[m.id]={w:[parseInt(p[0],10)||1,parseInt(p[1],10)||1],conds:[],party:force.n,model:m,
+   armour:(m.loadout&&m.loadout.armour&&m.loadout.armour.it)?m.loadout.armour.it.def:null};});
+ pools[force.n]=force.ap;
+ var npc=npcId?D.npcs_alpha.filter(function(n){return n.id===npcId})[0]:null;
+ var host=npc?{name:npc.name.split(',')[0]+"'s host",faction:npc.faction}:null;
+ if(!host){var fr=npcForceAt(pid,l.name);if(fr)host={name:fr.name,faction:npcFactionOf(fr.desc)};}
+ var fac=host&&host.faction?facByName(host.faction):null;
+ if(!fac)return;                                     // nobody garrisons this ground → social thread
+ var pool=(fac.models||[]).filter(function(m){return m.cls==='Core'});
+ if(!pool.length)pool=fac.models||[];if(!pool.length)return;
+ var n=Math.max(2,Math.min(4,mine.length)),ap=0,wep=npcWeaponFor(fac.id);
+ for(var i=0;i<n;i++){var bm=pool[i%pool.length];
+  var gen={id:'e'+i,n:bm.n+' '+(i+1),cls:bm.cls,pc:bm.pc,spd:bm.sp,
+   sub:bm.n+' — hostile',sl:[{k:'WEAPON',it:{n:wep.n,cat:'WEAPON',d:wep.d}}]};
+  C['e'+i]={w:[bm.w,bm.w],conds:[],party:host.name,model:gen,gen:gen,armour:null};
+  ap+=AP(bm.pc);}
+ pools[host.name]=ap;
+ if(t.forces.indexOf(host.name)<0)t.forces.push(host.name);
+ t.seedState={pools:pools,combatants:C,joined:false};
+}
 /* start a thread at a location; a public thread enters the location's history */
 function startThread(pid,l,type,npcId){var loc=fPl(pid).p.name+' · '+l.name;
  var am=activeModel(),force=S.forces.filter(function(f){return f.lead===am.id})[0];
  var fname=force?force.n:null;
  if(fname){var other=threadOfForce(fname);if(other){T(fname+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}}
  var id=type.toLowerCase().slice(0,3)+'_'+l.id+'_'+S.threads.length;
- S.threads.push({id:id,type:type.toUpperCase(),n:type+' at '+l.name,loc:loc,turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',about:'You opened a '+type+' at '+l.name+'. '+(threadSummary(type.toUpperCase())),forces:fname?[fname]:[],npc:npcId||null});
+ var t={id:id,type:type.toUpperCase(),n:type+' at '+l.name,loc:loc,pl:pid,lid:l.id,turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',about:'You opened a '+type+' at '+l.name+'. '+(threadSummary(type.toUpperCase())),forces:fname?[fname]:[],npc:npcId||null};
+ if(t.type==='SKIRMISH'||t.type==='INVASION')seedCombat(t,pid,l,npcId,force);
+ S.threads.push(t);
  var key=pid+'/'+l.id;if(!S.world.history[key])S.world.history[key]=[];
  S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
  T(type+' thread opened at '+l.name+(fname?' — '+fname+' committed':'')+'. Now in the location\'s public record.');
@@ -1676,6 +1720,9 @@ function exitThread(t){
     T('You abort the passage'+(dn?' to '+dn:'')+' — '+refund+' '+curName()+' refunded.');
     go('threads');rTL();return;
   }
+  if(t.done){S.threads=S.threads.filter(function(x){return x.id!==t.id});   // concluded → free exit
+    T('You leave the field of "'+t.n+'" — the matter is settled.');
+    go('threads');rTL();return;}
   var joined=!!(t.state&&t.state.joined),duel=/duel/i.test(t.n||'');
   if(!joined){S.threads=S.threads.filter(function(x){return x.id!==t.id});
     T('You withdraw from the '+t.type+' at '+t.loc+' — no cost; hostilities had not begun.');
@@ -1691,6 +1738,37 @@ function exitThread(t){
     msg+=' They caught your retreat — a new Warzone '+t.type+' opens.';}
   T(msg);go('threads');rTL();
 }
+/* ── T-TERR-1 slice A: a thread that reaches an outcome is DONE — stamp it,
+   report it, sync wounds home to the roster, release the force, mark the record ── */
+function myForceNames(){return S.forces.map(function(f){return f.n})}
+function concludeThread(t,oc){
+ t.done={kind:oc.kind,victor:oc.victor||null,defeated:oc.defeated||[],at:Date.now()};
+ var C=(t.state&&t.state.combatants)||{};
+ Object.keys(C).forEach(function(id){var c=C[id];if(c.gen)return;   // generated hostiles have no roster row
+  var m=S.roster.filter(function(r){return r.id===id})[0];if(!m||!c.w)return;
+  m.w=c.w[0]+'/'+c.w[1];
+  if(c.dead){m.st='DEAD';m.loc=(t.loc||'the field')+' — field'+(c.permaDeath?', no revival':', recoverable');}});
+ var mineWon=!!(oc.victor&&myForceNames().indexOf(oc.victor)>=0);
+ var line=oc.kind==='accord'?'🕊 RESOLUTION — terms struck. The accord stands and this thread is closed.'
+  :oc.kind==='mutual'?'⚔ RESOLUTION — mutual annihilation. No one holds the field.'
+  :'⚔ RESOLUTION — '+(oc.defeated||[]).join(', ')+' broken to the last model. <b>'+oc.victor+'</b> holds the field.';
+ if(!t.posts)t.posts=[];
+ t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:line});
+ var key=(t.pl&&t.lid)?t.pl+'/'+t.lid:null;
+ if(key&&S.world.history){
+  S.world.history[key]=(S.world.history[key]||[]).filter(function(h){return !(h.indexOf(t.type)===0&&h.indexOf('ACTIVE (you)')>=0)});
+  S.world.history[key].unshift(t.type+' — '+t.n+' · concluded, '+(oc.kind==='accord'?'accord':mineWon?'victory':oc.victor?'defeat':'mutual ruin'));}
+ var scaleKey=t.type==='SKIRMISH'?'Skirmish':t.type==='INVASION'?'Invasion':t.type==='DIPLOMACY'?'Diplomacy':null;
+ var sc=scaleKey?(D.galaxy.thread_scales||{})[scaleKey]:null;
+ if(sc&&sc.effect&&t.pl){var fp=fPl(t.pl);if(fp){var st=S.world.stats[fp.s.id]=S.world.stats[fp.s.id]||{};
+  if(typeof sc.effect.conflict==='number')st.conflict=Math.max(0,(st.conflict||0)+sc.effect.conflict);
+  if(typeof sc.effect.prosperity==='number')st.prosperity=Math.max(0,(st.prosperity||0)+sc.effect.prosperity);}}
+ captureOnVictory(t,oc,mineWon);
+ S.world.log=S.world.log||[];
+ S.world.log.unshift(nowStamp()+' — '+t.n+' concluded: '+(oc.kind==='accord'?'accord struck':mineWon?'victory':oc.victor?('defeat — '+oc.victor+' holds the field'):'mutual ruin')+'.');
+ persist();
+}
+function captureOnVictory(t,oc,mineWon){}   // T-TERR-1 slice B lands here
 function threadHeader(t){var h=E('div','thhdr');
  h.innerHTML='<div class="thhdr-top"><span class="tp '+t.type+'">'+t.type+'</span><h3>'+t.n+'</h3></div>'
  +'<div class="thhdr-loc">◉ '+(t.loc||'—')+'</div>'
@@ -1907,7 +1985,7 @@ function bfDeployUI(t,party){
   el.innerHTML='<h3>Battlefield · Deployment · '+party+'</h3><div class="bf-wrap">'+bh+panel+'</div>';
   el.addEventListener('click',function(ev){
     var b=ev.target.closest('[data-dm],[data-dx],[data-lockin]');if(!b)return;
-    if(b.hasAttribute('data-lockin')){st.phase='battle';st.locked={loadout:true};t._bfd=null;
+    if(b.hasAttribute('data-lockin')){st.phase='battle';st.joined=true;st.locked={loadout:true};t._bfd=null;
       T('Lines locked — battle begins. Loadout & roster frozen until it ends.');return openT(t.id);}
     if(b.hasAttribute('data-dm')){ui.sel=(ui.sel===b.getAttribute('data-dm'))?null:b.getAttribute('data-dm');return openT(t.id);}
     if(b.hasAttribute('data-dx')){var x=+b.getAttribute('data-dx'),y=+b.getAttribute('data-dy');
@@ -1997,8 +2075,17 @@ function threadView(V,t){
       (p.block?'<div class="ab"><div class="ah">Action Block</div><ul>'+p.block.map(function(b){
         return '<li><b>'+b.action+'</b>'+(b.cost?' ('+b.cost+' AP)':'')+'</li>'}).join('')+'</ul></div>':'')+'</div>');
   });
-  var comp=threadComposer(t,function(){});
   var party=partyOf(t);
+  if(t.done){                                        // T-TERR-1: a concluded thread is read-only
+    V.appendChild(E('div','card','<h3>'+(t.done.kind==='accord'?'🕊 Accord':'⚔ Concluded')+'</h3><div style="font-size:12px;color:var(--dim)">'
+      +(t.done.kind==='accord'?'Terms were struck and hold.':t.done.victor?('<b>'+t.done.victor+'</b> holds the field.'):'Mutual annihilation — no one holds the field.')
+      +' This thread is closed to new posts.</div>'));
+    var wrapD=E('div','tw solo');wrapD.appendChild(scroll);V.appendChild(wrapD);
+    var xbd=E('button','btn gh','Leave the field');xbd.style.marginTop='10px';
+    xbd.onclick=function(){exitThread(t)};V.appendChild(xbd);
+    return;
+  }
+  var comp=threadComposer(t,function(){});
   var cat=THREAD.catalog(t,t.state,party,D);
   var builder=(cat.length && t.type!=='TRAVEL' && !t.state.board)?threadBlockBuilder(t,party):null;  // grid combat uses the board composer, not the dropdown
   if(builder)comp.el.appendChild(builder.el);
@@ -2033,7 +2120,9 @@ function threadView(V,t){
     if(t.state.board){t._bf={sel:null,tgt:null,moves:{},acts:[]};   // clear staging; refresh AP for the next turn
       if(t.state.poolsBase&&t.state.poolsBase[party]!=null)t.state.pools[party]=t.state.poolsBase[party];
       npcRespond(t,party);}   // T-NPC-2b: the enemy side answers — it fights back
-    openT(t.id);T('Posted to '+t.n+'.');};
+    var oc=THREAD.outcome(t,t.state);                // T-TERR-1: does this post END it?
+    if(oc)concludeThread(t,oc);
+    openT(t.id);T(oc?('Thread concluded — '+(t.done.victor||'no victor')+'.'):'Posted to '+t.n+'.');};
   if(isCombat){
     if(t.state.board)V.appendChild(t.state.phase==='deploy'?bfDeployUI(t,party):bfCombatUI(t,party));  // E: deploy then D3 battle
     var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);lf.appendChild(comp.el);
