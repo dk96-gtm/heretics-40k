@@ -41,3 +41,9 @@ A battle ends by one of three outcomes, which form a single escalation ladder �
 - **Mutual — CUT.** Not possible / not wanted.
 
 **"Keep the ground"** (what winning by Annihilation earns): the winner does **not** exit the thread immediately — they may keep posting to **loot the dead enemies** and **revive their own fallen** (if they carry revival items). A post-victory phase on the battlefield.
+
+### D4 — Looting (the keep-the-ground phase) ✅ *(loot rule; destination TBD)*
+- A killed model can be looted for its **entire loadout** — every equipped item (weapons, armour, items, abilities, casts).
+- **CP, AP, and currency are never lootable.** Stated explicitly for **commanders / named characters**: even those kills surrender only their loadout, never their command resources. (A dead enemy commander's legendary weapon *can* be taken; their points/coin cannot.)
+- Applies to generated NPC foes too — looting one yields its generated weapon.
+- *Open:* where looted gear lands (looter's inventory to equip/sell later?) and whether it's grab-whole-loadout in one action.
