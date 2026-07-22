@@ -31,12 +31,13 @@ The final **spec** (which drives the canon/engine updates) gets composed from th
 - Merge the two contradicting blocks (`rules.thread_types` + `galaxy.thread_scales`) into **one** `rules.thread_archetypes`, carrying per parent: archetype · subtype roster · scale · world-effect · rewards. Richer subtype list wins; old blocks removed or aliased.
 - **Not just a data merge:** every subtype kept in the roster must ship with a concrete, working in-game definition (resolution + options + effect). A subtype with no defined mechanic doesn't go in the roster. The per-archetype points below produce those definitions.
 
-### D3 — How a Battle ends (the losing slope) ✅ *(one linked Q still open)*
-A battle ends by one of three outcomes. They form a single escalation ladder — you can Yield → be denied → Escape → be caught → be Annihilated:
+### D3 — How a Battle ends (the losing slope) ✅
+Scope: **battlefield only.** Nothing here touches planets/territory — that's a separate topic.
+A battle ends by one of three outcomes, which form a single escalation ladder — you can Yield → be denied → Escape → be caught → be Annihilated:
 
-- **Annihilation** — a *victory condition*, not a thread type. Fires when one side kills **all** of the other's models. The victor **keeps the ground** and may **loot freely** (the fallen are on the field they hold). Full world-effect + rewards.
-- **Yield** — the losing side **proposes** it to the opponent, offering currency and/or items. If the opponent **accepts**: opponent is declared winner and gains Influence + Dominance **plus the offered tribute** — but does **not take the field**, so the yielding side **keeps its dead** (recoverable) and is **not looted**. If **denied**, the battle continues (→ the yielder may then Escape).
-- **Escape** (was "Rout") — exits the thread; every escaping figure takes **one wound**. If the opponent can **catch up**, a **new battlefield** spawns and the pursuers get the **first strike** (anti-loop — you can't safely repeat Escape). If not caught → clean getaway, field abandoned.
+- **Annihilation** — a **win condition** (NOT a thread type). Fires when one side kills **all** of the other's models.
+- **Yield** — the losing side **proposes** it to the opponent, offering currency and/or items. If the opponent **accepts**: opponent is declared winner and gains Influence + Dominance **plus the offered tribute** — but does **not hold the ground**, so the yielding side **keeps its dead** (recoverable) and is **not looted**. If **denied**, the battle continues (→ the yielder may then Escape).
+- **Escape** (was "Rout") — exits the thread; every escaping figure takes **one wound**. If the opponent can **catch up**, a **new battlefield** spawns and the pursuers get the **first strike** (anti-loop — you can't safely repeat Escape). If not caught → clean getaway.
 - **Mutual — CUT.** Not possible / not wanted.
 
-**Open follow-up (Invasion/territory):** "keeps the ground" implies a planet flips only when the field is actually held — i.e. on **Annihilation** and on an **uncaught Escape by the defender** (they abandoned the field), but **NOT on a Yield** (field never taken → the defender buys their world back with tribute). *Pending Daak confirm.*
+**"Keep the ground"** (what winning by Annihilation earns): the winner does **not** exit the thread immediately — they may keep posting to **loot the dead enemies** and **revive their own fallen** (if they carry revival items). A post-victory phase on the battlefield.
