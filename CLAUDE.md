@@ -3,7 +3,7 @@
 Project context and orientation for anyone (human or AI) working in this repo. Development lives here now; the Notion workspace is a read-only design archive.
 
 **Live:** https://dk96-gtm.github.io/heretics-40k/ · **Repo:** github.com/dk96-gtm/heretics-40k (public)
-**Current state:** engine **v18**, canon **data v1.16** — deployed and running. The full galaxy is minted (v1.12–v1.16): **5 segmentums · 27 sectors · 87 planets · 287 walkable locations · all 20 factions homed**.
+**Current state:** engine **v18** (+ the flywheel/territory stack), canon **data v1.19** — deployed and running. The full galaxy is minted (v1.12–v1.16): **5 segmentums · 27 sectors · 87 planets · 287 walkable locations · all 20 factions homed**.
 
 ## What this is
 
@@ -101,7 +101,7 @@ These are functional but not the deep versions — flagged in-UI where relevant:
 - **AI thread summaries** are templates (real AI is a Stage 3 / backend + API feature).
 - **Travel now resolves** (v16): real Travel thread with a word-count arrival meter + force-scaled passage cost. Throne Room world-enders still acknowledge but don't resolve. Warp-Gate free travel is plumbed (`passageCost` waives it) but has no charted portal destinations yet — needs galaxy data (minted webway/warp-gate locations), not engine work.
 - Exit **pursuit** still uses a simple speed comparison (`enemySpd=3`), not the full ranked-speed rule — now reads real state but the pursuit heuristic is unchanged.
-- **Scores/production/resources** (the flywheel) are specced in canon but need persistence (Stage 2) to actually accumulate; the map shows demo constants.
+- **Scores/production/resources** (the flywheel) — SHIPPED (T-TERR-1, canon v1.19, merged to main 2026-07-22): save-state owns territory (`S.world.rulers`/`holdings`), `WORLD` production accrues per-holding (×Rift home bonus), score drift + `sectorStatus` thresholds, INVASION conquest, crown-world founding. Real cross-session accumulation still lands fully with Stage-2 persistence, but the structure is live now.
 - **Art:** all image slots (portraits, door/location/space art, map card backgrounds) are wireframe placeholders. Filling them is its own conversation (procedural vs asset-pack vs generated).
 
 ## Thread core & tests (v16)
