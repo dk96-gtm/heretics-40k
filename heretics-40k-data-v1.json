@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.18",
+  "version": "1.19",
   "updated": "2026-07-18",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -507,6 +507,13 @@
      "Orks"
     ]
    }
+  },
+  "territory": {
+   "capture": {
+    "thread_type": "INVASION",
+    "note": "Winning an INVASION thread on a planet flips its ruler to the victor's faction and adds it to the victor's personal holdings. Skirmishes contest ground but never take a world."
+   },
+   "note": "Canon rulers are the baseline map. The live overlay rides save-state: S.world.rulers (flips) + S.world.holdings (planets the Commander personally holds; seeded with the faction crown world at Founding). Personal holdings — not faction-wide rule — feed the Commander's production."
   }
  },
  "perk_effects": {
@@ -11753,7 +11760,9 @@
   "max_catchup_days": 30,
   "production_per_day": 25,
   "taint_per_day": 1,
-  "note": "Deterministic world-tick cadence. day_minutes = one in-game day in real minutes (4h). max_catchup_days bounds lazy catch-up; excess is compressed into a digest summary. Rates are per-day flat demo values (slice 2a) until the territory migration lands and production/taint bind to real holdings."
+  "note": "Deterministic world-tick cadence. day_minutes = one in-game day in real minutes (4h). max_catchup_days bounds lazy catch-up; excess is compressed into a digest summary. Production: per held planet per day = max(holding_min_per_day, round(resources x planet_type.prod_mult / holding_divisor)), x rules.rift.home.prod_mult when the planet sits on the Commander's Rift side. production_per_day remains only as the flat fallback for a save with no holdings.",
+  "holding_divisor": 3,
+  "holding_min_per_day": 8
  },
  "tags": {
   "note": "The single tag registry. Weapons, items, abilities and casts draw their rules from here; forge stations apply weapon tags gated by faction affinity. Durations are in posts; triggers resolve within one post.",

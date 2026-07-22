@@ -447,17 +447,23 @@ if(sc.conflict>=60)return 'Warring';
 if(sc.prosperity<=25)return 'Famine';
 if(sc.prosperity>=75&&sc.conflict<=20)return 'Thriving';
 return 'Peace'}
-function scoreBar(sid){var sc=SCORES[sid];if(!sc)return '';
+/* live scores: sectors the world-tick tracks override the demo constants (T-TERR-1) */
+function liveScores(sid){var st=S&&S.world&&S.world.stats&&S.world.stats[sid];
+ if(!st)return SCORES[sid];
+ return {prosperity:typeof st.prosperity==='number'?Math.round(Math.min(100,st.prosperity)):50,
+         conflict:typeof st.conflict==='number'?Math.round(Math.min(100,st.conflict)):10,
+         taint:typeof st.taint==='number'?Math.round(Math.min(100,st.taint)):0};}
+function scoreBar(sid){var sc=liveScores(sid);if(!sc)return '';
 function ax(n,v,warn){var col=warn?'var(--blh)':'var(--brh)';
 return '<span style="color:var(--dim)">'+n+'</span> <span class="mono" style="color:'+col+'">'+v+'</span>'}
 return ' · '+ax('Prosperity',sc.prosperity,sc.prosperity<=25)
 +' · '+ax('Conflict',sc.conflict,sc.conflict>=60)
 +' · '+ax('Taint',sc.taint,sc.taint>=70)}
 /* readable sector header — status prominent, scores as labelled meters */
-function sectorHeader(f){var sc=SCORES[f.s.id],st=f.s.status;
+function sectorHeader(f){var sc=liveScores(f.s.id),st=sc?WORLD.sectorStatus(sc,D):f.s.status;
  var el=E('div','sechdr');
  var zone=f.z.kind==='core'?'CORE':'EXPANSE · '+f.z.name;
- var h='<div class="sh-top"><span class="sh-zone">'+zone+'</span><span class="stt '+st+'" style="font-size:12px;padding:4px 12px">'+readStatus(st).toUpperCase()+'</span><span class="sh-own">'+f.s.owner+'</span></div>';
+ var h='<div class="sh-top"><span class="sh-zone">'+zone+'</span><span class="stt '+st+'" style="font-size:12px;padding:4px 12px">'+readStatus(st).toUpperCase()+'</span><span class="sh-own">'+secOwner(f.s)+'</span></div>';
  if(sc){function meter(n,v,warn,hint){return '<div class="sh-score"><div class="sh-k">'+n+'</div><div class="sh-v" style="color:'+(warn?'var(--blh)':'var(--brh)')+'">'+v+'<small>/100</small></div><div class="sh-bar"><i style="width:'+v+'%;background:'+(warn?'var(--blh)':'var(--brh)')+'"></i></div><div class="sh-hint">'+hint+'</div></div>'}
   h+='<div class="sh-scores">'+meter('Prosperity',sc.prosperity,sc.prosperity<=25,'output &amp; trade')+meter('Conflict',sc.conflict,sc.conflict>=60,'active war')+meter('Taint',sc.taint,sc.taint>=70,'warp / xenos corruption')+'</div>';}
  el.innerHTML=h;return el}
@@ -576,12 +582,21 @@ var THREAD=(function(){
       if(e.kind==='damage'&&c){
         var _def=c.armour||null;
         var _cov=(state.board&&typeof c.x==='number')?coverMod({x:c.x,y:c.y},state.board):0;
-        var _taken=Math.max(0,e.amount-((_def&&_def[e.element])||0)-_cov);
+        var _dv=(_def&&_def[e.element])||0;
+        var _taken=Math.max(0,e.amount-_dv-_cov);
+        var _abs=Math.max(0,Math.min(_dv,e.amount-_cov));   // what the plate actually ate
+        var _ai=c.model&&c.model.loadout&&c.model.loadout.armour&&c.model.loadout.armour.it;
+        if(_ai&&_abs>0)_ai.absorbed=(_ai.absorbed||0)+_abs; // gear battle record (T-ECO-1 prereq)
         c.w=[Math.max(0,c.w[0]-_taken),c.w[1]];
         if(c.w[0]<=0&&!c.dead){c.dead=true;c.killElement=e.element||null;
           var RWd=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
           if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
-          else{var Wd=RWd.windows||{};c.revivalWindow=(e.element&&Wd[e.element])||Wd.Physical||3;c.permaDeath=false;}}}
+          else{var Wd=RWd.windows||{};c.revivalWindow=(e.element&&Wd[e.element])||Wd.Physical||3;c.permaDeath=false;}
+          if(e.weapon){                                     // the killing weapon takes the credit
+            var _am=state.combatants[b.actor]&&state.combatants[b.actor].model;
+            var _sl=(_am&&((_am.loadout&&_am.loadout.slots)||_am.sl))||[];
+            for(var _wi=0;_wi<_sl.length;_wi++){var _wit=_sl[_wi].it;
+              if(_wit&&_wit.n===e.weapon){_wit.kills=(_wit.kills||0)+1;break;}}}}}
       else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
       else if(e.kind==='move'){var mw=state.combatants[e.who];if(mw&&e.to){mw.x=e.to.x;mw.y=e.to.y;}}
       else if(e.kind==='cond'&&c){c.conds=c.conds||[];c.conds.push(e.add);}
@@ -598,6 +613,25 @@ var THREAD=(function(){
   }
   function arrivalReady(state){
     return !!(state.transit&&state.transit.wordsWritten>=state.transit.wordsReq);
+  }
+  /* ── resolution (T-TERR-1 slice A) — when does a thread END with a result? ──
+     Combat: a side with no living combatant is broken; last side standing wins
+     (annihilation), nobody standing = mutual. Never during blind deploy.
+     Diplomacy: agreed terms = accord. Travel/Mission resolve elsewhere. */
+  function outcome(thread,state){
+    if(!state||thread.done)return null;
+    if(thread.type==='DIPLOMACY')
+      return (state.terms&&state.terms.agreed)?{kind:'accord',victor:null,defeated:[]}:null;
+    if(thread.type!=='SKIRMISH'&&thread.type!=='INVASION')return null;
+    if(state.phase==='deploy')return null;
+    var C=state.combatants||{},parties={},alive={};
+    Object.keys(C).forEach(function(id){var c=C[id];if(!c.party)return;
+      parties[c.party]=1;if(!c.dead)alive[c.party]=1;});
+    var pn=Object.keys(parties);if(pn.length<2)return null;
+    var an=Object.keys(alive);
+    if(an.length===1)return {kind:'annihilation',victor:an[0],defeated:pn.filter(function(p){return p!==an[0];})};
+    if(an.length===0)return {kind:'mutual',victor:null,defeated:pn};
+    return null;
   }
   var ELEMAP={phys:'Physical',physical:'Physical',energy:'Energy',heat:'Heat',
     corr:'Corrosive',corrosive:'Corrosive',plasma:'Plasma',warp:'Warp'};
@@ -717,11 +751,11 @@ var THREAD=(function(){
       var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;  // ATTACK (AP): best affordable reaching weapon
       weps.forEach(function(w){if(NPC_RANK[w.band]>=NPC_RANK[db]&&(w.ap||0)<=pool){
         if(!pick||(w.damage||0)>(pick.damage||0))pick=w;}});
-      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival}});pool-=(pick.ap||0);}
+      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,weapon:pick.name||null}});pool-=(pick.ap||0);}
     }
     return block;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
@@ -755,11 +789,11 @@ var RIFT=(function(){
     return null;                                     // free-movers (neutral) are side-less
   }
   function forceOf(faction,canon){return {faction:faction,side:sideOf(faction,canon)};}
-  /* felt-hook consumers (T-RIFT-1b): compose standing→mods so the engine seam stays one call.
-     loc carries .rift (the PLANET in the live game); sector .owner. */
-  function travelCost(base,force,loc,sector,canon){return Math.round((base||0)*mods(standing(force,loc,sector,canon),canon).travelMult);}
-  function reqPrice(base,force,loc,sector,canon){return Math.round((base||0)*mods(standing(force,loc,sector,canon),canon).reqMult);}
-  return { standing:standing, mods:mods, sideOf:sideOf, forceOf:forceOf, travelCost:travelCost, reqPrice:reqPrice };
+  /* felt hooks (T-RIFT-1b): the two multipliers play actually pays */
+  function applyTravel(base,st,canon){return Math.round((base||0)*mods(st,canon).travelMult);}
+  function applyReq(price,st,canon){return Math.round((price||0)*mods(st,canon).reqMult);}
+  return { standing:standing, mods:mods, sideOf:sideOf, forceOf:forceOf,
+           applyTravel:applyTravel, applyReq:applyReq };
 })();
 /*</rift-core>*/
 /*<loadout-core>*/
@@ -902,22 +936,70 @@ var WORLD=(function(){
     var e=Math.floor((nowMs-last)/dayMs(canon));
     return e>0?e:0;
   }
+  /* ── T-TERR-1 slice C: the FLYWHEEL — production binds to real holdings ── */
+  function findPlanet(canon,pid){var r=null;
+    ((canon.galaxy&&canon.galaxy.segmentums)||[]).forEach(function(g){(g.zones||[]).forEach(function(z){(z.sectors||[]).forEach(function(s){(s.planets||[]).forEach(function(p){
+      if(p.id===pid&&!r)r={p:p,sector:s.id};})})})});
+    return r;}
+  function prodMultOf(type,canon){var ts=(canon.galaxy&&canon.galaxy.planet_types)||[];
+    for(var i=0;i<ts.length;i++)if(ts[i].name===type)return ts[i].prod_mult||1;
+    return 1;}
+  function sideOfFaction(facId,canon){var fs=canon.factions||[],nm=null;
+    for(var i=0;i<fs.length;i++)if(fs[i].id===facId){nm=fs[i].name;break;}
+    var sides=(canon.rules.rift&&canon.rules.rift.sides)||{};
+    if((sides.Sanctus||[]).indexOf(nm)>=0)return 'Sanctus';
+    if((sides.Nihilus||[]).indexOf(nm)>=0)return 'Nihilus';
+    return null;}
+  function holdingYield(planet,canon,side){var t=canon.tick||{};
+    var base=Math.max(t.holding_min_per_day||0,
+      Math.round((planet.resources||0)*prodMultOf(planet.type,canon)/(t.holding_divisor||1)));
+    if(side&&planet.rift===side)
+      base=Math.round(base*((((canon.rules||{}).rift||{}).home||{}).prod_mult||1));
+    return base;}
   function produce(state,canon,events){
-    var rate=(canon.tick&&canon.tick.production_per_day)||0;
-    state.cur=(state.cur||0)+rate;
-    if(rate)events.push({kind:'production',amount:rate});
+    var hold=(state.world&&state.world.holdings)||[];
+    if(!hold.length){                                 // no holdings → flat demo fallback
+      var rate=(canon.tick&&canon.tick.production_per_day)||0;
+      state.cur=(state.cur||0)+rate;
+      if(rate)events.push({kind:'production',amount:rate});
+      return;}
+    var side=sideOfFaction(state.player&&state.player.faction,canon);
+    var startP=((((canon.galaxy||{}).scores||{}).axes||{}).prosperity||{}).start;
+    if(typeof startP!=='number')startP=50;
+    hold.forEach(function(pid){var f=findPlanet(canon,pid);if(!f)return;
+      var amt=holdingYield(f.p,canon,side);
+      state.cur=(state.cur||0)+amt;
+      if(!state.world.stats)state.world.stats={};
+      var st=state.world.stats[f.sector]=state.world.stats[f.sector]||{taint:0};
+      if(typeof st.prosperity!=='number')st.prosperity=startP;   // a held sector starts tracking
+      events.push({kind:'production',amount:amt,planet:f.p.name,sector:f.sector});});
   }
-  function driftTaint(state,canon,events){
-    var rate=(canon.tick&&canon.tick.taint_per_day)||0;
+  function driftScores(state,canon,events){
+    var tRate=(canon.tick&&canon.tick.taint_per_day)||0;
+    var drift=((((canon.galaxy||{}).scores||{}).tick)||{});
     var stats=(state.world&&state.world.stats)||{};
-    Object.keys(stats).forEach(function(sec){
-      if(typeof stats[sec].taint==='number'){stats[sec].taint+=rate;
-        if(rate)events.push({kind:'taint',sector:sec,delta:rate});}
-    });
+    Object.keys(stats).forEach(function(sec){var st=stats[sec];
+      if(typeof st.taint==='number'){st.taint+=tRate;
+        if(tRate)events.push({kind:'taint',sector:sec,delta:tRate});}
+      if(typeof st.conflict==='number'&&typeof drift.conflict==='number')
+        st.conflict=Math.max(0,st.conflict+drift.conflict);
+      if(typeof st.prosperity==='number'&&typeof drift.prosperity==='number')
+        st.prosperity=Math.min(100,Math.max(0,st.prosperity+drift.prosperity));});
+  }
+  function sectorStatus(st,canon){                     // derives status from canon score thresholds
+    var th=((((canon.galaxy||{}).scores||{}).thresholds)||[]);
+    function ok(cond){return String(cond).split('&&').every(function(c){
+      var m=c.trim().match(/^(\w+)\s*(>=|<=|>|<)\s*(\d+)$/);if(!m)return false;
+      var v=st[m[1]];if(typeof v!=='number')v=(m[1]==='prosperity')?50:0;
+      return m[2]==='>='?v>=+m[3]:m[2]==='<='?v<=+m[3]:m[2]==='>'?v>+m[3]:v<+m[3];});}
+    for(var i=0;i<th.length;i++){
+      if(th[i].if){if(ok(th[i].if))return th[i].status;}
+      else if(th[i].else)return th[i].else;}
+    return 'Peace';
   }
   function stepDay(state,canon,events){
     produce(state,canon,events);
-    driftTaint(state,canon,events);
+    driftScores(state,canon,events);
   }
   function catchUp(state,canon,nowMs){
     var events=[];
@@ -933,9 +1015,13 @@ var WORLD=(function(){
   }
   function digest(events){
     var lines=[];
-    var prod=events.filter(function(e){return e.kind==='production';})
-                   .reduce(function(a,e){return a+e.amount;},0);
-    if(prod)lines.push('Production banked: '+prod+'.');
+    var prods=events.filter(function(e){return e.kind==='production';});
+    var prod=prods.reduce(function(a,e){return a+e.amount;},0);
+    var byPl={};prods.forEach(function(e){if(e.planet)byPl[e.planet]=(byPl[e.planet]||0)+e.amount;});
+    var pls=Object.keys(byPl);
+    if(prod)lines.push(pls.length
+      ?'Your holdings tithed '+prod+' — '+pls.map(function(p){return p+' '+byPl[p];}).join(', ')+'.'
+      :'Production banked: '+prod+'.');
     var taintBy={};   // aggregate per sector across all ticks (one line each, not per-tick)
     events.filter(function(e){return e.kind==='taint';}).forEach(function(e){
       taintBy[e.sector]=(taintBy[e.sector]||0)+e.delta;});
@@ -945,7 +1031,9 @@ var WORLD=(function(){
     return {lines:lines};
   }
   return { dayMs:dayMs, ticksElapsed:ticksElapsed, stepDay:stepDay,
-           catchUp:catchUp, digest:digest };
+           catchUp:catchUp, digest:digest,
+           findPlanet:findPlanet, holdingYield:holdingYield,
+           sideOfFaction:sideOfFaction, sectorStatus:sectorStatus };
 })();
 /*</world-core>*/
 /*<save-core>*/
@@ -983,6 +1071,7 @@ var SAVE=(function(){
         if(m){ c.model=m;
           var a=m.loadout&&m.loadout.armour&&m.loadout.armour.it;
           c.armour=a?a.def:null; }
+        else if(c.gen){ c.model=c.gen; c.armour=null; }   // generated hostiles (T-TERR-1 muster)
       });
     });
     return S;
@@ -1148,6 +1237,7 @@ function migrateLoadout(m,faction){
 function foundingWorld(){return {
  met:['vess','herald','sskarith','kryv','warden'],
  stats:{vigilus:{taint:12},sangua:{taint:4},nurth:{taint:20},kraithv:{taint:16}},
+ rulers:{},holdings:[],
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
   sangua:[['89th Sanguan Garrison','NPC, Astra Militarum · COMPANY','Hive Primus']],
@@ -1214,15 +1304,58 @@ if(CART){if(s!=='shop')CART.classList.remove('on');else renderCart()}
 window.scrollTo(0,0)}
 /* ---- HQ ---- */
 function voidName(sid){var n=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){if(s.id===sid&&s.space)n=s.space.name})})});return n||'the void'}
-/* a Force may be in only one thread at a time (a thread may hold many Forces) */
-function threadOfForce(fname){return S.threads.filter(function(t){return (t.forces||[]).indexOf(fname)>=0})[0]}
+/* a Force may be in only one LIVE thread at a time (concluded threads release it) */
+function threadOfForce(fname){return S.threads.filter(function(t){return !t.done&&(t.forces||[]).indexOf(fname)>=0})[0]}
+/* ── T-TERR-1: muster the opposition — a combat thread needs two real sides ── */
+function facByName(name){return (D.factions||[]).filter(function(f){return f.name===name})[0]||null}
+function npcForceAt(pid,lname){var rows=S.world.forces[pid]||[];
+ for(var i=0;i<rows.length;i++){var r=rows[i];
+  if(/NPC/i.test(r[1]||'')&&(!lname||r[2]===lname))return {name:r[0],desc:r[1]};}
+ return null;}
+function npcFactionOf(desc){var m=(desc||'').match(/NPC,\s*([^·]+)/);return m?m[1].trim():null}
+function npcWeaponFor(facId){
+ var ws=(D.weapons||[]).filter(function(w){return w.faction===facId});
+ if(!ws.length)ws=(D.weapons||[]).filter(function(w){return !w.faction});
+ ws=ws.slice().sort(function(a,b){return (a.pc||0)-(b.pc||0)});
+ var w=ws[0]||{n:'Rending Claws',cat:'WEAPON',d:'Phys 2 - Melee'};
+ return {n:w.n,cat:'WEAPON',d:w.d};}
+/* seed both sides: your committed force's models vs a detachment generated from
+   the local NPC force's faction roster. Enemy models persist via c.gen (SAVE.relink). */
+function seedCombat(t,pid,l,npcId,force){
+ if(!force)return;
+ var mine=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'});
+ if(!mine.length)return;
+ var C={},pools={};
+ mine.forEach(function(m){var p=(m.w||'1/1').split('/');
+  C[m.id]={w:[parseInt(p[0],10)||1,parseInt(p[1],10)||1],conds:[],party:force.n,model:m,
+   armour:(m.loadout&&m.loadout.armour&&m.loadout.armour.it)?m.loadout.armour.it.def:null};});
+ pools[force.n]=force.ap;
+ var npc=npcId?D.npcs_alpha.filter(function(n){return n.id===npcId})[0]:null;
+ var host=npc?{name:npc.name.split(',')[0]+"'s host",faction:npc.faction}:null;
+ if(!host){var fr=npcForceAt(pid,l.name);if(fr)host={name:fr.name,faction:npcFactionOf(fr.desc)};}
+ var fac=host&&host.faction?facByName(host.faction):null;
+ if(!fac)return;                                     // nobody garrisons this ground → social thread
+ var pool=(fac.models||[]).filter(function(m){return m.cls==='Core'});
+ if(!pool.length)pool=fac.models||[];if(!pool.length)return;
+ var n=Math.max(2,Math.min(4,mine.length)),ap=0,wep=npcWeaponFor(fac.id);
+ for(var i=0;i<n;i++){var bm=pool[i%pool.length];
+  var gen={id:'e'+i,n:bm.n+' '+(i+1),cls:bm.cls,pc:bm.pc,spd:bm.sp,
+   sub:bm.n+' — hostile',sl:[{k:'WEAPON',it:{n:wep.n,cat:'WEAPON',d:wep.d}}]};
+  C['e'+i]={w:[bm.w,bm.w],conds:[],party:host.name,model:gen,gen:gen,armour:null};
+  ap+=AP(bm.pc);}
+ pools[host.name]=ap;
+ if(t.forces.indexOf(host.name)<0)t.forces.push(host.name);
+ t.seedState={pools:pools,combatants:C,joined:false};
+}
 /* start a thread at a location; a public thread enters the location's history */
 function startThread(pid,l,type,npcId){var loc=fPl(pid).p.name+' · '+l.name;
  var am=activeModel(),force=S.forces.filter(function(f){return f.lead===am.id})[0];
  var fname=force?force.n:null;
  if(fname){var other=threadOfForce(fname);if(other){T(fname+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}}
  var id=type.toLowerCase().slice(0,3)+'_'+l.id+'_'+S.threads.length;
- S.threads.push({id:id,type:type.toUpperCase(),n:type+' at '+l.name,loc:loc,turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',about:'You opened a '+type+' at '+l.name+'. '+(threadSummary(type.toUpperCase())),forces:fname?[fname]:[],npc:npcId||null});
+ var t={id:id,type:type.toUpperCase(),n:type+' at '+l.name,loc:loc,pl:pid,lid:l.id,turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',about:'You opened a '+type+' at '+l.name+'. '+(threadSummary(type.toUpperCase())),forces:fname?[fname]:[],npc:npcId||null};
+ if(t.type==='SKIRMISH'||t.type==='INVASION')seedCombat(t,pid,l,npcId,force);
+ S.threads.push(t);
  var key=pid+'/'+l.id;if(!S.world.history[key])S.world.history[key]=[];
  S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
  T(type+' thread opened at '+l.name+(fname?' — '+fname+' committed':'')+'. Now in the location\'s public record.');
@@ -1479,25 +1612,28 @@ if(S.pos.pl===pl){if(S.pos.sp===sp)return null;return{m:'g',p:tv.same_planet.pos
 if(f.s.id===t.s.id)return S.ships.sys?{m:'s',p:tv.same_sector.posts,c:0,d:'In-system course — '+S.ships.sys}:{m:'x',d:'Requires: '+tv.same_sector.requires};
 if(f.g.id===t.g.id)return S.ships.warp?{m:'s',p:tv.cross_sector_same_segmentum.posts,c:0,d:'Warp jump'}:{m:'c',p:tv.cross_sector_same_segmentum.posts,c:tv.cross_sector_same_segmentum.charter_cost,d:'Chartered warp passage — cross-sector'};
 return S.ships.warp?{m:'s',p:tv.cross_segmentum.posts,c:tv.cross_segmentum.own_vessel_toll,d:'Warp crossing + Segmentum toll'}:{m:'c',p:tv.cross_segmentum.posts,c:tv.cross_segmentum.charter_cost,d:'Chartered warp crossing + Segmentum toll'}}
-function arrTxt(p){if(!p.ruler)return null;var a=D.travel.arrival_at_controlled_planet;
-if(p.ruler.allegiance===S.player.allegiance)return{k:'f',t:'CONTROLLED — '+p.ruler.faction+'. '+a.friendly};
-return{k:'h',t:'CONTROLLED — '+p.ruler.faction+'. '+a.hostile}}
-/* T-RIFT-1b felt hooks: scale by the player's Rift standing at the destination /
-   current location. Free-mover / adrift / pre-founding cases fall through to base. */
-function riftPassage(base,pl){var d=fPl(pl);if(!d||!S.player)return base;
-  return RIFT.travelCost(base, RIFT.forceOf(S.player.faction,D), d.p, d.s, D);}
-function riftPrice(pc){var d=fPl(S.pos.pl);if(!d||!S.player)return pc;
-  return RIFT.reqPrice(pc, RIFT.forceOf(S.player.faction,D), d.p, d.s, D);}
+function arrTxt(p){var r=pRuler(p);if(!r)return null;var a=D.travel.arrival_at_controlled_planet;
+if(r.allegiance===S.player.allegiance)return{k:'f',t:'CONTROLLED — '+r.faction+'. '+a.friendly};
+return{k:'h',t:'CONTROLLED — '+r.faction+'. '+a.hostile}}
+/* T-RIFT-1b: your Force's Rift standing at a planet — overlay-aware sector owner */
+function riftStandingAt(pid){var f=fPl(pid);if(!f)return 'neutral';
+  var force=RIFT.forceOf(FAC(S.player.faction).name,D);
+  return RIFT.standing(force,f.p,{owner:secOwner(f.s)},D);}
+function passageCostTo(pl,tier,force){
+  var base=THREAD.passageCost(D,tier,THREAD.forcePC(force),false);
+  return RIFT.applyTravel(base,riftStandingAt(pl),D);}
+function riftMark(st){return st==='home'?' · ▼ Rift-home −25%':st==='away'?' · ▲ Rift-away +25%':''}
 function passagePreview(pl,sp){
   var tier=travelTier(S.pos.pl,S.pos.sp,pl,sp);
   var force=S.roster.filter(function(m){return m.st==='DEPLOYED'});
-  return {tier:tier, cost:riftPassage(THREAD.passageCost(D,tier,THREAD.forcePC(force),false),pl), words:(D.travel[tier]||{}).words||0};
+  var st=riftStandingAt(pl);
+  return {tier:tier, cost:passageCostTo(pl,tier,force), words:(D.travel[tier]||{}).words||0, standing:st};
 }
 function travel(pl,sp){var r=route(pl,sp);if(!r||r.m==='x'){T(r?r.d:'Already there.');return}
   if(inTransit()){T('Already in transit.');return}
   var tier=travelTier(S.pos.pl,S.pos.sp,pl,sp);
   var force=S.roster.filter(function(m){return m.st==='DEPLOYED'});
-  var cost=riftPassage(THREAD.passageCost(D,tier,THREAD.forcePC(force),false),pl);
+  var cost=passageCostTo(pl,tier,force);
   if(cost>S.cur){T('Passage costs '+cost+' '+curName()+' — not enough.');return}
   S.cur-=cost;
   var t=THREAD.create({id:'travel_'+Date.now(),type:'TRAVEL',
@@ -1538,7 +1674,7 @@ z.appendChild(sectorChart(f.s));
 var g4=E('div','mg');
 (f.s.planets||[]).forEach(function(pl){var h=S.pos.pl===pl.id&&!inTransit();var r=route(pl.id,pl.locations[0].id);
 var pp=(!h&&r&&r.m!=='x')?passagePreview(pl.id,pl.locations[0].id):null;
-var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pl.ruler?pl.ruler.allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pl.ruler?pl.ruler.faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(pp?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+pp.cost+'⛁ · '+pp.words+'w</div>':''));
+var d=E('div','mn'+(pl.id===MV.pl?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn"><span class="dot '+(pRuler(pl)?pRuler(pl).allegiance:'con')+'"></span>'+pl.name+'</div><div class="pt">'+pl.type+' · '+(pRuler(pl)?pRuler(pl).faction:'Contested')+'</div><div style="margin-top:5px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span></div>'+(pp?'<div class="pt mono" style="margin-top:3px">'+r.d+' · '+pp.cost+'⛁ · '+pp.words+'w</div>':''));
 d.onclick=function(){MV.pl=pl.id;MV.lc=pl.locations[0].id;MV.spaceSel=false;MV.lv='planet';rMap()};g4.appendChild(d)});
 z.appendChild(g4);
 var sp=f.s.space,inVoid=(S.pos.void===f.s.id);
@@ -1576,7 +1712,7 @@ var fr=forcesAt(pl.id),hi=histAt(pl.id,l.id),np=npcsAt(pl.id,l.id);
 var _lt=LT(l.type)||{name:l.type},_dz=doorsAt(l),_cd=CD(l.condition)||{},isOrbit=(l.tier==='orbit');
 var frLoc=fr.filter(function(x){return x[2]===l.name});
 var h2='<h3>'+pl.name+' — '+pl.type+'</h3>';
-h2+='<div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pl.ruler?(pl.ruler.allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pl.ruler?'RULED: '+pl.ruler.faction:'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+readStatus(f2.s.status)+'</span></div>';
+h2+='<div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pRuler(pl)?(pRuler(pl).allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pRuler(pl)?'RULED: '+pRuler(pl).faction+(S.world.holdings&&S.world.holdings.indexOf(pl.id)>=0?' (YOURS)':''):'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+readStatus(f2.s.status)+'</span></div>';
 h2+='<div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">'+pl.desc+'</div>';
 /* the named-location page — broken into sections */
 h2+='<div class="locpage"><div class="locimg">'+l.name+'<span>location image — art slot</span></div><div class="locbody">';
@@ -1613,7 +1749,7 @@ if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){
   tm.appendChild(row)};}
 var r=route(pl.id,l.id);
 if(r&&!inTransit()){var pp=(r.m!=='x')?passagePreview(pl.id,l.id):null;
-p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(pp?' · <span class="mono">'+pp.cost+' '+curName()+'</span> · <span class="mono">'+pp.words+' words</span>':'')+'</div>');
+p.insertAdjacentHTML('beforeend','<div class="route"><b>ROUTE</b> — <b>'+fLoc(S.pos.pl,S.pos.sp).name+', '+fPl(S.pos.pl).p.name+'</b> → <b>'+l.name+', '+pl.name+'</b><br>'+r.d+(pp?' · <span class="mono">'+pp.cost+' '+curName()+'</span> · <span class="mono">'+pp.words+' words</span>'+riftMark(pp.standing):'')+'</div>');
 var at=arrTxt(pl);if(at&&S.pos.pl!==pl.id)p.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;margin-top:5px;color:'+(at.k==='h'?'var(--blh)':'var(--vdh)')+'">'+at.t+'</div>');
 var bx=E('div');bx.style.cssText='display:flex;gap:8px;margin-top:10px';
 if(r.m==='x'){var nb=E('button','btn',r.d);nb.disabled=true;bx.appendChild(nb)}
@@ -1667,6 +1803,9 @@ function exitThread(t){
     T('You abort the passage'+(dn?' to '+dn:'')+' — '+refund+' '+curName()+' refunded.');
     go('threads');rTL();return;
   }
+  if(t.done){S.threads=S.threads.filter(function(x){return x.id!==t.id});   // concluded → free exit
+    T('You leave the field of "'+t.n+'" — the matter is settled.');
+    go('threads');rTL();return;}
   var joined=!!(t.state&&t.state.joined),duel=/duel/i.test(t.n||'');
   if(!joined){S.threads=S.threads.filter(function(x){return x.id!==t.id});
     T('You withdraw from the '+t.type+' at '+t.loc+' — no cost; hostilities had not begun.');
@@ -1681,6 +1820,74 @@ function exitThread(t){
   if(caught&&!duel){S.threads.push({id:'pursuit_'+S.threads.length,type:t.type,n:'Pursuit at '+t.loc,loc:t.loc,turn:'you',initiator:"Sskarith's Brood (in pursuit)",about:'The brood was fast enough to run down your retreat. A fresh Warzone '+t.type+' opens under pursuit — the fight you fled, now on worse ground.',forces:["Sskarith's Brood"]});
     msg+=' They caught your retreat — a new Warzone '+t.type+' opens.';}
   T(msg);go('threads');rTL();
+}
+/* ── T-TERR-1 slice A: a thread that reaches an outcome is DONE — stamp it,
+   report it, sync wounds home to the roster, release the force, mark the record ── */
+function myForceNames(){return S.forces.map(function(f){return f.n})}
+function concludeThread(t,oc){
+ t.done={kind:oc.kind,victor:oc.victor||null,defeated:oc.defeated||[],at:Date.now()};
+ var C=(t.state&&t.state.combatants)||{};
+ Object.keys(C).forEach(function(id){var c=C[id];if(c.gen)return;   // generated hostiles have no roster row
+  var m=S.roster.filter(function(r){return r.id===id})[0];if(!m||!c.w)return;
+  m.w=c.w[0]+'/'+c.w[1];
+  if(c.dead){m.st='DEAD';m.loc=(t.loc||'the field')+' — field'+(c.permaDeath?', no revival':', recoverable');}});
+ var mineWon=!!(oc.victor&&myForceNames().indexOf(oc.victor)>=0);
+ var line=oc.kind==='accord'?'🕊 RESOLUTION — terms struck. The accord stands and this thread is closed.'
+  :oc.kind==='mutual'?'⚔ RESOLUTION — mutual annihilation. No one holds the field.'
+  :'⚔ RESOLUTION — '+(oc.defeated||[]).join(', ')+' broken to the last model. <b>'+oc.victor+'</b> holds the field.';
+ if(!t.posts)t.posts=[];
+ t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:line});
+ var key=(t.pl&&t.lid)?t.pl+'/'+t.lid:null;
+ if(key&&S.world.history){
+  S.world.history[key]=(S.world.history[key]||[]).filter(function(h){return !(h.indexOf(t.type)===0&&h.indexOf('ACTIVE (you)')>=0)});
+  S.world.history[key].unshift(t.type+' — '+t.n+' · concluded, '+(oc.kind==='accord'?'accord':mineWon?'victory':oc.victor?'defeat':'mutual ruin'));}
+ var scaleKey=t.type==='SKIRMISH'?'Skirmish':t.type==='INVASION'?'Invasion':t.type==='DIPLOMACY'?'Diplomacy':null;
+ var sc=scaleKey?(D.galaxy.thread_scales||{})[scaleKey]:null;
+ if(sc&&sc.effect&&t.pl){var fp=fPl(t.pl);if(fp){var st=S.world.stats[fp.s.id]=S.world.stats[fp.s.id]||{};
+  if(typeof sc.effect.conflict==='number')st.conflict=Math.max(0,(st.conflict||0)+sc.effect.conflict);
+  if(typeof sc.effect.prosperity==='number')st.prosperity=Math.max(0,(st.prosperity||0)+sc.effect.prosperity);}}
+ captureOnVictory(t,oc,mineWon);
+ S.world.log=S.world.log||[];
+ S.world.log.unshift(nowStamp()+' — '+t.n+' concluded: '+(oc.kind==='accord'?'accord struck':mineWon?'victory':oc.victor?('defeat — '+oc.victor+' holds the field'):'mutual ruin')+'.');
+ persist();
+}
+/* ── T-TERR-1 slice B: territory. Canon rulers are the baseline map; the save-state
+   overlay S.world.rulers records flips, S.world.holdings is what YOU hold. ── */
+function pRuler(pl){var ov=S.world&&S.world.rulers&&S.world.rulers[pl.id];return ov||pl.ruler||null}
+function crownOf(facId){var f=FAC(facId);if(!f)return null;var r=null;
+ D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){
+  if(!r&&p.crown&&p.ruler&&p.ruler.faction===f.name)r=p.id})})})});return r}
+/* where a new Commander of this faction wakes: crown world, first surface location */
+function crownStart(facId){var pid=crownOf(facId);
+ if(!pid)return {pl:'vigilus',sp:'ashravine'};        // canon guarantees a crown; belt-and-braces
+ var p=fPl(pid).p,l=(p.locations||[]).filter(function(x){return x.tier!=='orbit'})[0];
+ return l?{pl:pid,sp:l.id}:{pl:'vigilus',sp:'ashravine'};}
+function secOwner(s){ // absolute majority of planet rulers (overlay-aware); untouched sectors keep the canon string
+ if(!(S.world&&S.world.rulers))return s.owner;
+ var touched=(s.planets||[]).some(function(p){return S.world.rulers[p.id]});
+ if(!touched)return s.owner;
+ var by={},n=(s.planets||[]).length;
+ (s.planets||[]).forEach(function(p){var r=pRuler(p);if(r&&r.faction)by[r.faction]=(by[r.faction]||0)+1});
+ for(var f in by)if(by[f]*2>n){var al=null;
+  (s.planets||[]).some(function(p){var r=pRuler(p);if(r&&r.faction===f){al=r.allegiance;return true}return false});
+  return (al==='imperial'?'Imperial':al==='chaos'?'Chaos':'Xenos')+' - '+f;}
+ return 'Contested';
+}
+function captureOnVictory(t,oc,mineWon){
+ var cap=(D.rules.territory&&D.rules.territory.capture)||{thread_type:'INVASION'};
+ if(!mineWon||!t.pl||t.type!==cap.thread_type)return;
+ var fp=fPl(t.pl);if(!fp)return;
+ var me=FAC(S.player.faction),cur=pRuler(fp.p);
+ if(cur&&cur.faction===me.name)return;               // already yours
+ S.world.rulers=S.world.rulers||{};
+ S.world.rulers[t.pl]={allegiance:me.allegiance,faction:me.name};
+ S.world.holdings=S.world.holdings||[];
+ if(S.world.holdings.indexOf(t.pl)<0)S.world.holdings.push(t.pl);
+ t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+  body:'🏴 CONQUEST — '+fp.p.name+' falls to '+me.name+'. The planet enters your holdings; its tithe now flows to you.'});
+ S.world.log=S.world.log||[];
+ S.world.log.unshift(nowStamp()+' — CONQUEST: '+fp.p.name+' taken — it now tithes to your coffers.');
+ T('🏴 '+fp.p.name+' is yours.');
 }
 function threadHeader(t){var h=E('div','thhdr');
  h.innerHTML='<div class="thhdr-top"><span class="tp '+t.type+'">'+t.type+'</span><h3>'+t.n+'</h3></div>'
@@ -1755,7 +1962,7 @@ function threadBlockBuilder(t,party){
   var pool=(t.state.pools&&t.state.pools[party]!=null)?t.state.pools[party]:null;
   if(pool!=null)box.insertAdjacentHTML('beforeend','<div class="apt"><span style="font-size:11px;color:var(--dim)">AP pool: <span class="mono">'+pool+'</span></span><span class="n" id="bbtot">0 AP</span></div>');
   function effFor(a,tgt){
-    if(a.group==='e')return {kind:'damage',amount:damageOf(a.item),to:tgt,element:THREAD.elementOf(a.item),noRevival:THREAD.isNoRevival(a.item,D)};
+    if(a.group==='e')return {kind:'damage',amount:damageOf(a.item),to:tgt,element:THREAD.elementOf(a.item),noRevival:THREAD.isNoRevival(a.item,D),weapon:a.item.n};
     if(a.group==='b')return {kind:'band',to:tgt,who:a.actor};
     if(a.group==='y'||a.group==='a')return {kind:'cond',add:a.action,to:a.actor};
     if(a.group==='t'){
@@ -1898,7 +2105,7 @@ function bfDeployUI(t,party){
   el.innerHTML='<h3>Battlefield · Deployment · '+party+'</h3><div class="bf-wrap">'+bh+panel+'</div>';
   el.addEventListener('click',function(ev){
     var b=ev.target.closest('[data-dm],[data-dx],[data-lockin]');if(!b)return;
-    if(b.hasAttribute('data-lockin')){st.phase='battle';st.locked={loadout:true};t._bfd=null;
+    if(b.hasAttribute('data-lockin')){st.phase='battle';st.joined=true;st.locked={loadout:true};t._bfd=null;
       T('Lines locked — battle begins. Loadout & roster frozen until it ends.');return openT(t.id);}
     if(b.hasAttribute('data-dm')){ui.sel=(ui.sel===b.getAttribute('data-dm'))?null:b.getAttribute('data-dm');return openT(t.id);}
     if(b.hasAttribute('data-dx')){var x=+b.getAttribute('data-dx'),y=+b.getAttribute('data-dy');
@@ -1964,7 +2171,7 @@ function bfCombatUI(t,party){
     if(b.hasAttribute('data-rma')){ui.acts.splice(+b.getAttribute('data-rma'),1);return openT(t.id);}
     if(b.hasAttribute('data-atk')){var it=bfWeaponsOf(C[ui.sel])[+b.getAttribute('data-atk')];
       if(it&&ui.tgt){var d2=THREAD.cheb(posOf(ui.sel),posOf(ui.tgt)),bnd2=THREAD.bandOf(d2);
-        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2])ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D)}});}
+        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2])ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),weapon:it.n}});}
       return openT(t.id);}
     if(b.hasAttribute('data-bx')){var x=+b.getAttribute('data-bx'),y=+b.getAttribute('data-by');
       if(ui.sel&&reach[x+','+y]){ui.moves[ui.sel]={x:x,y:y};return openT(t.id);}}
@@ -1988,8 +2195,17 @@ function threadView(V,t){
       (p.block?'<div class="ab"><div class="ah">Action Block</div><ul>'+p.block.map(function(b){
         return '<li><b>'+b.action+'</b>'+(b.cost?' ('+b.cost+' AP)':'')+'</li>'}).join('')+'</ul></div>':'')+'</div>');
   });
-  var comp=threadComposer(t,function(){});
   var party=partyOf(t);
+  if(t.done){                                        // T-TERR-1: a concluded thread is read-only
+    V.appendChild(E('div','card','<h3>'+(t.done.kind==='accord'?'🕊 Accord':'⚔ Concluded')+'</h3><div style="font-size:12px;color:var(--dim)">'
+      +(t.done.kind==='accord'?'Terms were struck and hold.':t.done.victor?('<b>'+t.done.victor+'</b> holds the field.'):'Mutual annihilation — no one holds the field.')
+      +' This thread is closed to new posts.</div>'));
+    var wrapD=E('div','tw solo');wrapD.appendChild(scroll);V.appendChild(wrapD);
+    var xbd=E('button','btn gh','Leave the field');xbd.style.marginTop='10px';
+    xbd.onclick=function(){exitThread(t)};V.appendChild(xbd);
+    return;
+  }
+  var comp=threadComposer(t,function(){});
   var cat=THREAD.catalog(t,t.state,party,D);
   var builder=(cat.length && t.type!=='TRAVEL' && !t.state.board)?threadBlockBuilder(t,party):null;  // grid combat uses the board composer, not the dropdown
   if(builder)comp.el.appendChild(builder.el);
@@ -2024,7 +2240,9 @@ function threadView(V,t){
     if(t.state.board){t._bf={sel:null,tgt:null,moves:{},acts:[]};   // clear staging; refresh AP for the next turn
       if(t.state.poolsBase&&t.state.poolsBase[party]!=null)t.state.pools[party]=t.state.poolsBase[party];
       npcRespond(t,party);}   // T-NPC-2b: the enemy side answers — it fights back
-    openT(t.id);T('Posted to '+t.n+'.');};
+    var oc=THREAD.outcome(t,t.state);                // T-TERR-1: does this post END it?
+    if(oc)concludeThread(t,oc);
+    openT(t.id);T(oc?('Thread concluded — '+(t.done.victor||'no victor')+'.'):'Posted to '+t.n+'.');};
   if(isCombat){
     if(t.state.board)V.appendChild(t.state.phase==='deploy'?bfDeployUI(t,party):bfCombatUI(t,party));  // E: deploy then D3 battle
     var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);lf.appendChild(comp.el);
@@ -2199,6 +2417,8 @@ function init(){
   S.active=S.active||'kane';S.cart=S.cart||[];
   S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
   if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch||Date.now();
+  if(!S.world.rulers)S.world.rulers={};                                  // T-TERR-1: older saves
+  if(!S.world.holdings)S.world.holdings=[crownOf(S.player.faction)].filter(Boolean);
   var _wc=WORLD.catchUp(S,D,Date.now());
   S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
  }
@@ -2257,7 +2477,7 @@ function commitFounding(cc){
  roster.forEach(function(mm){migrateLoadout(mm,F.id);});
  S={
   player:{name:cc.nm.trim(),allegiance:A,faction:F.id,model:m.n,cmdRank:1,mdlRank:1,w:w+'/'+w,xp:'0/40'},
-  pos:{pl:'vigilus',sp:'ashravine'},tr:null,   // Pass 2: seed faction homeworld
+  pos:crownStart(F.id),tr:null,                // you wake on your faction's crown world
   cur:cur,infl:eco.influence,army:0,dom:eco.dominance,dru:false,vess:false,
   ships:{sys:null,warp:null},inv:[],convos:[],
   roster:roster,
@@ -2267,6 +2487,7 @@ function commitFounding(cc){
   time:{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60,lastTick:Date.now()},
   npcState:{},active:'cmdr',cart:[]
  };
+ S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
  saveProfile(S);
  T(commander.n+' is founded. The saga begins.');
  enterShell(S);
@@ -2470,7 +2691,9 @@ function openEntity(it,ctx){mkEntity();ctx=ctx||{};
  +'<div class="entb"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>'+it.n+'</h3><button class="movbk" id="entx">Close</button></div>'
  +'<span class="pill">'+it.cat+'</span>'
  +'<div class="entrow"><div class="k">Full stats</div><div class="vv">'+itemStatsHTML(it)+'</div></div>'
- +'<div class="entrow"><div class="k">Ownership</div><div class="vv">'+owner+(origin?' · acquired at '+origin:'')+'</div></div>'
+ +'<div class="entrow"><div class="k">Ownership</div><div class="vv">'+owner+(origin?' · acquired at '+(it.origin||origin):'')+'</div></div>'
+ +(it.cat==='WEAPON'?'<div class="entrow"><div class="k">Battle record</div><div class="vv">'+((it.kills||0)>0?('<b style="color:var(--blh)">'+it.kills+'</b> confirmed kill'+(it.kills>1?'s':'')):'<span style="color:var(--dim)">No confirmed kills yet.</span>')+'</div></div>':'')
+ +(it.cat==='ARMOUR'?'<div class="entrow"><div class="k">Battle record</div><div class="vv">'+((it.absorbed||0)>0?('<b style="color:var(--vdh)">'+it.absorbed+'</b> damage absorbed'):'<span style="color:var(--dim)">Unblooded plate.</span>')+'</div></div>':'')
  +'<div class="entrow"><div class="k">Threads it has seen</div><div class="vv">'+(threads.length?threads.map(function(t){return '· '+t}).join('<br>'):'<span style="color:var(--dim)">None recorded yet.</span>')+'</div></div>'
  +(ctx.onChange?'<div style="display:flex;gap:8px;margin-top:4px"><button class="btn gh sm" id="entchg">Change this slot</button></div>':'')
  +'</div></div>';
@@ -2572,7 +2795,9 @@ function updateHUD(){if(!HUD||!S)return;var m=activeModel();var sig=m.n.split(' 
 /* ─── v12: requisition — cart, catalogs, per-door renderers ─── */
 var CART=null;
 function mkCart(){if(CART)return;CART=document.createElement('div');CART.id='cart';document.body.appendChild(CART)}
-function cartAdd(it,origin){S.cart=S.cart||[];S.cart.push({n:it.n,cat:it.cat,d:it.d,pc:it.pc||0,origin:origin});renderCart();T(it.n+' added to cart.')}
+/* T-RIFT-1b: cross-Rift supply lines cost — prices at an away-side door run +25% */
+function reqPrice(pc){return RIFT.applyReq(pc||0,riftStandingAt(S.pos.pl),D)}
+function cartAdd(it,origin){S.cart=S.cart||[];S.cart.push({n:it.n,cat:it.cat,d:it.d,pc:reqPrice(it.pc),origin:origin});renderCart();T(it.n+' added to cart.')}
 function cartTotal(){return (S.cart||[]).reduce(function(a,x){return a+(x.pc||0)},0)}
 function renderCart(){mkCart();var c=S.cart||[];if(!c.length){CART.classList.remove('on');CART.innerHTML='';return}
  CART.innerHTML='<h4>Checkout — '+c.length+' item'+(c.length>1?'s':'')+'</h4>'
@@ -2588,13 +2813,17 @@ function renderCart(){mkCart();var c=S.cart||[];if(!c.length){CART.classList.rem
 /* v1.9: door catalogs drawn from the full migrated canon, filtered to the
    player's faction + faction-null "common" gear. shop = weapons+items+abilities,
    altar = casts, reliquary = the LEGENDARY entries (one weapon + one item per faction). */
-function doorCatalog(kind){var pf=(S.player&&S.player.faction)||null;
+/* T-ECO-1 prereq: a door sells the RULING faction's arsenal, not the visitor's.
+   Contested ground stocks only common gear; conquest changes what's on the shelves. */
+function doorFactionId(){var f=fPl(S.pos.pl),r=f?pRuler(f.p):null;
+ var fac=r?facByName(r.faction):null;return fac?fac.id:null}
+function doorCatalog(kind){var pf=doorFactionId();
  function pick(arr){return (arr||[]).filter(function(it){return it.faction==null||it.faction===pf})
-   .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:riftPrice(it.pc)}})}
+   .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}})}
  if(kind==='shop')return pick(D.weapons).concat(pick(D.items)).concat(pick(D.abilities));
  if(kind==='altar')return pick(D.casts);
  if(kind==='reliquary')return (D.legendaries||[]).filter(function(it){return it.faction===pf})
-   .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:riftPrice(it.pc)}});
+   .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}});
  return []}
 function sellPrice(it){var pc=it.pc||0;if(!pc){var c=doorCatalog('shop').concat(doorCatalog('altar')).filter(function(x){return x.n===it.n})[0];pc=c?c.pc:6}return Math.max(1,Math.round(pc*0.6))}
 function doorSells(kind,cat){if(kind==='shop')return cat==='WEAPON'||cat==='ITEM'||cat==='ABILITY';if(kind==='altar')return cat==='CAST';if(kind==='reliquary')return cat==='LEGENDARY';return false}
@@ -2607,7 +2836,7 @@ function renderDoor(dr,h){var c=E('div','card');
   var cat=doorCatalog(kind);
   cat.forEach(function(it){var r=E('div','shopc');
    r.innerHTML='<div class="clk" data-ent="1"><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+annotate(it.d)+'</div></div>';
-   var rr=E('div',null,'<span class="price">'+it.pc+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px';
+   var rr=E('div',null,'<span class="price">'+reqPrice(it.pc)+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px';
    var bt=E('button','btn gh sm','Add to cart');bt.onclick=function(){cartAdd(it,dr.name)};
    rr.appendChild(bt);r.appendChild(rr);
    r.querySelector('[data-ent]').onclick=function(){openEntity(it,{owner:'This door ('+dr.name+')',origin:h.name,threads:[]})};
@@ -2693,7 +2922,7 @@ function renderForge(c,dr){
   var cost=base+st.c;if(S.cur<cost){T('Not enough '+curName()+'.');return}
   S.cur-=cost;S.inv.splice(S.inv.indexOf(x),1);S.inv.push({n:n,cat:'WEAPON',d:'Named '+x.n+' - '+st.t+' I',pc:(x.pc||6)+st.c,origin:dr.name});rW();rShop();T('The forge tolls once. "'+n+'" is made.')}}
 function renderArmoury(c,dr){
- var fac=S.player.faction;var who=(sel||S.roster[0]);
+ var fac=doorFactionId();var who=(sel||S.roster[0]);   // the ruler's plate, not yours
  var list=(D.armour||[]).filter(function(p){return p.faction===fac||p.faction===null;});
  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Buy and fit Armour. Defense is per-element ('+ELEM6.map(function(e){return ELAB[e]}).join(' ')+'); a hit deals max(0, damage − Defense). A <b>0</b> means that element bypasses the plate.</div>');
  var byTier={};list.forEach(function(p){(byTier[p.tier]=byTier[p.tier]||[]).push(p)});
@@ -2701,9 +2930,10 @@ function renderArmoury(c,dr){
   c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:10px"><h5>'+tier.toUpperCase()+(tier==='default'?' — issued by class':'')+'</h5></div>');
   ps.forEach(function(p){var r=E('div','shopc');
    r.innerHTML='<div><b>'+p.n+'</b>'+(p.cls?' <span class="pill">'+p.cls+'</span>':'')+'<div class="d">'+armLine(p.def)+'</div><div class="d" style="color:var(--dim)">'+annotate(p.d||'')+'</div></div>';
-   var rr=E('div',null,'<span class="price">'+p.pc+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px;gap:4px';
-   var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<p.pc){T('Not enough '+curName()+'.');return}S.cur-=p.pc;S.inv.push(JSON.parse(JSON.stringify(p)));rW();rShop();T('Bought '+p.n+'.')};
-   var ft=E('button','btn sm','Buy & Fit');ft.onclick=function(){if(!who){T('No model selected.');return}if(who.st==='DEPLOYED'){T(who.n.split(',')[0]+' is in an active thread — cannot refit.');return}if(S.cur<p.pc){T('Not enough '+curName()+'.');return}S.cur-=p.pc;var copy=JSON.parse(JSON.stringify(p));if(who.loadout.armour.it)S.inv.push(who.loadout.armour.it);who.loadout.armour.it=copy;rW();rShop();T(p.n+' fitted to '+who.n.split(',')[0]+'.')};
+   var pcR=reqPrice(p.pc);
+   var rr=E('div',null,'<span class="price">'+pcR+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px;gap:4px';
+   var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<pcR){T('Not enough '+curName()+'.');return}S.cur-=pcR;var cp=JSON.parse(JSON.stringify(p));cp.origin=fLoc(S.pos.pl,S.pos.sp).name;S.inv.push(cp);rW();rShop();T('Bought '+p.n+'.')};
+   var ft=E('button','btn sm','Buy & Fit');ft.onclick=function(){if(!who){T('No model selected.');return}if(who.st==='DEPLOYED'){T(who.n.split(',')[0]+' is in an active thread — cannot refit.');return}if(S.cur<pcR){T('Not enough '+curName()+'.');return}S.cur-=pcR;var copy=JSON.parse(JSON.stringify(p));copy.origin=fLoc(S.pos.pl,S.pos.sp).name;if(who.loadout.armour.it)S.inv.push(who.loadout.armour.it);who.loadout.armour.it=copy;rW();rShop();T(p.n+' fitted to '+who.n.split(',')[0]+'.')};
    rr.appendChild(bt);rr.appendChild(ft);r.appendChild(rr);c.appendChild(r)})});
  var owned=(S.inv||[]).filter(function(it){return it.cat==='ARMOUR'});
  if(owned.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — buys armour at 60%</h5></div>');
@@ -2773,7 +3003,7 @@ function sectorChart(sec){
  ctx.fillStyle='rgba(176,141,62,.5)';ctx.font='11px ui-monospace,monospace';ctx.textAlign='center';
  ctx.fillText(sec.name.toUpperCase(),cx,cy+4);
  /* planet nodes */
- nodes.forEach(function(n){var col=ALCOL[n.pl.ruler?n.pl.ruler.allegiance:'con'];
+ nodes.forEach(function(n){var col=ALCOL[pRuler(n.pl)?pRuler(n.pl).allegiance:'con'];
   var here=n.pl.id===S.pos.pl;
   ctx.beginPath();ctx.arc(n.x,n.y,here?13:9,0,Math.PI*2);
   ctx.fillStyle=col+'22';ctx.fill();
