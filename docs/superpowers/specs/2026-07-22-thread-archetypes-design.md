@@ -385,3 +385,17 @@ Seams that exist: mission board ("Available missions at reachable locations"), a
 **Exclusivity:** Consecration = order-aligned only; Desecration = Chaos/dark only; other 6 universal. OPEN: also add one signature mission per sub-faction (like doors), or allegiance-gate only?
 **Tracking:** extend the thread board into a Mission Log — each accepted mission is a thread with `objective` state (target · progress · round-cap · reward) + progress meter; open missions also on the location panel; resolves via concludeThread (effect + reward).
 **OPEN for Daak:** (1) exclusivity depth (allegiance-gate vs per-sub-faction signature missions); (2) do the 8 objectives land or reshape any.
+
+### D12.1 — Mission SCOPE (Daak brainstorm 2026-07-22, build-wide-then-narrow)
+**Universal pool = canon 8 + 6 new, by family:**
+- KILL: Purge · Bounty Hunt (kill a named model at a named location) · Kill-Team/Cull (kill a model type X times) · Assassination (1v1, visit the location ALONE, no force) · Liberation (clear a location of all enemies → reverts to normal named location)
+- HOLD: Defend · Blockade(planet) · Evacuation · Rebuild
+- LOGISTICS: Convoy · Trade Haul (haul a GIVEN inventory to a specific vendor/door, sell one-for-one; fail if you can't offload the exact inventory) · Item Request (vendor NPC wants a specific item × qty)
+- RITUAL: Consecration (order) · Desecration (Chaos/dark)
+
+**Modifiers (opt-in at accept → scale reward; stackable):** Understrength (Force PC under a cap) · Lone Wolf (single model) · Low-Tech (Tier-I gear only) · Ironman (deaths = permadeath for the mission) · Blitz (tighter round cap).
+
+**Sub-faction signature missions (20, assistant-designed drafts):**
+Black Legion — The Long War (chained sector raids, escalating reward) · Death Guard — Spread the Rot (raise taint + convert pop→Poxwalkers) · World Eaters — Skulls for the Throne (melee-only kill quota → Dominance) · Thousand Sons — The Forbidden Lore (recover a tome → unlock a Warp Cast) · Emperor's Children — The Perfect Kill (slay a named model, zero allied losses) · Daemons — The Incursion (hold while warp-rift widens → summon) · Astartes — Zone Mortalis (clear a fortress room-by-room + gene-seed) · Astra Militarum — Hold the Line (survive N escalating waves) · Mechanicus — Archeotech Recovery (relic from a Husk → forge materials/tier-III fuel) · Sororitas — Purge of Faith (cleanse a Corrupted location) · Custodes — The Blood Games (duel ladder → rank/renown) · Tyranids — Devour (consume population → Biomass; location dead) · Orks — Da Big Hunt (kill the highest-PC enemy in a sector) · Necrons — Reclaim the Tomb (clear a tomb-location → free Necron models) · Aeldari — The Fated Strike (lore bounty → Souls) · Drukhari — The Slave Raid (capture, not kill, X living models → Influence/Souls) · T'au — The Greater Good (clear + pacify → auxiliaries) · Votann — Settle the Grudge (hunt a Ledger-marked faction → bounty) · GSC — The Uprising (grow cult on a foreign world → trigger rising → free garrison) · Harlequins — The Masque's Tale (hit-and-run, escape uncaught → Masques).
+
+**STATUS: wide-open scope for Daak to narrow.** Nothing locked; Daak to cut/reshape.
