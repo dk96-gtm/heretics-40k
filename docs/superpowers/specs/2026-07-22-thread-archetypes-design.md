@@ -333,7 +333,7 @@ Item tags (11, not forge-gated): Shield, Ward, Regen, Cleanse, Revive, Decoy, Bl
 
 **→ All 20 sub-faction signature doors now have a defined mechanic (T-FAC-1 design complete at the concept level; exact costs/values are tuning).**
 
-### D11 — Every door has 3 tiers + upgrade economy ✅ *(numbers pending Daak lock)*
+### D11 — Every door has 3 tiers + upgrade economy ✅ LOCKED
 **Mechanicus door (Fabricator's Sanctum) LOCKED:** upgrades the tier of any door on the world **at the cost of PC — sacrificing higher-PC models** for the upgrade.
 
 **All doors gain 3 tiers.** Gear doors: tier = max item tier available. Service doors: tier = magnitude of the service.
@@ -364,4 +364,4 @@ Item tags (11, not forge-gated): Shield, Ward, Regen, Cleanse, Revive, Decoy, Bl
 | rarest (reliquary) | 400 | 800 | 1200 | 2000 |
 | throne_room | 200 | 400 | 600 | 1000 |
 
-**Mechanicus** pays the same cost in **PC of sacrificed models** (1 PC = 1 currency). **PROPOSED identity rule:** Mechanicus is the ONLY faction that can raise a door to **Tier III** on a non-Forge/Shrine world (others cap at II there) — pending Daak.
+**Mechanicus** pays the same cost in **PC of sacrificed models** (1 PC = 1 currency). **LOCKED identity rule:** Mechanicus is the ONLY faction that can raise a door to **Tier III** on a non-Forge/Shrine world (every other faction caps at Tier II off those worlds).
