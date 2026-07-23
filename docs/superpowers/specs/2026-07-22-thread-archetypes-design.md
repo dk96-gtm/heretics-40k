@@ -323,3 +323,12 @@ Item tags (11, not forge-gated): Shield, Ward, Regen, Cleanse, Revive, Decoy, Bl
 - **Orks — Da Kustom Mek:** a **gamble forge** — slap a **random** weapon tag on for cheap; may roll a boon or a downside (e.g. Venting). Everyone else forges chosen affinity; Orks roll.
 
 **Civilians:** flat **Sp 2** for ALL (no fleet exceptions). Final: every civilian = `cls:Core, pc:1, w:1, sp:2, sl:1`.
+
+### 8.10 REVISION 4 (Daak 2026-07-22) — final door locks (Sor/Custodes swapped, Orks locked)
+- **Adepta Sororitas — anti-psyker ability:** the door crafts an **equippable ability** that, while equipped, **multiplies the AP cost of any Warp Cast the bearer faces/uses by ×3** (warp-suppression, portable). *(Swapped: taint-lowering moved to Custodes.)*
+- **Adeptus Custodes:** the door lets you **spend currency to lower the world's Taint**. *(Swapped from the Null Sanctum idea.)*
+- **Orks — Da Kustom Mek:** roll a **random tag onto any weapon OR armour** (cheap gamble; may roll a boon or a downside).
+- **Emperor's Children — Chem-Gardens drug list:** LOCKED as in 8.9 (Frenzon/Hypex/Spur/Grave-Lotus/Adrenalight).
+- **Adeptus Mechanicus — Fabricator's Sanctum** (raise the tier of any door on this world): standing from 8.7/8.8 — never objected → treat as locked unless Daak revisits.
+
+**→ All 20 sub-faction signature doors now have a defined mechanic (T-FAC-1 design complete at the concept level; exact costs/values are tuning).**
