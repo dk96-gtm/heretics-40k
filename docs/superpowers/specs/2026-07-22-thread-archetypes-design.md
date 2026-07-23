@@ -66,11 +66,16 @@ A battle ends by one of three outcomes, which form a single escalation ladder �
 **Invasion** — take a whole planet.
 - **Launched from a Major Hub.** Pick a target planet → the Invasion opens.
 - It becomes a set of **open, Raid-like threads** on the planet's named locations, which PCs & NPCs of the **same sub-faction** may join (special case: **Chaos Space Marine sub-factions**, and **the greater Imperium**, may pool at *faction* level, not just sub-faction).
-- **Win condition:** the invading force holds the **majority of CP on the planet** **AND** has **raided the Named Location that holds the planet's Major Hub** → planet control flips to the invader.
-- **Post-win choice** (made only by the commander who *began* the invasion, on entering the freshly-claimed Major Hub):
-  - **Annihilate** — the population is slaughtered: all populations → 0; named locations take a status *(likely `Ruined` — confirm)*; a **rebuild ticker** starts — all doors drop to **tier 0** and must be rebuilt by investing resources; the Major Hub is re-settled at the **new ruling faction's lowest population rank**; skins change to the new faction; the planet must then be governed.
-  - **Govern** — the planet stays as it was (same faction doors, resource tick, population) and becomes the new faction's holding, **keeping the old faction's skin**; the new ruler must manage it.
+- **Win condition:** the invading force holds the **majority of PC on the planet** — i.e. the **largest total model Point Cost present** (the biggest army) — **AND** has **raided the Named Location that holds the planet's Major Hub** → planet control flips to the invader. *(PC = Point Cost, an existing core stat: every model has `pc`; a Force sums it. NOT a new "CP" system — the earlier CP note was a mishear.)*
+- **Post-win choice** (made only by the commander who *began* the invasion, on entering the freshly-claimed Major Hub) — the planet is **kept** either way:
+  - **Annihilate** — the population is slaughtered: all populations → 0; named locations take a status *(likely `Ruined` — confirm)*; a **rebuild ticker** starts — all doors drop to **tier 0** and must be rebuilt by investing resources; the Major Hub is re-settled at the **new ruling faction's lowest population rank**; skins change to the new faction; the planet must then be governed. (Scorched but yours.)
+  - **Govern** — the planet stays as it was (same faction doors, resource tick, population) and becomes the new faction's holding, **keeping the old faction's skin**; the new ruler must manage it. (Intact but foreign.)
 - **Payout:** each battlefield pays out like a Raid; **plus** every Force of the winning faction on-planet that took part in **≥ half the raid threads** receives a **bonus of Influence + Currency + Dominance**, paid the moment the Major Hub choice is made.
+
+**Exterminatus** — the literal **destruction** of a planet: it is **removed from the map**, along with everything on it. A distinct, high-bar invasion mode (NOT the same as Annihilate — Annihilate scorches-but-keeps; Exterminatus deletes).
+- **Declared at a sector throne world's Major Hub**, and only if the declaring commander has enough **Domination**.
+- Spawns an invasion of the target planet with the **special rule: ALL named locations must be captured** (not just PC-majority + Major Hub).
+- Then, at that planet's Major Hub, the invading force **declares Exterminatus** (the method/rite is **different per sub-faction**) → the planet is entirely destroyed and leaves the map.
 
 **Crusade** — the sector-scale version; a major **sub-faction / faction event**.
 - Claim an **entire sector** through multiple Invasions against its planets.
@@ -79,11 +84,16 @@ A battle ends by one of three outcomes, which form a single escalation ladder �
 - **Payout much higher** than a single invasion, on completion.
 - Both factions' PCs & NPCs are present in a sector under crusade; **each faction has its own skin** for the crusade state.
 
-**OPEN / UNDEFINED (flagged for the follow-up discussion):**
-1. **CP is undefined in canon** — the whole invasion pivots on "majority of CP on a planet," but there's no CP system. What is CP, how does it live on/attach to a planet, how do raids shift it, how is "majority" measured?
-2. **"Major Hub" is a new concept** — no such location type exists (23 types, none a hub; closest are the `throne_room` door + `crown` planet flag). Need: one designated Major Hub location per planet + the sector throne-world's main hub.
-3. **Do the old Invasion subtypes collapse?** — Expansion(PvE)/Domination(PvPvE)/PvP look **emergent from who joins**; **Exterminatus == the Annihilate choice**; **Crusade == the sector wrapper**. If so, Invasion is *one* flow, not 4-5 subtypes. (Confirm — this is the larger-picture simplification.)
-4. Defender's side / how an invasion **fails or expires** (time limit? counter-raids to reclaim CP?).
-5. Govern vs Annihilate **trade-off** made explicit (Govern = instant working planet, foreign skin, maybe loyalty/unrest? · Annihilate = scorched, rebuild from 0, but reset to your culture) — is there a loyalty/unrest mechanic on a Governed world, or is the foreign skin purely cosmetic?
-6. Join-eligibility rule (sub-faction vs faction) needs a clean co-belligerence table.
-7. Rebuild ticker specifics (cost/time to bring tier-0 doors back).
+**RESOLVED since first pass:**
+- ~~CP undefined~~ → it's **PC (Point Cost)**, an existing stat. Win = biggest total model PC present + Major Hub raided. No new system.
+- **Invasion subtype structure** clarified: PvE/PvP/Domination = **emergent from who joins**; **Annihilate/Govern = post-win choice** (planet kept); **Exterminatus = a separate high-bar invasion mode** (destroys the planet); **Crusade = the sector wrapper**. So Invasion is one flow + one variant (Exterminatus) + one wrapper (Crusade).
+
+**OPEN / UNDEFINED (for the follow-up discussion):**
+1. **Major Hub door** — canon has `throne_room` (12 doors, no `major_hub`). Is the **Major Hub just the `throne_room` door** (same thing; sector throne worlds = `throne_room` on a `crown` world), or a new distinct door? *(leaning: reuse `throne_room`.)*
+2. **Govern trade-off needs a tooth** — Govern keeps a working planet with a foreign skin; without a downside (conquered-population loyalty/unrest?) it strictly beats Annihilate. Cosmetic skin only, or a real unrest mechanic?
+3. **Defender's side / failure** — how does an invasion **fail or expire**? Time limit? Can the defender counter-raid to reclaim PC-majority or re-take a raided location?
+4. **Exterminatus edge cases** — what a removed-from-map planet does to (a) the sector's planet count for a Crusade majority, (b) neighbours/travel routes; can a **crown/throne world** itself be Exterminatus'd?
+5. Join-eligibility (sub-faction vs faction, incl. the Chaos-SM / greater-Imperium pooling) → a clean co-belligerence table.
+6. Rebuild ticker specifics (cost/time to bring tier-0 doors back after Annihilate).
+7. Duel hail-with-prizes flow (arena location exists; the wager/challenge mechanic doesn't).
+8. Named-location status on Annihilate = likely **`Ruined`** — confirm.
