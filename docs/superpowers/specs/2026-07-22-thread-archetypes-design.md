@@ -55,3 +55,35 @@ A battle ends by one of three outcomes, which form a single escalation ladder �
 - **Revive is TIERED — higher tier returns more wounds** (not a flat 1). Proposed mapping, following the existing I/II/III = magnitude convention (Regen/DoT): **Revive N → return at N wounds**. *(exact numbers pending Daak.)*
 - **Canon fix required:** Simulacrum Imperialis and Resurrection Orb are labelled *"Revive III"* but read *"at 1 wound"* — inconsistent. Reconcile so tier actually scales the wounds returned. (Touches the gear catalogs + the `Revive` tag definition; overlaps T-CMB-1 tag-mechanics.)
 - **Permadeath is absolute:** a model killed by damage from a **Permadeath-tagged** source can **never** be revived — not in this phase, not at the Apothecarion. No Revive item/cast/ability overrides it.
+
+### D6 — Skirmish & its subtypes ✅ *(Daak dump 2026-07-22)*
+- **Skirmish** = a "normal" battle — two or more Forces clash. The **most common** combat thread. The base Battle.
+- **Raid** = a Skirmish orchestrated **against a Named Location**. When you start a thread at a named location, "attack the Named Location" is an option that lets the Force assault it. (Raid is the loot-a-location flavour of a Skirmish.)
+- **Duel** = 1 model vs 1 model, mostly staged in an **Arena**. You can **hail** an NPC or PC into the fight, with **set prizes/wager**.
+  - *Canon status:* the **Arena location exists** (`kind:"arena"`, "hosts Duel threads", per-faction skins e.g. Drukhari "The Arena of Pain") + flavour gear ("Arena Purse", "Arena Beloved", "Palatine Duelist"). **But the hail-with-prizes mechanic is NOT written down** — the arena door just opens a plain Skirmish today. → needs defining (challenge flow, wager/prize escrow, accept/decline).
+
+### D7 — Invasion & Crusade ✅ *(Daak dump 2026-07-22 — several pieces still OPEN)*
+**Invasion** — take a whole planet.
+- **Launched from a Major Hub.** Pick a target planet → the Invasion opens.
+- It becomes a set of **open, Raid-like threads** on the planet's named locations, which PCs & NPCs of the **same sub-faction** may join (special case: **Chaos Space Marine sub-factions**, and **the greater Imperium**, may pool at *faction* level, not just sub-faction).
+- **Win condition:** the invading force holds the **majority of CP on the planet** **AND** has **raided the Named Location that holds the planet's Major Hub** → planet control flips to the invader.
+- **Post-win choice** (made only by the commander who *began* the invasion, on entering the freshly-claimed Major Hub):
+  - **Annihilate** — the population is slaughtered: all populations → 0; named locations take a status *(likely `Ruined` — confirm)*; a **rebuild ticker** starts — all doors drop to **tier 0** and must be rebuilt by investing resources; the Major Hub is re-settled at the **new ruling faction's lowest population rank**; skins change to the new faction; the planet must then be governed.
+  - **Govern** — the planet stays as it was (same faction doors, resource tick, population) and becomes the new faction's holding, **keeping the old faction's skin**; the new ruler must manage it.
+- **Payout:** each battlefield pays out like a Raid; **plus** every Force of the winning faction on-planet that took part in **≥ half the raid threads** receives a **bonus of Influence + Currency + Dominance**, paid the moment the Major Hub choice is made.
+
+**Crusade** — the sector-scale version; a major **sub-faction / faction event**.
+- Claim an **entire sector** through multiple Invasions against its planets.
+- **Win condition:** a **majority of the sector's planets** AND the **main hub of the sector's throne world** come under the invading faction's control.
+- The Annihilate/Govern choice is made per-planet on each planet's Major Hub as its invasion completes.
+- **Payout much higher** than a single invasion, on completion.
+- Both factions' PCs & NPCs are present in a sector under crusade; **each faction has its own skin** for the crusade state.
+
+**OPEN / UNDEFINED (flagged for the follow-up discussion):**
+1. **CP is undefined in canon** — the whole invasion pivots on "majority of CP on a planet," but there's no CP system. What is CP, how does it live on/attach to a planet, how do raids shift it, how is "majority" measured?
+2. **"Major Hub" is a new concept** — no such location type exists (23 types, none a hub; closest are the `throne_room` door + `crown` planet flag). Need: one designated Major Hub location per planet + the sector throne-world's main hub.
+3. **Do the old Invasion subtypes collapse?** — Expansion(PvE)/Domination(PvPvE)/PvP look **emergent from who joins**; **Exterminatus == the Annihilate choice**; **Crusade == the sector wrapper**. If so, Invasion is *one* flow, not 4-5 subtypes. (Confirm — this is the larger-picture simplification.)
+4. Defender's side / how an invasion **fails or expires** (time limit? counter-raids to reclaim CP?).
+5. Govern vs Annihilate **trade-off** made explicit (Govern = instant working planet, foreign skin, maybe loyalty/unrest? · Annihilate = scorched, rebuild from 0, but reset to your culture) — is there a loyalty/unrest mechanic on a Governed world, or is the foreign skin purely cosmetic?
+6. Join-eligibility rule (sub-faction vs faction) needs a clean co-belligerence table.
+7. Rebuild ticker specifics (cost/time to bring tier-0 doors back).
