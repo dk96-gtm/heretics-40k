@@ -365,3 +365,23 @@ Item tags (11, not forge-gated): Shield, Ward, Regen, Cleanse, Revive, Decoy, Bl
 | throne_room | 200 | 400 | 600 | 1000 |
 
 **Mechanicus** pays the same cost in **PC of sacrificed models** (1 PC = 1 currency). **LOCKED identity rule:** Mechanicus is the ONLY faction that can raise a door to **Tier III** on a non-Forge/Shrine world (every other faction caps at Tier II off those worlds).
+
+### D12 — Mission (Objective archetype) — PROPOSED (awaiting Daak)
+Seams that exist: mission board ("Available missions at reachable locations"), accept-gate (`t.accepted`), generic OBJ blurb, reward "Currency (+Dominance & Influence)" / "prosperity +base×prod_mult". No per-subtype mechanic yet. Resolution uses the D1 round-cap ("reach target by round N").
+
+**Objective per mission type:**
+| Mission | What you do | Resolves when | World effect |
+|---|---|---|---|
+| Defend | hold a named location vs NPC assault N rounds | survive/repel → win; falls → fail | prosperity ↑, conflict ↓ (= invasion siege-defence) |
+| Purge | win combats to drop the location's Taint by X | taint target hit | taint ↓ |
+| Convoy | escort A→B across N legs (ambush risk) | arrive intact | currency; ties travel-legs (T-THR-3) |
+| Evacuation | extract X pop/models before deadline | X out in time | saves population; prosperity on destination |
+| Rebuild | restore a Ruined location (N work-posts / resources) | condition/door-tiers restored | prosperity ↑ (pairs Annihilate-rebuild) |
+| Blockade (planet) | suppress a planet's supply N rounds; defender may break it | you hold it | cuts production/garrison-regen while held |
+| Consecration | sanctify ritual (casts/posts), interruptible | ritual done | taint ↓, prosperity ↑ |
+| Desecration | defiling rite (dark inverse) | ritual done | taint ↑, prosperity ↓ |
+
+**Sources:** mission board · location condition (Ruined→Rebuild, Infested→Purge, Besieged→Defend) · NPC/door offers · Event-spawned (Awakening→Defend/Purge, Husk→salvage) · player-initiated.
+**Exclusivity:** Consecration = order-aligned only; Desecration = Chaos/dark only; other 6 universal. OPEN: also add one signature mission per sub-faction (like doors), or allegiance-gate only?
+**Tracking:** extend the thread board into a Mission Log — each accepted mission is a thread with `objective` state (target · progress · round-cap · reward) + progress meter; open missions also on the location panel; resolves via concludeThread (effect + reward).
+**OPEN for Daak:** (1) exclusivity depth (allegiance-gate vs per-sub-faction signature missions); (2) do the 8 objectives land or reshape any.
