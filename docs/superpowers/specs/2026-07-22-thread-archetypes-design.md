@@ -301,3 +301,25 @@ Item tags (11, not forge-gated): Shield, Ward, Regen, Cleanse, Revive, Decoy, Bl
 | GSC | Cult Cell | plant a sleeper cell → **reduces garrison PC** when you invade that world | redo |
 
 **Civilian models — FIXED:** all `cls:Core, pc:1, w:1, sl:1`. Speed low: **Sp 2** default; **Sp 3** only the fleet few (Grot, Kabal Slave, Craftworld Citizen, Novice Player). *(Daak may flatten to all Sp 2.)*
+
+### 8.9 REVISION 3 (Daak 2026-07-22) — door redos resolved, EC drug list, civilians flat
+**LOCKED doors:**
+- **Black Legion — Warmaster's Muster:** recruit models from any Chaos sub-faction's roster, **Astartes models only**, paid in Corruption.
+- **Emperor's Children — Chem-Gardens:** craft **combat-drug consumables**, each +1 to one stat / −1 to another (full loop):
+  | Drug | + | − |
+  |---|---|---|
+  | Frenzon | +1 Damage | −1 Defense |
+  | Hypex | +1 Speed | −1 Wound (max) |
+  | Spur | +1 AP | −1 Speed |
+  | Grave-Lotus | +1 Defense | −1 Damage |
+  | Adrenalight | +1 Wound | −1 AP |
+- **Sororitas — Convent Sanctorum:** craft a **consumable that lowers Taint** on a planet you own.
+- **T'au — Greater Good Assembly:** convert any **non-T'au model into a T'au model of the same Type** (Core→Core, Flying→Flying…); the converted model **keeps its loadout**.
+- **GSC — Cult Cell:** craft an item that converts any **door-less named location into a specific GSC door**. When GSC later invades that planet, **raiding that location = a free victory**, plus **free models up to the PC the location's garrison would have had**.
+- **Votann — Grudge Ledger** (loved, unchanged).
+
+**PROPOSED (awaiting Daak):**
+- **Custodes — The Null Sanctum:** a Custodes-held world **cannot gain Taint** (hard 0) and enemy **Warp Casts are dampened** in threads there. (Sororitas lower taint; Custodes prevent it.)
+- **Orks — Da Kustom Mek:** a **gamble forge** — slap a **random** weapon tag on for cheap; may roll a boon or a downside (e.g. Venting). Everyone else forges chosen affinity; Orks roll.
+
+**Civilians:** flat **Sp 2** for ALL (no fleet exceptions). Final: every civilian = `cls:Core, pc:1, w:1, sp:2, sl:1`.
