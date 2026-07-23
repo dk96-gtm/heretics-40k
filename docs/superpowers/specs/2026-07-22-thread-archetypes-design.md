@@ -110,3 +110,43 @@ A battle ends by one of three outcomes, which form a single escalation ladder �
 5. Garrison formula (which location props contribute how much) — tuning.
 6. Rebuild ticker cost/time after Annihilate — tuning.
 7. Annihilate named-location status = likely **`Ruined`** — confirm.
+
+---
+
+## D8 — Faction-unique production (forge affinities) + one signature door per sub-faction
+*Scope per Daak: only the two hooks we already have — forge affinities + a signature door. No other global sub-faction mechanic for now.*
+
+### 8.1 The production system that already exists (forge affinities)
+- **The Forge door** (`kind:"forge"` — "craft and upgrade equipment, tiers I–III") is a **common door, skinned per faction** (Forge Temple / Soul-Forge / Bio-Vat / Mek Shop / Canoptek Forge / Bonesinger Hall / Haemonculus Atelier / Earth Caste Bay / Cult Workshop / Ancestral Forge).
+- **What it does:** (a) **forge an affinity weapon-tag** onto a weapon (I–III), (b) **harden armour** (+1 Defense to an element, I–III). Both cost the faction currency.
+- **Faction-unique part = `forge_affinities`:** each faction can only forge **its own tag set** (Death Guard DoT/Suppressing · World Eaters Momentum/Refund · Custodes Dual-profile/First-Strike · Harlequins First-Strike/Free-Move/Ambush · … Black Legion = ALL). Canon rule already written: **cross-faction forging needs access to that faction's forge (alliance / diplomacy / — now — governing their world).**
+- **Location-gated tiers:** **Tier III** equipment is reachable **only at a Forge World** (Forge Temples) — "the ONLY route to Tier III equipment"; **Shrine Worlds** are the one non-forge Tier-III route (altars).
+- **This IS the Govern payoff:** hold/govern a Death Guard world → its Soul-Forge lets you craft DoT/Suppressing; hold a Mechanicus **Forge World** → the only place you reach Tier III. **T-FAC-1 wiring = a governed world grants access to its faction's forge affinity (and its tier gate).** Your *own* affinities do **not** apply on a foreign-governed world.
+
+### 8.2 Signature doors — DRAFT (one per sub-faction, each a use-case grounded in existing verbs)
+Each is a door only that sub-faction's worlds carry; owning a foreign world does **not** grant *your* door there (it may grant *theirs*, if you Govern). Uses only existing systems: currency, models, gear, warp casts, revival, taint, biomass, travel.
+
+| Sub-faction | Signature door | Use-case (draft) |
+|---|---|---|
+| Black Legion | **The Warmaster's Table** | War-council: launch invasions at reduced Domination cost; muster Chaos-Undivided elites. |
+| Death Guard | **The Plague Garden** | Cultivate over ticks: brew DoT/Blight consumables; render battlefield dead into free Poxwalkers. |
+| World Eaters | **The Skull Throne Altar** | Offer kills/corpses to Khorne → Dominance + rage boons; summon Berzerker (Assault) models. |
+| Thousand Sons | **The Cyclopean Library** | Scribe & upgrade Warp Casts (their Draining/Bypass); bind daemons into Rubricae. |
+| Emperor's Children | **The Rapturous Court** | Spend Influence for combat-drug buffs + sonic (Slowing/Multihit) gear. |
+| Daemons | **The Warp Rift** | Summon daemon models for Corruption, **scaled to the planet's taint** (higher taint = stronger). |
+| Adeptus Astartes | **The Reclusiam** | Recover gene-seed of fallen Marines (recruit/replace); swear pre-battle oath buffs. |
+| Astra Militarum | **The Departmento Muster** | Convert currency into **large numbers of cheap low-PC Guard** — cheap garrison mass. |
+| Adeptus Mechanicus | **The Forge Temple** | The **Tier-III** forge; build robot/servitor models; upgrade door tiers. |
+| Adepta Sororitas | **The Shrine of the Saint** | Purge taint on-planet; craft Miracle warp-casts; Act-of-Faith revives. |
+| Adeptus Custodes | **The Golden Vault** | No mass recruit — forge supreme artificer relics (Dual-profile/First-Strike); few, peerless models. |
+| Tyranids | **The Digestion Pool** | Consume battlefield dead + population → **Biomass**; spawn/evolve organisms (pairs with Annihilate). |
+| Orks | **The Mek Shop** | Craft cheap kustom Rapid/Momentum gear from battle-scrap; build Deffdreads; scales with fighting. |
+| Necrons | **The Tomb Vault** | Reanimate dormant Necron models free over ticks; can reawaken even **permadeath'd Robotic** models. |
+| Aeldari | **The Webway Portal** | **Free travel** between Aeldari-held portals (ties T-GX-WG); recover Souls from the dead. |
+| Drukhari | **The Haemonculus Atelier** | Turn captured enemy models (slaves) into Souls + regeneration; Ambush/Suppressing gear (ties T-ECO-1). |
+| T'au | **The Earth Caste Bay** | Mass-produce Guided drones/gear at a **discount**; efficient tier-climbing; auxiliaries. |
+| Leagues of Votann | **The Ancestral Vault** | Bank Shares for **interest over ticks**; forge Grudge/Slayer gear vs a marked enemy faction. |
+| Genestealer Cults | **The Cult Sanctum** | **Seed a hidden cult on a foreign world** (their unique: covert presence on enemy planets) → garrison bonus when it rises during an invasion. |
+| Harlequins | **The Black Library Waystation** | No forge — buy **any faction's** Warp Casts (trade in Masques/secrets); free webway movement. |
+
+**Open for discussion:** these are drafts to react to; the exact outputs/costs are unset. Also: some signature doors overlap the forge skin (Mek Shop, Forge Temple) — decide whether the signature door **is** the faction's forge or a **second** door alongside it.
