@@ -150,3 +150,68 @@ Each is a door only that sub-faction's worlds carry; owning a foreign world does
 | Harlequins | **The Black Library Waystation** | No forge — buy **any faction's** Warp Casts (trade in Masques/secrets); free webway movement. |
 
 **Open for discussion:** these are drafts to react to; the exact outputs/costs are unset. Also: some signature doors overlap the forge skin (Mek Shop, Forge Temple) — decide whether the signature door **is** the faction's forge or a **second** door alongside it.
+
+### 8.3 Doors are distinct (Daak) ✅
+Every faction's signature door is its **OWN door**, not a reskin of the common forge. So a faction world can carry both the (skinned) common Forge **and** its distinct signature door.
+
+### D9 — "Remains of the dead" — a lootable body item ✅
+When a model dies and is looted, alongside its loadout the corpse yields a **Remains item**: e.g. **"Remains of R4 Plague Marine — Morvax."**
+- Appears in the **garrison / equipment** section like any item.
+- **Clicking it opens that model's full overview** (threads fought, lore, stats, kills) — the Remains carry the dead model's record.
+- Can be **traded, sold, or used at doors** — enables a **body trade** and "offering of the dead" (feeds the faction signature doors that consume corpses: World Eaters' Skull Throne, Tyranid Digestion Pool, Drukhari Atelier, Necron Tomb Vault, etc.).
+- (Implementation: a new item category `REMAINS` carrying a snapshot ref to the dead model; renders as an item, opens the model overlay on click.)
+
+### D10 — Civilian model per sub-faction + gender field ✅
+- **Every sub-faction gets a "Civilian" model** — the lowest populace unit, what a planet's population is made of (ties to `population_ranks`). Non/barely-combatant (~1–3 PC). Spec'd in table 8.6 below.
+- **Gender field on models (male/female), varying — especially for NPCs.** Fixed where lore dictates (Astartes-lineage & Custodes = male; Sororitas = female); **varied/randomised elsewhere**, and NPCs especially should draw a gender so the world reads as populated by real people. (Implementation: a `sex` field on a model; NPC/civilian generation rolls it.)
+
+### 8.4 Forge tags per sub-faction (exact, from canon `forge_affinities`)
+| Sub-faction | Forgeable tags |
+|---|---|
+| Black Legion | **ALL** |
+| Death Guard | DoT · Suppressing |
+| World Eaters | Momentum · Refund |
+| Thousand Sons | Draining · Bypass |
+| Emperor's Children | Multihit · Slowing |
+| Daemons | Leech · Reclaim |
+| Adeptus Astartes | Slayer · Rapid |
+| Astra Militarum | Venting · Multihit |
+| Adeptus Mechanicus | DoT · Bypass |
+| Adepta Sororitas | Slayer · Multihit |
+| Adeptus Custodes | Dual-profile · First Strike |
+| Tyranids | DoT · Reclaim · Multihit |
+| Orks | Rapid · Momentum |
+| Necrons | Draining · Bypass · DoT |
+| Aeldari | First Strike · Guided |
+| Drukhari | DoT · Suppressing · Ambush |
+| T'au | Guided · Slayer |
+| Genestealer Cults | Ambush · Suppressing |
+| Leagues of Votann | Grudge · Slayer |
+| Harlequins | First Strike · Free Move · Ambush |
+
+### 8.5 Signature doors (draft — see 8.2 for use-cases)
+(unchanged from 8.2; each is a distinct door, not a forge reskin.)
+
+### 8.6 Civilian model per sub-faction (DRAFT)
+| Sub-faction | Civilian model | Note |
+|---|---|---|
+| Black Legion | Renegade Thrall | press-ganged mortal serving the warband |
+| Death Guard | Plague Serf | rot-ridden peasant, half-poxwalker |
+| World Eaters | Blood-Chained Slave | captive kept for the arenas & the offering |
+| Thousand Sons | Cult Acolyte | Prosperine scholar-servant of the Cabal |
+| Emperor's Children | Bondsman | pleasure-bonded servant of the court |
+| Daemons | The Damned | mortal cultist-husk, barely a vessel |
+| Adeptus Astartes | Chapter Serf | bonded human tending the fortress-monastery |
+| Astra Militarum | Imperial Citizen | hab-block worker; the tithe made flesh |
+| Adeptus Mechanicus | Menial Servitor | lobotomised drone-labourer |
+| Adepta Sororitas | Frateris Lay-Sister | pilgrim/hospitaller of the shrine |
+| Adeptus Custodes | Palace Aspirant | chosen youth serving the Golden Palace |
+| Tyranids | Feeder Organism | mindless bio-form rendering matter to biomass |
+| Orks | Grot | snivelling gretchin runt; expendable menial |
+| Necrons | Crypt-Thrall | bound servant-shell tending the tomb |
+| Aeldari | Craftworld Citizen | artisan of the domes, Guardian at need |
+| Drukhari | Kabal Slave | broken captive — currency and cattle both |
+| T'au | Gue'vesa Auxiliary | human worker sworn to the Greater Good |
+| Leagues of Votann | Hearthkin | working member of the Kin; prospector/crafter |
+| Genestealer Cults | Mining Neophyte | hidden cultist passing as an ordinary worker |
+| Harlequins | Novice Player | young Troupe member yet to earn a mask |
