@@ -270,3 +270,34 @@ When a model dies and is looted, alongside its loadout the corpse yields a **Rem
 | Novice Player | harlequins | Core | 3 | 1 | 8 | 1 |
 
 **Note — heavy use of the `REMAINS` item (D9):** many locked/reworked doors consume dead models (World Eaters, Tyranids, Black Legion, Thousand Sons, Mechanicus, Sororitas, Orks, Necrons) or living models (Daemons, Drukhari, Emperor's Children) — so the Remains item + a "sacrifice a living model" action are shared primitives these doors all build on.
+
+### 8.8 REVISION 2 (Daak review 2026-07-22) — full tags, door updates, civilian fix
+**Faction-exclusive forge tags (7):** Venting=Militarum · Slowing=Emperor's Children · Leech=Daemons · Refund=World Eaters · Grudge=Votann · Dual-profile=Custodes · Free Move=Harlequins. Not-forgeable (inherent): Unwieldy, Reach, Overcharge. All other weapon tags shared 2–5 factions.
+**Faction-exclusive cast schools (7, via cast_gate):** Faithful=Sororitas · Bloodbound=World Eaters · Technomancer=Necrons · Networked=T'au · Fleshcrafted=Drukhari · Ancestral=Votann · Pariah=Custodes.
+Item tags (11, not forge-gated): Shield, Ward, Regen, Cleanse, Revive, Decoy, Blink, Immunity, Marked, Stimm, Rally.
+
+**Signature doors — updated:**
+| Faction | Door | Use-case | status |
+|---|---|---|---|
+| Death Guard | Plague Garden | dead allied → Poxwalkers (consumable) | ✅ |
+| World Eaters | Skull Throne | dead **non-WE** → **Dominance × rank** | ✅ upd |
+| Daemons | Warp Rift | sacrifice living **non-Daemon** → raise Taint | ✅ upd |
+| Astartes | Reclusiam | Astartes Remains + living Astartes → inherit rank | ✅ |
+| Tyranids | Digestion Pool | dead non-Tyranid → currency | ✅ |
+| Aeldari | Webway Portal | travel to any webway door | ✅ |
+| Drukhari | Haemonculus Atelier | living non-Drukhari → Influence | ✅ |
+| Thousand Sons | Sorcerers' Cabal | feed PC of ONE sub-faction to a meter → craft a Warp Cast from that sub-faction | ✅ upd |
+| Astra Militarum | Departmento | −1 population at location + pick a **Core** model → **10× it at rank 1** | ✅ upd |
+| Necrons | Tomb Vault | **Tomb World only** — conscript **5 free Core models / in-game day** | ✅ upd |
+| Votann | Grudge Ledger | mark enemy faction → Grudge bonus + bounty | ✅ loved |
+| Harlequins | The Masque | forge weak **disguise-armour**; move **as** a faction only if the **whole Force** wears it | ✅ upd |
+| Black Legion | Warmaster's Muster | recruit from **any Chaos sub-faction** roster (Corruption) | redo |
+| Emperor's Children | Chem-Gardens | living captives → **Stimm/combat-drug consumables** | redo |
+| Mechanicus | Fabricator's Sanctum | **raise the tier of any door** on this world | redo |
+| Sororitas | Convent Sanctorum | the only door that **lowers world Taint** (faith over ticks) | redo |
+| Custodes | Aquilan Bastion | **hardens all garrisons** on this world (+PC) | redo |
+| Orks | Da Waaagh Banner | Teeth → mob **scaling with the sector's Conflict** | redo |
+| T'au | Greater Good Assembly | on a Governed world, recruit **native civilians as Gue'vesa** | redo |
+| GSC | Cult Cell | plant a sleeper cell → **reduces garrison PC** when you invade that world | redo |
+
+**Civilian models — FIXED:** all `cls:Core, pc:1, w:1, sl:1`. Speed low: **Sp 2** default; **Sp 3** only the fleet few (Grot, Kabal Slave, Craftworld Citizen, Novice Player). *(Daak may flatten to all Sp 2.)*
