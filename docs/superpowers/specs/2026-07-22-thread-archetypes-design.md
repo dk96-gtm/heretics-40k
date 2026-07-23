@@ -60,7 +60,8 @@ A battle ends by one of three outcomes, which form a single escalation ladder �
 - **Skirmish** = a "normal" battle — two or more Forces clash. The **most common** combat thread. The base Battle.
 - **Raid** = a Skirmish orchestrated **against a Named Location**. When you start a thread at a named location, "attack the Named Location" is an option that lets the Force assault it. (Raid is the loot-a-location flavour of a Skirmish.)
 - **Duel** = 1 model vs 1 model, mostly staged in an **Arena**. You can **hail** an NPC or PC into the fight, with **set prizes/wager**.
-  - *Canon status:* the **Arena location exists** (`kind:"arena"`, "hosts Duel threads", per-faction skins e.g. Drukhari "The Arena of Pain") + flavour gear ("Arena Purse", "Arena Beloved", "Palatine Duelist"). **But the hail-with-prizes mechanic is NOT written down** — the arena door just opens a plain Skirmish today. → needs defining (challenge flow, wager/prize escrow, accept/decline).
+  - *Canon status:* the **Arena location exists** (`kind:"arena"`, "hosts Duel threads", per-faction skins e.g. Drukhari "The Arena of Pain") + flavour gear ("Arena Purse", "Arena Beloved", "Palatine Duelist").
+  - **Wager (resolved):** a Duel is a **matched-pot wager**. You either **host** one — put up prize money — or **accept** an open one (Arena NPCs post duels with a set prize). The challenger **matches the host's contribution**; the **winner takes the full pot** (both stakes). Needs building: the host/accept flow + matched-stake escrow + payout to the victor.
 
 ### D7 — Invasion & Crusade ✅ *(Daak dump 2026-07-22 — several pieces still OPEN)*
 **Invasion** — take a whole planet.
@@ -71,14 +72,18 @@ A battle ends by one of three outcomes, which form a single escalation ladder �
 - **Defending = winning the raids.** The defenders repel the invasion by winning the raid-skirmishes at their locations; because each location is one-shot, a successfully-defended location is **locked for the rest of that invasion** (the attacker can't retry it). If the defenders hold the decisive locations — enough to deny PC-majority, or the Major Hub itself — the **invasion fails and the attacker is repelled.**
 - **Win condition:** the invading force holds the **majority of PC on the planet** — i.e. the **largest total model Point Cost present** (the biggest army) — **AND** has **raided the Named Location that holds the planet's Major Hub** → planet control flips to the invader. *(PC = Point Cost, an existing core stat: every model has `pc`; a Force sums it. NOT a new "CP" system — the earlier CP note was a mishear.)*
 - **Post-win choice** (made only by the commander who *began* the invasion, on entering the freshly-claimed Major Hub) — the planet is **kept** either way:
-  - **Annihilate** — the population is slaughtered: all populations → 0; named locations take a status *(likely `Ruined` — confirm)*; a **rebuild ticker** starts — all doors drop to **tier 0** and must be rebuilt by investing resources; the Major Hub is re-settled at the **new ruling faction's lowest population rank**; skins change to the new faction; the planet must then be governed. (Scorched but yours.)
-  - **Govern** — the planet stays as it was (same faction doors, resource tick, population) and becomes the new faction's holding, **keeping the old faction's skin**; the new ruler must manage it. (Intact but foreign.)
-- **Payout:** each battlefield pays out like a Raid; **plus** every Force of the winning faction on-planet that took part in **≥ half the raid threads** receives a **bonus of Influence + Currency + Dominance**, paid the moment the Major Hub choice is made.
+  - **Annihilate = start over as your own faction.** Population → 0; named locations take a status *(likely `Ruined`)*; a **rebuild ticker** starts — all doors drop to **tier 0**, rebuilt by investing resources; Major Hub re-settles at **your faction's lowest population rank**; skins become yours. Slow and costly, but the world becomes **culturally yours** — full production, and **your faction-unique interactions work here** (see below).
+  - **Govern = hold it for what the old faction makes.** The planet stays intact — you **inherit the existing door tiers** (no rebuild) — and, crucially, keep access to that **faction's unique outputs** (an item / model / warp cast only they can produce). The price: **reduced production** on a world that isn't your faction's, and **your own faction-unique bonuses do NOT work here**. You govern a foreign world specifically to harvest what only it can make.
+
+  **→ This depends on a NEW system (own topic): FACTION-UNIQUE WORLD INTERACTIONS.** Every sub-faction should have one or more unique ways to interact with *their own* worlds — a special door, a special production method, a unique resource, etc. Owning a planet **not** of your sub-faction does **not** let you use that bonus there. This is the tooth that makes Govern-vs-Annihilate a real choice (hold foreign worlds for *their* unique output; annihilate to make a world fully yours). **Ticketed separately — needs its own design pass across all 20 sub-factions.**
+- **Who can join (resolved):** PC/NPC of the **same sub-faction** join by going to the **Major Hub the invasion launched from** and joining. **Chaos & Imperial** factions may join **faction-wide** (across their sub-factions). **Any non-enemy force** that can enter the Major Hub may **request** to join; the **launching commander approves**. Same rules for a Crusade.
+- **Payout:** **all joined forces** receive the **completion bonus** (Influence + Currency + Dominance) the moment the Major Hub choice is made; forces that **fought in actual battles** additionally keep their **battle rewards** (per-raid loot/currency). *(Reconcile: earlier draft gated the completion bonus on "≥ half the raid threads" — the latest word is all joined forces get it. Confirm which.)*
 
 **Exterminatus** — the literal **destruction** of a planet: it is **removed from the map**, along with everything on it. A distinct, high-bar invasion mode (NOT the same as Annihilate — Annihilate scorches-but-keeps; Exterminatus deletes).
 - **Declared at a sector throne world's Major Hub**, and only if the declaring commander has enough **Domination**.
 - Spawns an invasion of the target planet with the **special rule: ALL named locations must be captured** (not just PC-majority + Major Hub).
 - Then, at that planet's Major Hub, the invading force **declares Exterminatus** (the method/rite is **different per sub-faction**) → the planet is entirely destroyed and leaves the map.
+- **Edge cases (resolved):** **any** world can be Exterminatus'd. When one is destroyed, the **sector-wide math re-computes** without it (planet counts for Crusade majority, travel routes, etc.). If a **throne world** is destroyed, another planet's **Major Hub can be levelled up into a new Throne World** (a promotion action from that hub) so the sector keeps a seat. *(New mechanic: promote Major Hub → Throne World.)*
 
 **Crusade** — the sector-scale version; a major **sub-faction / faction event**.
 - Claim an **entire sector** through multiple Invasions against its planets.
@@ -95,11 +100,13 @@ A battle ends by one of three outcomes, which form a single escalation ladder �
 - **Major Hub = the `throne_room` door.** No new door. A sector's throne-world hub = `throne_room` on a `crown` world (already gets sector-scale powers).
 - **Defender's side = win the one-shot raids.** Invasion fails when defenders hold enough locations (or the Major Hub) to deny the win. No separate defender system.
 
-**OPEN / UNDEFINED (for the follow-up discussion):**
-1. **Garrison formula** — the base garrison PC is *calculated from the location* (status, doors, type, population…). RESOLVED that it's garrison-PC (dynamic, reinforceable); still to define is the **actual formula** — which properties contribute how much (population rank → X, fortified status → ×Y, forge/hive type → +Z…). Tuning-level, but needed to compute a garrison.
-2. **Govern trade-off needs a tooth** — Govern keeps a working planet with a foreign skin; without a downside (conquered-population loyalty/unrest?) it strictly beats Annihilate. Cosmetic skin only, or a real unrest mechanic?
-3. **Exterminatus edge cases** — what a removed-from-map planet does to (a) the sector's planet count for a Crusade majority, (b) neighbours/travel routes; can a **crown/throne world** itself be Exterminatus'd?
-4. Join-eligibility (sub-faction vs faction, incl. the Chaos-SM / greater-Imperium pooling) → a clean co-belligerence table.
-5. Rebuild ticker specifics (cost/time to bring tier-0 doors back after Annihilate).
-6. Duel hail-with-prizes flow (arena location exists; the wager/challenge mechanic doesn't).
-7. Named-location status on Annihilate = likely **`Ruined`** — confirm.
+**RESOLVED (cont.):** Govern-vs-Annihilate trade-off (via faction-unique outputs + foreign-world production penalty) · Exterminatus edge cases (any world; sector re-computes; throne-world→promote another Major Hub) · join-eligibility (sub-faction at launch hub; Chaos/Imperial faction-wide; non-enemy request→commander approves) · Duel matched-pot wager.
+
+**STILL OPEN:**
+1. **NEW SYSTEM — faction-unique world interactions** (special door / production / resource per sub-faction; only on your own worlds). The tooth behind Govern-vs-Annihilate. **Own design pass across all 20 sub-factions → ticketed (T-FAC-1).**
+2. **Payout reconciliation** — does the **completion bonus** go to *all joined forces* (latest word) or only those in *≥ half the raids* (earlier draft)?
+3. **Foreign-world production penalty** — how much lower is output on a Governed non-faction world (a flat %? scales with population/loyalty?).
+4. **Promote Major Hub → Throne World** — trigger/cost when a sector loses its throne world.
+5. Garrison formula (which location props contribute how much) — tuning.
+6. Rebuild ticker cost/time after Annihilate — tuning.
+7. Annihilate named-location status = likely **`Ruined`** — confirm.
