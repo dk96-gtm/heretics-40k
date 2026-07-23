@@ -49,9 +49,9 @@ A battle ends by one of three outcomes, which form a single escalation ladder �
 - **Destination:** looted gear goes **straight into the looter's inventory** (`S.inv`) to equip or sell later.
 - **UI:** two ways per corpse — **select a specific piece**, or **toggle "take entire loadout"** to grab it all at once.
 
-### D5 — Reviving / healing in the keep-the-ground phase ✅ *(tier numbers + permadeath TBD)*
+### D5 — Reviving / healing in the keep-the-ground phase ✅ *(exact tier numbers TBD)*
 - **The post-victory phase is not a special mode — the action economy simply continues.** After a decisive win the thread stays open and the winner's models keep their **AP**; they may spend it on the same **items / casts / abilities** (heal, revive) they'd use mid-battle, plus loot, until the player chooses to exit.
 - Revive already exists (the `Revive` item tag + Simulacrum Imperialis, Resurrection Orb, Reanimation Protocols/Surge, Phylactery of Aeons, etc.). No new mechanic — the phase just lets you keep using them.
 - **Revive is TIERED — higher tier returns more wounds** (not a flat 1). Proposed mapping, following the existing I/II/III = magnitude convention (Regen/DoT): **Revive N → return at N wounds**. *(exact numbers pending Daak.)*
 - **Canon fix required:** Simulacrum Imperialis and Resurrection Orb are labelled *"Revive III"* but read *"at 1 wound"* — inconsistent. Reconcile so tier actually scales the wounds returned. (Touches the gear catalogs + the `Revive` tag definition; overlaps T-CMB-1 tag-mechanics.)
-- *Open:* does a **permadeath / no-revival kill** stay unrevivable even in this phase? (assumed yes — confirm.)
+- **Permadeath is absolute:** a model killed by damage from a **Permadeath-tagged** source can **never** be revived — not in this phase, not at the Apothecarion. No Revive item/cast/ability overrides it.
