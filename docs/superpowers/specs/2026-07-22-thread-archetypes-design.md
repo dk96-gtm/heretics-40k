@@ -332,3 +332,36 @@ Item tags (11, not forge-gated): Shield, Ward, Regen, Cleanse, Revive, Decoy, Bl
 - **Adeptus Mechanicus — Fabricator's Sanctum** (raise the tier of any door on this world): standing from 8.7/8.8 — never objected → treat as locked unless Daak revisits.
 
 **→ All 20 sub-faction signature doors now have a defined mechanic (T-FAC-1 design complete at the concept level; exact costs/values are tuning).**
+
+### D11 — Every door has 3 tiers + upgrade economy ✅ *(numbers pending Daak lock)*
+**Mechanicus door (Fabricator's Sanctum) LOCKED:** upgrades the tier of any door on the world **at the cost of PC — sacrificing higher-PC models** for the upgrade.
+
+**All doors gain 3 tiers.** Gear doors: tier = max item tier available. Service doors: tier = magnitude of the service.
+
+| Common door | Tier I | Tier II | Tier III |
+|---|---|---|---|
+| Shop | Tier-I gear | + Tier-II | + Tier-III |
+| Forge | forge/harden to I | to II | to III (= Forge Temple) |
+| Altar | Casts R1–2 | + R3 | + R4 |
+| Armoury | Light/default | + Medium | + Heavy |
+| Reliquary | 1 Legendary | both Legendaries | + relic re-forge |
+| Muster | Core rank 1–2 | all classes rank 1–3 | all, higher ranks + bulk rate |
+| Apothecarion | revive @1w, full cost | more wounds, cheaper | full-wound, cheapest, extends window |
+| Shipyard | system vessels | warp-capable | capital hulls |
+| Relay | sector comms | segmentum | galaxy-wide |
+| Arena | local duels, small purse | cross-sector hail, bigger purse | galaxy hail, grand purse |
+| Warp Gate | same-segmentum gates | cross-segmentum | any charted gate |
+| Throne Room | planet events | + Domination discount / garrison bonus | sector-scale events (promote → Throne World) |
+
+**Faction doors:** tier scales the magnitude uniformly (e.g. Necron 5→8→12 conscripts/day; Custodes taint-cleanse ↑/cost ↓; Sororitas ability ×2→×3→×4 warp-AP; DG more Poxwalkers/consumable; WE better Dominance rate; etc.).
+
+**Upgrade cost = door_base × target_tier (currency).** door_base by rarity:
+| Rarity | base | →II | →III | total |
+|---|--:|--:|--:|--:|
+| common | 100 | 200 | 300 | 500 |
+| uncommon | 150 | 300 | 450 | 750 |
+| rare (warp gate) | 250 | 500 | 750 | 1250 |
+| rarest (reliquary) | 400 | 800 | 1200 | 2000 |
+| throne_room | 200 | 400 | 600 | 1000 |
+
+**Mechanicus** pays the same cost in **PC of sacrificed models** (1 PC = 1 currency). **PROPOSED identity rule:** Mechanicus is the ONLY faction that can raise a door to **Tier III** on a non-Forge/Shrine world (others cap at II there) — pending Daak.
