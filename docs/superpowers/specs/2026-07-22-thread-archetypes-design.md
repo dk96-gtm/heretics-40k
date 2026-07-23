@@ -215,3 +215,58 @@ When a model dies and is looted, alongside its loadout the corpse yields a **Rem
 | Leagues of Votann | Hearthkin | working member of the Kin; prospector/crafter |
 | Genestealer Cults | Mining Neophyte | hidden cultist passing as an ordinary worker |
 | Harlequins | Novice Player | young Troupe member yet to earn a mask |
+
+### 8.7 REVISION (Daak review 2026-07-22) — supersedes 8.2/8.5/8.6 doors + adds tag effects
+**Forge tags all go onto WEAPONS** (Forge only applies weapon tags + hardens armour). Effects (from canon `tags.weapon`): DoT (1 dmg/post X posts, stacks) · Suppressing (+X AP to target's next action) · Momentum (+1 dmg/consecutive post, cap +X) · Refund (kill→refund X AP) · Draining (target loses X AP) · Bypass (ignores a named tag's defence) · Multihit (hits up to X models) · Slowing (−X Speed next post) · Leech (heal X per hit) · Reclaim (kill→heal X) · Slayer (+X vs named tag) · Rapid (extra attacks) · Venting (X-post cooldown, downside) · Dual-profile (two statlines) · First Strike (resolves before response) · Guided (ignores Stealth) · Ambush (+X from Stealth) · Grudge (+X vs Forces that hurt yours) · Free Move (kill→free move).
+
+**Black Legion affinity ≠ ALL (canon change):** proposed **Slayer · Bypass · Rapid · Grudge** (generalist breadth, no one else's exact set). ALT considered: "one tag from each Chaos faction." → Daak to confirm.
+
+**Signature doors — LOCKED 7 (Daak-defined) + 13 reworked:**
+| Sub-faction | Door | Use-case |
+|---|---|---|
+| Death Guard ✅ | Plague Garden | brew a consumable that turns battle-dead **allied** models into Poxwalkers |
+| World Eaters ✅ | Skull Throne | offer dead models → currency, **scaled by the model's rank** |
+| Daemons ✅ | Warp Rift | **sacrifice living models → raise Taint** |
+| Astartes ✅ | Reclusiam | Astartes **Remains + a living Astartes → living one inherits its rank** |
+| Tyranids ✅ | Digestion Pool | trade **dead non-Tyranid** models → currency |
+| Aeldari ✅ | Webway Portal | travel to **any** other webway door, discovered or not |
+| Drukhari ✅ | Haemonculus Atelier | trade **living non-Drukhari** models → Influence |
+| Black Legion | Trophy Hall | Remains of a slain enemy **Named/Commander** → big Influence + Dominance |
+| Thousand Sons | Sorcerers' Cabal | Remains → craft/upgrade a Warp Cast (soul fuels it) |
+| Emperor's Children | The Sensorium | sacrifice a living captive → permanent stat buff on one of your models |
+| Astra Militarum | Conscription Office | pay currency → instantly raise a batch of cheap low-PC Guard |
+| Mechanicus | Cortex Vault | Remains of any model → convert into a Servitor you own |
+| Sororitas | Reliquary of Martyrs | Remains of a fallen Imperial model → a relic item / faith buff |
+| Custodes | The Blood Games | a Custodes model climbs rank by beating escalating NPC champions |
+| Orks | Da Scrap Pit | feed dead models/wreckage (incl. your own) → Teeth + a random kustom weapon |
+| Necrons | Reanimation Chamber | Remains of a Necron model → rebuild it fully, even if permadeath'd |
+| T'au | Ethereal Council | pay Influence → recruit auxiliary models of other species |
+| Votann | Grudge Ledger | mark an enemy faction → Grudge gear hits harder + currency bounty per marked kill |
+| GSC | Sanctum Cell | plant a hidden cult on any world (even foreign) → rises as a free garrison when invaded |
+| Harlequins | The Masque | don a neutral disguise (enter enemy hubs / buy any faction's casts) + free webway move |
+
+**Civilian models — full stats `{cls,pc,w,sp,sl}`:**
+| Civilian | Faction | cls | pc | w | sp | sl |
+|---|---|---|--:|--:|--:|--:|
+| Renegade Thrall | black_legion | Core | 2 | 1 | 5 | 1 |
+| Plague Serf | death_guard | Core | 2 | 2 | 3 | 1 |
+| Blood-Chained Slave | world_eaters | Core | 1 | 1 | 5 | 1 |
+| Cult Acolyte | thousand_sons | Core | 2 | 1 | 5 | 1 |
+| Bondsman | emperors_children | Core | 2 | 1 | 5 | 1 |
+| The Damned | daemons | Core | 1 | 1 | 4 | 1 |
+| Chapter Serf | astartes | Core | 2 | 1 | 5 | 1 |
+| Imperial Citizen | militarum | Core | 1 | 1 | 5 | 1 |
+| Menial Servitor | mechanicus | Core | 2 | 1 | 3 | 1 |
+| Frateris Lay-Sister | sororitas | Core | 2 | 1 | 5 | 1 |
+| Palace Aspirant | custodes | Core | 3 | 2 | 6 | 1 |
+| Feeder Organism | tyranids | Core | 1 | 1 | 4 | 1 |
+| Grot | orks | Core | 1 | 1 | 6 | 1 |
+| Crypt-Thrall | necrons | Core | 2 | 1 | 3 | 1 |
+| Craftworld Citizen | aeldari | Core | 2 | 1 | 7 | 1 |
+| Kabal Slave | drukhari | Core | 1 | 1 | 6 | 1 |
+| Gue'vesa Auxiliary | tau | Core | 2 | 1 | 5 | 1 |
+| Hearthkin | votann | Core | 2 | 2 | 4 | 1 |
+| Mining Neophyte | gsc | Core | 2 | 1 | 5 | 1 |
+| Novice Player | harlequins | Core | 3 | 1 | 8 | 1 |
+
+**Note — heavy use of the `REMAINS` item (D9):** many locked/reworked doors consume dead models (World Eaters, Tyranids, Black Legion, Thousand Sons, Mechanicus, Sororitas, Orks, Necrons) or living models (Daemons, Drukhari, Emperor's Children) — so the Remains item + a "sacrifice a living model" action are shared primitives these doors all build on.
