@@ -414,7 +414,7 @@ Final universal families: KILL (Purge, Bounty Hunt, Kill-Team, Assassination, Li
 - **DG Poxwalkers (permadeath-fair):** two Plague Garden brews — (A) resurrect your OWN dead DG as a Poxwalker of the same rank+loadout; (B) pricier — turn a TRULY-dead model (revive counter = 0, unrevivable) into a Poxwalker. Never converts a still-revivable enemy (that would rob their revive).
 - **Capture mechanic (renamed from Subdue):** **Non-Lethal = a tag** (strikes always leave the target ≥1 wound). **Capture = a special action** granted by certain items/abilities, usable ONLY on a **1-wound** model → produces a **Captive item** (body-like; click opens the model overview). Drukhari + GSC + (Astartes-rescue reverse).
 - **Locked missions:** Sororitas — win a thread having taken ≥X wounds · Orks — win X 1v1 duels in a row · Necrons — reanimate a specific **named Necron NPC** during a skirmish.
-- **Redos (3rd/2nd pass):** Astartes — **The Few** (win outnumbered ≥2:1) · Mechanicus — **Tech-Reclamation** (loot X enemy weapons/armour tier ≥Y) · Tyranids — **The Devouring Swarm** (each kill spawns a Tyranid; win via the growing swarm).
+- **Redos (3rd/2nd pass):** Astartes — **The Few** (win outnumbered ≥2:1) · Mechanicus — **Tech-Reclamation** (loot X enemy weapons/armour tier ≥Y) · Tyranids — **Amass Biomass** (annihilate X skirmishes in a row; a `streak`; no spawn-on-kill primitive needed).
 
 ### D13 — Objective feasibility spine (how each mission is built)
 Each thread gains `objective = {kind, target, progress, params, done}`. Detector hooks at 2 seams update it; concludeThread evaluates it:
@@ -423,9 +423,9 @@ Each thread gains `objective = {kind, target, progress, params, done}`. Detector
 3. **concludeThread** — `evaluate()` progress vs target → success + reward.
 Build = ONE generic tracker (`objective.track(event)` + `evaluate()`); each mission is DATA + a tiny per-kind fn.
 
-**~10 tracker archetypes cover all 34 missions:** count_kill(filter) · survive_rounds/waves · protect_entity · wounds_taken(cmp,X) · collect_item(filter,qty) · produce(kind,qty) · force_composition(pred) · streak(kind,n) · spawn_on_kill · restore/ritual(posts).
+**~10 tracker archetypes cover all 34 missions:** count_kill(filter) · survive_rounds/waves · protect_entity · wounds_taken(cmp,X) · collect_item(filter,qty) · produce(kind,qty) · force_composition(pred) · streak(kind,n) · restore/ritual(posts).
 
-**Mapping:** Purge/Bounty/Kill-Team/Assassination/Liberation/WE-Skulls/Votann = count_kill · Defend/Survival/Daemons-Rift = survive_rounds(+protect_entity for the Rift) · Evacuation = protect_entity(civilians) · Sororitas(≥X)/Harlequins(=0)/EC(allied=0) = wounds_taken · AM-tags/Mechanicus-tech/Drukhari/GSC/TradeHaul/ItemRequest/Aeldari-Souls = collect_item · DG-poxwalkers/Necron-reanimate = produce · Astartes(outnumbered)/T'au(non-Tau)/AM(large-PC)+modifiers = force_composition · Orks/Custodes/BL = streak · Tyranids = spawn_on_kill · Rebuild/Consecration/Desecration = restore/ritual · Convoy = travel-legs (T-THR-3).
+**Mapping:** Purge/Bounty/Kill-Team/Assassination/Liberation/WE-Skulls/Votann = count_kill · Defend/Survival/Daemons-Rift = survive_rounds(+protect_entity for the Rift) · Evacuation = protect_entity(civilians) · Sororitas(≥X)/Harlequins(=0)/EC(allied=0) = wounds_taken · AM-tags/Mechanicus-tech/Drukhari/GSC/TradeHaul/ItemRequest/Aeldari-Souls = collect_item · DG-poxwalkers/Necron-reanimate = produce · Astartes(outnumbered)/T'au(non-Tau)/AM(large-PC)+modifiers = force_composition · Orks/Custodes/BL/Tyranids = streak · Rebuild/Consecration/Desecration = restore/ritual · Convoy = travel-legs (T-THR-3).
 
 **Genuinely-new primitives (everything else reuses existing apply kill-attribution, loot/Remains, round counter):**
 1. The objective tracker (state + track + evaluate).
@@ -433,5 +433,4 @@ Build = ONE generic tracker (`objective.track(event)` + `evaluate()`); each miss
 3. Destructible battlefield object (T-MISC-2).
 4. Battlefield civilians as protectable units (uses T-MOD-1).
 5. Survival waves (spawn next set on clear).
-6. Spawn-on-kill battle rule (Tyranids).
-7. Cross-thread streak/chain tracking.
+6. Cross-thread streak/chain tracking (Orks/Custodes/BL/Tyranids).
