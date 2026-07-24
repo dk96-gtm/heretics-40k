@@ -409,3 +409,29 @@ Final universal families: KILL (Purge, Bounty Hunt, Kill-Team, Assassination, Li
 - Black Legion — The Long War ✅ | Death Guard — Harvest of Rot: raise X Poxwalkers via Plague Garden (converts battle-dead / Remains → Poxwalker) | World Eaters — Skulls for the Throne: melee-only kill quota (Dominance reward REMOVED) | Thousand Sons — Forbidden Lore: recover a tome (reward = item; NO cast unlock) | Emperor's Children — The Perfect Kill: zero allied casualties ✅ | Daemons — The Widening Rift: protect a destructible **Warp Rift** env-piece X posts as taint rises | Astartes — None Left Behind: free a **captured allied model** at a location | Astra Militarum — The Meatgrinder: **large-force-only** (min PC), win by mass | Mechanicus — The Data-Vault: recover tech-data → **free +1 door tier** | Sororitas — Martyrdom: reward **scales with own Sisters' deaths** | Custodes — Blood Games: 1v1 vs high-rank named NPCs ✅ | Tyranids — Adaptation: fight a faction X times → permanent Slayer-vs-them | Orks — Might Makes Right: **infighting Duel** for boss → Waaagh buff | Necrons — Reclamation Protocol: recover **Remains of a fallen Necron** + reanimate (even permadeath'd) | Aeldari — The Soul Tithe: **diplomacy/trade** X Souls | Drukhari — Slave Raid: **Subdue/capture** X living models | T'au — Auxiliary Doctrine: win with **≥X non-Tau models** in Force | Votann — Settle the Grudge ✅ | GSC — Gene-Harvest: **Subdue/abduct** X specific models | Harlequins — Flawless Performance: **zero damage taken**.
 
 **NEW MECHANICS surfaced (need tickets):** (1) **Subdue/Capture** — non-lethal takedown on an Injured/Critical enemy → a **Captive** item (living cousin of Remains); powers Drukhari/GSC/Astartes-rescue. (2) **Destructible environment pieces** (battlefield objects with HP) — the Warp Rift. (3) **Civilians on the battlefield + protect-them win condition** (Evacuation). (4) **Survival waves** (escalating NPC waves).
+
+### D12.3 — Mission refinements (Daak 2026-07-22)
+- **DG Poxwalkers (permadeath-fair):** two Plague Garden brews — (A) resurrect your OWN dead DG as a Poxwalker of the same rank+loadout; (B) pricier — turn a TRULY-dead model (revive counter = 0, unrevivable) into a Poxwalker. Never converts a still-revivable enemy (that would rob their revive).
+- **Capture mechanic (renamed from Subdue):** **Non-Lethal = a tag** (strikes always leave the target ≥1 wound). **Capture = a special action** granted by certain items/abilities, usable ONLY on a **1-wound** model → produces a **Captive item** (body-like; click opens the model overview). Drukhari + GSC + (Astartes-rescue reverse).
+- **Locked missions:** Sororitas — win a thread having taken ≥X wounds · Orks — win X 1v1 duels in a row · Necrons — reanimate a specific **named Necron NPC** during a skirmish.
+- **Redos (3rd/2nd pass):** Astartes — **The Few** (win outnumbered ≥2:1) · Mechanicus — **Tech-Reclamation** (loot X enemy weapons/armour tier ≥Y) · Tyranids — **The Devouring Swarm** (each kill spawns a Tyranid; win via the growing swarm).
+
+### D13 — Objective feasibility spine (how each mission is built)
+Each thread gains `objective = {kind, target, progress, params, done}`. Detector hooks at 2 seams update it; concludeThread evaluates it:
+1. **THREAD.apply** — single choke point for combat events (damage/kill/capture/wounds-taken/spawn). All combat objectives increment here.
+2. **Door / thread actions** — deliveries, conversions, collections.
+3. **concludeThread** — `evaluate()` progress vs target → success + reward.
+Build = ONE generic tracker (`objective.track(event)` + `evaluate()`); each mission is DATA + a tiny per-kind fn.
+
+**~10 tracker archetypes cover all 34 missions:** count_kill(filter) · survive_rounds/waves · protect_entity · wounds_taken(cmp,X) · collect_item(filter,qty) · produce(kind,qty) · force_composition(pred) · streak(kind,n) · spawn_on_kill · restore/ritual(posts).
+
+**Mapping:** Purge/Bounty/Kill-Team/Assassination/Liberation/WE-Skulls/Votann = count_kill · Defend/Survival/Daemons-Rift = survive_rounds(+protect_entity for the Rift) · Evacuation = protect_entity(civilians) · Sororitas(≥X)/Harlequins(=0)/EC(allied=0) = wounds_taken · AM-tags/Mechanicus-tech/Drukhari/GSC/TradeHaul/ItemRequest/Aeldari-Souls = collect_item · DG-poxwalkers/Necron-reanimate = produce · Astartes(outnumbered)/T'au(non-Tau)/AM(large-PC)+modifiers = force_composition · Orks/Custodes/BL = streak · Tyranids = spawn_on_kill · Rebuild/Consecration/Desecration = restore/ritual · Convoy = travel-legs (T-THR-3).
+
+**Genuinely-new primitives (everything else reuses existing apply kill-attribution, loot/Remains, round counter):**
+1. The objective tracker (state + track + evaluate).
+2. Capture action + Non-Lethal tag + Captive item (T-MISC-1).
+3. Destructible battlefield object (T-MISC-2).
+4. Battlefield civilians as protectable units (uses T-MOD-1).
+5. Survival waves (spawn next set on clear).
+6. Spawn-on-kill battle rule (Tyranids).
+7. Cross-thread streak/chain tracking.
