@@ -570,7 +570,7 @@ var THREAD=(function(){
             return {ok:false,reason:ge.kind==='capture'?
               'Capture: target not in sight - fog of war':'Target not in sight - fog of war'};}
       }
-      var _capSlotsUsed={},_capTargets={},_freedTargets={};  // multi-entry block: track consumption across entries
+      var _capSlotsUsed={},_capTargets={},_freedTargets={},_lootedBodies={};  // multi-entry block: track consumption across entries
       for(var ci=0;ci<block.length;ci++){var cb=block[ci],ce=cb.effect;
         if(!ce||(ce.kind!=='capture'&&ce.kind!=='free'&&ce.kind!=='loot'))continue;
         if(ce.kind==='capture'){
@@ -612,9 +612,16 @@ var THREAD=(function(){
           if(!lac||!lco)return {ok:false,reason:'Loot: no such model'};
           if(!lco.dead)return {ok:false,reason:'Loot: they still breathe'};
           if(ce.what==='body'&&lco.looted)return {ok:false,reason:'Loot: this body is already taken'};
+          if(ce.what==='body'&&_lootedBodies[ce.corpse])return {ok:false,reason:'Loot: that body is already claimed this post'};
           if(lac.x==null||lco.x==null||cheb(lac,lco)>1)return {ok:false,reason:'Loot: not adjacent to the fallen'};
-          if(ce.what==='body'&&!emptySlotOf(lac))return {ok:false,reason:'Loot: no empty slot to carry the body'};
-          if((cb.cost||0)!==(lsp.loot_ap||1))return {ok:false,reason:'Loot: costs '+(lsp.loot_ap||1)+' AP'};}}
+          if(ce.what==='body'){
+            var _lootEmptyN=emptySlotCount(lac);
+            _capSlotsUsed[cb.actor]=(_capSlotsUsed[cb.actor]||0)+1;
+            if(_capSlotsUsed[cb.actor]>_lootEmptyN)
+              return {ok:false,reason:'Loot: no empty slot to carry the body'};
+          }
+          if((cb.cost||0)!==(lsp.loot_ap||1))return {ok:false,reason:'Loot: costs '+(lsp.loot_ap||1)+' AP'};
+          if(ce.what==='body')_lootedBodies[ce.corpse]=true;}}
     }
     return {ok:true,reason:''};
   }
@@ -675,7 +682,9 @@ var THREAD=(function(){
             _lsl.forEach(function(s){if(s.it){state.spoils.push(s.it);s.it=null;}});
             var _lar=_lc.model&&_lc.model.loadout&&_lc.model.loadout.armour;
             if(_lar&&_lar.it){state.spoils.push(_lar.it);_lar.it=null;}}
-          else if(e.what==='body'){var _lslot=emptySlotOf(_la);
+          else if(e.what==='body'){
+            if(_lc.looted)return;                       // belt-and-braces: validate should already reject this
+            var _lslot=emptySlotOf(_la);
             if(_lslot){_lslot.it=mkRemains(_lc,e.corpse,e.meta||{});_lc.looted=true;}}}}
       else if(e.kind==='terms'){state.terms=state.terms||{};state.terms.agreed=!!e.agreed;
         if(e.detail)state.terms.detail=e.detail;}

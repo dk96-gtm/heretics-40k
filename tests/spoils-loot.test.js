@@ -63,3 +63,22 @@ test('validate rejects: looting a living model or twice-looted body', () => {
   assert.ok(!THREAD.validate(T, s2, 'A',
     [{ actor: 'me', cost: 1, effect: { kind: 'loot', corpse: 'corpse', what: 'body' } }], CANON).ok);
 });
+test('validate rejects: two body-loots of the SAME corpse in one block (no double REMAINS)', () => {
+  const s = afterState();
+  s.combatants.other = { party: 'A', w: [4, 4], x: 6, y: 4,
+    model: { n: 'Other', pc: 10, loadout: { slots: [{ type: 'ITEM', it: null }] } } };
+  const b = [
+    { actor: 'me', cost: 1, effect: { kind: 'loot', corpse: 'corpse', what: 'body' } },
+    { actor: 'other', cost: 1, effect: { kind: 'loot', corpse: 'corpse', what: 'body' } }];
+  assert.ok(!THREAD.validate(T, s, 'A', b, CANON).ok);
+  assert.ok(!s.combatants.corpse.looted);   // mixed-integrity: rejected block never touched state
+});
+test('validate rejects: one actor with one empty slot body-looting two DIFFERENT corpses', () => {
+  const s = afterState();
+  s.combatants.corpse2 = { party: 'B', w: [0, 4], x: 4, y: 5, dead: true, killElement: 'Warp',
+    revivalWindow: 3, permaDeath: false, model: { n: 'Fallen2', pc: 8, loadout: { slots: [] } } };
+  const b = [
+    { actor: 'me', cost: 1, effect: { kind: 'loot', corpse: 'corpse', what: 'body' } },
+    { actor: 'me', cost: 1, effect: { kind: 'loot', corpse: 'corpse2', what: 'body' } }];
+  assert.ok(!THREAD.validate(T, s, 'A', b, CANON).ok);
+});
