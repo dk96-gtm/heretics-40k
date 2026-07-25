@@ -45,3 +45,26 @@ test("validate rejects: enemy of the captive can't 'free' it", () => {
   s.combatants.buddy.party = 'A';
   assert.ok(!THREAD.validate(T, s, 'A', freeBlock(), CANON).ok);
 });
+test('validate rejects: decoy corpse does not hold the named captive', () => {
+  const s = capturedState();
+  // a second dead body, same-party-adjacent, but holding NOTHING
+  s.combatants.decoy = { party: 'A', w: [0, 4], x: 5, y: 5, dead: true,
+    model: { n: 'Decoy', loadout: { slots: [] } } };
+  s.combatants.buddy.x = 5; s.combatants.buddy.y = 6; // adjacent to decoy, not to real carrier
+  const block = [{ actor: 'buddy', cost: 1, effect: { kind: 'free', corpse: 'decoy', cid: 'tgt' } }];
+  assert.ok(!THREAD.validate(T, s, 'B', block, CANON).ok);
+  // nothing changed after the reject
+  const tgt = s.combatants.tgt;
+  assert.ok(tgt.captured);
+  assert.strictEqual(tgt.heldBy, 'carrier');
+  assert.strictEqual(s.combatants.carrier.model.loadout.slots[0].it.cat, 'CAPTIVE');
+});
+test('validate rejects: double-free of the same captive in one block', () => {
+  const s = capturedState();
+  s.combatants.buddy2 = { party: 'B', w: [3, 3], x: 4, y: 5, model: { n: 'Buddy2', loadout: { slots: [] } } };
+  const block = [
+    { actor: 'buddy', cost: 1, effect: { kind: 'free', corpse: 'carrier', cid: 'tgt' } },
+    { actor: 'buddy2', cost: 1, effect: { kind: 'free', corpse: 'carrier', cid: 'tgt' } }
+  ];
+  assert.ok(!THREAD.validate(T, s, 'B', block, CANON).ok);
+});
