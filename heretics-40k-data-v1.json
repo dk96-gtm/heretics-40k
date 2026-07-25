@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.19",
-  "updated": "2026-07-18",
+  "version": "1.20",
+  "updated": "2026-07-25",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -514,6 +514,15 @@
     "note": "Winning an INVASION thread on a planet flips its ruler to the victor's faction and adds it to the victor's personal holdings. Skirmishes contest ground but never take a world."
    },
    "note": "Canon rulers are the baseline map. The live overlay rides save-state: S.world.rulers (flips) + S.world.holdings (planets the Commander personally holds; seeded with the faction crown world at Founding). Personal holdings — not faction-wide rule — feed the Commander's production."
+  },
+  "spoils": {
+   "capture_ap_by_tier": { "I": 3, "II": 2, "III": 1 },
+   "capture_range": 1,
+   "capture_target_wounds": 1,
+   "loot_ap": 1,
+   "free_captive_ap": 1,
+   "sell_mult": { "REMAINS": 0.5, "CAPTIVE": 1.0 },
+   "note": "Capture & Remains tuning - spec docs/superpowers/specs/2026-07-24-capture-remains-design.md"
   }
  },
  "perk_effects": {
@@ -11343,7 +11352,8 @@
    "drukhari": [
     "DoT",
     "Suppressing",
-    "Ambush"
+    "Ambush",
+    "Non-Lethal"
    ],
    "tau": [
     "Guided",
@@ -11351,7 +11361,8 @@
    ],
    "gsc": [
     "Ambush",
-    "Suppressing"
+    "Suppressing",
+    "Non-Lethal"
    ],
    "votann": [
     "Grudge",
@@ -11891,6 +11902,11 @@
     "tag": "Free Move",
     "mechanic": "On a kill, move for free",
     "forge_cost": 10
+   },
+   {
+    "tag": "Non-Lethal",
+    "mechanic": "Strikes from this weapon cannot reduce a target below 1 wound.",
+    "forgeable": true
    }
   ],
   "item": [
@@ -11946,6 +11962,11 @@
     "tag": "Rally",
     "mechanic": "Allied models in the Force deal +X dmg next post",
     "tiers": "1 / 2 / 3"
+   },
+   {
+    "tag": "Capture",
+    "mechanic": "Grants the Capture special action: adjacent (Chebyshev <=1) to an enemy at exactly 1 wound, spend AP by tier to take it captive. The captive occupies an empty slot on this model.",
+    "tiers": ["I - 3 AP", "II - 2 AP", "III - 1 AP"]
    }
   ],
   "combat": [
@@ -12446,7 +12467,7 @@
   {
    "n": "Agoniser",
    "cat": "WEAPON",
-   "d": "Energy 2 - Melee - 1 AP - Suppressing I",
+   "d": "Energy 2 - Melee - 1 AP - Suppressing I - Non-Lethal",
    "pc": 11,
    "faction": "drukhari"
   },
@@ -12579,7 +12600,7 @@
   {
    "n": "Webber",
    "cat": "WEAPON",
-   "d": "Phys 1 - Short - 1 AP - Slowing II",
+   "d": "Phys 1 - Short - 1 AP - Slowing II - Non-Lethal",
    "pc": 9,
    "faction": "gsc"
   },
@@ -12635,7 +12656,7 @@
   {
    "n": "Concussion Maul",
    "cat": "WEAPON",
-   "d": "Phys 2 - Melee - 1 AP - Suppressing I",
+   "d": "Phys 2 - Melee - 1 AP - Suppressing I - Non-Lethal",
    "pc": 8,
    "faction": "votann"
   },
@@ -12729,6 +12750,13 @@
    "d": "Phys 3 - Long - 2 AP - Rapid I - DoT I",
    "pc": 18,
    "faction": "harlequins"
+  },
+  {
+   "n": "Shock Maul",
+   "cat": "WEAPON",
+   "d": "Phys 1 - Melee - 1 AP - Non-Lethal",
+   "pc": 5,
+   "faction": null
   }
  ],
  "items": [
@@ -13256,6 +13284,27 @@
    "d": "Bearer + Melee-range allies gain Stealth for 1 post - 1 AP - Consumable",
    "pc": 8,
    "faction": "harlequins"
+  },
+  {
+   "n": "Shackles",
+   "cat": "ITEM",
+   "d": "Capture I - carried restraints for a subdued foe",
+   "pc": 6,
+   "faction": null
+  },
+  {
+   "n": "Slaver's Snare",
+   "cat": "ITEM",
+   "d": "Capture II - barbed monofilament net-lash",
+   "pc": 12,
+   "faction": "drukhari"
+  },
+  {
+   "n": "Abduction Kit",
+   "cat": "ITEM",
+   "d": "Capture II - soporifics, hood and cord",
+   "pc": 10,
+   "faction": "gsc"
   }
  ],
  "abilities": [

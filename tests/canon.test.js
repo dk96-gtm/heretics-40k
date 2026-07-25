@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.19', () => {
-  assert.strictEqual(canon.meta.version, '1.19');
+test('canon is v1.20', () => {
+  assert.strictEqual(canon.meta.version, '1.20');
 });
 
 test('every faction has a crown world with a walkable surface start (Founding spawn)', () => {
@@ -122,7 +122,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.19');
+  assert.equal(canon.meta.version, '1.20');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -160,11 +160,11 @@ test('canon: every placed NPC has a persona and behavior_seed', () => {
   });
 });
 
-test('v1.8: tag registry migrated (weapon 22, item 11, cast_gate 7)', () => {
+test('v1.8: tag registry migrated (weapon 23, item 12, cast_gate 7)', () => {
   const t = canon.tags;
   assert.ok(t, 'D.tags present');
-  assert.strictEqual(t.weapon.length, 22, 'weapon tags');
-  assert.strictEqual(t.item.length, 11, 'item tags');
+  assert.strictEqual(t.weapon.length, 23, 'weapon tags');
+  assert.strictEqual(t.item.length, 12, 'item tags');
   assert.strictEqual(t.cast_gate.length, 7, 'cast-gate tags');
   t.weapon.forEach((w) => assert.ok(w.tag && w.mechanic, 'weapon tag shape ' + w.tag));
 });
@@ -179,8 +179,8 @@ test('v1.8: forge affinities cover all 20 factions', () => {
 });
 
 test('v1.9: gear catalogs migrated with correct counts', () => {
-  assert.strictEqual(canon.weapons.length, 102, 'standard weapons');
-  assert.strictEqual(canon.items.length, 75, 'standard items');
+  assert.strictEqual(canon.weapons.length, 103, 'standard weapons');
+  assert.strictEqual(canon.items.length, 78, 'standard items');
   assert.strictEqual(canon.abilities.length, 67, 'abilities');
   assert.strictEqual(canon.casts.length, 71, 'casts');
   assert.strictEqual(canon.legendaries.length, 40, 'legendaries (20 weapons + 20 items)');
