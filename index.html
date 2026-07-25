@@ -563,12 +563,14 @@ var THREAD=(function(){
       if(spent>pool)return {ok:false,
         reason:'Exceeds AP pool ('+spent+'/'+pool+') - '+
                ((canon.rules.combat&&canon.rules.combat.desperation_action)||'desperation')};
-      if(state.board){                              // fog targeting gate (Slice C): attack only what you see
+      if(state.board){                              // fog targeting gate (Slice C): attack/capture only what you see
         var vis=spottedEnemies(party,state,state.board);
         for(var gi=0;gi<block.length;gi++){var ge=block[gi].effect;
-          if(ge&&ge.kind==='damage'&&ge.to&&vis.indexOf(ge.to)<0)
-            return {ok:false,reason:'Target not in sight - fog of war'};}
+          if(ge&&(ge.kind==='damage'||ge.kind==='capture')&&ge.to&&vis.indexOf(ge.to)<0)
+            return {ok:false,reason:ge.kind==='capture'?
+              'Capture: target not in sight - fog of war':'Target not in sight - fog of war'};}
       }
+      var _capSlotsUsed={},_capTargets={};             // multi-entry block: track consumption across entries
       for(var ci=0;ci<block.length;ci++){var cb=block[ci],ce=cb.effect;
         if(!ce||ce.kind!=='capture')continue;
         var sp=(canon.rules&&canon.rules.spoils)||{};
@@ -581,7 +583,13 @@ var THREAD=(function(){
           return {ok:false,reason:'Capture: target must be at exactly 1 wound'};
         if(actor.x==null||tgt.x==null||cheb(actor,tgt)>(sp.capture_range||1))
           return {ok:false,reason:'Capture: not in melee range'};
-        if(!emptySlotOf(actor))return {ok:false,reason:'Capture: no empty slot to hold the captive'};
+        var _emptyN=emptySlotCount(actor);
+        _capSlotsUsed[cb.actor]=(_capSlotsUsed[cb.actor]||0)+1;
+        if(_capSlotsUsed[cb.actor]>_emptyN)
+          return {ok:false,reason:'Capture: no empty slot to hold the captive'};
+        if(_capTargets[ce.to])
+          return {ok:false,reason:'Capture: target already claimed by another capture in this block'};
+        _capTargets[ce.to]=true;
         if((cb.cost||0)!==captureAP(canon,tier))
           return {ok:false,reason:'Capture: costs '+captureAP(canon,tier)+' AP at tier '+tier};}
     }
@@ -624,6 +632,7 @@ var THREAD=(function(){
         if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
         else{var W=RW.windows||{};c.revivalWindow=(e.element&&W[e.element])||W.Physical||3;c.permaDeath=false;}}
       else if(e.kind==='capture'&&c){
+        if(c.captured||c.dead)return;                  // belt-and-braces: validate should already reject this
         var _cap=state.combatants[b.actor];
         var _slot=_cap&&emptySlotOf(_cap);
         if(_slot){_slot.it=mkCaptive(c,e.to,e.meta||{});
@@ -786,6 +795,8 @@ var THREAD=(function(){
     return (s&&s.capture_ap_by_tier&&s.capture_ap_by_tier[tier])||3;}
   function emptySlotOf(c){var sl=(c.model&&c.model.loadout&&c.model.loadout.slots)||[];
     for(var i=0;i<sl.length;i++)if(!sl[i].it)return sl[i];return null;}
+  function emptySlotCount(c){var sl=(c.model&&c.model.loadout&&c.model.loadout.slots)||[],n=0;
+    for(var i=0;i<sl.length;i++)if(!sl[i].it)n++;return n;}
   function snapOf(c,cid){var m=c.model||{};
     return {cid:cid,name:m.n||cid,faction:m.faction||null,cls:m.cls||null,rank:m.rank||1,
       pc:m.pc||0,wounds:(c.w&&c.w[1])||0,kills:m.kills||0,lore:m.lore||null,

@@ -14,7 +14,7 @@ function mkState() {
   return { pools: { A: 9, B: 9 }, fog: {},
     board: { w: 10, h: 10, tiles: null },   // tile-less board = all open (existing convention)
     combatants: {
-      atk: { party: 'A', w: [4, 4], x: 2, y: 2, model: { n: 'Captor', pc: 10, cls: 'Core',
+      atk: { party: 'A', w: [4, 4], x: 2, y: 2, sight: 2, model: { n: 'Captor', pc: 10, cls: 'Core',
         loadout: { slots: [{ type: 'ITEM', it: SHACKLES }, { type: 'ITEM', it: null }] } } },
       tgt: { party: 'B', w: [1, 4], x: 3, y: 2, model: { n: 'Victim', pc: 8, cls: 'Core',
         loadout: { slots: [] } } }
@@ -75,4 +75,35 @@ test('combatCatalog lists a standing Capture action for the holder', () => {
   const acts = THREAD.catalog(T, s, 'A', CANON);
   const cap = acts.find(a => a.kind === 'capture');
   assert.ok(cap && cap.actor === 'atk' && cap.cost === 3);
+});
+
+// ── Finding 1: capture must honour fog of war ──
+test('validate rejects: capture target not spotted (fog of war)', () => {
+  const s = mkState();
+  s.combatants.atk.sight = 0;   // no friendly can see anything -> spottedEnemies returns []
+  const res = THREAD.validate(T, s, 'A', capBlock(), CANON);
+  assert.ok(!res.ok);
+  assert.match(res.reason, /fog of war/);
+});
+
+// ── Finding 2: multi-entry block validate/apply asymmetry ──
+test('validate rejects: one captor, one empty slot, two capture entries', () => {
+  const s = mkState();
+  s.combatants.tgt2 = { party: 'B', w: [1, 4], x: 2, y: 3, model: { n: 'Victim2', pc: 8, cls: 'Core',
+    loadout: { slots: [] } } };
+  const block = [
+    { actor: 'atk', cost: 3, item: SHACKLES, effect: { kind: 'capture', to: 'tgt' } },
+    { actor: 'atk', cost: 3, item: SHACKLES, effect: { kind: 'capture', to: 'tgt2' } },
+  ];
+  assert.ok(!THREAD.validate(T, s, 'A', block, CANON).ok);
+});
+test('validate rejects: two captors targeting the same captive in one block', () => {
+  const s = mkState();
+  s.combatants.atk2 = { party: 'A', w: [4, 4], x: 4, y: 2, sight: 2, model: { n: 'Captor2', pc: 10, cls: 'Core',
+    loadout: { slots: [{ type: 'ITEM', it: SHACKLES }, { type: 'ITEM', it: null }] } } };
+  const block = [
+    { actor: 'atk', cost: 3, item: SHACKLES, effect: { kind: 'capture', to: 'tgt' } },
+    { actor: 'atk2', cost: 3, item: SHACKLES, effect: { kind: 'capture', to: 'tgt' } },
+  ];
+  assert.ok(!THREAD.validate(T, s, 'A', block, CANON).ok);
 });
