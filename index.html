@@ -28,7 +28,7 @@ button{font-family:inherit;cursor:pointer}
 .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;border:1px solid var(--ln);color:var(--dim)}
 .pill.br{border-color:var(--br);color:var(--brh)}.pill.bl{border-color:var(--bl);color:var(--blh)}.pill.vd{border-color:var(--vd);color:var(--vdh)}
 .tc{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--ln);color:var(--dim);margin:1px 3px 1px 0;white-space:nowrap}
-.tc.dep{border-color:var(--vd);color:var(--vdh)}.tc.dead{border-color:var(--bl);color:var(--blh)}.tc.loc{border-color:var(--br);color:var(--brh)}
+.tc.dep{border-color:var(--vd);color:var(--vdh)}.tc.dead{border-color:var(--bl);color:var(--blh)}.tc.loc{border-color:var(--br);color:var(--brh)}.tc.tkn{border-color:var(--bl);color:var(--brh)}
 .stat{background:var(--p2);border-radius:4px;padding:9px 11px}
 .stat .k{font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
 .stat .v{font-family:'IBM Plex Mono',monospace;font-size:19px}.stat .v small{font-size:11px;color:var(--dim)}
@@ -1431,7 +1431,7 @@ function npcWeaponFor(facId){
    the local NPC force's faction roster. Enemy models persist via c.gen (SAVE.relink). */
 function seedCombat(t,pid,l,npcId,force){
  if(!force)return;
- var mine=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'});
+ var mine=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'&&m.st!=='TAKEN'});
  if(!mine.length)return;
  var C={},pools={};
  mine.forEach(function(m){var p=(m.w||'1/1').split('/');
@@ -1512,7 +1512,7 @@ leaders().forEach(function(m){var d=E('div','lsc'+(m.id===S.active?' act':''),'<
 d.onclick=function(){if(m.id===S.active){openModel(m.id)}else{switchTo(m.id)}};L.appendChild(d)})}
 /* ---- barracks ---- */
 var sel=null;
-function chips(m){var c=m.st==='DEAD'?'dead':m.st==='DEPLOYED'?'dep':'';return '<span class="tc '+c+'">'+m.st+(m.st==='DEAD'?' · recoverable':m.st==='GARRISON'?' · standby':'')+'</span>'}
+function chips(m){var c=m.st==='DEAD'?'dead':m.st==='TAKEN'?'tkn':m.st==='DEPLOYED'?'dep':'';return '<span class="tc '+c+'">'+(m.st==='TAKEN'?'⛓ TAKEN':m.st)+(m.st==='DEAD'?' · recoverable':m.st==='GARRISON'?' · standby':'')+'</span>'}
 function baseModel(m){return (m.sub||'').split(' - ')[0]||m.cls}
 function rRos(){var tb=document.querySelector('#rt tbody');tb.innerHTML='';
 document.getElementById('rh').textContent='Owned models — '+S.army+' / '+S.infl+' PC';
@@ -1576,8 +1576,8 @@ var fcOpen=false;
    i.e. while travelling, in the void, or garrisoned. Comms don't count as active. */
 function idleNow(){return !!(S.pos.void||inTransit())}
 function forceActive(f){if(idleNow())return false;var ld=S.roster.filter(function(m){return m.id===f.lead})[0];return ld&&ld.st==='DEPLOYED'}
-function eligibleLeaders(){var idle=idleNow();return S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'&&m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&!isForceLead(m)&&(idle||m.st!=='DEPLOYED')})}
-function forceAP(fname){var t=0;S.roster.forEach(function(m){if(m.fo===fname&&m.st!=='DEAD')t+=AP(m.pc)});return t}
+function eligibleLeaders(){var idle=idleNow();return S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'&&m.st!=='TAKEN'&&m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&!isForceLead(m)&&(idle||m.st!=='DEPLOYED')})}
+function forceAP(fname){var t=0;S.roster.forEach(function(m){if(m.fo===fname&&m.st!=='DEAD'&&m.st!=='TAKEN')t+=AP(m.pc)});return t}
 function makeForce(name,leadId){var ld=S.roster.filter(function(m){return m.id===leadId})[0];if(!ld)return;
  var nm=name.trim()||('New Force '+(S.forces.length+1));
  S.forces.push({id:'f'+(S.forces.length+1)+'_'+ld.id,n:nm,lead:leadId,ap:0});
@@ -1621,7 +1621,7 @@ if(!fcOpen){var nb=E('button','btn','＋ Raise a new Force');nb.onclick=function
  top.innerHTML='<h3>Forces</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:10px">A Force is a Named or Commander leader plus the models under them. Only Forces deploy into threads — standby models must be assigned to one first. A Force can only be raised or edited while its leader is <b>not in an active thread</b> (travelling, in the void, or garrisoned).</div>';
  var el=eligibleLeaders();
  if(el.length){top.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;color:var(--vdh);margin-bottom:8px">'+el.length+' leader'+(el.length>1?'s':'')+' free to raise a Force: '+el.map(function(m){return m.n.split(',')[0]}).join(', ')+'.</div>');top.appendChild(nb);}
- else{var locked=S.roster.filter(function(m){return m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&m.st!=='DEAD'});
+ else{var locked=S.roster.filter(function(m){return m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&m.st!=='DEAD'&&m.st!=='TAKEN'});
   top.insertAdjacentHTML('beforeend','<div style="font-size:11.5px;color:var(--blh)">No leader is free to raise a new Force right now. A Named or Commander model can only raise one while <b>garrisoned</b> (not in a thread) or while <b>you are travelling / in the void</b>.</div>');
   if(locked.length)top.insertAdjacentHTML('beforeend','<div style="font-size:11px;color:var(--dim);margin-top:6px">'+locked.map(function(m){return '· '+m.n.split(',')[0]+' — '+(isForceLead(m)?'already leads '+m.fo:m.st==='DEPLOYED'?'in an active thread':m.fo!=='—'?'a member of '+m.fo:'available')}).join('<br>')+'</div>');}
 }else{
@@ -1648,13 +1648,13 @@ fc.insertAdjacentHTML('beforeend','<div style="font-size:11px;color:var(--dim);m
 var ml=E('div','mem');
 /* leader first, then members — stats aligned in one column */
 var members=S.roster.filter(function(m){return m.fo===f.n});members.sort(function(a,b){return (a.id===f.lead?-1:0)-(b.id===f.lead?-1:0)});
-members.forEach(function(m){var row=E('div',null,'<span class="clk" data-mid="'+m.id+'">'+m.n+(m.id===f.lead?' <span class="pill br">Leader</span>':'')+'</span><span class="mono">'+AP(m.pc)+' AP · '+m.w+' W'+(m.st==='DEAD'?' · DEAD':'')+'</span>');
+members.forEach(function(m){var row=E('div',null,'<span class="clk" data-mid="'+m.id+'">'+m.n+(m.id===f.lead?' <span class="pill br">Leader</span>':'')+'</span><span class="mono">'+AP(m.pc)+' AP · '+m.w+' W'+(m.st==='DEAD'?' · DEAD':m.st==='TAKEN'?' · ⛓ TAKEN':'')+'</span>');
  row.querySelector('[data-mid]').onclick=function(){openModel(m.id)};
  if(m.id!==f.lead&&!active){var rm=E('button','btn gh sm','✕');rm.style.marginLeft='6px';rm.title='Remove from Force';rm.onclick=function(){m.fo='—';rF();rRos();T(m.n.split(' ')[0]+' returned to standby.')};row.appendChild(rm)}
  ml.appendChild(row)});
 fc.appendChild(ml);
 /* add a standby model to this force — richer options, clearer confirmation */
-var pool=S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'});
+var pool=S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'&&m.st!=='TAKEN'});
 if(pool.length&&!active){var ar=E('div');ar.style.cssText='display:flex;gap:6px;margin-top:8px';
  var as=E('select');as.style.cssText='flex:1;padding:8px';as.add(new Option('＋ choose a standby model to add…',''));
  pool.forEach(function(m){as.add(new Option(m.n+' — '+baseModel(m)+' · '+m.cls+' R'+m.rk+' · '+AP(m.pc)+' AP · '+m.w+' W · '+m.loc,m.id))});
@@ -1920,6 +1920,7 @@ function exitThread(t){
     go('threads');rTL();return;}
   var deployed=S.roster.filter(function(m){return m.st==='DEPLOYED'&&m.fo!=='—'});
   deployed.forEach(function(m){var p=(m.w||'1/1').split('/'),cur=Math.max(0,(parseInt(p[0],10)||1)-1);m.w=cur+'/'+p[1];if(cur<=0)m.st='DEAD'});
+  convertSpoils(t);   // a carrier who exits the field alive walks out with its cargo
   var curCost=Math.round(S.army*0.05);S.cur=Math.max(0,S.cur-curCost);
   S.threads=S.threads.filter(function(x){return x.id!==t.id});
   var yourSpd=deployed.reduce(function(a,m){return Math.max(a,m.spd||2)},0),enemySpd=3,caught=(enemySpd>=yourSpd);
@@ -1932,6 +1933,26 @@ function exitThread(t){
 /* ── T-TERR-1 slice A: a thread that reaches an outcome is DONE — stamp it,
    report it, sync wounds home to the roster, release the force, mark the record ── */
 function myForceNames(){return S.forces.map(function(f){return f.n})}
+/* ── shared spoils conversion: carried CAPTIVE/REMAINS on my living combatants,
+   plus any looted gear parked in state.spoils, move into S.inv; a captured
+   (non-generated) enemy combatant is greyed on the roster as TAKEN. Called from
+   both concludeThread (full reconciliation) and exitThread (a carrier who exits
+   the field alive walks out with its cargo) so the logic lives in one place. ── */
+function convertSpoils(t){
+ var st=t.state;if(!st)return;
+ if(st.spoils)st.spoils.forEach(function(it){S.inv.push(it)});
+ var C=st.combatants||{};
+ Object.keys(C).forEach(function(id){var c=C[id];
+  var sl=(c.model&&c.model.loadout&&c.model.loadout.slots)||[];
+  var mineC=S.roster.some(function(r){return r.id===id});
+  sl.forEach(function(s){var it=s.it;if(!it||(it.cat!=='CAPTIVE'&&it.cat!=='REMAINS'))return;
+   if(mineC&&!c.dead){S.inv.push(it);s.it=null;
+    T((it.cat==='CAPTIVE'?'⛓ ':'☠ ')+it.n+' — secured to your holdings.');}});
+  if(c.captured&&!c.gen){var vm=S.roster.filter(function(r){return r.id===id})[0];
+   if(vm){vm.st='TAKEN';vm.loc='held by the enemy';
+    S.world.log=S.world.log||[];
+    S.world.log.unshift(nowStamp()+' — '+vm.n.split(',')[0]+' was TAKEN alive. A ransom may follow.');}}});
+}
 function concludeThread(t,oc){
  t.done={kind:oc.kind,victor:oc.victor||null,defeated:oc.defeated||[],at:Date.now()};
  var C=(t.state&&t.state.combatants)||{};
@@ -1939,6 +1960,7 @@ function concludeThread(t,oc){
   var m=S.roster.filter(function(r){return r.id===id})[0];if(!m||!c.w)return;
   m.w=c.w[0]+'/'+c.w[1];
   if(c.dead){m.st='DEAD';m.loc=(t.loc||'the field')+' — field'+(c.permaDeath?', no revival':', recoverable');}});
+ convertSpoils(t);   // carried CAPTIVE/REMAINS + looted gear -> inventory; TAKEN greying
  var mineWon=!!(oc.victor&&myForceNames().indexOf(oc.victor)>=0);
  var line=oc.kind==='accord'?'🕊 RESOLUTION — terms struck. The accord stands and this thread is closed.'
   :oc.kind==='mutual'?'⚔ RESOLUTION — mutual annihilation. No one holds the field.'
@@ -2158,7 +2180,7 @@ function bfFoeName(st,foe){for(var id in st.combatants){var c=st.combatants[id];
 // the non-player side answers the player's combat post (single-player: foe is NPC-run;
 // Stage-2 gates this to NPC-controlled forces — a drop-in at this seam)
 function npcRespond(t,playerParty){
-  var st=t.state;if(!st||!st.board||st.phase==='deploy')return;
+  var st=t.state;if(!st||!st.board||st.phase==='deploy'||st.phase==='aftermath')return;   // aftermath is a solo looting phase — no NPC turns
   var sides={};for(var id in (st.combatants||{})){var p=st.combatants[id].party;if(p)sides[p]=1;}
   var foe=Object.keys(sides).filter(function(s){return s!==playerParty;})[0];
   if(!foe)return;
@@ -2393,8 +2415,16 @@ function threadView(V,t){
       if(t.state.poolsBase&&t.state.poolsBase[party]!=null)t.state.pools[party]=t.state.poolsBase[party];
       npcRespond(t,party);}   // T-NPC-2b: the enemy side answers — it fights back
     var oc=THREAD.outcome(t,t.state);                // T-TERR-1: does this post END it?
-    if(oc)concludeThread(t,oc);
-    openT(t.id);T(oc?('Thread concluded — '+(t.done.victor||'no victor')+'.'):'Posted to '+t.n+'.');};
+    var deferred=false,justConcluded=false;
+    if(oc&&t.state.phase!=='aftermath'){             // already in aftermath → only END THREAD concludes
+      var mineWon=oc.victor&&myForceNames().indexOf(oc.victor)>=0;
+      if(mineWon&&oc.kind==='annihilation'){
+        t.state.phase='aftermath';t.state.pendingOutcome=oc;deferred=true;
+        t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+          body:'☠ THE FIELD IS YOURS — the enemy is broken. Walk the ground: loot the fallen (1 AP each), then END THREAD to withdraw with your spoils.'});
+      } else {concludeThread(t,oc);justConcluded=true;}
+    }
+    openT(t.id);T(deferred?'The field is yours — loot the fallen, then END THREAD.':justConcluded?('Thread concluded — '+(t.done.victor||'no victor')+'.'):'Posted to '+t.n+'.');};
   if(isCombat){
     if(t.state.board)V.appendChild(t.state.phase==='deploy'?bfDeployUI(t,party):bfCombatUI(t,party));  // E: deploy then D3 battle
     var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);lf.appendChild(comp.el);
@@ -2416,6 +2446,10 @@ function threadView(V,t){
       });
     };
     V.appendChild(_sm);
+  }
+  if(t.state.phase==='aftermath'){
+    var eb=E('button','btn','END THREAD — withdraw with your spoils');eb.style.marginTop='10px';
+    eb.onclick=function(){concludeThread(t,t.state.pendingOutcome);openT(t.id)};V.appendChild(eb);
   }
   var xb=E('button','btn gh','Exit thread');xb.style.marginTop='10px';
   xb.onclick=function(){exitThread(t)};V.appendChild(xb);
@@ -2663,7 +2697,7 @@ function isLeader(m){return m.tag&&(m.tag.indexOf('Comm')>=0||m.tag.indexOf('Lea
 function isCmdr(m){return m.id==='kane'||(m.tag&&m.tag.indexOf('Comm')>=0)}
 function isForceLead(m){return S.forces.some(function(f){return f.lead===m.id})}
 /* switchable figures: the Commander + whoever currently leads a Force */
-function leaders(){return S.roster.filter(function(m){return m.st!=='DEAD'&&(isCmdr(m)||isForceLead(m))})}
+function leaders(){return S.roster.filter(function(m){return m.st!=='DEAD'&&m.st!=='TAKEN'&&(isCmdr(m)||isForceLead(m))})}
 function frameColor(){var al=S.player.allegiance;return al==='chaos'?'var(--blh)':al==='xenos'?'var(--vdh)':'var(--brh)'}
 /* lore + history the overview needs; most models get sensible defaults */
 function enrichRoster(){var lore={
