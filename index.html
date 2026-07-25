@@ -572,7 +572,8 @@ var THREAD=(function(){
       }
       var _capSlotsUsed={},_capTargets={};             // multi-entry block: track consumption across entries
       for(var ci=0;ci<block.length;ci++){var cb=block[ci],ce=cb.effect;
-        if(!ce||ce.kind!=='capture')continue;
+        if(!ce||(ce.kind!=='capture'&&ce.kind!=='free'))continue;
+        if(ce.kind==='capture'){
         var sp=(canon.rules&&canon.rules.spoils)||{};
         var actor=state.combatants[cb.actor],tgt=state.combatants[ce.to];
         var tier=captureTier(cb.item);
@@ -592,6 +593,15 @@ var THREAD=(function(){
         _capTargets[ce.to]=true;
         if((cb.cost||0)!==captureAP(canon,tier))
           return {ok:false,reason:'Capture: costs '+captureAP(canon,tier)+' AP at tier '+tier};}
+        if(ce&&ce.kind==='free'){
+          var fsp=(canon.rules&&canon.rules.spoils)||{};
+          var fac=state.combatants[cb.actor],fco=state.combatants[ce.corpse],fcv=state.combatants[ce.cid];
+          if(!fac||!fco||!fcv)return {ok:false,reason:'Free: no such model'};
+          if(!fco.dead)return {ok:false,reason:'Free: the carrier still stands'};
+          if(!fcv.captured)return {ok:false,reason:'Free: that model is not held'};
+          if(fac.party!==fcv.party)return {ok:false,reason:'Free: only their own side can free them'};
+          if(fac.x==null||fco.x==null||cheb(fac,fco)>1)return {ok:false,reason:'Free: not adjacent to the fallen carrier'};
+          if((cb.cost||0)!==(fsp.free_captive_ap||1))return {ok:false,reason:'Free: costs '+(fsp.free_captive_ap||1)+' AP'};}}
     }
     return {ok:true,reason:''};
   }
@@ -637,6 +647,12 @@ var THREAD=(function(){
         var _slot=_cap&&emptySlotOf(_cap);
         if(_slot){_slot.it=mkCaptive(c,e.to,e.meta||{});
           c.captured=true;c.heldBy=b.actor;c.x=null;c.y=null;}}
+      else if(e.kind==='free'){
+        var _fc=state.combatants[e.corpse],_fv=state.combatants[e.cid];
+        if(_fc&&_fv){var _fsl=(_fc.model&&_fc.model.loadout&&_fc.model.loadout.slots)||[];
+          for(var _fi=0;_fi<_fsl.length;_fi++){var _fit=_fsl[_fi].it;
+            if(_fit&&_fit.cat==='CAPTIVE'&&_fit.ref&&_fit.ref.cid===e.cid){_fsl[_fi].it=null;break;}}
+          _fv.captured=false;_fv.heldBy=null;_fv.w=[1,_fv.w[1]];_fv.x=_fc.x;_fv.y=_fc.y;}}
       else if(e.kind==='terms'){state.terms=state.terms||{};state.terms.agreed=!!e.agreed;
         if(e.detail)state.terms.detail=e.detail;}
       else if(e.kind==='transit'&&state.transit){
