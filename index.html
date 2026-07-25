@@ -1918,6 +1918,7 @@ function exitThread(t){
   if(!joined){S.threads=S.threads.filter(function(x){return x.id!==t.id});
     T('You withdraw from the '+t.type+' at '+t.loc+' — no cost; hostilities had not begun.');
     go('threads');rTL();return;}
+  if(t.state&&t.state.phase==='aftermath'&&t.state.pendingOutcome){concludeThread(t,t.state.pendingOutcome);return;}
   var deployed=S.roster.filter(function(m){return m.st==='DEPLOYED'&&m.fo!=='—'});
   deployed.forEach(function(m){var p=(m.w||'1/1').split('/'),cur=Math.max(0,(parseInt(p[0],10)||1)-1);m.w=cur+'/'+p[1];if(cur<=0)m.st='DEAD'});
   convertSpoils(t);   // a carrier who exits the field alive walks out with its cargo
@@ -1940,7 +1941,7 @@ function myForceNames(){return S.forces.map(function(f){return f.n})}
    the field alive walks out with its cargo) so the logic lives in one place. ── */
 function convertSpoils(t){
  var st=t.state;if(!st)return;
- if(st.spoils)st.spoils.forEach(function(it){S.inv.push(it)});
+ if(st.spoils)st.spoils.forEach(function(it){S.inv.push(it)});st.spoils=[];
  var C=st.combatants||{};
  Object.keys(C).forEach(function(id){var c=C[id];
   var sl=(c.model&&c.model.loadout&&c.model.loadout.slots)||[];
