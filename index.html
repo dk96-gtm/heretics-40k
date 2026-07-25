@@ -524,7 +524,7 @@ var THREAD=(function(){
   function apMod(it){var s=it.d||'';if(/effortless/i.test(s))return 0;
     var m=s.match(/(\d+)\s*AP/);if(m)return parseInt(m[1],10);
     return it.cat==='CAST'?2:it.cat==='ABILITY'?1:it.cat==='ITEM'?0:1;}
-  function combatCatalog(state,party){
+  function combatCatalog(state,party,canon){
     var out=[];
     Object.keys(state.combatants).forEach(function(id){
       var c=state.combatants[id];if(c.party!==party||!c.model)return;
@@ -533,6 +533,9 @@ var THREAD=(function(){
         if(k==='WEAPON')out.push({actor:id,action:'Attack - '+it.n,group:'e',cost:apMod(it),kind:'damage',item:it});
         else if(k==='ABILITY')out.push({actor:id,action:it.n,group:'y',cost:apMod(it),kind:'cond',item:it});
         else if(k==='CAST'||k==='WARP CAST')out.push({actor:id,action:'Cast: '+it.n,group:'a',cost:apMod(it),kind:'cond',item:it});
+        else if(k==='ITEM'&&captureTier(it))
+          out.push({actor:id,action:'Capture ('+captureTier(it)+')',group:'x',
+                    cost:captureAP(canon||{rules:{}},captureTier(it)),kind:'capture',item:it});
         else if(k==='ITEM'&&/consumable|stimm|grenade/i.test(it.d||''))
           out.push({actor:id,action:'Use '+it.n,group:'a',cost:apMod(it),kind:'cond',item:it});
       });
@@ -541,7 +544,7 @@ var THREAD=(function(){
     return out;
   }
   function catalog(thread,state,party,canon){
-    if(thread.type==='SKIRMISH'||thread.type==='INVASION')return combatCatalog(state,party);
+    if(thread.type==='SKIRMISH'||thread.type==='INVASION')return combatCatalog(state,party,canon);
     if(thread.type==='DIPLOMACY')return [
       {actor:party,action:'Offer',group:'t',cost:0,kind:'terms'},
       {actor:party,action:'Demand',group:'t',cost:0,kind:'terms'},
@@ -566,6 +569,21 @@ var THREAD=(function(){
           if(ge&&ge.kind==='damage'&&ge.to&&vis.indexOf(ge.to)<0)
             return {ok:false,reason:'Target not in sight - fog of war'};}
       }
+      for(var ci=0;ci<block.length;ci++){var cb=block[ci],ce=cb.effect;
+        if(!ce||ce.kind!=='capture')continue;
+        var sp=(canon.rules&&canon.rules.spoils)||{};
+        var actor=state.combatants[cb.actor],tgt=state.combatants[ce.to];
+        var tier=captureTier(cb.item);
+        if(!actor||!tgt)return {ok:false,reason:'Capture: no such model'};
+        if(!tier)return {ok:false,reason:'Capture: no Capture-tagged item equipped'};
+        if(tgt.dead||tgt.captured)return {ok:false,reason:'Capture: target is beyond taking'};
+        if(tgt.w[0]!==(sp.capture_target_wounds||1))
+          return {ok:false,reason:'Capture: target must be at exactly 1 wound'};
+        if(actor.x==null||tgt.x==null||cheb(actor,tgt)>(sp.capture_range||1))
+          return {ok:false,reason:'Capture: not in melee range'};
+        if(!emptySlotOf(actor))return {ok:false,reason:'Capture: no empty slot to hold the captive'};
+        if((cb.cost||0)!==captureAP(canon,tier))
+          return {ok:false,reason:'Capture: costs '+captureAP(canon,tier)+' AP at tier '+tier};}
     }
     return {ok:true,reason:''};
   }
@@ -605,6 +623,11 @@ var THREAD=(function(){
         var RW=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
         if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
         else{var W=RW.windows||{};c.revivalWindow=(e.element&&W[e.element])||W.Physical||3;c.permaDeath=false;}}
+      else if(e.kind==='capture'&&c){
+        var _cap=state.combatants[b.actor];
+        var _slot=_cap&&emptySlotOf(_cap);
+        if(_slot){_slot.it=mkCaptive(c,e.to,e.meta||{});
+          c.captured=true;c.heldBy=b.actor;c.x=null;c.y=null;}}
       else if(e.kind==='terms'){state.terms=state.terms||{};state.terms.agreed=!!e.agreed;
         if(e.detail)state.terms.detail=e.detail;}
       else if(e.kind==='transit'&&state.transit){
@@ -627,7 +650,7 @@ var THREAD=(function(){
     if(state.phase==='deploy')return null;
     var C=state.combatants||{},parties={},alive={};
     Object.keys(C).forEach(function(id){var c=C[id];if(!c.party)return;
-      parties[c.party]=1;if(!c.dead)alive[c.party]=1;});
+      parties[c.party]=1;if(!c.dead&&!c.captured)alive[c.party]=1;});
     var pn=Object.keys(parties);if(pn.length<2)return null;
     var an=Object.keys(alive);
     if(an.length===1)return {kind:'annihilation',victor:an[0],defeated:pn.filter(function(p){return p!==an[0];})};
@@ -756,7 +779,23 @@ var THREAD=(function(){
     }
     return block;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn };
+  /* ── Capture & Remains (spec 2026-07-24) ── */
+  function captureTier(item){var m=((item&&item.d)||'').match(/Capture\s+(III|II|I)\b/i);
+    return m?m[1].toUpperCase():null;}
+  function captureAP(canon,tier){var s=canon.rules&&canon.rules.spoils;
+    return (s&&s.capture_ap_by_tier&&s.capture_ap_by_tier[tier])||3;}
+  function emptySlotOf(c){var sl=(c.model&&c.model.loadout&&c.model.loadout.slots)||[];
+    for(var i=0;i<sl.length;i++)if(!sl[i].it)return sl[i];return null;}
+  function snapOf(c,cid){var m=c.model||{};
+    return {cid:cid,name:m.n||cid,faction:m.faction||null,cls:m.cls||null,rank:m.rank||1,
+      pc:m.pc||0,wounds:(c.w&&c.w[1])||0,kills:m.kills||0,lore:m.lore||null,
+      loadout:((m.loadout&&m.loadout.slots)||[]).filter(function(s){return s.it})
+        .map(function(s){return s.it.n})};}
+  function mkCaptive(c,cid,meta){meta=meta||{};
+    return {cat:'CAPTIVE',n:'Captive: '+((c.model&&c.model.n)||cid),
+      d:'A living prize, bound and carried. Ransom, sell, execute or release.',
+      ref:snapOf(c,cid),owner_cmdr:meta.owner||null,origin:meta.origin||null,takenDay:meta.day||null};}
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, emptySlotOf:emptySlotOf };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
