@@ -2237,9 +2237,17 @@ function bfCombatUI(t,party){
   var reach=ui.sel?THREAD.reachable(posOf(ui.sel),C[ui.sel].spd||3,board,occExcept(ui.sel)):{};
   function myAt(x,y){var r=null;Object.keys(C).forEach(function(id){if(C[id].party!==party||C[id].dead)return;var p=posOf(id);if(p.x===x&&p.y===y)r=id;});return r;}
   function foeAt(x,y){var r=null;Object.keys(C).forEach(function(id){if(C[id].party===party||C[id].dead||!spotted[id])return;var p=posOf(id);if(p.x===x&&p.y===y)r=id;});return r;}
-  // corpse markers (Task 6): a fallen combatant of EITHER side still occupies its square (captured bodies are
-  // pulled off-board — x/y null — so this only ever matches a killed-but-not-captured model).
-  function corpseAt(x,y){var r=null;Object.keys(C).forEach(function(id){var c=C[id];if(!c.dead||c.x==null)return;if(c.x===x&&c.y===y)r=id;});return r;}
+  // corpse markers (Task 6): a fallen combatant still occupies its square (captured bodies are pulled
+  // off-board — x/y null — so this only ever matches a killed-but-not-captured model). Own dead always
+  // show; an ENEMY corpse only shows if `party` has ever SEEN that id (fog memory, same discipline as
+  // ghosts) — corpses don't move, so once-seen-dying is enough to keep the marker, but never-spotted is
+  // still a fog leak and must stay hidden.
+  function corpseAt(x,y){var r=null;Object.keys(C).forEach(function(id){var c=C[id];
+    if(!c.dead||c.x==null||c.x!==x||c.y!==y)return;
+    if(c.party===party){r=id;return;}
+    var seen=(st.fog&&st.fog[party]&&st.fog[party].seen)||[];
+    if(seen.indexOf(id)>=0)r=id;});
+    return r;}
   // does dead combatant `cid` still carry a CAPTIVE belonging to `party`? → that captive's combatant id, else null
   function captiveHeldBy(cid){var cc=C[cid];if(!cc||!cc.dead)return null;
     var sl=(cc.model&&cc.model.loadout&&cc.model.loadout.slots)||[];
