@@ -572,7 +572,7 @@ var THREAD=(function(){
       }
       var _capSlotsUsed={},_capTargets={},_freedTargets={};  // multi-entry block: track consumption across entries
       for(var ci=0;ci<block.length;ci++){var cb=block[ci],ce=cb.effect;
-        if(!ce||(ce.kind!=='capture'&&ce.kind!=='free'))continue;
+        if(!ce||(ce.kind!=='capture'&&ce.kind!=='free'&&ce.kind!=='loot'))continue;
         if(ce.kind==='capture'){
         var sp=(canon.rules&&canon.rules.spoils)||{};
         var actor=state.combatants[cb.actor],tgt=state.combatants[ce.to];
@@ -604,7 +604,17 @@ var THREAD=(function(){
           if(fac.x==null||fco.x==null||cheb(fac,fco)>1)return {ok:false,reason:'Free: not adjacent to the fallen carrier'};
           if((cb.cost||0)!==(fsp.free_captive_ap||1))return {ok:false,reason:'Free: costs '+(fsp.free_captive_ap||1)+' AP'};
           if(_freedTargets[ce.cid])return {ok:false,reason:'Free: already being freed this post'};
-          _freedTargets[ce.cid]=true;}}
+          _freedTargets[ce.cid]=true;}
+        if(ce&&ce.kind==='loot'){
+          var lsp=(canon.rules&&canon.rules.spoils)||{};
+          if(state.phase!=='aftermath')return {ok:false,reason:'Loot: only in the aftermath - the field must be won first'};
+          var lac=state.combatants[cb.actor],lco=state.combatants[ce.corpse];
+          if(!lac||!lco)return {ok:false,reason:'Loot: no such model'};
+          if(!lco.dead)return {ok:false,reason:'Loot: they still breathe'};
+          if(ce.what==='body'&&lco.looted)return {ok:false,reason:'Loot: this body is already taken'};
+          if(lac.x==null||lco.x==null||cheb(lac,lco)>1)return {ok:false,reason:'Loot: not adjacent to the fallen'};
+          if(ce.what==='body'&&!emptySlotOf(lac))return {ok:false,reason:'Loot: no empty slot to carry the body'};
+          if((cb.cost||0)!==(lsp.loot_ap||1))return {ok:false,reason:'Loot: costs '+(lsp.loot_ap||1)+' AP'};}}
     }
     return {ok:true,reason:''};
   }
@@ -657,6 +667,16 @@ var THREAD=(function(){
           for(var _fi=0;_fi<_fsl.length;_fi++){var _fit=_fsl[_fi].it;
             if(_fit&&_fit.cat==='CAPTIVE'&&_fit.ref&&_fit.ref.cid===e.cid){_fsl[_fi].it=null;_found=true;break;}}
           if(_found){_fv.captured=false;_fv.heldBy=null;_fv.w=[1,_fv.w[1]];_fv.x=_fc.x;_fv.y=_fc.y;}}}
+      else if(e.kind==='loot'){
+        var _lc=state.combatants[e.corpse],_la=state.combatants[b.actor];
+        if(_lc&&_la){
+          if(e.what==='gear'){state.spoils=state.spoils||[];
+            var _lsl=(_lc.model&&_lc.model.loadout&&_lc.model.loadout.slots)||[];
+            _lsl.forEach(function(s){if(s.it){state.spoils.push(s.it);s.it=null;}});
+            var _lar=_lc.model&&_lc.model.loadout&&_lc.model.loadout.armour;
+            if(_lar&&_lar.it){state.spoils.push(_lar.it);_lar.it=null;}}
+          else if(e.what==='body'){var _lslot=emptySlotOf(_la);
+            if(_lslot){_lslot.it=mkRemains(_lc,e.corpse,e.meta||{});_lc.looted=true;}}}}
       else if(e.kind==='terms'){state.terms=state.terms||{};state.terms.agreed=!!e.agreed;
         if(e.detail)state.terms.detail=e.detail;}
       else if(e.kind==='transit'&&state.transit){
@@ -826,7 +846,15 @@ var THREAD=(function(){
     return {cat:'CAPTIVE',n:'Captive: '+((c.model&&c.model.n)||cid),
       d:'A living prize, bound and carried. Ransom, sell, execute or release.',
       ref:snapOf(c,cid),owner_cmdr:meta.owner||null,origin:meta.origin||null,takenDay:meta.day||null};}
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, emptySlotOf:emptySlotOf };
+  function mkRemains(c,cid,meta){meta=meta||{};
+    var win=null;
+    if(!c.permaDeath&&(c.revivalWindow||0)>0&&meta.day!=null)
+      win={element:c.killElement||'Physical',expiresDay:meta.day+c.revivalWindow};
+    return {cat:'REMAINS',n:'Remains of '+((c.model&&c.model.n)||cid),
+      d:'The dead, carried from the field. Revive within the window, sell, or offer at a door.',
+      ref:snapOf(c,cid),owner_cmdr:meta.owner||null,origin:meta.origin||null,
+      takenDay:meta.day!=null?meta.day:null,window:win};}
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
