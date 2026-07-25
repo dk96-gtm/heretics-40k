@@ -584,6 +584,7 @@ var THREAD=(function(){
         var _cov=(state.board&&typeof c.x==='number')?coverMod({x:c.x,y:c.y},state.board):0;
         var _dv=(_def&&_def[e.element])||0;
         var _taken=Math.max(0,e.amount-_dv-_cov);
+        if(e.nonLethal)_taken=Math.min(_taken,Math.max(0,c.w[0]-1)); // Non-Lethal floor: never below 1 wound
         var _abs=Math.max(0,Math.min(_dv,e.amount-_cov));   // what the plate actually ate
         var _ai=c.model&&c.model.loadout&&c.model.loadout.armour&&c.model.loadout.armour.it;
         if(_ai&&_abs>0)_ai.absorbed=(_ai.absorbed||0)+_abs; // gear battle record (T-ECO-1 prereq)
