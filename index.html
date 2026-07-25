@@ -833,7 +833,7 @@ var THREAD=(function(){
       var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;  // ATTACK (AP): best affordable reaching weapon
       weps.forEach(function(w){if(NPC_RANK[w.band]>=NPC_RANK[db]&&(w.ap||0)<=pool){
         if(!pick||(w.damage||0)>(pick.damage||0))pick=w;}});
-      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,weapon:pick.name||null}});pool-=(pick.ap||0);}
+      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,nonLethal:!!pick.nonLethal,weapon:pick.name||null}});pool-=(pick.ap||0);}
     }
     return block;
   }
@@ -2070,7 +2070,7 @@ function threadBlockBuilder(t,party){
   var pool=(t.state.pools&&t.state.pools[party]!=null)?t.state.pools[party]:null;
   if(pool!=null)box.insertAdjacentHTML('beforeend','<div class="apt"><span style="font-size:11px;color:var(--dim)">AP pool: <span class="mono">'+pool+'</span></span><span class="n" id="bbtot">0 AP</span></div>');
   function effFor(a,tgt){
-    if(a.group==='e')return {kind:'damage',amount:damageOf(a.item),to:tgt,element:THREAD.elementOf(a.item),noRevival:THREAD.isNoRevival(a.item,D),weapon:a.item.n};
+    if(a.group==='e')return {kind:'damage',amount:damageOf(a.item),to:tgt,element:THREAD.elementOf(a.item),noRevival:THREAD.isNoRevival(a.item,D),nonLethal:/non-?lethal/i.test(a.item.d||''),weapon:a.item.n};
     if(a.group==='b')return {kind:'band',to:tgt,who:a.actor};
     if(a.group==='y'||a.group==='a')return {kind:'cond',add:a.action,to:a.actor};
     if(a.group==='t'){
@@ -2149,7 +2149,10 @@ function bfWeaponsOf(c){var out=[];if(!c.model)return out;((c.model.loadout&&c.m
 // weapon capabilities (band/ap/damage/element) — the injected weaponsOf
 function bfWeaponCaps(c){return bfWeaponsOf(c).map(function(it){return {
   name:it.n,band:bfItemBand(it),ap:bfAP(it),damage:damageOf(it),
-  element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D)};});}
+  element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),nonLethal:/non-?lethal/i.test(it.d||'')};});}
+function bfCaptureItemOf(c){if(!c.model)return null;var sl=(c.model.loadout&&c.model.loadout.slots)||c.model.sl||[];
+  for(var i=0;i<sl.length;i++){var s=sl[i];if(s.it&&(s.type||s.k)==='ITEM'&&THREAD.captureTier(s.it))return s.it;}
+  return null;}
 function bfFoeName(st,foe){for(var id in st.combatants){var c=st.combatants[id];
   if(c.party===foe&&!c.dead&&c.model)return c.model.n.split(',')[0];}return 'The enemy';}
 // the non-player side answers the player's combat post (single-player: foe is NPC-run;
@@ -2233,7 +2236,16 @@ function bfCombatUI(t,party){
   function lit(x,y){return friends.some(function(fr){return THREAD.cheb(fr,{x:x,y:y})<=(fr.sight||0)&&THREAD.lineOfSight(fr,{x:x,y:y},board);});}
   var reach=ui.sel?THREAD.reachable(posOf(ui.sel),C[ui.sel].spd||3,board,occExcept(ui.sel)):{};
   function myAt(x,y){var r=null;Object.keys(C).forEach(function(id){if(C[id].party!==party||C[id].dead)return;var p=posOf(id);if(p.x===x&&p.y===y)r=id;});return r;}
-  function foeAt(x,y){var r=null;Object.keys(C).forEach(function(id){if(C[id].party===party||!spotted[id])return;var p=posOf(id);if(p.x===x&&p.y===y)r=id;});return r;}
+  function foeAt(x,y){var r=null;Object.keys(C).forEach(function(id){if(C[id].party===party||C[id].dead||!spotted[id])return;var p=posOf(id);if(p.x===x&&p.y===y)r=id;});return r;}
+  // corpse markers (Task 6): a fallen combatant of EITHER side still occupies its square (captured bodies are
+  // pulled off-board — x/y null — so this only ever matches a killed-but-not-captured model).
+  function corpseAt(x,y){var r=null;Object.keys(C).forEach(function(id){var c=C[id];if(!c.dead||c.x==null)return;if(c.x===x&&c.y===y)r=id;});return r;}
+  // does dead combatant `cid` still carry a CAPTIVE belonging to `party`? → that captive's combatant id, else null
+  function captiveHeldBy(cid){var cc=C[cid];if(!cc||!cc.dead)return null;
+    var sl=(cc.model&&cc.model.loadout&&cc.model.loadout.slots)||[];
+    for(var i=0;i<sl.length;i++){var it=sl[i].it;
+      if(it&&it.cat==='CAPTIVE'&&it.ref&&it.ref.cid){var cv=C[it.ref.cid];if(cv&&cv.party===party)return it.ref.cid;}}
+    return null;}
   var GL={open:'·',forest:'♣',ruins:'▓',mtn:'▲',fort:'█'},CL={forest:'bf-forest',ruins:'bf-ruins',mtn:'bf-mtn',fort:'bf-fort'};
   var bh='<div class="bf-board" style="grid-template-columns:repeat('+W+',31px)">';
   for(var y=0;y<H;y++)for(var x=0;x<W;x++){
@@ -2242,6 +2254,7 @@ function bfCombatUI(t,party){
     if(reach[x+','+y])cls+=' bf-reach';
     var mid=myAt(x,y);if(mid)tok='<span class="bf-tok bf-mine'+(ui.sel===mid?' sel':'')+'" data-m="'+mid+'">'+bfTag(mid,C[mid])+'</span>';
     var fid=foeAt(x,y);if(fid)tok+='<span class="bf-tok bf-foe'+(ui.tgt===fid?' tgt':'')+'" data-f="'+fid+'">'+bfTag(fid,C[fid])+'</span>';
+    if(!mid&&!fid){var did=corpseAt(x,y);if(did)tok+='<span class="bf-corpse" title="'+esc((C[did].model?C[did].model.n:did))+'">☠</span>';}
     if(ghostAt[x+','+y]&&!fid)tok+='<span class="bf-ghost">◌</span>';
     bh+='<div class="'+cls+'" data-bx="'+x+'" data-by="'+y+'">'+inner+tok+'</div>';
   }
@@ -2261,6 +2274,19 @@ function bfCombatUI(t,party){
       wpns.forEach(function(it,i){var wb=bfItemBand(it),ok=BF_RANK[wb]>=BF_RANK[bnd];
         panel+='<button class="btn sm" data-atk="'+i+'"'+(ok?'':' disabled')+' style="margin:5px 5px 0 0">'+it.n+' · '+wb+' · '+bfAP(it)+'AP '+(ok?'✓':'✗')+'</button>';});
     }
+    // Standing Capture (Task 6): always rendered for a Capture-item holder — an invalid attempt
+    // (no target, out of range, target not at 1 wound…) surfaces THREAD.validate's reason on post.
+    var capIt=bfCaptureItemOf(sc);
+    if(capIt){var capTier=THREAD.captureTier(capIt);
+      var capCost=(D.rules.spoils&&D.rules.spoils.capture_ap_by_tier&&D.rules.spoils.capture_ap_by_tier[capTier])||3;
+      panel+='<button class="btn sm" data-cap="1" style="margin:5px 5px 0 0">Capture ('+capTier+') · '+capCost+'AP'+(ui.tgt?' → '+bfTag(ui.tgt,C[ui.tgt]):'')+'</button>';}
+    // Free captive (Task 6): render only when adjacent to a corpse holding YOUR side's captive.
+    var freeCorpse=null,freeCid=null;
+    Object.keys(C).forEach(function(id){if(freeCid)return;var cc=C[id];if(!cc.dead||cc.x==null)return;
+      if(THREAD.cheb(sp,{x:cc.x,y:cc.y})>1)return;
+      var cid=captiveHeldBy(id);if(cid){freeCorpse=id;freeCid=cid;}});
+    if(freeCid){var freeAP=(D.rules.spoils&&D.rules.spoils.free_captive_ap)||1;
+      panel+='<button class="btn sm" data-free="'+freeCorpse+'|'+freeCid+'" style="margin:5px 5px 0 0">Free captive ('+freeAP+' AP)</button>';}
     panel+='</div>';}
   if(Object.keys(ui.moves).length||(ui.acts||[]).length){
     panel+='<div class="bf-blk"><h4>Staged this turn</h4>';
@@ -2272,14 +2298,24 @@ function bfCombatUI(t,party){
   el.innerHTML='<h3>Battlefield · '+party+'’s view</h3><div class="bf-wrap">'+bh+panel+'</div>'+
     '<div style="font-size:11px;color:var(--dim);margin-top:6px">Fog — your knowledge · '+fog.spotted.length+' spotted · '+fog.ghosts.length+' ghost'+(fog.ghosts.length===1?'':'s')+' · moves/attacks stage into your post below</div>';
   el.addEventListener('click',function(ev){
-    var b=ev.target.closest('[data-atk],[data-clr],[data-rma],[data-m],[data-f],[data-bx]');if(!b)return;
+    var b=ev.target.closest('[data-atk],[data-clr],[data-rma],[data-m],[data-f],[data-bx],[data-cap],[data-free]');if(!b)return;
     if(b.hasAttribute('data-m')){ui.sel=(ui.sel===b.getAttribute('data-m'))?null:b.getAttribute('data-m');return openT(t.id);}
     if(b.hasAttribute('data-f')){ui.tgt=(ui.tgt===b.getAttribute('data-f'))?null:b.getAttribute('data-f');return openT(t.id);}
     if(b.hasAttribute('data-clr')){delete ui.moves[b.getAttribute('data-clr')];return openT(t.id);}
     if(b.hasAttribute('data-rma')){ui.acts.splice(+b.getAttribute('data-rma'),1);return openT(t.id);}
     if(b.hasAttribute('data-atk')){var it=bfWeaponsOf(C[ui.sel])[+b.getAttribute('data-atk')];
       if(it&&ui.tgt){var d2=THREAD.cheb(posOf(ui.sel),posOf(ui.tgt)),bnd2=THREAD.bandOf(d2);
-        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2])ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),weapon:it.n}});}
+        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2])ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),nonLethal:/non-?lethal/i.test(it.d||''),weapon:it.n}});}
+      return openT(t.id);}
+    if(b.hasAttribute('data-cap')){var capIt2=bfCaptureItemOf(C[ui.sel]);
+      if(capIt2){var tier2=THREAD.captureTier(capIt2);
+        var apCost2=(D.rules.spoils&&D.rules.spoils.capture_ap_by_tier&&D.rules.spoils.capture_ap_by_tier[tier2])||3;
+        ui.acts.push({actor:ui.sel,action:'Capture ('+tier2+')'+(ui.tgt?' → '+bfTag(ui.tgt,C[ui.tgt]):''),cost:apCost2,item:capIt2,
+          effect:{kind:'capture',to:ui.tgt,meta:{origin:t.loc||null,day:(S.time?NPCAI.stampAt(S.time.epoch,Date.now(),S.time.blockMinutes).day:null),owner:'you'}}});}
+      return openT(t.id);}
+    if(b.hasAttribute('data-free')){var fparts=b.getAttribute('data-free').split('|'),fCorpse=fparts[0],fCid=fparts[1];
+      ui.acts.push({actor:ui.sel,action:'Free captive',cost:(D.rules.spoils&&D.rules.spoils.free_captive_ap)||1,
+        effect:{kind:'free',corpse:fCorpse,cid:fCid}});
       return openT(t.id);}
     if(b.hasAttribute('data-bx')){var x=+b.getAttribute('data-bx'),y=+b.getAttribute('data-by');
       if(ui.sel&&reach[x+','+y]){ui.moves[ui.sel]={x:x,y:y};return openT(t.id);}}
@@ -3166,6 +3202,7 @@ var CSS=[
 '.bf-foe{background:rgba(142,47,35,.45);border:1.5px solid var(--blh);color:var(--blh);cursor:pointer}',
 '.bf-foe.tgt{box-shadow:0 0 0 2px var(--blh),0 0 8px rgba(196,80,63,.5)}',
 '.bf-ghost{position:absolute;inset:4px;border:1.5px dashed var(--bl);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--bl);opacity:.6;z-index:1;font-size:12px}',
+'.bf-corpse{position:absolute;inset:4px;display:flex;align-items:center;justify-content:center;color:var(--dim);opacity:.5;z-index:1;font-size:13px}',
 '.bf-panel{flex:1;min-width:290px;max-width:380px}',
 '.bf-legend{font-size:11px;color:var(--dim);line-height:1.95}',
 '.bf-legend b{color:var(--ink);font-weight:500}',
