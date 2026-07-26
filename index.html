@@ -2304,7 +2304,7 @@ function bfDeployUI(t,party){
 }
 function bfCombatUI(t,party){
   var st=t.state,board=st.board,W=board.w,H=board.h,C=st.combatants;
-  var ui=t._bf=t._bf||{sel:null,tgt:null,moves:{},acts:[]};
+  var ui=t._bf=t._bf||{sel:null,tgt:null,lootTgt:null,moves:{},acts:[]};
   function posOf(id){var m=ui.moves[id];return m?{x:m.x,y:m.y}:{x:C[id].x,y:C[id].y};}
   function occExcept(id){var o=[];Object.keys(C).forEach(function(k){if(k===id||C[k].dead||C[k].x==null)return;o.push(posOf(k));});return o;}
   var fog=THREAD.refreshFog(party,st,board),spotted={},ghostAt={};
@@ -2332,6 +2332,16 @@ function bfCombatUI(t,party){
     for(var i=0;i<sl.length;i++){var it=sl[i].it;
       if(it&&it.cat==='CAPTIVE'&&it.ref&&it.ref.cid){var cv=C[it.ref.cid];if(cv&&cv.party===party)return it.ref.cid;}}
     return null;}
+  // aftermath looting (Task 6 follow-up): the nearest dead ENEMY corpse adjacent to `pos` — prefers
+  // an explicitly clicked corpse (ui.lootTgt) if it's still valid, else falls back to the first match,
+  // same "auto-pick with an explicit override" shape as the Free-captive lookup above.
+  function lootCorpseAdjacent(pos,preferId){
+    if(preferId){var pc=C[preferId];
+      if(pc&&pc.dead&&pc.x!=null&&pc.party!==party&&THREAD.cheb(pos,{x:pc.x,y:pc.y})<=1)return preferId;}
+    var r=null;Object.keys(C).forEach(function(id){if(r)return;var c=C[id];
+      if(!c.dead||c.x==null||c.party===party)return;
+      if(THREAD.cheb(pos,{x:c.x,y:c.y})<=1)r=id;});
+    return r;}
   var GL={open:'·',forest:'♣',ruins:'▓',mtn:'▲',fort:'█'},CL={forest:'bf-forest',ruins:'bf-ruins',mtn:'bf-mtn',fort:'bf-fort'};
   var bh='<div class="bf-board" style="grid-template-columns:repeat('+W+',31px)">';
   for(var y=0;y<H;y++)for(var x=0;x<W;x++){
@@ -2340,7 +2350,7 @@ function bfCombatUI(t,party){
     if(reach[x+','+y])cls+=' bf-reach';
     var mid=myAt(x,y);if(mid)tok='<span class="bf-tok bf-mine'+(ui.sel===mid?' sel':'')+'" data-m="'+mid+'">'+bfTag(mid,C[mid])+'</span>';
     var fid=foeAt(x,y);if(fid)tok+='<span class="bf-tok bf-foe'+(ui.tgt===fid?' tgt':'')+'" data-f="'+fid+'">'+bfTag(fid,C[fid])+'</span>';
-    if(!mid&&!fid){var did=corpseAt(x,y);if(did)tok+='<span class="bf-corpse" title="'+esc((C[did].model?C[did].model.n:did))+'">☠</span>';}
+    if(!mid&&!fid){var did=corpseAt(x,y);if(did)tok+='<span class="bf-corpse" data-corpse="'+did+'" title="'+esc((C[did].model?C[did].model.n:did))+'">☠</span>';}
     if(ghostAt[x+','+y]&&!fid)tok+='<span class="bf-ghost">◌</span>';
     bh+='<div class="'+cls+'" data-bx="'+x+'" data-by="'+y+'">'+inner+tok+'</div>';
   }
@@ -2373,6 +2383,16 @@ function bfCombatUI(t,party){
       var cid=captiveHeldBy(id);if(cid){freeCorpse=id;freeCid=cid;}});
     if(freeCid){var freeAP=(D.rules.spoils&&D.rules.spoils.free_captive_ap)||1;
       panel+='<button class="btn sm" data-free="'+freeCorpse+'|'+freeCid+'" style="margin:5px 5px 0 0">Free captive ('+freeAP+' AP)</button>';}
+    // Aftermath loot (Task 6 follow-up): standing buttons for a dead enemy adjacent to the selected
+    // model, only once the field is won (state.phase==='aftermath') — validate() gates the rest
+    // (adjacency, empty slot, already-looted) and its refusal reason surfaces on post as usual.
+    if(st.phase==='aftermath'){
+      var lootId=lootCorpseAdjacent(sp,ui.lootTgt);
+      if(lootId){var lootAP=(D.rules.spoils&&D.rules.spoils.loot_ap)||1,lc=C[lootId];
+        panel+='<div class="bf-ro">Fallen <b>'+(lc.model?lc.model.n:lootId)+'</b> lies within reach.</div>'+
+          '<button class="btn sm" data-loot="'+lootId+'|gear" style="margin:5px 5px 0 0">Loot gear ('+lootAP+' AP)</button>'+
+          '<button class="btn sm" data-loot="'+lootId+'|body" style="margin:5px 5px 0 0">Take the body ('+lootAP+' AP)</button>';}
+    }
     panel+='</div>';}
   if(Object.keys(ui.moves).length||(ui.acts||[]).length){
     panel+='<div class="bf-blk"><h4>Staged this turn</h4>';
@@ -2384,9 +2404,11 @@ function bfCombatUI(t,party){
   el.innerHTML='<h3>Battlefield · '+party+'’s view</h3><div class="bf-wrap">'+bh+panel+'</div>'+
     '<div style="font-size:11px;color:var(--dim);margin-top:6px">Fog — your knowledge · '+fog.spotted.length+' spotted · '+fog.ghosts.length+' ghost'+(fog.ghosts.length===1?'':'s')+' · moves/attacks stage into your post below</div>';
   el.addEventListener('click',function(ev){
-    var b=ev.target.closest('[data-atk],[data-clr],[data-rma],[data-m],[data-f],[data-bx],[data-cap],[data-free]');if(!b)return;
+    var b=ev.target.closest('[data-atk],[data-clr],[data-rma],[data-m],[data-f],[data-bx],[data-cap],[data-free],[data-corpse],[data-loot]');if(!b)return;
     if(b.hasAttribute('data-m')){ui.sel=(ui.sel===b.getAttribute('data-m'))?null:b.getAttribute('data-m');return openT(t.id);}
     if(b.hasAttribute('data-f')){ui.tgt=(ui.tgt===b.getAttribute('data-f'))?null:b.getAttribute('data-f');return openT(t.id);}
+    if(b.hasAttribute('data-corpse')){var corpseClick=b.getAttribute('data-corpse');   // select loot context, never a move
+      ui.lootTgt=(ui.lootTgt===corpseClick)?null:corpseClick;return openT(t.id);}
     if(b.hasAttribute('data-clr')){delete ui.moves[b.getAttribute('data-clr')];return openT(t.id);}
     if(b.hasAttribute('data-rma')){ui.acts.splice(+b.getAttribute('data-rma'),1);return openT(t.id);}
     if(b.hasAttribute('data-atk')){var it=bfWeaponsOf(C[ui.sel])[+b.getAttribute('data-atk')];
@@ -2397,11 +2419,16 @@ function bfCombatUI(t,party){
       if(capIt2){var tier2=THREAD.captureTier(capIt2);
         var apCost2=(D.rules.spoils&&D.rules.spoils.capture_ap_by_tier&&D.rules.spoils.capture_ap_by_tier[tier2])||3;
         ui.acts.push({actor:ui.sel,action:'Capture ('+tier2+')'+(ui.tgt?' → '+bfTag(ui.tgt,C[ui.tgt]):''),cost:apCost2,item:capIt2,
-          effect:{kind:'capture',to:ui.tgt,meta:{origin:t.loc||null,day:(S.time?NPCAI.stampAt(S.time.epoch,Date.now(),S.time.blockMinutes).day:null),owner:'you'}}});}
+          effect:{kind:'capture',to:ui.tgt,meta:{origin:t.loc||null,day:curDay(),owner:'you'}}});}
       return openT(t.id);}
     if(b.hasAttribute('data-free')){var fparts=b.getAttribute('data-free').split('|'),fCorpse=fparts[0],fCid=fparts[1];
       ui.acts.push({actor:ui.sel,action:'Free captive',cost:(D.rules.spoils&&D.rules.spoils.free_captive_ap)||1,
         effect:{kind:'free',corpse:fCorpse,cid:fCid}});
+      return openT(t.id);}
+    if(b.hasAttribute('data-loot')){var lparts=b.getAttribute('data-loot').split('|'),lCorpse=lparts[0],lWhat=lparts[1];
+      ui.acts.push({actor:ui.sel,action:(lWhat==='body'?'Take the body':'Loot gear')+' ← '+bfTag(lCorpse,C[lCorpse]),
+        cost:(D.rules.spoils&&D.rules.spoils.loot_ap)||1,
+        effect:{kind:'loot',corpse:lCorpse,what:lWhat,meta:{origin:t.loc||null,day:curDay(),owner:'you'}}});
       return openT(t.id);}
     if(b.hasAttribute('data-bx')){var x=+b.getAttribute('data-bx'),y=+b.getAttribute('data-by');
       if(ui.sel&&reach[x+','+y]){ui.moves[ui.sel]={x:x,y:y};return openT(t.id);}}
