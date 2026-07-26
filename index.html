@@ -1546,17 +1546,18 @@ function synthModelFromRef(ref){ref=ref||{};
   lore:ref.lore||'No further intelligence gathered on this individual.',th:[],
   loadout:{slots:(ref.loadout||[]).map(function(nm){return {type:null,it:{n:nm,d:''}}}),armour:null}};}
 function inspectSnapshot(ref){openModel(synthModelFromRef(ref))}
-function releaseCaptive(it){var r=it.ref||{};
+function releaseCaptive(it){var idx=S.inv.indexOf(it);if(idx<0)return;
+ var r=it.ref||{};
  var mine=r.cid?S.roster.filter(function(m){return m.id===r.cid&&m.st==='TAKEN'})[0]:null;
  if(mine){mine.st='GARRISON';mine.loc=posTxt();
   S.world.log=S.world.log||[];S.world.log.unshift(nowStamp()+' — '+mine.n.split(',')[0]+' is freed and returns to the ranks.');}
  else{S.world.log=S.world.log||[];S.world.log.unshift(nowStamp()+' — '+it.n+' is released.');}
- S.inv.splice(S.inv.indexOf(it),1);rW();rRos();rLoad();
+ S.inv.splice(idx,1);rW();rRos();rArm();
  T(mine?mine.n.split(',')[0]+' is released — welcomed back.':it.n+' is released.');}
 function executeCaptive(it){var idx=S.inv.indexOf(it);if(idx<0)return;
  S.inv[idx]=mkRemainsFromCaptive(it);
  S.world.log=S.world.log||[];S.world.log.unshift(nowStamp()+' — '+it.n+' is executed. Their remains are kept.');
- rLoad();T(it.n+' is executed.');}
+ rArm();T(it.n+' is executed.');}
 function rLoad(){if(!sel)sel=S.roster[0];
 document.getElementById('lt').textContent='Loadout — '+sel.n;
 document.getElementById('ls').innerHTML=sel.sub+(loLocked()?' · <span style="color:var(--blh)">locked — in an active thread</span>':'');
@@ -1570,21 +1571,7 @@ var a=sel.loadout.armour&&sel.loadout.armour.it;
 var ad=E('div','slot'+(a?' fl':''),'<span class="sk">◈ ARMOUR</span>'+(a?'<b style="font-size:12.5px">'+a.n+'</b><div class="sm">'+armLine(a.def)+'</div>':'<div class="sm">Unarmoured — click to fit</div>'));
 ad.onclick=function(){pickArmour()};g.appendChild(ad);
 var il=document.getElementById('il');il.innerHTML=S.inv.length?'':'<div class="empty">Inventory empty.</div>';
-S.inv.forEach(function(it){
- if(it.cat==='CAPTIVE'||it.cat==='REMAINS'){
-  var r=it.ref||{};
-  var winLine=it.cat==='REMAINS'?('<div class="d">'+(it.window?('Revival window: day '+it.window.expiresDay+' ('+it.window.element+')'):'Beyond revival')+'</div>'):'';
-  var card=E('div','pki','<div><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+(r.cls||'—')+' · rank '+(r.rank||1)+' · '+(r.pc||0)+' PC</div>'+winLine+'</div>');
-  var row=E('div');row.style.cssText='display:flex;gap:6px;margin-top:6px;flex-wrap:wrap';
-  var insp=E('button','btn gh sm','Inspect');insp.onclick=function(){inspectSnapshot(r)};row.appendChild(insp);
-  if(it.cat==='CAPTIVE'){
-   var rel=E('button','btn gh sm','Release');rel.onclick=function(){releaseCaptive(it)};row.appendChild(rel);
-   var exe=E('button','btn gh sm','Execute');exe.onclick=function(){executeCaptive(it)};row.appendChild(exe);
-  }
-  card.firstChild.appendChild(row);
-  il.appendChild(card);return;
- }
- il.appendChild(E('div','pki','<div><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+annotate(it.d||'')+'</div></div>'))})}
+S.inv.forEach(function(it){il.appendChild(E('div','pki','<div><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+annotate(it.d||'')+'</div></div>'))})}
 var PB=null;
 function mkPicker(){PB=E('div','pb','<div class="pk"><h3 style="color:var(--br);font-size:13px;margin-bottom:10px" id="pkh"></h3><div id="pkl"></div><button class="btn gh" style="margin-top:8px" id="pkc">Close</button></div>');
 document.body.appendChild(PB);document.getElementById('pkc').onclick=function(){PB.classList.remove('on')};
@@ -1649,7 +1636,28 @@ function rArm(){var w=document.getElementById('arm');w.innerHTML='';
  var tbl=E('table','armt');
  tbl.innerHTML='<thead><tr><th>Name</th><th>Type</th><th>Element</th><th>Dmg</th><th>Range</th><th>AP</th><th>Tags</th><th>Equipped</th></tr></thead>';
  var tb=document.createElement('tbody');
- filtered.forEach(function(r){var p=parseItem(r.it),tr=document.createElement('tr');
+ filtered.forEach(function(r){
+  /* CAPTIVE/REMAINS: an extended row treatment, not the weapon-stat columns —
+     spoils don't have Element/Dmg/Range/AP/Tags. Snapshot + window + verbs
+     span the full row width instead. Generic gear rows below are unchanged. */
+  if(r.it.cat==='CAPTIVE'||r.it.cat==='REMAINS'){
+   var it=r.it,ref=it.ref||{};
+   var winLine=it.cat==='REMAINS'?(it.window?('Revival window: day '+it.window.expiresDay+' ('+it.window.element+')'):'Beyond revival'):'';
+   var tr2=document.createElement('tr');
+   tr2.innerHTML='<td colspan="8"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">'
+    +'<div><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span>'
+    +'<div style="font-size:11px;color:var(--dim);margin-top:2px">'+(ref.cls||'—')+' · rank '+(ref.rank||1)+' · '+(ref.pc||0)+' PC</div>'
+    +(winLine?'<div style="font-size:11px;color:var(--dim)">'+winLine+'</div>':'')+'</div>'
+    +'<div class="spoilsverbs" style="display:flex;gap:6px;flex-wrap:wrap"></div></div></td>';
+   var vwrap=tr2.querySelector('.spoilsverbs');
+   var insp=E('button','btn gh sm','Inspect');insp.onclick=function(){inspectSnapshot(ref)};vwrap.appendChild(insp);
+   if(it.cat==='CAPTIVE'){
+    var rel=E('button','btn gh sm','Release');rel.onclick=function(){releaseCaptive(it)};vwrap.appendChild(rel);
+    var exe=E('button','btn gh sm','Execute');exe.onclick=function(){executeCaptive(it)};vwrap.appendChild(exe);
+   }
+   tb.appendChild(tr2);return;
+  }
+  var p=parseItem(r.it),tr=document.createElement('tr');
   tr.innerHTML='<td class="clk armname"><b>'+r.it.n+'</b></td><td style="color:var(--dim)">'+r.it.cat+'</td><td>'+(p.element||'—')+'</td><td class="mono">'+(p.dmg||'—')+'</td><td>'+(p.range||'—')+'</td><td class="mono">'+(p.ap?p.ap.replace(/ AP| \(.*/,''):'—')+'</td><td style="font-size:11px">'+(p.tags.length?p.tags.map(function(t){return t.tag+(t.tier?' '+t.tier:'')}).join(', '):'—')+'</td><td>'+(r.eq?'<span class="clk armeq" style="color:var(--vdh)">◉ '+r.eq.n.split(',')[0]+'</span>':'<span style="color:var(--dim)">unequipped</span>')+'</td>';
   tr.querySelector('.armname').onclick=function(){openEntity(r.it,{owner:'You',origin:r.eq?'equipped on '+r.eq.n.split(',')[0]:'held in store'})};
   var eq=tr.querySelector('.armeq');if(eq)eq.onclick=function(){openModel(r.eq.id)};
@@ -2525,7 +2533,8 @@ if(heldCaptives.length){
   var row=E('div','mr');row.style.cssText='font-size:11px;color:var(--dim);display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px';
   row.innerHTML='<span>'+it.n+'</span>';
   var bt=E('button','btn gh sm','Demand ransom ('+price+')');
-  bt.onclick=function(){S.cur+=price;S.inv.splice(S.inv.indexOf(it),1);
+  bt.onclick=function(){var idx=S.inv.indexOf(it);if(idx<0)return;
+   S.cur+=price;S.inv.splice(idx,1);
    S.world.log=S.world.log||[];S.world.log.unshift(nowStamp()+' — the enemy buys back its own: '+it.n+' for '+price+' '+curName()+'.');
    rW();rComms();T('Ransom paid — the enemy buys back its own. +'+price+' '+curName()+'.')};
   row.appendChild(bt);L.appendChild(row);});
@@ -3157,16 +3166,19 @@ function renderDoor(dr,h){var c=E('div','card');
     var mine=r.cid?S.roster.filter(function(mm){return mm.id===r.cid&&(mm.st==='DEAD'||mm.st==='TAKEN')})[0]:null;
     if(!live){row.insertAdjacentHTML('beforeend','<div style="margin-top:5px"><button class="btn gh sm" disabled>Beyond the window</button></div>');}
     else if(mine){
-     var mb=E('button','btn gh sm','Revive');mb.style.marginTop='5px';
-     mb.onclick=function(){mine.st='GARRISON';mine.w='1/'+(mine.w.split('/')[1]||mine.pc||1);mine.loc=fPl(S.pos.pl).p.name+' · '+h.name;
-      S.inv.splice(S.inv.indexOf(it),1);rW();rRos();rLoad();rShop();T(mine.n.split(',')[0]+' claws back within the window.')};
+     var rcost=Math.max(6,mine.pc*2);
+     var mb=E('button','btn gh sm','Revive ('+rcost+')');mb.style.marginTop='5px';
+     mb.onclick=function(){if(S.cur<rcost){T('Not enough '+curName()+'.');return}
+      var idx=S.inv.indexOf(it);if(idx<0)return;
+      S.cur-=rcost;mine.st='GARRISON';mine.w='1/'+(mine.w.split('/')[1]||mine.pc||1);mine.loc=fPl(S.pos.pl).p.name+' · '+h.name;
+      S.inv.splice(idx,1);rW();rRos();rShop();T(mine.n.split(',')[0]+' claws back within the window.')};
      row.appendChild(mb);
     }else{
      var fb=E('button','btn gh sm','Revive as captive');fb.style.marginTop='5px';
      fb.onclick=function(){var idx=S.inv.indexOf(it);if(idx<0)return;
       S.inv[idx]={cat:'CAPTIVE',n:it.n.replace(/^Remains of /,'Captive: '),d:'A stranger, called back from beyond and bound to your will.',
        ref:it.ref,owner_cmdr:it.owner_cmdr,origin:it.origin,takenDay:curDay()};
-      rLoad();rShop();T('The stranger opens their eyes — captive, and yours.')};
+      rShop();T('The stranger opens their eyes — captive, and yours.')};
      row.appendChild(fb);
     }
     c.appendChild(row);
