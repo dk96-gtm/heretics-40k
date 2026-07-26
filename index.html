@@ -1918,7 +1918,8 @@ function exitThread(t){
   if(!joined){S.threads=S.threads.filter(function(x){return x.id!==t.id});
     T('You withdraw from the '+t.type+' at '+t.loc+' — no cost; hostilities had not begun.');
     go('threads');rTL();return;}
-  if(t.state&&t.state.phase==='aftermath'&&t.state.pendingOutcome){concludeThread(t,t.state.pendingOutcome);return;}
+  if(t.state&&t.state.phase==='aftermath'&&t.state.pendingOutcome){concludeThread(t,t.state.pendingOutcome);
+    T('You withdraw with your spoils — the field was already yours.');openT(t.id);return;}
   var deployed=S.roster.filter(function(m){return m.st==='DEPLOYED'&&m.fo!=='—'});
   deployed.forEach(function(m){var p=(m.w||'1/1').split('/'),cur=Math.max(0,(parseInt(p[0],10)||1)-1);m.w=cur+'/'+p[1];if(cur<=0)m.st='DEAD'});
   convertSpoils(t);   // a carrier who exits the field alive walks out with its cargo
