@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.20",
-  "updated": "2026-07-25",
+  "version": "1.21",
+  "updated": "2026-07-27",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -523,6 +523,15 @@
    "free_captive_ap": 1,
    "sell_mult": { "REMAINS": 0.5, "CAPTIVE": 1.0 },
    "note": "Capture & Remains tuning - spec docs/superpowers/specs/2026-07-24-capture-remains-design.md"
+  },
+  "missions": {
+   "board_min": 4, "board_max": 6, "accept_cap": 3, "expiry_days": 5,
+   "family_bases": { "KILL": 10, "HOLD": 12, "LOGISTICS": 8, "RITUAL": 10 },
+   "family_norms": { "KILL": 5, "HOLD": 5, "LOGISTICS": 5, "RITUAL": 5 },
+   "size_clamp": [0.5, 4],
+   "modifier_mult": 1.5,
+   "signature_premium": 1.5,
+   "face_doors": { "KILL": "muster", "HOLD": "throne", "LOGISTICS": "shop", "RITUAL": "altar" }
   }
  },
  "perk_effects": {
@@ -14558,5 +14567,22 @@
    "pc": 80,
    "faction": "harlequins"
   }
- ]
+ ],
+ "missions": {
+  "universal": [
+   { "id": "purge", "n": "Purge", "family": "KILL", "kind": "count_kill",
+     "target_roll": [3, 6], "params": { "filter": "hostile" },
+     "world_effect": { "taint": -4 },
+     "flavor": "Hostile elements fester here. Root them out — every kill is a knife drawn from this ground." },
+   { "id": "item_request", "n": "Item Request", "family": "LOGISTICS", "kind": "collect_item",
+     "target_roll": [2, 4], "params": {},
+     "world_effect": { "prosperity": 2 },
+     "flavor": "A local quartermaster posts a want-list. Deliver the goods, take the coin." },
+   { "id": "rebuild", "n": "Rebuild", "family": "HOLD", "kind": "restore",
+     "target_roll": [3, 5], "params": { "min_words": 40 }, "prefer_condition": "Ruined",
+     "world_effect": { "prosperity": 4 },
+     "flavor": "This place is rubble and memory. Direct the work-gangs; write it back into being." }
+  ],
+  "signatures": {}
+ }
 }
