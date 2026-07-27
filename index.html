@@ -518,7 +518,7 @@ var THREAD=(function(){
     var t={};for(var k in seed)t[k]=seed[k];
     if(!t.posts)t.posts=[];
     if(!t.vis)t.vis='public';
-    t.state=initState(t,canon);
+    if(!t.state)t.state=initState(t,canon);   // T-THR-5: persisted live state wins over re-seeding
     return t;
   }
   function apMod(it){var s=it.d||'';if(/effortless/i.test(s))return 0;
