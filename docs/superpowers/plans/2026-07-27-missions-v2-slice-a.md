@@ -18,6 +18,16 @@
 - 🔥 `index.html` is the HOT lane — claim `T-THR-5` + `T-MSN-1A` rows in `BACKLOG.md` (status/owner/timestamp, `git add BACKLOG.md`, commit `backlog: claim T-THR-5 + T-MSN-1A`) BEFORE Task 1, per CLAUDE.md Multi-Agent Coordination. If T-CMB-1 landed on `THREAD.apply` since 7b31908, re-read `apply` before Tasks 3 — its condition branches add effect kinds but do not reshape the damage/slay/kill code this plan hooks.
 - Before EVERY commit: re-check `git log` for parallel-session commits touching your files; rebase-style pull first if so.
 
+## Cross-program alignment (2026-07-27 design push)
+
+Five sibling designs locked on 2026-07-27 (economy, background agency, death/succession, diplomacy, social contract). Contracts this plan honors:
+
+- **Seeded-roll discipline (agency spec):** all tick randomness uses STATELESS per-event seeds (`seed = day ⊕ entity-id-hash ⊕ world-base`), never an advancing stored seed — results must be identical however catch-up days are chunked. Task 5 implements this.
+- **Payout stays currency:** the economy's sink family (tithes, repairs, door fees) needs currency faucets; missions are one. `prod_mult` "keeps its other uses" (economy spec) — the payout formula's use is one of them. Typed-resource mission variants (deliver Food×N) are a Slice B option once T-ECN-1 ships.
+- **T-TIME-1 (clock unification, locked):** `lastTick` becomes a single day-index. `mission-core` takes `day` as an argument, so when T-TIME-1 lands only the glue's `missionDay` bookkeeping folds into the unified index — no core change.
+- **T-ECN-1 (economy E1, open):** also adds WORLD-tick glue + `S` seeding. 🔥 lane serialization decides order; whichever lands second re-reads `init()` (~2710) before editing.
+- **Strategium (agency N3):** will list mission objective clocks in Active Clocks — Slice B's round-caps feed it; nothing needed in Slice A.
+
 ---
 
 ### Task 1: T-THR-5 — persisted thread state survives hydrate
@@ -527,10 +537,11 @@ git commit -m "engine: MISSION threads winnable - combat catalog for count_kill,
 - Consumes: canon `rules.missions`, `missions.universal`, `galaxy.planet_types[i].{prod_mult,mission_value}`.
 - Produces (exported as `MISSION`):
   - `rng(seedInt) -> fn()->float[0,1)` — mulberry32, deterministic.
+  - `hashStr(s) -> int` — small string hash for entity-id seeds.
   - `payoutOf(inst, prodMult, canon) -> integer`
   - `rollMission(row, ctx, r, day) -> instance` — `instance = {iid, mid, n, family, kind, target, params, face:{kind,label}, payout, pl, lid, day, accepted:false}`
   - `refillBoard(board, ctx, canon, r, day) -> board` (mutates+returns; respects board_min/board_max, expiry)
-  - `catchUpBoards(state, canon, ticks, ctxOf) -> {added, expired}` — advances `state.world.missionDay`, consumes/advances `state.world.missionSeed`, fills `state.world.missions[planetId]`. `ctxOf(planetId) -> ctx` is injected by glue.
+  - `catchUpBoards(state, canon, ticks, planetIdsOf, ctxOf) -> {added, expired}` — advances `state.world.missionDay`; per planet-day rolls use a STATELESS seed `missionSeedBase ⊕ day ⊕ hashStr(planetId)` (the agency spec's locked seeded-roll discipline — results identical however catch-up is chunked); fills `state.world.missions[planetId]`. `ctxOf(planetId) -> ctx` is injected by glue.
   - `ctx = {pl:{id, type, prod_mult}, locs:[{id, name, cond, doors:[doorKinds], npc}]}` — glue builds it (Task 6).
 
 - [ ] **Step 1: Write the failing tests**
@@ -572,7 +583,7 @@ const CTX = () => ({
   ]
 });
 function mkState() {
-  return { world: { missions: {}, missionSeed: 12345, missionDay: 0 } };
+  return { world: { missions: {}, missionSeedBase: 12345, missionDay: 0 } };
 }
 
 test('rng is deterministic', () => {
@@ -626,14 +637,16 @@ test('expiry replaces stale unaccepted missions but never accepted ones', () => 
   assert.ok(later.filter(m => !m.accepted).every(m => m.day === 99), 'unaccepted stale ones replaced');
 });
 
-test('catchUpBoards is deterministic and advances seed/day', () => {
+test('catchUpBoards is deterministic AND chunk-independent (seeded-roll discipline)', () => {
   const s1 = mkState(), s2 = mkState();
   const ctxOf = () => CTX();
+  // 3 days in one call vs 1 + 2 across two calls: identical boards
   MISSION.catchUpBoards(s1, canon, 3, () => ['testp'], ctxOf);
-  MISSION.catchUpBoards(s2, canon, 3, () => ['testp'], ctxOf);
+  MISSION.catchUpBoards(s2, canon, 1, () => ['testp'], ctxOf);
+  MISSION.catchUpBoards(s2, canon, 2, () => ['testp'], ctxOf);
   assert.deepStrictEqual(s1.world.missions, s2.world.missions);
   assert.strictEqual(s1.world.missionDay, 3);
-  assert.notStrictEqual(s1.world.missionSeed, 12345, 'seed advanced');
+  assert.strictEqual(s1.world.missionSeedBase, 12345, 'base seed never mutates');
   // zero ticks: no-op
   const before = JSON.stringify(s1.world.missions);
   MISSION.catchUpBoards(s1, canon, 0, () => ['testp'], ctxOf);
@@ -656,6 +669,8 @@ var MISSION=(function(){
   function rng(seed){var a=seed>>>0;return function(){
     a|=0;a=(a+0x6D2B79F5)|0;var t=Math.imul(a^(a>>>15),1|a);
     t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296;};}
+  function hashStr(s){var h=2166136261;for(var i=0;i<s.length;i++){
+    h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
   function R(canon){return (canon.rules&&canon.rules.missions)||{};}
   function payoutOf(inst,prodMult,canon){
     var M=R(canon);var base=(M.family_bases||{})[inst.family]||10;
@@ -716,21 +731,23 @@ var MISSION=(function(){
   function catchUpBoards(state,canon,ticks,planetIdsOf,ctxOf){
     var res={added:0,expired:0};if(!ticks)return res;
     var w=state.world;w.missions=w.missions||{};
-    var r=rng(w.missionSeed>>>0);
+    var base=(w.missionSeedBase>>>0)||1;
     for(var d=0;d<ticks;d++){
       w.missionDay=(w.missionDay||0)+1;
       var pids=planetIdsOf(state)||[];
       for(var p=0;p<pids.length;p++){
         var pid=pids[p];var ctx=ctxOf(pid);if(!ctx)continue;
+        // STATELESS per-planet-day seed (agency-spec discipline): chunk-independent replay
+        var r=rng((base^(w.missionDay*2654435761)^hashStr(pid))>>>0);
         var before=(w.missions[pid]||[]).length;
         w.missions[pid]=refillBoard(w.missions[pid]||[],ctx,canon,r,w.missionDay);
         res.added+=Math.max(0,w.missions[pid].length-before);
       }
     }
-    w.missionSeed=Math.floor(r()*2147483647);
     return res;
   }
-  return {rng:rng,payoutOf:payoutOf,rollMission:function(row,ctx,r,day,canon){canonRef=canon;return rollMission(row,ctx,r,day);},
+  return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,
+          rollMission:function(row,ctx,r,day,canon){canonRef=canon;return rollMission(row,ctx,r,day);},
           refillBoard:refillBoard,catchUpBoards:catchUpBoards};
 })();
 /*</mission-core>*/
@@ -757,7 +774,7 @@ git commit -m "engine: mission-core pure region - seeded PRNG, board refill/expi
 
 **Interfaces:**
 - Consumes: `MISSION.catchUpBoards` (Task 5), `WORLD.catchUp` result `_wc.ticks` (existing, index.html:2719).
-- Produces: `S.world.missions` (persisted boards, keyed by planet id), `S.world.missionSeed`, `S.world.missionDay` — Task 7's UI reads `S.world.missions`.
+- Produces: `S.world.missions` (persisted boards, keyed by planet id), `S.world.missionSeedBase` (rolled once at seeding, never mutated), `S.world.missionDay` — Task 7's UI reads `S.world.missions`.
 
 - [ ] **Step 1: Write the failing save-shape test**
 
@@ -770,11 +787,11 @@ const SAVE = loadSave();
 
 test('S.world.missions and seed/day survive snapshot round-trip', () => {
   const S = { world: { missions: { p1: [{ iid: 'x', mid: 'purge', accepted: true, target: 3, progress: 0 }] },
-                       missionSeed: 999, missionDay: 4 },
+                       missionSeedBase: 999, missionDay: 4 },
               threads: [], roster: [] };
   const blob = JSON.parse(JSON.stringify(SAVE.snapshot(S)));
   assert.deepStrictEqual(blob.world.missions.p1[0].mid, 'purge');
-  assert.strictEqual(blob.world.missionSeed, 999);
+  assert.strictEqual(blob.world.missionSeedBase, 999);
   assert.strictEqual(blob.world.missionDay, 4);
 });
 ```
@@ -787,7 +804,7 @@ test('S.world.missions and seed/day survive snapshot round-trip', () => {
 
 ```js
   if(!S.world.missions)S.world.missions={};
-  if(S.world.missionSeed===undefined)S.world.missionSeed=((S.time&&S.time.epoch)||1)%2147483647;
+  if(S.world.missionSeedBase===undefined)S.world.missionSeedBase=((S.time&&S.time.epoch)||1)%2147483647;
   if(!S.world.missionDay)S.world.missionDay=0;
 ```
 
