@@ -104,6 +104,18 @@ These are functional but not the deep versions — flagged in-UI where relevant:
 - **Scores/production/resources** (the flywheel) — SHIPPED (T-TERR-1, canon v1.19, merged to main 2026-07-22): save-state owns territory (`S.world.rulers`/`holdings`), `WORLD` production accrues per-holding (×Rift home bonus), score drift + `sectorStatus` thresholds, INVASION conquest, crown-world founding. Real cross-session accumulation still lands fully with Stage-2 persistence, but the structure is live now.
 - **Art:** all image slots (portraits, door/location/space art, map card backgrounds) are wireframe placeholders. Filling them is its own conversation (procedural vs asset-pack vs generated).
 
+## Locked design layer (2026-07-25/27) — specced, not yet built
+
+Six designs LOCKED with Daak and pushed (all in `docs/superpowers/specs/`):
+- **combat-conditions** (T-CMB-1; 8-task TDD plan in `docs/superpowers/plans/`) — instance-based tag conditions tick/gate/expire in the THREAD core.
+- **economy-resources-sinks** (T-ECN-1/2/3) — typed resources (Food/Material/Fuel), per-planet-type production, location shares, storage caps, force cargo + baggage train, the Tithe, gear wear/repair, consumable packs, tier-gated door services.
+- **death-succession** — heir designation, two-path succession (scrub-tier if unprepared), instability window, funeral-rite thread.
+- **background-agency-attention** — Spike G RESOLVED (layered hybrid); initiator-set Ultimatum windows, conflict-scaled cadence, seeded resolution, Strategium screen + 3-tier attention (N1–N3 slices; **T-TIME-1 is the first domino**).
+- **diplomacy-pacts-oathbreaker** (T-DIP-1/2/3) — pact object, term primitives, escrow (closes T-ENG-2), generalized Oathbreaker treachery system.
+- **stage2-social-contract** — PvP law (declared war + open frontier + ambush declarations), faction-lens reputation prism, new-player shield; constrains Stage-2 backend design.
+
+Deliberately parked: **T-STORY-1** victory arc (post-alpha), **augmetics** (vetoed for now), **per-force item inventories** (ships era).
+
 ## Thread core & tests (v16)
 
 The thread rules live in a pure, DOM-free `THREAD` object inside `index.html`, wrapped in a `/*<thread-core>*/ … /*</thread-core>*/` region (reads no globals — canon and state arrive as arguments). A **dev-only `tests/` folder** unit-tests it with Node's built-in runner: `node --test` (zero dependencies, no `package.json`). `tests/_load.js` extracts-and-evals the region in the host realm; `tests/engine-syntax.test.js` is a headless boot proxy (compiles the inline `<script>` via `vm.Script`). `tests/` is **dev-only and never shipped** — only `index.html` + the JSON deploy. Design/plan docs live in `docs/superpowers/`.
