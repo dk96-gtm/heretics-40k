@@ -529,15 +529,8 @@ var THREAD=(function(){
     return it.cat==='CAST'?2:it.cat==='ABILITY'?1:it.cat==='ITEM'?0:1;}
   function combatCatalog(state,party,canon){
     var out=[];
-    // party is normally the calling force's name (string, matched against c.party).
-    // Missions v2 also calls this with an explicit array of controlled combatant ids
-    // (a solo/duo model roster has no shared party-name bookkeeping) — support both.
-    var mine=Array.isArray(party)?function(id){return party.indexOf(id)>=0;}
-                                  :function(id,c){return c.party===party;};
     Object.keys(state.combatants).forEach(function(id){
-      var c=state.combatants[id];if(!mine(id,c))return;
-      out.push({actor:id,action:'Move',group:'b',cost:0,kind:'band'});
-      if(!c.model)return;
+      var c=state.combatants[id];if(c.party!==party||!c.model)return;
       var slots=(c.model.loadout&&c.model.loadout.slots)||c.model.sl||[];
       slots.forEach(function(s){if(!s.it)return;var it=s.it;var k=s.type||s.k;
         if(k==='WEAPON')out.push({actor:id,action:'Attack - '+it.n,group:'e',cost:apMod(it),kind:'damage',item:it});
@@ -549,6 +542,7 @@ var THREAD=(function(){
         else if(k==='ITEM'&&/consumable|stimm|grenade/i.test(it.d||''))
           out.push({actor:id,action:'Use '+it.n,group:'a',cost:apMod(it),kind:'cond',item:it});
       });
+      out.push({actor:id,action:'Move',group:'b',cost:0,kind:'band'});
     });
     return out;
   }

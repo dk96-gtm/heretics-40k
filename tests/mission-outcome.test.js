@@ -19,10 +19,13 @@ const HOSTILE = () => ({ w: [1, 1], conds: [], party: 'Foe', armour: null,
 const MINE = () => ({ w: [4, 4], conds: [], party: 'Mine', armour: null });
 
 test('combat mission exposes the combat catalog', () => {
+  const mine = { w: [4, 4], conds: [], party: 'Mine', armour: null,
+    model: { id: 'm1', n: 'Test Marine', cls: 'Core', pc: 10,
+             sl: [{ k: 'WEAPON', it: { n: 'Combat Blade', cat: 'WEAPON', d: '2 Physical' } }] } };
   const t = THREAD.create(
     seed({ kind: 'count_kill', target: 1, progress: 0, params: {}, done: false },
-         { m1: MINE(), e0: HOSTILE() }, { Mine: 10, Foe: 5 }), canon);
-  const acts = THREAD.catalog(t, t.state, ['m1'], canon);
+         { m1: mine, e0: HOSTILE() }, { Mine: 10, Foe: 5 }), canon);
+  const acts = THREAD.catalog(t, t.state, 'Mine', canon);
   assert.ok(acts.length > 0, 'MISSION with combatants must not return []');
 });
 
