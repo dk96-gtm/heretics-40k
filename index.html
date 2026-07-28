@@ -1503,6 +1503,7 @@ function foundingWorld(){return {
  met:['vess','herald','sskarith','kryv','warden'],
  stats:{vigilus:{taint:12},sangua:{taint:4},nurth:{taint:20},kraithv:{taint:16}},
  rulers:{},holdings:[],
+ missions:{},missionSeedBase:(Date.now()%2147483647),missionDay:0,   // Missions V2 slice A: founding never gets a reload, so init()'s backfill never fires — seed here too (S.time.epoch isn't in scope yet: commitFounding assigns `world:` before `time:`, so this mirrors init()'s Date.now()-based epoch as closely as scope allows)
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
   sangua:[['89th Sanguan Garrison','NPC, Astra Militarum · COMPANY','Hive Primus']],
@@ -1647,7 +1648,13 @@ function acceptMission(inst,pl,l){
   if(hn===0){T('The notice is stale — no hostile presence remains here.');return;}
  }
  t.seedState.objective={kind:inst.kind,target:inst.target,progress:0,params:inst.params,done:false};
- if(inst.kind==='count_kill')t.seedState.objective.target=Math.max(1,Math.min(inst.target,hn));
+ if(inst.kind==='count_kill'){
+  var ct=Math.max(1,Math.min(inst.target,hn));
+  t.seedState.objective.target=ct;
+  // target clamped down from mint-time → reprice this thread's payout so pay matches
+  // the fight actually happening; the board row (inst) keeps its minted payout
+  if(ct!==inst.target)t.mission.payout=MISSION.payoutOf({family:inst.family,target:ct},((missionCtxOf(inst.pl)||{}).pl||{}).prod_mult||1,D);
+ }
  S.threads.push(t);inst.accepted=true;inst.tid=id;
  persist();T('Mission accepted: '+inst.n);openT(id);
 }
@@ -2069,7 +2076,7 @@ h2+='<div class="lsec"><h5>Forces present — click for auspex intel</h5>'+(frLo
 /* THREAD HISTORY — clickable with summaries */
 h2+='<div class="lsec"><h5>Thread history — click for summary</h5>'+(hi.length?hi.map(function(t,ti){return '<div class="lrow" data-hist="'+ti+'">▸ '+t+'</div>'}).join(''):'<span style="color:var(--dim)">No threads recorded yet.</span>')+'</div>';
 /* MISSIONS — posted here, unaccepted (Missions V2 slice A) */
-var _mb=(S.world.missions[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted});
+var _mb=((S.world.missions||{})[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted});
 if(_mb.length)h2+='<div class="lsec"><h5>Missions — posted here ('+_mb.length+')</h5>'+
  _mb.map(function(m,i){return '<div class="lrow" data-mission="'+i+'"><b>'+m.n+'</b> · '+
   m.face.label+' · target '+m.target+' · pays '+m.payout+
@@ -2743,13 +2750,17 @@ function threadView(V,t){
   if(t.type==='MISSION'&&t.state&&t.state.objective&&!t.state.objective.done){
     var ob=t.state.objective;
     if(ob.kind==='collect_item'){
-      var have=S.inv.filter(function(it){return !ob.params.item_n||it.n===ob.params.item_n}).length;
+      // named delivery matches by name; an unset item_n must NOT sweep the whole
+      // inventory — restrict to plain tradeable ITEM entries so CAPTIVE/REMAINS/
+      // LEGENDARY spoils on S.inv are never counted or stripped by this button
+      var _plainDeliverable=function(it){return ob.params.item_n?it.n===ob.params.item_n:it.cat==='ITEM'};
+      var have=S.inv.filter(_plainDeliverable).length;
       var db=E('button','btn sm','Deliver items ('+have+' held)');db.style.marginTop='10px';
       db.disabled=!have;
       db.onclick=function(){
         var give=Math.min(have,ob.target-ob.progress),removed=0;
         for(var _di=S.inv.length-1;_di>=0&&removed<give;_di--){
-          if(ob.params.item_n&&S.inv[_di].n!==ob.params.item_n)continue;
+          if(!_plainDeliverable(S.inv[_di]))continue;
           S.inv.splice(_di,1);removed++;
         }
         THREAD.apply(t,t.state,[{actor:S.active,effect:{kind:'deliver',qty:give}}],D);
