@@ -2,10 +2,31 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('path');
+const vm = require('node:vm');
 const { loadThread } = require('./_load');
 
 const THREAD = loadThread();
 const canon = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8'));
+
+// Fix round 1 (T-CMB-1 task 5 review): the cond-staging engine glue (condTagsOf/condEffectsFor/
+// livingAllies/cleanseReach/condIsHostile) lives OUTSIDE the thread-core region — it's UI glue, not
+// pure core — but the reviewer asked for a real node test of the nl/nr wiring fix, which means
+// actually calling condEffectsFor, not just replicating its output shape by hand. Extract its two
+// small, self-contained marked regions from index.html (item-parse-glue: tierNum/parseItem/cap/
+// ELEMFULL/RANGES; cond-staging-glue: condTagsOf/condEffectsFor/…) and eval them together against
+// the real THREAD, same extract-and-vm.run technique tests/_load.js's loadThread() already uses.
+function loadCondGlue(THREAD) {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const parse = html.match(/\/\*<item-parse-glue>\*\/([\s\S]*?)\/\*<\/item-parse-glue>\*\//);
+  const glue = html.match(/\/\*<cond-staging-glue>\*\/([\s\S]*?)\/\*<\/cond-staging-glue>\*\//);
+  if (!parse) throw new Error('item-parse-glue region not found in index.html');
+  if (!glue) throw new Error('cond-staging-glue region not found in index.html');
+  const src = '(function(THREAD){' + parse[1] + '\n' + glue[1] +
+    '\n;return {condTagsOf:condTagsOf,condEffectsFor:condEffectsFor,livingAllies:livingAllies,' +
+    'cleanseReach:cleanseReach,condIsHostile:condIsHostile,parseItem:parseItem};})';
+  return vm.runInThisContext(src)(THREAD);
+}
+const CONDGLUE = loadCondGlue(THREAD);
 
 /* ── T-CMB-1 · Task 1: registry, normalisation, mods ── */
 
@@ -487,4 +508,50 @@ test('npcTurn: a long-range attack is NOT stamped MELEE — Charging bonus withh
   assert.notStrictEqual(atk.effect.band, 'MELEE');
   THREAD.apply({ type: 'SKIRMISH' }, state, block, canon);
   assert.strictEqual(state.combatants.hero.w[0], 7);   // 10 − 3 base only; Charging is melee-only
+});
+
+/* ── T-CMB-1 · Task 5 fix round 1 (reviewer findings) ─────────────────── */
+
+test('fix round 1: livingAllies/cleanseReach exclude captured models from Rally/Cleanse fan-out', () => {
+  const state = { pools: { A: 9 }, combatants: {
+    caster: combatant({ x: 0, y: 0 }),
+    ally: combatant({ x: 1, y: 0 }),
+    downed: combatant({ x: 0, y: 1, dead: true }),
+    taken: combatant({ x: 1, y: 1, captured: true }),   // alive, but off the field — must never fan to it
+  } };
+  assert.deepStrictEqual(CONDGLUE.livingAllies(state, 'A').sort(), ['ally', 'caster']);
+  assert.deepStrictEqual(CONDGLUE.cleanseReach(state, 'A', 'caster', 2).sort(),   // touch (tier II)
+    ['ally', 'caster']);
+  assert.deepStrictEqual(CONDGLUE.cleanseReach(state, 'A', 'caster', 3).sort(),   // force-wide (tier III)
+    ['ally', 'caster']);
+});
+
+test('fix round 1: condEffectsFor threads the real item through — a Non-Lethal item stamps nl via the ACTUAL staging path, not a hand-built payload', () => {
+  const state = { pools: { A: 9 }, combatants: { caster: combatant({}), ally: combatant({}) } };
+  const nlItem = { n: 'Stun Baton', d: 'Phys 2 - DoT I - Non-Lethal' };
+  const effs = CONDGLUE.condEffectsFor(nlItem, 'caster', 'ally', state, 'A');
+  assert.strictEqual(effs.length, 1);
+  assert.ok(effs[0].add.item, 'condEffectsFor must thread the source item into add.item');
+  const block = [{ actor: 'caster', cost: 1, effect: effs[0] }];
+  THREAD.apply({ type: 'SKIRMISH' }, state, block, canon);
+  const inst = state.combatants.ally.conds[0];
+  assert.strictEqual(inst.tag, 'DoT');
+  assert.strictEqual(inst.nl, true, 'nl must be stamped from add.item through the real condEffectsFor payload');
+});
+
+test('fix round 1: a Rally fan-out (built the way the engine glue actually builds it) counts as ONE action; a genuine 4-action block still fails', () => {
+  const state = { pools: { A: 99 }, combatants: {
+    caster: combatant({}), a1: combatant({}), a2: combatant({}),
+    foe: combatant({ party: 'B' }),
+  } };
+  const rallyItem = { n: 'Warcry', d: 'Rally I - 2 AP - 1/thread' };
+  const effs = CONDGLUE.condEffectsFor(rallyItem, 'caster', null, state, 'A');
+  assert.strictEqual(effs.length, 3, 'fans to caster + 2 living allies');
+  const rallyBlock = effs.map((ef, i) => ({ actor: 'caster', cost: i === 0 ? 2 : 0, fanout: i > 0, effect: ef }));
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, state, 'A', rallyBlock, canon).ok,
+    'Rally fanned to 3 allies is still ONE action against the actionCap');
+  const act = () => ({ actor: 'caster', cost: 1, effect: { kind: 'damage', to: 'foe', amount: 1, element: 'Physical' } });
+  const v = THREAD.validate({ type: 'SKIRMISH' }, state, 'A', [act(), act(), act(), act()], canon);
+  assert.strictEqual(v.ok, false);
+  assert.match(v.reason, /action/i);
 });

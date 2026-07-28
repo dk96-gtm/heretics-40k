@@ -586,6 +586,7 @@ var THREAD=(function(){
       var _acts={};                                 // T-CMB-1 Task 3: hard action-count gate (costed actions only)
       for(var ai=0;ai<block.length;ai++){var ab=block[ai],ae=ab.effect;
         if(ae&&ae.kind==='move')continue;                       // moves are free
+        if(ab.fanout)continue;   // T-CMB-1 Task 5 fix round 1: Rally/Cleanse fan-out — one cast, one action
         if(ab.cost==null&&!ae)continue;
         _acts[ab.actor]=(_acts[ab.actor]||0)+1;}
       for(var aid in _acts){var am=state.combatants[aid];if(!am)continue;
@@ -2500,6 +2501,7 @@ function partyOf(t){
    registry key) — {tag,tier} with tier as an int (roman → number via tierNum). Multi-tag items
    (e.g. "Curse of the Leper — R3 - Multihit II + DoT II") surface one entry per condition tag;
    non-condition tags (Multihit, Rapid, Unwieldy…) are simply not condition keys so they drop out. */
+/*<cond-staging-glue>*/
 function condTagsOf(item){
   if(!item)return [];
   var p=parseItem(item),out=[];
@@ -2515,8 +2517,12 @@ function condTagsOf(item){
 }
 var HOSTILE_CONDS={DoT:1,Slowing:1,Suppressing:1,Marked:1,Draining:1};
 function condIsHostile(tag){return !!HOSTILE_CONDS[tag];}
+// fix round 1: "alive" for fan-out purposes is the codebase's established check (!dead && !captured
+// — see the party-alive tallies at apply's outcome/annihilation logic) — a captured model is off
+// the board (x/y nulled at capture) and must never receive a Rally buff or a Cleanse.
 function livingAllies(state,party){
-  var out=[];for(var id in state.combatants){var c=state.combatants[id];if(c&&c.party===party&&!c.dead)out.push(id);}
+  var out=[];for(var id in state.combatants){var c=state.combatants[id];
+    if(c&&c.party===party&&!c.dead&&!c.captured)out.push(id);}
   return out;
 }
 /* Cleanse reach by tier: I = self only, II = touch (self + adjacent allies, Chebyshev 1 — only
@@ -2529,7 +2535,7 @@ function cleanseReach(state,party,casterId,tier){
     if(cc&&cc.x!=null){
       var out=[casterId];
       for(var id in state.combatants){if(id===casterId)continue;var c=state.combatants[id];
-        if(c&&c.party===party&&!c.dead&&c.x!=null&&THREAD.cheb({x:cc.x,y:cc.y},{x:c.x,y:c.y})<=1)out.push(id);}
+        if(c&&c.party===party&&!c.dead&&!c.captured&&c.x!=null&&THREAD.cheb({x:cc.x,y:cc.y},{x:c.x,y:c.y})<=1)out.push(id);}
       return out;
     }
     return [casterId];
@@ -2538,9 +2544,12 @@ function cleanseReach(state,party,casterId,tier){
 }
 /* condEffectsFor: the single builder both the no-board dropdown composer (threadBlockBuilder)
    and the grid battle panel (bfCombatUI) call — turns one staged item-use into a list of REAL
-   {kind:'cond',add:{tag,tier,src,el},to} payloads (never the display label). Rally fans to every
-   living ally; Cleanse fans by its tier's reach; hostile tags ride the caller's chosen enemy
-   target; any other (buff) tag goes to the caller's chosen target, defaulting to the caster. */
+   {kind:'cond',add:{tag,tier,src,el,item},to} payloads (never the display label). Rally fans to
+   every living ally; Cleanse fans by its tier's reach; hostile tags ride the caller's chosen enemy
+   target; any other (buff) tag goes to the caller's chosen target, defaulting to the caster.
+   `add.item` (fix round 1) is the parsed source item itself — applyCond's own contract reads it to
+   stamp `nl`/`nr` (Non-Lethal / no_revival) when staging hasn't resolved them explicitly, so without
+   it a REAL staged cond could never floor a DoT at 1 wound or permadeath a no_revival source. */
 function condEffectsFor(item,casterId,chosenTarget,state,party){
   var tags=condTagsOf(item),out=[];
   var el=THREAD.elementOf(item),src=item.n;
@@ -2550,11 +2559,12 @@ function condEffectsFor(item,casterId,chosenTarget,state,party){
     else if(ct.tag==='Cleanse')targets=cleanseReach(state,party,casterId,ct.tier);
     else if(condIsHostile(ct.tag))targets=chosenTarget?[chosenTarget]:[];
     else targets=[chosenTarget||casterId];
-    targets.forEach(function(tid){var add={tag:ct.tag,tier:ct.tier,src:src,el:el};
+    targets.forEach(function(tid){var add={tag:ct.tag,tier:ct.tier,src:src,el:el,item:item};
       if(ct.of)add.of=ct.of;out.push({kind:'cond',add:add,to:tid});});
   });
   return out;
 }
+/*</cond-staging-glue>*/
 /*<speech-core>*/
 var SPEECH_PALETTE=['#9fef00','#37d6ff','#ffb347','#c792ea','#ff6b8a','#4ec9b0','#e0e060','#7aa2f7'];
 function pickSpeechColor(name,roster,palette){
@@ -2631,11 +2641,13 @@ function threadBlockBuilder(t,party){
     if(a.group==='y'||a.group==='a'){
       // T-CMB-1 Task 5: real parseItem-driven payloads, one staged entry per condition tag per
       // target (multi-tag items, Rally/Cleanse fan-out) — cost charged once on the first entry only,
-      // so a fan-out never multiplies the actual AP spend.
+      // so a fan-out never multiplies the actual AP spend. Fix round 1 (controller ruling): the cast
+      // is still ONE action, so every entry beyond the first carries fanout:true — validate's
+      // per-model action counter skips those, matching the already-once-only AP cost.
       var effs=condEffectsFor(a.item,a.actor,tgt,t.state,party);
       if(!effs.length){warn.textContent='No valid target for '+a.action+'.';return;}
       effs.forEach(function(ef,i){staged.push({actor:a.actor,action:a.action,cost:i===0?a.cost:0,
-        effect:ef,tgtLabel:nameOf(ef.to)});});
+        fanout:i>0,effect:ef,tgtLabel:nameOf(ef.to)});});
       redraw();return;
     }
     staged.push({actor:a.actor,action:a.action,cost:a.cost,effect:effFor(a,tgt),tgtLabel:tgtLabel});redraw();};
@@ -2856,8 +2868,12 @@ function bfCombatUI(t,party){
     // rides the SAME clicked-enemy target (ui.tgt) as a weapon attack; anything else is a buff and
     // gets its own click-to-target ally row (ui.allyTgt), defaulting to self. Rally/Cleanse fan out
     // at stage time (condEffectsFor) regardless of what's picked here.
+    // Fix round 1: gated against the aftermath (solo looting) phase exactly like the adjacent loot
+    // section gates on it below — combat abilities have no business firing once the field is won.
+    // 'deploy' is structurally unreachable here: bfSetup routes deploy-phase threads to bfDeployUI,
+    // never to this function (see the phase ternary at the bfDeployUI/bfCombatUI call site).
     var condItems=bfCondItemsOf(sc);
-    if(condItems.length){
+    if(condItems.length&&st.phase!=='aftermath'){
       var anyBuff=condItems.some(function(it){return condTagsOf(it).some(function(ct){return !condIsHostile(ct.tag);});});
       panel+='<div class="bf-blk"><h4>Abilities / Casts</h4>';
       if(anyBuff){
@@ -2918,8 +2934,10 @@ function bfCombatUI(t,party){
         if(hostile&&!chosen)return openT(t.id);   // guard — button is disabled for this case anyway
         var effs=condEffectsFor(cit,ui.sel,chosen,st,party),apCost=bfAP(cit);
         effs.forEach(function(ef,i){
+          // fix round 1 (controller ruling): one cast = one action — entries beyond the first are
+          // the fan-out, not extra actions; validate's action counter skips fanout:true entries.
           ui.acts.push({actor:ui.sel,action:cit.n+' ('+condLabelShort(ef.add)+') → '+bfTag(ef.to,C[ef.to]),
-            cost:i===0?apCost:0,effect:ef});
+            cost:i===0?apCost:0,fanout:i>0,effect:ef});
         });}
       return openT(t.id);}
     if(b.hasAttribute('data-corpse')){var corpseClick=b.getAttribute('data-corpse');   // select loot context, never a move
@@ -3441,6 +3459,7 @@ function openModel(idOrModel){
 function switchTo(id){S.active=id;rHQ();T('Now commanding: '+S.roster.filter(function(m){return m.id===id})[0].n.split(',')[0]);}
 function activeModel(){return S.roster.filter(function(m){return m.id===S.active})[0]||S.roster[0];}
 /* ─── v12: glossary + tooltips (game-wide) ─── */
+/*<item-parse-glue>*/
 function tierNum(r){if(!r)return 0;return {I:1,II:2,III:3,IV:4,V:5}[String(r).toUpperCase()]||parseInt(r,10)||0}
 /* glossary — values may be a string or a function(tierNumber) for tier-aware text */
 var GLOSS={
@@ -3511,6 +3530,7 @@ function parseItem(it){var d=(it.d||''),parts=d.split(/\s*[-·+]\s*/).map(functi
   out.notes.push(p)});
  return out}
 function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
+/*</item-parse-glue>*/
 /* full, clearly-labelled stat block for any item */
 function itemStatsHTML(it){var p=parseItem(it),rows='';
  function r(k,v){return v?'<div class="istat"><span class="ik">'+k+'</span><span class="iv">'+v+'</span></div>':''}
