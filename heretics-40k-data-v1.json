@@ -14571,7 +14571,7 @@
  "missions": {
   "universal": [
    { "id": "purge", "n": "Purge", "family": "KILL", "kind": "count_kill",
-     "target_roll": [3, 6], "params": { "filter": "hostile" },
+     "target_roll": [3, 6], "params": { "filter": "hostile" }, "needs_hostiles": true,
      "world_effect": { "taint": -4 },
      "flavor": "Hostile elements fester here. Root them out — every kill is a knife drawn from this ground." },
    { "id": "item_request", "n": "Item Request", "family": "LOGISTICS", "kind": "collect_item",

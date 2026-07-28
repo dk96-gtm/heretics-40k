@@ -496,7 +496,7 @@ function missionCtxOf(pid){var f=fPl(pid);if(!f)return null;var p=f.p;
 var pt=(D.galaxy.planet_types||[]).filter(function(t){return t.name===p.type})[0]||{};
 return {pl:{id:p.id,type:p.type,prod_mult:pt.prod_mult||1},
 locs:(p.locations||[]).map(function(l){
-return {id:l.id,name:l.name,cond:l.condition||null,doors:doorKindsOf(l),npc:npcNameAt(p.id,l.id)}})}}
+return {id:l.id,name:l.name,cond:l.condition||null,doors:doorKindsOf(l),npc:npcNameAt(p.id,l.id),garrison:!!npcForceAt(p.id,l.name)}})}}
 /* pure thread rules: no DOM, no globals; every input is an argument (node-tested) */
 /*<thread-core>*/
 var THREAD=(function(){
@@ -1226,8 +1226,12 @@ var MISSION=(function(){
     return {kind:'notice',label:'Anonymous notice — '+loc.name};
   }
   function rollMission(row,ctx,r,day,canon){
-    // location: honor prefer_condition first, else uniform
-    var locs=ctx.locs||[];var loc=null;
+    // location: needs_hostiles rows are hard-gated to garrisoned locs (filter BEFORE
+    // drawing — never draw-then-discard, keeps rng consumption a pure fn of (seed,ctx));
+    // honor prefer_condition next, else uniform over the (possibly gated) pool
+    var locs=ctx.locs||[];
+    if(row.needs_hostiles)locs=locs.filter(function(l){return l.garrison;});
+    var loc=null;
     if(row.prefer_condition){
       var pref=locs.filter(function(l){return l.cond===row.prefer_condition;});
       if(pref.length)loc=pref[Math.floor(r()*pref.length)];
@@ -1250,17 +1254,22 @@ var MISSION=(function(){
     var lo=M.board_min||4,hi=M.board_max||6;
     var want=lo+Math.floor(r()*(hi-lo+1));
     var rows=(canon.missions&&canon.missions.universal)||[];
+    // needs_hostiles rows may ONLY be candidates when ctx actually has a garrisoned
+    // loc — filtered here, BEFORE any rng draw, so a garrison-less planet just never
+    // rolls that row (no draw-then-discard, rng stays a pure fn of (seed,ctx,board))
+    var hasGarrison=(ctx.locs||[]).some(function(l){return l.garrison;});
+    var elig=rows.filter(function(rw){return !rw.needs_hostiles||hasGarrison;});
     // condition-preferring rows first so ruins actually get their rebuild
-    var ordered=rows.slice().sort(function(a,b){
+    var ordered=elig.slice().sort(function(a,b){
       return (b.prefer_condition?1:0)-(a.prefer_condition?1:0);});
-    while(keep.length<want&&rows.length){
+    while(keep.length<want&&elig.length){
       var row=null;
       for(var i=0;i<ordered.length&&!row;i++){
         var cand=ordered[i];
         if(cand.prefer_condition&&(ctx.locs||[]).some(function(l){return l.cond===cand.prefer_condition;})
            &&!keep.some(function(k){return k.mid===cand.id&&!k.accepted;})){row=cand;}
       }
-      if(!row)row=rows[Math.floor(r()*rows.length)];
+      if(!row)row=elig[Math.floor(r()*elig.length)];
       keep.push(rollMission(row,ctx,r,day,canon));
     }
     board.length=0;Array.prototype.push.apply(board,keep);
@@ -1632,7 +1641,13 @@ function acceptMission(inst,pl,l){
   mission:{iid:inst.iid,mid:inst.mid,payout:inst.payout,world_effect:inst.world_effect,pl:inst.pl,lid:inst.lid,n:inst.n}};
  if(inst.kind==='count_kill')seedCombat(t,pl.id,l,null,force);
  t.seedState=t.seedState||{};
+ var hn;
+ if(inst.kind==='count_kill'){
+  hn=Object.keys(t.seedState.combatants||{}).filter(function(k){return (t.seedState.combatants[k].party)!==force.n;}).length;
+  if(hn===0){T('The notice is stale — no hostile presence remains here.');return;}
+ }
  t.seedState.objective={kind:inst.kind,target:inst.target,progress:0,params:inst.params,done:false};
+ if(inst.kind==='count_kill')t.seedState.objective.target=Math.max(1,Math.min(inst.target,hn));
  S.threads.push(t);inst.accepted=true;inst.tid=id;
  persist();T('Mission accepted: '+inst.n);openT(id);
 }

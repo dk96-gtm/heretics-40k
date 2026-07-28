@@ -37,6 +37,7 @@ test('pilot mission rows: purge, item_request, rebuild', () => {
   assert.strictEqual(byId.item_request.kind, 'collect_item');
   assert.strictEqual(byId.rebuild.kind, 'restore');
   assert.strictEqual(byId.rebuild.prefer_condition, 'Ruined');
+  assert.strictEqual(byId.purge.needs_hostiles, true);
 });
 
 test('face_doors values are real door kinds', () => {

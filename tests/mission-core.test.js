@@ -12,8 +12,15 @@ const MISSION = loadMission();
 const CTX = () => ({
   pl: { id: 'testp', type: 'Forge World', prod_mult: 2.0 },
   locs: [
-    { id: 'l1', name: 'The Foundry', cond: null,     doors: ['shop', 'muster'], npc: null },
-    { id: 'l2', name: 'Shattered Row', cond: 'Ruined', doors: [],               npc: 'Magos Vex' }
+    { id: 'l1', name: 'The Foundry', cond: null,     doors: ['shop', 'muster'], npc: null, garrison: true },
+    { id: 'l2', name: 'Shattered Row', cond: 'Ruined', doors: [],               npc: 'Magos Vex', garrison: false }
+  ]
+});
+const CTX_NO_GARRISON = () => ({
+  pl: { id: 'testp', type: 'Forge World', prod_mult: 2.0 },
+  locs: [
+    { id: 'l1', name: 'The Foundry', cond: null,     doors: ['shop', 'muster'], npc: null, garrison: false },
+    { id: 'l2', name: 'Shattered Row', cond: 'Ruined', doors: [],               npc: 'Magos Vex', garrison: false }
   ]
 });
 function mkState() {
@@ -59,6 +66,29 @@ test('condition preference: a Ruined location draws rebuild', () => {
     sawRebuildOnRuins = board.some(m => m.mid === 'rebuild' && m.lid === 'l2');
   }
   assert.ok(sawRebuildOnRuins);
+});
+
+test('needs_hostiles missions only land on garrisoned locations', () => {
+  const r = MISSION.rng(11);
+  const garrisonedIds = CTX().locs.filter(l => l.garrison).map(l => l.id);
+  let sawPurge = false;
+  for (let day = 0; day < 10; day++) {
+    const board = MISSION.refillBoard([], CTX(), canon, r, day);
+    board.filter(m => m.mid === 'purge').forEach(m => {
+      sawPurge = true;
+      assert.ok(garrisonedIds.includes(m.lid), 'purge instance must sit on a garrisoned loc, got ' + m.lid);
+    });
+  }
+  assert.ok(sawPurge, 'expected at least one purge instance over 10 days');
+});
+
+test('no garrisoned loc -> board never contains purge', () => {
+  const r = MISSION.rng(11);
+  for (let day = 0; day < 10; day++) {
+    const board = MISSION.refillBoard([], CTX_NO_GARRISON(), canon, r, day);
+    assert.ok(!board.some(m => m.mid === 'purge'), 'no purge should ever be minted without a garrison');
+    assert.ok(board.length >= 4 && board.length <= 6, 'board still fills from the other rows, got ' + board.length);
+  }
 });
 
 test('expiry replaces stale unaccepted missions but never accepted ones', () => {
