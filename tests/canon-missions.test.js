@@ -19,7 +19,7 @@ test('rules.missions tuning block is complete', () => {
   assert.deepStrictEqual(M.size_clamp, [0.5, 4]);
   assert.strictEqual(M.modifier_mult, 1.5);
   assert.strictEqual(M.signature_premium, 1.5);
-  assert.deepStrictEqual(M.face_doors, { KILL: 'muster', HOLD: 'throne', LOGISTICS: 'shop', RITUAL: 'altar' });
+  assert.deepStrictEqual(M.face_doors, { KILL: 'muster', HOLD: 'throne_room', LOGISTICS: 'shop', RITUAL: 'altar' });
 });
 
 test('pilot mission rows: purge, item_request, rebuild', () => {
@@ -37,6 +37,12 @@ test('pilot mission rows: purge, item_request, rebuild', () => {
   assert.strictEqual(byId.item_request.kind, 'collect_item');
   assert.strictEqual(byId.rebuild.kind, 'restore');
   assert.strictEqual(byId.rebuild.prefer_condition, 'Ruined');
+});
+
+test('face_doors values are real door kinds', () => {
+  const doorKinds = canon.galaxy.doors.map(d => d.kind);
+  Object.values(canon.rules.missions.face_doors).forEach(v =>
+    assert.ok(doorKinds.includes(v), v + ' must be a real door kind'));
 });
 
 test('canon is v1.21', () => {

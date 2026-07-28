@@ -531,7 +531,7 @@
    "size_clamp": [0.5, 4],
    "modifier_mult": 1.5,
    "signature_premium": 1.5,
-   "face_doors": { "KILL": "muster", "HOLD": "throne", "LOGISTICS": "shop", "RITUAL": "altar" }
+   "face_doors": { "KILL": "muster", "HOLD": "throne_room", "LOGISTICS": "shop", "RITUAL": "altar" }
   }
  },
  "perk_effects": {
