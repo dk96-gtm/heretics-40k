@@ -1614,6 +1614,25 @@ function startThread(pid,l,type,npcId){var loc=fPl(pid).p.name+' · '+l.name;
  S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
  T(type+' thread opened at '+l.name+(fname?' — '+fname+' committed':'')+'. Now in the location\'s public record.');
  go('threads');rTL();}
+/* accept a posted mission instance (Missions V2 slice A) — mirrors startThread's push
+   pattern but skips the briefing gate (accepting from the board IS the briefing) and
+   seeds the objective AFTER seedCombat, since seedCombat replaces t.seedState wholesale. */
+function acceptMission(inst,pl,l){
+ var cap=(D.rules.missions&&D.rules.missions.accept_cap)||3;
+ var live=S.threads.filter(function(t){return t.type==='MISSION'&&t.accepted&&!t.done}).length;
+ if(live>=cap){T('Mission cap reached ('+cap+') — finish or abandon one first.');return;}
+ var force=S.forces.filter(function(f){return !threadOfForce(f.n);})[0]||S.forces[0];
+ var id='m'+Date.now().toString(36);
+ var t={id:id,type:'MISSION',n:inst.n+' — '+l.name,loc:pl.name+' · '+l.name,pl:pl.id,lid:l.id,
+  turn:'you',vis:'public',initiator:'You',about:inst.flavor,accepted:true,
+  forces:force?[force.n]:[],
+  mission:{iid:inst.iid,mid:inst.mid,payout:inst.payout,world_effect:inst.world_effect,pl:inst.pl,lid:inst.lid,n:inst.n}};
+ if(inst.kind==='count_kill')seedCombat(t,pl.id,l,null,force);
+ t.seedState=t.seedState||{};
+ t.seedState.objective={kind:inst.kind,target:inst.target,progress:0,params:inst.params,done:false};
+ S.threads.push(t);inst.accepted=true;inst.tid=id;
+ persist();T('Mission accepted: '+inst.n);openT(id);
+}
 function curTravel(){return S.threads.filter(function(t){return t.type==='TRAVEL'})[0]||null;}
 function inTransit(){return !!curTravel();}
 function travelTier(fpl,fsp,tpl,tsp){
@@ -2031,6 +2050,12 @@ if(_dz.length)h2+='<div class="lsec"><h5>Doors — click to enter</h5>'+_dz.map(
 h2+='<div class="lsec"><h5>Forces present — click for auspex intel</h5>'+(frLoc.length?frLoc.map(function(x){var known=!!forceIntel(x[0]);return '<div class="lrow'+(known?'':' unknown')+'" data-force="'+esc(x[0])+'">▸ <b>'+x[0]+'</b> — '+x[1]+(known?' <span class="mono" style="color:var(--vdh)">◉ known</span>':' <span class="mono" style="color:var(--dim)">no intel</span>')+'</div>'}).join(''):'<span style="color:var(--dim)">· none known</span>')+'</div>';
 /* THREAD HISTORY — clickable with summaries */
 h2+='<div class="lsec"><h5>Thread history — click for summary</h5>'+(hi.length?hi.map(function(t,ti){return '<div class="lrow" data-hist="'+ti+'">▸ '+t+'</div>'}).join(''):'<span style="color:var(--dim)">No threads recorded yet.</span>')+'</div>';
+/* MISSIONS — posted here, unaccepted (Missions V2 slice A) */
+var _mb=(S.world.missions[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted});
+if(_mb.length)h2+='<div class="lsec"><h5>Missions — posted here ('+_mb.length+')</h5>'+
+ _mb.map(function(m,i){return '<div class="lrow" data-mission="'+i+'"><b>'+m.n+'</b> · '+
+  m.face.label+' · target '+m.target+' · pays '+m.payout+
+  '<div class="d">'+m.flavor+'</div></div>';}).join('')+'</div>';
 /* NPCs — clickable sheets */
 if(np.length)h2+='<div class="lsec"><h5>Known here — click for their sheet</h5>'+np.map(function(n,ni){return '<div class="lrow" data-npc="'+n.id+'">▸ <b>'+n.name+'</b> — '+n.kind+', '+n.faction+'</div>'}).join('')+'</div>';
 var atHere=(S.pos.pl===pl.id&&S.pos.sp===l.id&&!inTransit()&&!S.pos.void),openDoors=_dz.filter(function(x){return x.open});
@@ -2045,6 +2070,8 @@ p.querySelectorAll('.lrow[data-door]').forEach(function(el){el.onclick=function(
 p.querySelectorAll('.lrow[data-force]').forEach(function(el){el.onclick=function(){openForce(el.getAttribute('data-force'))}});
 p.querySelectorAll('.lrow[data-hist]').forEach(function(el){el.onclick=function(){openHist(hi[+el.dataset.hist],pl.name+' · '+l.name)}});
 p.querySelectorAll('.lrow[data-npc]').forEach(function(el){el.onclick=function(){openNPC(el.dataset.npc)}});
+p.querySelectorAll('.lrow[data-mission]').forEach(function(r){r.onclick=function(){
+ acceptMission(_mb[+r.getAttribute('data-mission')],pl,l)};});
 if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){go('shop')};
  var tb=document.getElementById('locthr');if(tb)tb.onclick=function(){var tm=document.getElementById('loctm');
   if(tm.innerHTML){tm.innerHTML='';return}
@@ -2637,6 +2664,8 @@ function threadView(V,t){
     }
     if(!t.posts)t.posts=[];
     t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you',stamp:nowStamp(),block:staged.map(function(s){return {actor:s.actor,action:s.action,cost:s.cost,effect:s.effect}})});
+    if(t.type==='MISSION'&&t.state.objective&&t.state.objective.kind==='restore'&&!t.state.objective.done)
+      THREAD.apply(t,t.state,[{actor:S.active,effect:{kind:'work',words:THREAD.wordCount(v)}}],D);
     if(t.state.board){t._bf={sel:null,tgt:null,moves:{},acts:[]};   // clear staging; refresh AP for the next turn
       if(t.state.poolsBase&&t.state.poolsBase[party]!=null)t.state.pools[party]=t.state.poolsBase[party];
       npcRespond(t,party);}   // T-NPC-2b: the enemy side answers — it fights back
@@ -2672,6 +2701,24 @@ function threadView(V,t){
       });
     };
     V.appendChild(_sm);
+  }
+  if(t.type==='MISSION'&&t.state&&t.state.objective&&!t.state.objective.done){
+    var ob=t.state.objective;
+    if(ob.kind==='collect_item'){
+      var have=S.inv.filter(function(it){return !ob.params.item_n||it.n===ob.params.item_n}).length;
+      var db=E('button','btn sm','Deliver items ('+have+' held)');db.style.marginTop='10px';
+      db.disabled=!have;
+      db.onclick=function(){
+        var give=Math.min(have,ob.target-ob.progress),removed=0;
+        for(var _di=S.inv.length-1;_di>=0&&removed<give;_di--){
+          if(ob.params.item_n&&S.inv[_di].n!==ob.params.item_n)continue;
+          S.inv.splice(_di,1);removed++;
+        }
+        THREAD.apply(t,t.state,[{actor:S.active,effect:{kind:'deliver',qty:give}}],D);
+        persist();openT(t.id);
+      };
+      V.appendChild(db);
+    }
   }
   if(t.state.phase==='aftermath'){
     var eb=E('button','btn','END THREAD — withdraw with your spoils');eb.style.marginTop='10px';
