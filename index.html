@@ -583,6 +583,24 @@ var THREAD=(function(){
       if(spent>pool)return {ok:false,
         reason:'Exceeds AP pool ('+spent+'/'+pool+') - '+
                ((canon.rules.combat&&canon.rules.combat.desperation_action)||'desperation')};
+      var _acts={};                                 // T-CMB-1 Task 3: hard action-count gate (costed actions only)
+      for(var ai=0;ai<block.length;ai++){var ab=block[ai],ae=ab.effect;
+        if(ae&&ae.kind==='move')continue;                       // moves are free
+        if(ab.cost==null&&!ae)continue;
+        _acts[ab.actor]=(_acts[ab.actor]||0)+1;}
+      for(var aid in _acts){var am=state.combatants[aid];if(!am)continue;
+        var cap=actionCap(am,canon);
+        if(_acts[aid]>cap)return {ok:false,
+          reason:'Suppressed/wounded: '+aid+' has only '+cap+' action'+(cap>1?'s':'')+' this post'};}
+      if(state.board){                              // T-CMB-1 Task 3: hard speed gate — a slowed model can't outrun its mods
+        for(var mi=0;mi<block.length;mi++){var mb=block[mi],me=mb.effect;
+          if(!me||me.kind!=='move')continue;
+          var mm=state.combatants[me.who||mb.actor];if(!mm||mm.x==null)continue;
+          var msp=Math.max(0,(mm.spd||0)+condMods(mm).speed);
+          var occ=[];for(var oid in state.combatants){var oc=state.combatants[oid];
+            if(oid!==(me.who||mb.actor)&&oc&&!oc.dead&&oc.x!=null)occ.push({x:oc.x,y:oc.y});}
+          var rs=reachable({x:mm.x,y:mm.y},msp,state.board,occ);
+          if(!rs[me.to.x+','+me.to.y])return {ok:false,reason:'Slowed: move exceeds reduced speed'};}}
       if(state.board){                              // fog targeting gate (Slice C): attack/capture only what you see
         var vis=spottedEnemies(party,state,state.board);
         for(var gi=0;gi<block.length;gi++){var ge=block[gi].effect;
@@ -656,23 +674,36 @@ var THREAD=(function(){
     var ob=state&&state.objective;if(!ob)return null;
     return {won:ob.progress>=ob.target,progress:ob.progress,target:ob.target};
   }
-  function apply(thread,state,block,canon){
-    var party=null;
+  function apply(thread,state,block,canon,party){
+    /* T-CMB-1 · Task 3: posting side's conditions tick FIRST (combat threads
+       only, incl. a MISSION count_kill combat with live combatants); the
+       tick report is returned so the caller can fold it into the battle
+       report. Legacy 4-arg callers get `party===undefined` → no tick, and
+       the function returns undefined exactly as before. */
+    var tickRep;
+    var _combatMission=thread.type==='MISSION'&&state.objective&&state.objective.kind==='count_kill'
+      &&state.combatants&&Object.keys(state.combatants).length;
+    if(party!=null&&(thread.type==='SKIRMISH'||thread.type==='INVASION'||_combatMission))
+      tickRep=tickConds(party,state,canon);
+    var _actorParty=null;
     block.forEach(function(b){
       var c=b.effect&&b.effect.to?state.combatants[b.effect.to]:null;
       // spend the pool (combat only): find the actor's party
       if((thread.type==='SKIRMISH'||thread.type==='INVASION')&&b.cost){
         var actor=state.combatants[b.actor];
-        if(actor){party=actor.party;state.pools[party]=(state.pools[party]||0)-b.cost;}
+        if(actor){_actorParty=actor.party;state.pools[_actorParty]=(state.pools[_actorParty]||0)-b.cost;}
       }
       var e=b.effect;if(!e)return;
       if(e.kind==='damage'&&c){
         var _def=c.armour||null;
         var _cov=(state.board&&typeof c.x==='number')?coverMod({x:c.x,y:c.y},state.board):0;
+        var _am=state.combatants[b.actor]?condMods(state.combatants[b.actor]):{dmgOut:0,dmgOutMelee:0};
+        var _tm=condMods(c);
+        var _amt=e.amount+(_am.dmgOut||0)+((e.band==='MELEE')?(_am.dmgOutMelee||0):0)+(_tm.dmgIn||0);
         var _dv=(_def&&_def[e.element])||0;
-        var _taken=Math.max(0,e.amount-_dv-_cov);
+        var _taken=Math.max(0,_amt-_dv-_cov);
         if(e.nonLethal)_taken=Math.min(_taken,Math.max(0,c.w[0]-1)); // Non-Lethal floor: never below 1 wound
-        var _abs=Math.max(0,Math.min(_dv,e.amount-_cov));   // what the plate actually ate
+        var _abs=Math.max(0,Math.min(_dv,_amt-_cov));   // what the plate actually ate
         var _ai=c.model&&c.model.loadout&&c.model.loadout.armour&&c.model.loadout.armour.it;
         if(_ai&&_abs>0)_ai.absorbed=(_ai.absorbed||0)+_abs; // gear battle record (T-ECO-1 prereq)
         c.w=[Math.max(0,c.w[0]-_taken),c.w[1]];
@@ -724,7 +755,7 @@ var THREAD=(function(){
       else if(e.kind==='transit'&&state.transit){
         state.transit.wordsWritten+=(e.words||0);}
     });
-    return state;
+    return tickRep;
   }
   function arrivalReady(state){
     return !!(state.transit&&state.transit.wordsWritten>=state.transit.wordsReq);

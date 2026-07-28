@@ -168,3 +168,120 @@ test('DAAK RULING 1c (fix round 1): a DoT from a no_revival source permadeaths v
   assert.strictEqual(state.combatants.m.permaDeath, true);
   assert.strictEqual(state.combatants.m.revivalWindow, 0);
 });
+
+/* ── T-CMB-1 · Task 3: tick-then-act inside apply + damage mods ── */
+test('apply with party: posting side ticks BEFORE staged effects resolve', () => {
+  const state = { pools: { A: 5 }, combatants: {
+    hero: combatant({ conds: [{ tag: 'Regen', tier: 2, left: 2, src: null, el: null }], w: [3, 10] }),
+    foe: combatant({ party: 'B' }),
+  } };
+  const rep = THREAD.apply({ type: 'SKIRMISH' }, state,
+    [{ actor: 'hero', cost: 1, effect: { kind: 'damage', to: 'foe', amount: 2, element: 'Physical' } }],
+    canon, 'A');
+  assert.strictEqual(state.combatants.hero.w[0], 5);   // regen landed first
+  assert.strictEqual(state.combatants.foe.w[0], 8);    // then the attack
+  assert.ok(Array.isArray(rep) && rep.length === 1);   // tick report returned
+});
+
+test('apply without party: legacy 4-arg behaviour unchanged (no tick)', () => {
+  const state = { pools: {}, combatants: {
+    m: combatant({ conds: [{ tag: 'DoT', tier: 1, left: 2, src: null, el: null }] }) } };
+  const rep = THREAD.apply({ type: 'SKIRMISH' }, state, [], canon);
+  assert.strictEqual(state.combatants.m.w[0], 10);
+  assert.strictEqual(rep, undefined);
+});
+
+test('apply: Rally/Marked/Charging shift damage through condMods', () => {
+  // NOTE: Rally/Charging seeded with left:2, not the brief's literal left:1 — a
+  // fresh instance's own duration() is 1, so left:1 expires on THIS same-call
+  // tick (spec pipeline: onTick, then left-=1, then splice — Task 2, locked)
+  // before condMods is read for the block's damage, which would zero out the
+  // exact mods this test is trying to exercise. left:2 survives the tick
+  // (becomes 1, not spliced) so the damage-mods plumbing is what's under
+  // test, not an incidental same-tick expiry race.
+  const base = () => ({ pools: { A: 9 }, combatants: {
+    atk: combatant({ conds: [{ tag: 'Rally', tier: 2, left: 2 }, { tag: 'Charging', tier: 1, left: 2 }] }),
+    tgt: combatant({ party: 'B', conds: [{ tag: 'Marked', tier: 1, left: 2 }] }),
+  } });
+  let s = base();   // ranged: Rally +2 and Marked +1 apply; Charging (melee-only) does not
+  THREAD.apply({ type: 'SKIRMISH' }, s,
+    [{ actor: 'atk', cost: 1, effect: { kind: 'damage', to: 'tgt', amount: 3, element: 'Physical' } }], canon, 'A');
+  assert.strictEqual(s.combatants.tgt.w[0], 4);        // 10 − (3+2+1)
+  s = base();       // melee: Charging +1 joins in
+  THREAD.apply({ type: 'SKIRMISH' }, s,
+    [{ actor: 'atk', cost: 1, effect: { kind: 'damage', to: 'tgt', amount: 3, element: 'Physical', band: 'MELEE' } }], canon, 'A');
+  assert.strictEqual(s.combatants.tgt.w[0], 3);        // 10 − (3+2+1+1)
+});
+
+test('apply: drift item 2 — a MISSION count_kill combat with live combatants ticks the posting side too', () => {
+  const state = { pools: { A: 5 }, objective: { kind: 'count_kill', target: 5, progress: 0, done: false },
+    combatants: {
+      hero: combatant({ conds: [{ tag: 'Regen', tier: 1, left: 2, src: null, el: null }], w: [5, 10] }),
+      foe: combatant({ party: 'B' }),
+    } };
+  const rep = THREAD.apply({ type: 'MISSION' }, state,
+    [{ actor: 'hero', cost: 1, effect: { kind: 'damage', to: 'foe', amount: 1, element: 'Physical' } }],
+    canon, 'A');
+  assert.strictEqual(state.combatants.hero.w[0], 6);   // regen ticked (+1) before the attack landed
+  assert.ok(Array.isArray(rep) && rep.length === 1);
+});
+
+test('apply: drift item 2 — a non-combat MISSION post (deliver/work) never ticks conditions', () => {
+  const state = { pools: {}, objective: { kind: 'collect_item', target: 3, progress: 0, done: false },
+    combatants: {
+      m: combatant({ conds: [{ tag: 'DoT', tier: 3, left: 2, src: null, el: null }] }),
+    } };
+  const rep = THREAD.apply({ type: 'MISSION' }, state,
+    [{ actor: 'm', effect: { kind: 'deliver', qty: 1 } }], canon, 'A');
+  assert.strictEqual(state.combatants.m.w[0], 10);     // DoT never ticked — not a combat mission
+  assert.strictEqual(rep, undefined);
+});
+
+/* ── T-CMB-1 · Task 3: hard validate gates (action cap, speed) ── */
+test('validate: action count is capped by Suppressing and wounds', () => {
+  const state = { pools: { A: 99 }, combatants: {
+    m: combatant({ conds: [{ tag: 'Suppressing', tier: 1, left: 1 }] }),   // cap 2
+    foe: combatant({ party: 'B' }),
+  } };
+  const act = () => ({ actor: 'm', cost: 1, effect: { kind: 'damage', to: 'foe', amount: 1, element: 'Physical' } });
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, state, 'A', [act(), act()], canon).ok);
+  const v = THREAD.validate({ type: 'SKIRMISH' }, state, 'A', [act(), act(), act()], canon);
+  assert.strictEqual(v.ok, false);
+  assert.match(v.reason, /action/i);
+});
+
+test('validate: free moves do not count against the action cap', () => {
+  const state = { pools: { A: 99 }, combatants: {
+    m: combatant({ w: [1, 10] }),                                          // Critical: cap 1
+    foe: combatant({ party: 'B' }),
+  } };
+  const block = [
+    { actor: 'm', cost: 0, effect: { kind: 'move', who: 'm', to: { x: 1, y: 0 } } },
+    { actor: 'm', cost: 1, effect: { kind: 'damage', to: 'foe', amount: 1, element: 'Physical' } },
+  ];
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, state, 'A', block, canon).ok);
+});
+
+test('validate: a Slowed model cannot move beyond its reduced speed', () => {
+  const tiles = []; for (let i = 0; i < 8 * 8; i++) tiles.push({ t: 'open' });
+  const board = { w: 8, h: 8, tiles };
+  const state = { pools: { A: 99 }, board, fog: {}, combatants: {
+    m: combatant({ x: 0, y: 0, spd: 3, conds: [{ tag: 'Slowing', tier: 2, left: 1 }] }) } };
+  const move = (x) => [{ actor: 'm', cost: 0, effect: { kind: 'move', who: 'm', to: { x, y: 0 } } }];
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, state, 'A', move(1), canon).ok);   // 3−2=1 ok
+  const v = THREAD.validate({ type: 'SKIRMISH' }, state, 'A', move(2), canon);
+  assert.strictEqual(v.ok, false);
+  assert.match(v.reason, /slow/i);
+});
+
+test('validate: drift item 2 — MISSION count_kill combat gets the same action-cap gate', () => {
+  const state = { pools: { A: 99 }, objective: { kind: 'count_kill', target: 3, progress: 0, done: false },
+    combatants: {
+      m: combatant({ conds: [{ tag: 'Suppressing', tier: 1, left: 1 }] }),   // cap 2
+      foe: combatant({ party: 'B' }),
+    } };
+  const act = () => ({ actor: 'm', cost: 1, effect: { kind: 'damage', to: 'foe', amount: 1, element: 'Physical' } });
+  const v = THREAD.validate({ type: 'MISSION' }, state, 'A', [act(), act(), act()], canon);
+  assert.strictEqual(v.ok, false);
+  assert.match(v.reason, /action/i);
+});
