@@ -159,6 +159,12 @@ Scope extension (follows "hard gates everywhere", no new ruling needed): MISSION
 now run real combat (v1.21) — every condition gate and tick applies to MISSION combat
 identically to SKIRMISH/INVASION.
 
+4. **Hostile cond range = the item's stated range band (Daak, 2026-07-28, gates T-CMB-3).**
+   Casts/grenades/condition items gate staging AND validate by their parsed range band,
+   exactly like weapon attacks (one range system for everything). Items with no range in
+   canon default to **short**. Buffs on allies stay range-free (Rally is side-wide by
+   design; Cleanse reach stays tiered per its own registry row).
+
 ## Coordination
 
 - **Lanes:** spec = docs (parallel-safe, this commit). Implementation = 🔥 engine + tests —
