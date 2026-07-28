@@ -529,8 +529,15 @@ var THREAD=(function(){
     return it.cat==='CAST'?2:it.cat==='ABILITY'?1:it.cat==='ITEM'?0:1;}
   function combatCatalog(state,party,canon){
     var out=[];
+    // party is normally the calling force's name (string, matched against c.party).
+    // Missions v2 also calls this with an explicit array of controlled combatant ids
+    // (a solo/duo model roster has no shared party-name bookkeeping) — support both.
+    var mine=Array.isArray(party)?function(id){return party.indexOf(id)>=0;}
+                                  :function(id,c){return c.party===party;};
     Object.keys(state.combatants).forEach(function(id){
-      var c=state.combatants[id];if(c.party!==party||!c.model)return;
+      var c=state.combatants[id];if(!mine(id,c))return;
+      out.push({actor:id,action:'Move',group:'b',cost:0,kind:'band'});
+      if(!c.model)return;
       var slots=(c.model.loadout&&c.model.loadout.slots)||c.model.sl||[];
       slots.forEach(function(s){if(!s.it)return;var it=s.it;var k=s.type||s.k;
         if(k==='WEAPON')out.push({actor:id,action:'Attack - '+it.n,group:'e',cost:apMod(it),kind:'damage',item:it});
@@ -542,7 +549,6 @@ var THREAD=(function(){
         else if(k==='ITEM'&&/consumable|stimm|grenade/i.test(it.d||''))
           out.push({actor:id,action:'Use '+it.n,group:'a',cost:apMod(it),kind:'cond',item:it});
       });
-      out.push({actor:id,action:'Move',group:'b',cost:0,kind:'band'});
     });
     return out;
   }
@@ -556,11 +562,15 @@ var THREAD=(function(){
     if(thread.type==='TRAVEL')return [
       {actor:party,action:'Transit post',group:'m',cost:0,kind:'transit'},
       {actor:party,action:'Arrival challenge',group:'m',cost:0,kind:null} ];
+    if(thread.type==='MISSION'&&state&&state.objective&&state.objective.kind==='count_kill'
+       &&state.combatants&&Object.keys(state.combatants).length)
+      return combatCatalog(state,party,canon);
     return [];
   }
   function validate(thread,state,party,block,canon){
     if(thread.type==='TRAVEL'||thread.type==='DIPLOMACY')return {ok:true,reason:''};
-    if(thread.type==='SKIRMISH'||thread.type==='INVASION'){
+    var _combatMission=thread.type==='MISSION'&&state.objective&&state.objective.kind==='count_kill';
+    if(thread.type==='SKIRMISH'||thread.type==='INVASION'||_combatMission){
       var pool=state.pools[party]||0;
       var spent=block.reduce(function(a,b){return a+(b.cost||0)},0);
       if(spent>pool)return {ok:false,
@@ -727,6 +737,22 @@ var THREAD=(function(){
     if(!state||thread.done)return null;
     if(thread.type==='DIPLOMACY')
       return (state.terms&&state.terms.agreed)?{kind:'accord',victor:null,defeated:[]}:null;
+    if(thread.type==='MISSION'){
+      var ob=state.objective;if(!ob)return null;
+      var myParty=(thread.forces&&thread.forces[0])||null;
+      var parties={};Object.keys(state.combatants||{}).forEach(function(id){
+        var c=state.combatants[id];parties[c.party]=parties[c.party]||{alive:0};
+        if(!c.dead&&!c.captured)parties[c.party].alive++;});
+      if(ob.progress>=ob.target){
+        var others=Object.keys(parties).filter(function(p){return p!==myParty;});
+        return {kind:'mission_won',victor:myParty,defeated:others};
+      }
+      if(myParty&&parties[myParty]&&parties[myParty].alive===0){
+        var foes=Object.keys(parties).filter(function(p){return p!==myParty;});
+        return {kind:'mission_lost',victor:foes[0]||null,defeated:[myParty]};
+      }
+      return null;
+    }
     if(thread.type!=='SKIRMISH'&&thread.type!=='INVASION')return null;
     if(state.phase==='deploy')return null;
     var C=state.combatants||{},parties={},alive={};
