@@ -435,3 +435,56 @@ test('apply: a legacy un-migrated string cond effect does not crash (fallback wr
   assert.strictEqual(inst.tag, 'Regen II');
   assert.strictEqual(inst.left, Infinity);
 });
+
+/* ── T-CMB-1 · Task 5 (staging glue): drift item 7 — band stamping ───────
+   Task 3 review found that NO staging site set `effect.band`, so the damage
+   branch's `e.band==='MELEE'` check for Charging's dmgOutMelee bonus was dead
+   code in live play. npcTurn is the one construction site that lives inside
+   the pure core (the action-block builder and the board-attack builder are
+   engine glue, verified only by the boot-proxy + upcoming browser E2E task).
+   These tests confirm: (1) npcTurn's own staged damage effect carries the
+   real engagement band (bandOf the actual distance, not the weapon's max
+   reach), and (2) feeding that block through apply produces the Charging
+   bonus at melee range and withholds it at long range — "Charge→melee
+   attack in one block applies +t; ranged attack does not". */
+test('npcTurn: stamps band on its staged damage effect — melee engagement', () => {
+  const tiles = []; for (let i = 0; i < 10 * 4; i++) tiles.push({ t: 'open' });
+  const board = { w: 10, h: 4, tiles, zones: {} };
+  const wep = (c) => c.weps || [];
+  const CLAW = { name: 'Claw', band: 'MELEE', ap: 1, damage: 2, element: 'Physical' };
+  const state = {
+    pools: { B: 9 },
+    combatants: {
+      ork:  { party: 'B', x: 5, y: 0, w: [12, 12], sight: 9, spd: 3,
+              conds: [{ tag: 'Charging', tier: 2, left: 1 }], weps: [CLAW] },
+      hero: { party: 'A', x: 4, y: 0, w: [10, 10], sight: 9, spd: 3, weps: [CLAW] },   // adjacent
+    },
+  };
+  const block = THREAD.npcTurn('B', state, board, wep, canon);
+  const atk = block.find((b) => b.effect && b.effect.kind === 'damage');
+  assert.ok(atk, 'npc attacks at melee range');
+  assert.strictEqual(atk.effect.band, 'MELEE');
+  THREAD.apply({ type: 'SKIRMISH' }, state, block, canon);
+  assert.strictEqual(state.combatants.hero.w[0], 6);   // 10 − (2 base + 2 Charging tier)
+});
+
+test('npcTurn: a long-range attack is NOT stamped MELEE — Charging bonus withheld', () => {
+  const tiles = []; for (let i = 0; i < 10 * 2; i++) tiles.push({ t: 'open' });
+  const board = { w: 10, h: 2, tiles, zones: {} };
+  const wep = (c) => c.weps || [];
+  const LASGUN = { name: 'Lasgun', band: 'LONG', ap: 1, damage: 3, element: 'Physical' };
+  const state = {
+    pools: { B: 9 },
+    combatants: {
+      ork:  { party: 'B', x: 0, y: 0, w: [12, 12], sight: 9, spd: 3,
+              conds: [{ tag: 'Charging', tier: 2, left: 1 }], weps: [LASGUN] },
+      hero: { party: 'A', x: 7, y: 0, w: [10, 10], sight: 9, spd: 3, weps: [LASGUN] },   // 7 sq → LONG
+    },
+  };
+  const block = THREAD.npcTurn('B', state, board, wep, canon);
+  const atk = block.find((b) => b.effect && b.effect.kind === 'damage');
+  assert.ok(atk, 'npc attacks at long range without needing to close');
+  assert.notStrictEqual(atk.effect.band, 'MELEE');
+  THREAD.apply({ type: 'SKIRMISH' }, state, block, canon);
+  assert.strictEqual(state.combatants.hero.w[0], 7);   // 10 − 3 base only; Charging is melee-only
+});

@@ -1063,7 +1063,7 @@ var THREAD=(function(){
       var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;  // ATTACK (AP): best affordable reaching weapon
       weps.forEach(function(w){if(NPC_RANK[w.band]>=NPC_RANK[db]&&(w.ap||0)<=pool){
         if(!pick||(w.damage||0)>(pick.damage||0))pick=w;}});
-      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,nonLethal:!!pick.nonLethal,weapon:pick.name||null}});pool-=(pick.ap||0);_staged[aid]=(_staged[aid]||0)+1;}
+      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,nonLethal:!!pick.nonLethal,weapon:pick.name||null,band:db}});pool-=(pick.ap||0);_staged[aid]=(_staged[aid]||0)+1;}
     }
     return block;
   }
@@ -2495,6 +2495,66 @@ function partyOf(t){
   var mine=(t.forces||[]).filter(function(f){return S.forces.some(function(x){return x.n===f})});
   return mine[0]||(t.forces&&t.forces[0])||'You';
 }
+/* ── T-CMB-1 · Task 5: real cond payload builder (parseItem-driven, not the button label) ──
+   condTagsOf(item): every parsed tag on the item that is an actual condition (a THREAD.CONDS
+   registry key) — {tag,tier} with tier as an int (roman → number via tierNum). Multi-tag items
+   (e.g. "Curse of the Leper — R3 - Multihit II + DoT II") surface one entry per condition tag;
+   non-condition tags (Multihit, Rapid, Unwieldy…) are simply not condition keys so they drop out. */
+function condTagsOf(item){
+  if(!item)return [];
+  var p=parseItem(item),out=[];
+  p.tags.forEach(function(t){if(THREAD.CONDS[t.tag])out.push({tag:t.tag,tier:tierNum(t.tier)||1});});
+  // parseItem's tag regex requires the WHOLE segment to be "Tag[ tier]" — real Immunity items read
+  // "Immunity (DoT — toxin)" / "Immunity (Suppressing)", which never matches that shape and falls
+  // into .notes instead of .tags. Recover it here so Immunity items are actually stageable.
+  if(!out.some(function(ct){return ct.tag==='Immunity'})){
+    var im=(item.d||'').match(/Immunity\s*\(([^)]+)\)/i);
+    if(im){var of=im[1].split(/[\s—-]/)[0].trim();out.push({tag:'Immunity',tier:1,of:of});}
+  }
+  return out;
+}
+var HOSTILE_CONDS={DoT:1,Slowing:1,Suppressing:1,Marked:1,Draining:1};
+function condIsHostile(tag){return !!HOSTILE_CONDS[tag];}
+function livingAllies(state,party){
+  var out=[];for(var id in state.combatants){var c=state.combatants[id];if(c&&c.party===party&&!c.dead)out.push(id);}
+  return out;
+}
+/* Cleanse reach by tier: I = self only, II = touch (self + adjacent allies, Chebyshev 1 — only
+   meaningful on a grid; degrades to self-only when no board geometry exists), III+ = force-wide
+   (every living ally). */
+function cleanseReach(state,party,casterId,tier){
+  if(tier<=1)return [casterId];
+  if(tier===2){
+    var cc=state.combatants[casterId];
+    if(cc&&cc.x!=null){
+      var out=[casterId];
+      for(var id in state.combatants){if(id===casterId)continue;var c=state.combatants[id];
+        if(c&&c.party===party&&!c.dead&&c.x!=null&&THREAD.cheb({x:cc.x,y:cc.y},{x:c.x,y:c.y})<=1)out.push(id);}
+      return out;
+    }
+    return [casterId];
+  }
+  return livingAllies(state,party);
+}
+/* condEffectsFor: the single builder both the no-board dropdown composer (threadBlockBuilder)
+   and the grid battle panel (bfCombatUI) call — turns one staged item-use into a list of REAL
+   {kind:'cond',add:{tag,tier,src,el},to} payloads (never the display label). Rally fans to every
+   living ally; Cleanse fans by its tier's reach; hostile tags ride the caller's chosen enemy
+   target; any other (buff) tag goes to the caller's chosen target, defaulting to the caster. */
+function condEffectsFor(item,casterId,chosenTarget,state,party){
+  var tags=condTagsOf(item),out=[];
+  var el=THREAD.elementOf(item),src=item.n;
+  tags.forEach(function(ct){
+    var targets;
+    if(ct.tag==='Rally')targets=livingAllies(state,party);
+    else if(ct.tag==='Cleanse')targets=cleanseReach(state,party,casterId,ct.tier);
+    else if(condIsHostile(ct.tag))targets=chosenTarget?[chosenTarget]:[];
+    else targets=[chosenTarget||casterId];
+    targets.forEach(function(tid){var add={tag:ct.tag,tier:ct.tier,src:src,el:el};
+      if(ct.of)add.of=ct.of;out.push({kind:'cond',add:add,to:tid});});
+  });
+  return out;
+}
 /*<speech-core>*/
 var SPEECH_PALETTE=['#9fef00','#37d6ff','#ffb347','#c792ea','#ff6b8a','#4ec9b0','#e0e060','#7aa2f7'];
 function pickSpeechColor(name,roster,palette){
@@ -2526,10 +2586,22 @@ function threadBlockBuilder(t,party){
   var row=E('div','arow');var aSel=E('select'),tSel=E('select');
   acts.forEach(function(a,i){aSel.add(new Option(a.action+(a.cost?' - '+a.cost+' AP':''),i))});
   function enemies(){return Object.keys(t.state.combatants).filter(function(id){return t.state.combatants[id].party!==party});}
+  function nameOf(id){var c=t.state.combatants[id];return c&&c.model?c.model.n:id;}
+  // T-CMB-1 Task 5: cond actions (group 'y'/'a') target by what their tags actually DO — a hostile
+  // tag (DoT/Slowing/Suppressing/Marked/Draining) rides the existing enemy picker; anything else is
+  // a buff/utility and gets an ally picker (self listed first = the default). Rally/Cleanse ignore
+  // the picked value at build time (they fan out on their own) but still need a valid option to post.
   function fillTargets(){var a=acts[aSel.value];tSel.innerHTML='';
-    if(a.group==='e')enemies().forEach(function(id){var c=t.state.combatants[id];tSel.add(new Option(c.model?c.model.n:id,id))});
+    if(a.group==='e')enemies().forEach(function(id){tSel.add(new Option(nameOf(id),id))});
     else if(a.group==='b')['MELEE','SHORT','MEDIUM','LONG'].forEach(function(b){tSel.add(new Option('→ '+b,b))});
     else if(a.group==='t')tSel.add(new Option('— terms —',a.actor));
+    else if(a.group==='y'||a.group==='a'){
+      var tags=condTagsOf(a.item),hostile=tags.some(function(ct){return condIsHostile(ct.tag);});
+      if(hostile)enemies().forEach(function(id){tSel.add(new Option(nameOf(id),id))});
+      else{tSel.add(new Option('Self ('+nameOf(a.actor)+')',a.actor));
+        Object.keys(t.state.combatants).forEach(function(id){var c=t.state.combatants[id];
+          if(id!==a.actor&&c.party===party&&!c.dead)tSel.add(new Option(nameOf(id),id));});}
+    }
     else tSel.add(new Option('Self / Force',a.actor));}
   aSel.onchange=fillTargets;fillTargets();
   var add=E('button','btn gh sm','Add');row.appendChild(aSel);row.appendChild(tSel);row.appendChild(add);box.appendChild(row);
@@ -2537,9 +2609,11 @@ function threadBlockBuilder(t,party){
   var pool=(t.state.pools&&t.state.pools[party]!=null)?t.state.pools[party]:null;
   if(pool!=null)box.insertAdjacentHTML('beforeend','<div class="apt"><span style="font-size:11px;color:var(--dim)">AP pool: <span class="mono">'+pool+'</span></span><span class="n" id="bbtot">0 AP</span></div>');
   function effFor(a,tgt){
-    if(a.group==='e')return {kind:'damage',amount:damageOf(a.item),to:tgt,element:THREAD.elementOf(a.item),noRevival:THREAD.isNoRevival(a.item,D),nonLethal:/non-?lethal/i.test(a.item.d||''),weapon:a.item.n};
+    if(a.group==='e'){var actorC=t.state.combatants[a.actor];
+      return {kind:'damage',amount:damageOf(a.item),to:tgt,element:THREAD.elementOf(a.item),
+        noRevival:THREAD.isNoRevival(a.item,D),nonLethal:/non-?lethal/i.test(a.item.d||''),weapon:a.item.n,
+        band:(actorC&&actorC.band)||bfItemBand(a.item)};}   // T-CMB-1 drift item 7: stamp the engagement band
     if(a.group==='b')return {kind:'band',to:tgt,who:a.actor};
-    if(a.group==='y'||a.group==='a')return {kind:'cond',add:a.action,to:a.actor};
     if(a.group==='t'){
       if(/Accept/.test(a.action))return {kind:'terms',agreed:true};
       if(/Walk away/.test(a.action))return null;
@@ -2554,6 +2628,16 @@ function threadBlockBuilder(t,party){
     var v=THREAD.validate(t,t.state,party,staged,D);warn.textContent=v.ok?'':v.reason;}
   add.onclick=function(){var a=acts[aSel.value];var tgt=tSel.value;
     var tgtLabel=tSel.selectedOptions[0]?tSel.selectedOptions[0].text.replace('→ ',''):'';
+    if(a.group==='y'||a.group==='a'){
+      // T-CMB-1 Task 5: real parseItem-driven payloads, one staged entry per condition tag per
+      // target (multi-tag items, Rally/Cleanse fan-out) — cost charged once on the first entry only,
+      // so a fan-out never multiplies the actual AP spend.
+      var effs=condEffectsFor(a.item,a.actor,tgt,t.state,party);
+      if(!effs.length){warn.textContent='No valid target for '+a.action+'.';return;}
+      effs.forEach(function(ef,i){staged.push({actor:a.actor,action:a.action,cost:i===0?a.cost:0,
+        effect:ef,tgtLabel:nameOf(ef.to)});});
+      redraw();return;
+    }
     staged.push({actor:a.actor,action:a.action,cost:a.cost,effect:effFor(a,tgt),tgtLabel:tgtLabel});redraw();};
   return {el:box,staged:staged,clear:function(){staged.length=0;redraw();},redraw:redraw};
 }
@@ -2612,6 +2696,15 @@ function bfItemBand(it){var map={Melee:'MELEE',Short:'SHORT',Medium:'MEDIUM',Lon
 function bfAP(it){var m=((it&&it.d)||'').match(/(\d+)\s*AP/);return m?parseInt(m[1],10):1;}
 function bfCellLabel(p){return String.fromCharCode(65+p.x)+(p.y+1);}
 function bfWeaponsOf(c){var out=[];if(!c.model)return out;((c.model.loadout&&c.model.loadout.slots)||c.model.sl||[]).forEach(function(s){if(s.it&&(s.type||s.k)==='WEAPON')out.push(s.it);});return out;}
+// T-CMB-1 Task 5: equipped ABILITY/CAST/consumable-ITEM slots that actually carry a condition tag
+// (Regen, Rally, Cleanse, DoT, Suppressing, …) — these are the grid battle's ability/cast buttons.
+function bfCondItemsOf(c){var out=[];if(!c.model)return out;
+  ((c.model.loadout&&c.model.loadout.slots)||c.model.sl||[]).forEach(function(s){if(!s.it)return;
+    var ty=s.type||s.k;
+    if(ty==='ABILITY'||ty==='CAST'||ty==='WARP CAST'||(ty==='ITEM'&&/consumable|stimm|grenade/i.test(s.it.d||'')))
+      if(condTagsOf(s.it).length)out.push(s.it);});
+  return out;}
+function condLabelShort(ct){return ct.tag+(ct.tier>1?' '+(['','I','II','III','IV','V'][ct.tier]||ct.tier):'');}
 /* ── T-NPC-2b · engine glue for the pure THREAD.npcTurn ──────────────── */
 // weapon capabilities (band/ap/damage/element) — the injected weaponsOf
 function bfWeaponCaps(c){return bfWeaponsOf(c).map(function(it){return {
@@ -2759,6 +2852,28 @@ function bfCombatUI(t,party){
       wpns.forEach(function(it,i){var wb=bfItemBand(it),ok=BF_RANK[wb]>=BF_RANK[bnd];
         panel+='<button class="btn sm" data-atk="'+i+'"'+(ok?'':' disabled')+' style="margin:5px 5px 0 0">'+it.n+' · '+wb+' · '+bfAP(it)+'AP '+(ok?'✓':'✗')+'</button>';});
     }
+    // Abilities / Casts (T-CMB-1 Task 5): a hostile tag (DoT/Slowing/Suppressing/Marked/Draining)
+    // rides the SAME clicked-enemy target (ui.tgt) as a weapon attack; anything else is a buff and
+    // gets its own click-to-target ally row (ui.allyTgt), defaulting to self. Rally/Cleanse fan out
+    // at stage time (condEffectsFor) regardless of what's picked here.
+    var condItems=bfCondItemsOf(sc);
+    if(condItems.length){
+      var anyBuff=condItems.some(function(it){return condTagsOf(it).some(function(ct){return !condIsHostile(ct.tag);});});
+      panel+='<div class="bf-blk"><h4>Abilities / Casts</h4>';
+      if(anyBuff){
+        panel+='<div class="bf-ro">Target ally: ';
+        livingAllies(st,party).forEach(function(id){
+          panel+='<button class="btn sm'+((ui.allyTgt||ui.sel)===id?' on':'')+'" data-ally="'+id+'" style="margin:2px 4px 0 0">'+(id===ui.sel?'Self':bfTag(id,C[id]))+'</button>';
+        });
+        panel+='</div>';
+      }
+      condItems.forEach(function(it,i){
+        var tags=condTagsOf(it),hostile=tags.some(function(ct){return condIsHostile(ct.tag);});
+        var ok=hostile?!!ui.tgt:true;
+        panel+='<button class="btn sm" data-cond="'+i+'"'+(ok?'':' disabled')+' style="margin:5px 5px 0 0">'+it.n+' · '+tags.map(condLabelShort).join(', ')+' · '+bfAP(it)+'AP'+(ok?'':' (target an enemy first)')+'</button>';
+      });
+      panel+='</div>';
+    }
     // Standing Capture (Task 6): always rendered for a Capture-item holder — an invalid attempt
     // (no target, out of range, target not at 1 wound…) surfaces THREAD.validate's reason on post.
     var capIt=bfCaptureItemOf(sc);
@@ -2793,16 +2908,27 @@ function bfCombatUI(t,party){
   el.innerHTML='<h3>Battlefield · '+party+'’s view</h3><div class="bf-wrap">'+bh+panel+'</div>'+
     '<div style="font-size:11px;color:var(--dim);margin-top:6px">Fog — your knowledge · '+fog.spotted.length+' spotted · '+fog.ghosts.length+' ghost'+(fog.ghosts.length===1?'':'s')+' · moves/attacks stage into your post below</div>';
   el.addEventListener('click',function(ev){
-    var b=ev.target.closest('[data-atk],[data-clr],[data-rma],[data-m],[data-f],[data-bx],[data-cap],[data-free],[data-corpse],[data-loot]');if(!b)return;
+    var b=ev.target.closest('[data-atk],[data-clr],[data-rma],[data-m],[data-f],[data-bx],[data-cap],[data-free],[data-corpse],[data-loot],[data-ally],[data-cond]');if(!b)return;
     if(b.hasAttribute('data-m')){ui.sel=(ui.sel===b.getAttribute('data-m'))?null:b.getAttribute('data-m');return openT(t.id);}
     if(b.hasAttribute('data-f')){ui.tgt=(ui.tgt===b.getAttribute('data-f'))?null:b.getAttribute('data-f');return openT(t.id);}
+    if(b.hasAttribute('data-ally')){ui.allyTgt=b.getAttribute('data-ally');return openT(t.id);}
+    if(b.hasAttribute('data-cond')){var cit=bfCondItemsOf(C[ui.sel])[+b.getAttribute('data-cond')];
+      if(cit){var ctags=condTagsOf(cit),hostile=ctags.some(function(ct){return condIsHostile(ct.tag);});
+        var chosen=hostile?ui.tgt:(ui.allyTgt||ui.sel);
+        if(hostile&&!chosen)return openT(t.id);   // guard — button is disabled for this case anyway
+        var effs=condEffectsFor(cit,ui.sel,chosen,st,party),apCost=bfAP(cit);
+        effs.forEach(function(ef,i){
+          ui.acts.push({actor:ui.sel,action:cit.n+' ('+condLabelShort(ef.add)+') → '+bfTag(ef.to,C[ef.to]),
+            cost:i===0?apCost:0,effect:ef});
+        });}
+      return openT(t.id);}
     if(b.hasAttribute('data-corpse')){var corpseClick=b.getAttribute('data-corpse');   // select loot context, never a move
       ui.lootTgt=(ui.lootTgt===corpseClick)?null:corpseClick;return openT(t.id);}
     if(b.hasAttribute('data-clr')){delete ui.moves[b.getAttribute('data-clr')];return openT(t.id);}
     if(b.hasAttribute('data-rma')){ui.acts.splice(+b.getAttribute('data-rma'),1);return openT(t.id);}
     if(b.hasAttribute('data-atk')){var it=bfWeaponsOf(C[ui.sel])[+b.getAttribute('data-atk')];
       if(it&&ui.tgt){var d2=THREAD.cheb(posOf(ui.sel),posOf(ui.tgt)),bnd2=THREAD.bandOf(d2);
-        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2])ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),nonLethal:/non-?lethal/i.test(it.d||''),weapon:it.n}});}
+        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2])ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),nonLethal:/non-?lethal/i.test(it.d||''),weapon:it.n,band:bnd2}});}   // T-CMB-1 drift item 7: real engagement band, not the weapon's max reach
       return openT(t.id);}
     if(b.hasAttribute('data-cap')){var capIt2=bfCaptureItemOf(C[ui.sel]);
       if(capIt2){var tier2=THREAD.captureTier(capIt2);
