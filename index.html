@@ -484,6 +484,17 @@ function curName(){return FAC(S.player.faction).currency}
 function forcesAt(pid){return S.world.forces[pid]||[]}
 function histAt(pid,lid){return S.world.history[pid+'/'+lid]||[]}
 function npcsAt(pid,lid){return D.npcs_alpha.filter(function(n){return n.location===pid+'/'+lid&&S.world.met.indexOf(n.id)>=0})}
+/* ---- mission-board glue (Task 6): world-tick ctx for MISSION.catchUpBoards ---- */
+function doorKindsOf(l){return doorsAt(l).filter(function(d){return d.open}).map(function(d){return d.kind})}
+function npcNameAt(pid,lid){var n=(D.npcs_alpha||[]).filter(function(x){return x.location===pid+'/'+lid})[0];return n?n.name:null}
+function missionPlanets(){var ids=[];
+D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){ids.push(p.id)})})})});
+return ids}
+function missionCtxOf(pid){var f=fPl(pid);if(!f)return null;var p=f.p;
+var pt=(D.galaxy.planet_types||[]).filter(function(t){return t.name===p.type})[0]||{};
+return {pl:{id:p.id,type:p.type,prod_mult:pt.prod_mult||1},
+locs:(p.locations||[]).map(function(l){
+return {id:l.id,name:l.name,cond:l.condition||null,doors:doorKindsOf(l),npc:npcNameAt(p.id,l.id)}})}}
 /* pure thread rules: no DOM, no globals; every input is an argument (node-tested) */
 /*<thread-core>*/
 var THREAD=(function(){
@@ -2848,8 +2859,13 @@ function init(){
   if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch||Date.now();
   if(!S.world.rulers)S.world.rulers={};                                  // T-TERR-1: older saves
   if(!S.world.holdings)S.world.holdings=[crownOf(S.player.faction)].filter(Boolean);
+  if(!S.world.missions)S.world.missions={};                              // Missions V2: older saves
+  if(S.world.missionSeedBase===undefined)S.world.missionSeedBase=((S.time&&S.time.epoch)||1)%2147483647;
+  if(!S.world.missionDay)S.world.missionDay=0;
   var _wc=WORLD.catchUp(S,D,Date.now());
   S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
+  var _mc=MISSION.catchUpBoards(S,D,_wc.ticks,missionPlanets,missionCtxOf);
+  if(_mc.added>0&&S._digest)S._digest.lines.push('◈ '+_mc.added+' new missions posted across the sector boards.');
  }
  document.getElementById('boot').style.display='none';
  showTitle();
