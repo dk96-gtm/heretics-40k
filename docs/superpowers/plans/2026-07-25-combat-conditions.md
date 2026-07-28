@@ -31,6 +31,7 @@ Shipped since 2026-07-25: capture/remains (canon v1.20) and Missions Slice A (ca
 4. **`initState` now seeds `objective`;** `create` prefers persisted `t.state` (T-THR-5). `normConds` self-healing must therefore run on FIRST READ paths (tick/validate/display), never assume a hydration hook.
 5. **Baselines:** suite starts at **248/248**; canon is **v1.21** — if Task 6's `D.tags` "stacks" correction edits canon, bump `meta.version` to **"1.22"** and bump the pins in `tests/canon.test.js` + `tests/canon-missions.test.js` + `tests/canon-spoils.test.js` (all three pin the version).
 6. **`npcTurn` exists and is exported** (the plan predates uncertainty here) — wire `condMods` into it exactly as the spec says; `npcRespond` already early-returns on `deploy`/`aftermath`, consistent with ruling 1(b).
+7. **`effect.band` stamping (Task 3 review find, 2026-07-28):** the damage branch reads `e.band==='MELEE'` for Charging's `dmgOutMelee`, but NO staging site sets `band` — the bonus is dead code in live play. **Task 5 MUST stamp `band` on staged damage effects** at every `kind:'damage'` construction site (action-block builder, board-attack builder, and `npcTurn`'s block), derived from the weapon's range band the way the staging code already derives `element` — plus one end-to-end test: Charge action then melee attack in one block applies +t; a ranged attack does not.
 
 ## File Structure
 
