@@ -46,6 +46,20 @@ test('normCond: unknown tags become inert instances (left Infinity)', () => {
   assert.strictEqual(b.left, Infinity);
 });
 
+test('normCond: Infinity left survives a JSON round-trip (persistence fix)', () => {
+  const inst = { tag: 'Immunity', tier: 1, left: Infinity, src: null, el: null };
+  const revived = JSON.parse(JSON.stringify(inst));               // JSON.stringify(Infinity) -> null
+  assert.strictEqual(revived.left, null);                         // confirms the corruption exists on the wire
+  const c = combatant({ conds: [revived] });
+  THREAD.normConds(c);
+  assert.strictEqual(c.conds[0].left, Infinity);                  // normConds heals it back
+  const state = { pools: {}, combatants: { m: c } };
+  THREAD.tickConds('A', state, canon);
+  assert.strictEqual(state.combatants.m.conds.length, 1);         // did NOT wrongly expire
+  assert.strictEqual(state.combatants.m.conds[0].tag, 'Immunity');
+  assert.strictEqual(state.combatants.m.conds[0].left, Infinity); // still Infinity, not -1
+});
+
 test('condMods: sums penalties and bonuses across instances', () => {
   const c = { conds: [
     { tag: 'Slowing', tier: 2, left: 1 },
