@@ -712,7 +712,8 @@ var THREAD=(function(){
           trackKill(state,c);}}
       else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
       else if(e.kind==='move'){var mw=state.combatants[e.who];if(mw&&e.to){mw.x=e.to.x;mw.y=e.to.y;}}
-      else if(e.kind==='cond'&&c){c.conds=c.conds||[];c.conds.push(e.add);}
+      else if(e.kind==='cond'&&c){
+        applyCond(state,e.to,(e.add&&e.add.tag)?e.add:{tag:String(e.add),tier:1},canon,b.actor);}
       else if(e.kind==='slay'&&c){var _wasDead=c.dead;c.dead=true;c.intact=!!e.intact;c.killElement=e.element||null;
         var RW=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
         if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
@@ -995,14 +996,53 @@ var THREAD=(function(){
     });
     return rep;
   }
+  /* ── T-CMB-1 · Task 5: application path ────────────────────────────
+     applyCond(state,targetId,add,canon,actorId) is the single place a
+     condition gets applied: Immunity check → same-tag rule (higher tier
+     replaces, equal/lower refreshes the clock) → else push a new instance.
+     Instant tags (Draining/Cleanse) resolve through the registry's own
+     `instant` handler and store nothing. Unknown tags still apply as inert
+     instances (left:Infinity via condDur's fallback) — extensibility.
+
+     Payload contract: add = {tag,tier,src,el,nl,nr,item,of}. `el`/`nl`/`nr`
+     are STAMPED here, at application: if the payload already carries them
+     (staging computed them), they win; otherwise, when the payload carries
+     the full `item` (the src item object), they're resolved from it right
+     here — `el` via the same `elementOf` helper damage-staging uses, `nr`
+     via the existing `isNoRevival` helper, `nl` via the same Non-Lethal
+     tag-text check the damage-effect builder already runs. `by` is always
+     the applying actor id, supplied by the caller (apply's cond branch). */
+  function applyCond(state,targetId,add,canon,actorId){
+    var c=state&&state.combatants&&state.combatants[targetId];
+    if(!c)return {blocked:true};
+    c.conds=c.conds||[];normConds(c);
+    var tag=add.tag,tier=add.tier||1,d=CONDS[tag];
+    for(var i=0;i<c.conds.length;i++)
+      if(c.conds[i].tag==='Immunity'&&c.conds[i].of===tag)return {blocked:true};
+    if(d&&d.instant){d.instant({tag:tag,tier:tier},state,c);return {instant:true};}
+    var el=(add.el!=null)?add.el:(add.item?elementOf(add.item):null);
+    var nl=(add.nl!=null)?add.nl:!!(add.item&&/non-?lethal/i.test(add.item.d||''));
+    var nr=(add.nr!=null)?add.nr:!!(add.item&&isNoRevival(add.item,canon));
+    var inst={tag:tag,tier:tier,left:condDur(tag,tier),src:add.src||null,el:el};
+    if(nl)inst.nl=true;
+    if(nr)inst.nr=true;
+    if(actorId!=null)inst.by=actorId;
+    if(add.of)inst.of=add.of;
+    for(var j=0;j<c.conds.length;j++)if(c.conds[j].tag===tag){
+      if(inst.tier>c.conds[j].tier){c.conds[j]=inst;return {replaced:true};}
+      c.conds[j].left=condDur(c.conds[j].tag,c.conds[j].tier);return {refreshed:true};}
+    c.conds.push(inst);return {applied:true};
+  }
   var NPC_RANK={MELEE:0,SHORT:1,MEDIUM:2,LONG:3};
   function npcReaches(reach,fromPos,tgtPos){return reach>=NPC_RANK[bandOf(cheb(fromPos,tgtPos))];}
-  function npcTurn(side,state,board,weaponsOf){
+  function npcTurn(side,state,board,weaponsOf,canon){
+    canon=canon||{rules:{}};                          // T-CMB-1 Task 4: safe default for legacy 4-arg callers
     var C=state.combatants||{},block=[],id;
     var pool=(state.pools&&state.pools[side]!=null)?state.pools[side]:0;
     var spotted=board?spottedEnemies(side,state,board):[];
     if(!spotted.length)return block;                 // fog-honest: sees nothing → holds
     var pos={};for(id in C)if(C[id].x!=null)pos[id]={x:C[id].x,y:C[id].y};
+    var _staged={};                                    // T-CMB-1 Task 4: per-model action-cap gate
     for(var aid in C){var me=C[aid];
       if(me.party!==side||me.dead||me.x==null)continue;
       var tgt=null,td=Infinity;                       // nearest SEEN enemy by working positions
@@ -1011,17 +1051,19 @@ var THREAD=(function(){
       if(!tgt)continue;
       var weps=weaponsOf(me)||[];
       var reach=weps.reduce(function(m,w){var r=NPC_RANK[w.band];return r>m?r:m;},-1);
+      var mySpd=Math.max(0,(me.spd||0)+condMods(me).speed);   // Slowed/hasted NPCs move by their real speed
       if(weps.length&&!npcReaches(reach,pos[aid],pos[tgt])){   // MOVE (free): close the gap
         var occ=[];for(var oid in pos)if(oid!==aid&&C[oid]&&!C[oid].dead)occ.push(pos[oid]);
-        var reachSet=reachable(pos[aid],me.spd||0,board,occ),bestCell=null,bestD=cheb(pos[aid],pos[tgt]),k;
+        var reachSet=reachable(pos[aid],mySpd,board,occ),bestCell=null,bestD=cheb(pos[aid],pos[tgt]),k;
         for(k in reachSet){var xy=k.split(','),cell={x:+xy[0],y:+xy[1]},d2=cheb(cell,pos[tgt]);
           if(d2<bestD){bestD=d2;bestCell=cell;}}
         if(bestCell){block.push({actor:aid,cost:0,effect:{kind:'move',who:aid,to:bestCell}});pos[aid]=bestCell;}
       }
+      if((_staged[aid]||0)>=actionCap(me,canon))continue;    // Suppressed/wounded: no action budget left
       var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;  // ATTACK (AP): best affordable reaching weapon
       weps.forEach(function(w){if(NPC_RANK[w.band]>=NPC_RANK[db]&&(w.ap||0)<=pool){
         if(!pick||(w.damage||0)>(pick.damage||0))pick=w;}});
-      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,nonLethal:!!pick.nonLethal,weapon:pick.name||null}});pool-=(pick.ap||0);}
+      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,nonLethal:!!pick.nonLethal,weapon:pick.name||null}});pool-=(pick.ap||0);_staged[aid]=(_staged[aid]||0)+1;}
     }
     return block;
   }
@@ -1051,7 +1093,7 @@ var THREAD=(function(){
       d:'The dead, carried from the field. Revive within the window, sell, or offer at a door.',
       ref:snapOf(c,cid),owner_cmdr:meta.owner||null,origin:meta.origin||null,
       takenDay:meta.day!=null?meta.day:null,window:win};}
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
@@ -2589,7 +2631,7 @@ function npcRespond(t,playerParty){
   if(!foe)return;
   var alive=Object.keys(st.combatants).some(function(k){var c=st.combatants[k];return c.party===foe&&!c.dead&&c.x!=null;});
   if(!alive)return;
-  var block=THREAD.npcTurn(foe,st,st.board,bfWeaponCaps);
+  var block=THREAD.npcTurn(foe,st,st.board,bfWeaponCaps,D);
   if(!block.length)return;                         // sees nothing / can't act → holds silently
   if(!THREAD.validate(t,st,foe,block,D).ok)return;
   THREAD.apply(t,st,block,D);

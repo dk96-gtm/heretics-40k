@@ -147,9 +147,14 @@ test('apply band repositions a combatant', () => {
 });
 
 test('apply cond adds a condition', () => {
+  // T-CMB-1: the old cosmetic string-push seam is replaced by THREAD.applyCond — a
+  // staged cond effect now carries a real {tag,tier} payload and lands as a proper
+  // instance object (see tests/conds.test.js for the full application-path suite).
   const t = freshCombat();
-  THREAD.apply(t, t.state, [{actor:'thresh',action:'Regen',cost:5,effect:{kind:'cond',add:'Regen II',to:'thresh'}}], canon);
-  assert.ok(t.state.combatants.thresh.conds.includes('Regen II'));
+  THREAD.apply(t, t.state, [{actor:'thresh',action:'Regen',cost:5,effect:{kind:'cond',add:{tag:'Regen',tier:2,src:'Catalyst'},to:'thresh'}}], canon);
+  const inst = t.state.combatants.thresh.conds[0];
+  assert.strictEqual(inst.tag, 'Regen');
+  assert.strictEqual(inst.tier, 2);
 });
 
 test('apply slay marks dead and stamps the revival window', () => {

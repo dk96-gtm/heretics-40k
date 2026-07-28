@@ -285,3 +285,153 @@ test('validate: drift item 2 — MISSION count_kill combat gets the same action-
   assert.strictEqual(v.ok, false);
   assert.match(v.reason, /action/i);
 });
+
+/* ── T-CMB-1 · Task 4 (remainder): npcTurn obeys its own condition mods ──
+   Task 3 already pulled the validate hard gates forward; npcTurn itself was
+   explicitly left untouched (see task-3-report.md) — this closes that gap. */
+test('npcTurn: a slowed enemy closes distance at its condition-reduced speed', () => {
+  const tiles = []; for (let i = 0; i < 10 * 4; i++) tiles.push({ t: 'open' });
+  const board = { w: 10, h: 4, tiles, zones: {} };
+  const wep = (c) => c.weps || [];
+  const MELEE = { name: 'Claw', band: 'MELEE', ap: 1, damage: 2, element: 'Physical' };
+  const state = {
+    pools: { B: 9 },
+    combatants: {
+      ork:  { party: 'B', x: 5, y: 0, w: [12, 12], sight: 9, spd: 3,
+              conds: [{ tag: 'Slowing', tier: 2, left: 1 }], weps: [MELEE] },
+      hero: { party: 'A', x: 0, y: 0, w: [10, 10], sight: 9, spd: 3, weps: [MELEE] },
+    },
+  };
+  const block = THREAD.npcTurn('B', state, board, wep, canon);
+  const mv = block.find((b) => b.effect && b.effect.kind === 'move');
+  assert.ok(mv, 'still tries to close');
+  assert.strictEqual(mv.effect.to.x, 4, 'spd 3 − Slowing 2 = 1 cell of movement (5→4)');
+});
+
+test('npcTurn: without a canon arg, defaults safely (legacy 4-arg callers keep working)', () => {
+  const tiles = []; for (let i = 0; i < 8 * 4; i++) tiles.push({ t: 'open' });
+  const board = { w: 8, h: 4, tiles, zones: {} };
+  const wep = (c) => c.weps || [];
+  const MELEE = { name: 'Chainsword', band: 'MELEE', ap: 3, damage: 4, element: 'Physical' };
+  const state = {
+    pools: { B: 10 },
+    combatants: {
+      ork:  { party: 'B', x: 1, y: 0, w: [12, 12], sight: 5, spd: 4, weps: [MELEE] },
+      hero: { party: 'A', x: 0, y: 0, w: [10, 10], sight: 5, spd: 4, weps: [MELEE] },
+    },
+  };
+  const block = THREAD.npcTurn('B', state, board, wep);   // no 5th arg
+  const atk = block.find((b) => b.effect && b.effect.kind === 'damage');
+  assert.ok(atk, 'legacy call site still stages the attack');
+});
+
+/* ── T-CMB-1 · Task 5: application path — applyCond ──────────────────────
+   Immunity check → same-tag rule (higher tier replaces / equal-lower
+   refreshes) → else push; instants (Draining/Cleanse) resolve through the
+   registry, nothing stored; nl/nr/by are STAMPED at application. */
+test('applyCond: no stacking — higher tier replaces, equal/lower refreshes the clock', () => {
+  const state = { pools: {}, combatants: { m: combatant({}) } };
+  THREAD.applyCond(state, 'm', { tag: 'DoT', tier: 2, src: 'Bile', el: 'Corrosive' }, canon);
+  assert.strictEqual(state.combatants.m.conds.length, 1);
+  state.combatants.m.conds[0].left = 1;                                       // nearly over
+  const r1 = THREAD.applyCond(state, 'm', { tag: 'DoT', tier: 1, src: 'Sting', el: null }, canon);
+  assert.strictEqual(r1.refreshed, true);
+  assert.strictEqual(state.combatants.m.conds[0].tier, 2);                    // lower did NOT downgrade
+  assert.strictEqual(state.combatants.m.conds[0].left, THREAD.condDur('DoT', 2));
+  const r2 = THREAD.applyCond(state, 'm', { tag: 'DoT', tier: 3, src: 'Plague', el: 'Corrosive' }, canon);
+  assert.strictEqual(r2.replaced, true);
+  assert.strictEqual(state.combatants.m.conds.length, 1);
+  assert.strictEqual(state.combatants.m.conds[0].tier, 3);
+});
+
+test('applyCond: Immunity blocks its stated tag', () => {
+  const state = { pools: {}, combatants: {
+    m: combatant({ conds: [{ tag: 'Immunity', tier: 1, left: Infinity, src: null, el: null, of: 'DoT' }] }) } };
+  const r = THREAD.applyCond(state, 'm', { tag: 'DoT', tier: 2, src: null, el: null }, canon);
+  assert.strictEqual(r.blocked, true);
+  assert.strictEqual(state.combatants.m.conds.length, 1);
+});
+
+test('applyCond: Immunity also blocks an instant tag (e.g. Immunity: Draining) before it fires', () => {
+  const state = { pools: { B: 5 }, combatants: {
+    m: combatant({ party: 'B', conds: [{ tag: 'Immunity', tier: 1, left: Infinity, src: null, el: null, of: 'Draining' }] }) } };
+  const r = THREAD.applyCond(state, 'm', { tag: 'Draining', tier: 2, src: null, el: null }, canon);
+  assert.strictEqual(r.blocked, true);
+  assert.strictEqual(state.pools.B, 5, 'the pool must not be touched — Immunity gates before the instant handler runs');
+});
+
+test('applyCond: Draining bites the AP pool immediately, stores nothing', () => {
+  const state = { pools: { B: 5 }, combatants: { m: combatant({ party: 'B' }) } };
+  const r = THREAD.applyCond(state, 'm', { tag: 'Draining', tier: 2, src: null, el: null }, canon);
+  assert.strictEqual(r.instant, true);
+  assert.strictEqual(state.pools.B, 3);
+  assert.strictEqual(state.combatants.m.conds.length, 0);
+});
+
+test('applyCond: Cleanse strips the negative set, leaves buffs', () => {
+  const state = { pools: {}, combatants: { m: combatant({ conds: [
+    { tag: 'DoT', tier: 1, left: 2 }, { tag: 'Regen', tier: 1, left: 2 },
+    { tag: 'Suppressing', tier: 1, left: 1 }, { tag: 'Marked', tier: 2, left: 3 }] }) } };
+  THREAD.applyCond(state, 'm', { tag: 'Cleanse', tier: 1, src: null, el: null }, canon);
+  assert.deepStrictEqual(state.combatants.m.conds.map((c) => c.tag), ['Regen']);
+});
+
+test('applyCond: unknown tags still apply as inert instances (left:Infinity) — extensibility', () => {
+  const state = { pools: {}, combatants: { m: combatant({}) } };
+  const r = THREAD.applyCond(state, 'm', { tag: 'Burning', tier: 4, src: 'Promethium' }, canon);
+  assert.strictEqual(r.applied, true);
+  const inst = state.combatants.m.conds[0];
+  assert.strictEqual(inst.tag, 'Burning');
+  assert.strictEqual(inst.left, Infinity);
+});
+
+test('applyCond: nl/nr/by are STAMPED at application — nl/nr resolved from the src item, by from the actor', () => {
+  const state = { pools: {}, combatants: { atk: combatant({}), tgt: combatant({ party: 'B' }) } };
+  const nlItem = { n: 'Stun Baton', d: 'Physical DoT II - Non-Lethal - Melee' };
+  THREAD.applyCond(state, 'tgt', { tag: 'DoT', tier: 2, src: nlItem.n, item: nlItem }, canon, 'atk');
+  const inst = state.combatants.tgt.conds[0];
+  assert.strictEqual(inst.nl, true, 'Non-Lethal tag on the src item floors the DoT (ruling 1a)');
+  assert.strictEqual(inst.by, 'atk', 'applying actor is stamped for weapon-kill credit');
+  assert.strictEqual(inst.el, 'Physical', 'element derived the same way damage staging derives it');
+
+  const state2 = { pools: {}, combatants: { atk: combatant({}), tgt: combatant({ party: 'B' }) } };
+  const nrItem = { n: 'Annihilator Round', d: 'Plasma DoT III - Annihilation' };
+  THREAD.applyCond(state2, 'tgt', { tag: 'DoT', tier: 3, src: nrItem.n, item: nrItem }, canon, 'atk');
+  assert.strictEqual(state2.combatants.tgt.conds[0].nr, true, 'no_revival source stamps nr (ruling 1c)');
+});
+
+test('applyCond: explicit nl/nr/el in the payload win over item-derivation (staging can supply them directly)', () => {
+  const state = { pools: {}, combatants: { m: combatant({}) } };
+  THREAD.applyCond(state, 'm', { tag: 'DoT', tier: 1, src: 'x', el: 'Heat', nl: true, nr: false }, canon, 'someActor');
+  const inst = state.combatants.m.conds[0];
+  assert.strictEqual(inst.el, 'Heat');
+  assert.strictEqual(inst.nl, true);
+  assert.strictEqual(inst.by, 'someActor');
+});
+
+test('apply: cond effects route through applyCond (end-to-end) — real payload, by stamped from the actor', () => {
+  const state = { pools: { A: 5 }, combatants: {
+    caster: combatant({}), ally: combatant({}) } };
+  THREAD.apply({ type: 'SKIRMISH' }, state,
+    [{ actor: 'caster', cost: 2, effect: { kind: 'cond', add: { tag: 'Regen', tier: 2, src: 'Catalyst', el: null }, to: 'ally' } }],
+    canon, 'A');
+  const inst = state.combatants.ally.conds[0];
+  assert.strictEqual(inst.tag, 'Regen');
+  assert.strictEqual(inst.left, THREAD.condDur('Regen', 2));
+  assert.strictEqual(inst.src, 'Catalyst');
+  assert.strictEqual(inst.by, 'caster');
+});
+
+test('apply: a legacy un-migrated string cond effect does not crash (fallback wrap)', () => {
+  // Per the plan's documented fallback: a raw label string is wrapped verbatim as
+  // {tag:String(add),tier:1} — it does NOT get parsed by normCond's regex (normCond
+  // passes any object with a truthy .tag straight through), so it lands as an inert,
+  // never-expiring instance rather than crashing. This is a "doesn't crash" safety
+  // net for un-migrated staged effects, not a normalisation guarantee.
+  const state = { pools: { A: 5 }, combatants: { m: combatant({}) } };
+  assert.doesNotThrow(() => THREAD.apply({ type: 'SKIRMISH' }, state,
+    [{ actor: 'm', cost: 1, effect: { kind: 'cond', add: 'Regen II', to: 'm' } }], canon, 'A'));
+  const inst = state.combatants.m.conds[0];
+  assert.strictEqual(inst.tag, 'Regen II');
+  assert.strictEqual(inst.left, Infinity);
+});
