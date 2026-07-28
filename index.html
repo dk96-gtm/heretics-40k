@@ -1621,7 +1621,8 @@ function acceptMission(inst,pl,l){
  var cap=(D.rules.missions&&D.rules.missions.accept_cap)||3;
  var live=S.threads.filter(function(t){return t.type==='MISSION'&&t.accepted&&!t.done}).length;
  if(live>=cap){T('Mission cap reached ('+cap+') — finish or abandon one first.');return;}
- var force=S.forces.filter(function(f){return !threadOfForce(f.n);})[0]||S.forces[0];
+ var force=S.forces.filter(function(f){return !threadOfForce(f.n);})[0];
+ if(!force){T('All forces are committed — finish or exit a thread before accepting a mission.');return;}
  var id='m'+Date.now().toString(36);
  var t={id:id,type:'MISSION',n:inst.n+' — '+l.name,loc:pl.name+' · '+l.name,pl:pl.id,lid:l.id,
   turn:'you',vis:'public',initiator:'You',about:inst.flavor,accepted:true,
