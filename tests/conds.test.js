@@ -555,3 +555,21 @@ test('fix round 1: a Rally fan-out (built the way the engine glue actually build
   assert.strictEqual(v.ok, false);
   assert.match(v.reason, /action/i);
 });
+
+test('fix round 2: fanout:true only exempts cond-kind entries — a hand-built damage/capture entry tagged fanout:true still counts toward the action cap', () => {
+  const state = { pools: { A: 99 }, combatants: {
+    m: combatant({}),                    // actionCap 3 (fresh, no conds, full wounds)
+    foe: combatant({ party: 'B' }),
+  } };
+  const dmg = () => ({ actor: 'm', cost: 1, effect: { kind: 'damage', to: 'foe', amount: 1, element: 'Physical' } });
+  // A hand-built block spoofing fanout:true on damage entries to try to dodge the action-count gate.
+  const spoofed = [dmg(), { ...dmg(), fanout: true }, { ...dmg(), fanout: true }, { ...dmg(), fanout: true }];
+  const v = THREAD.validate({ type: 'SKIRMISH' }, state, 'A', spoofed, canon);
+  assert.strictEqual(v.ok, false, 'fanout on a non-cond effect must NOT exempt it from the action cap');
+  assert.match(v.reason, /action/i);
+  // Same shape but genuinely capture-kind — also must not be exempt.
+  const cap = () => ({ actor: 'm', cost: 1, effect: { kind: 'capture', to: 'foe' } });
+  const spoofedCap = [cap(), { ...cap(), fanout: true }, { ...cap(), fanout: true }, { ...cap(), fanout: true }];
+  const v2 = THREAD.validate({ type: 'SKIRMISH' }, state, 'A', spoofedCap, canon);
+  assert.strictEqual(v2.ok, false, 'fanout on a capture effect must NOT exempt it from the action cap either');
+});

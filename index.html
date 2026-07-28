@@ -586,7 +586,7 @@ var THREAD=(function(){
       var _acts={};                                 // T-CMB-1 Task 3: hard action-count gate (costed actions only)
       for(var ai=0;ai<block.length;ai++){var ab=block[ai],ae=ab.effect;
         if(ae&&ae.kind==='move')continue;                       // moves are free
-        if(ab.fanout)continue;   // T-CMB-1 Task 5 fix round 1: Rally/Cleanse fan-out — one cast, one action
+        if(ab.fanout&&ae&&ae.kind==='cond')continue;   // T-CMB-1 Task 5 fix round 2: fanout only exempts cond entries — a hand-built block can't tag damage/capture fanout:true to dodge the action cap (validate is Stage-2's future server-side authority)
         if(ab.cost==null&&!ae)continue;
         _acts[ab.actor]=(_acts[ab.actor]||0)+1;}
       for(var aid in _acts){var am=state.combatants[aid];if(!am)continue;
