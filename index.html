@@ -478,6 +478,8 @@ function fSeg(id){return D.galaxy.segmentums.filter(function(g){return g.id===id
 function fSec(id){var r=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){if(s.id===id)r={g:g,z:z,s:s}})})});return r}
 function fPl(id){var r=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){if(p.id===id)r={g:g,z:z,s:s,p:p}})})})});return r}
 function fLoc(pid,lid){var p=fPl(pid);for(var i=0;i<p.p.locations.length;i++)if(p.p.locations[i].id===lid)return p.p.locations[i]}
+/* Missions V2 slice A: planet→sector id, reusing the one existing glue lookup (fPl) — never a third. */
+function sectorOfPlanet(pid){var f=fPl(pid);return f?f.s.id:null}
 function wallets(){return D.allegiances[S.player.allegiance].wallets}
 function curName(){return FAC(S.player.faction).currency}
 /* ---- world overlays (dynamic state, not canon) ---- */
@@ -2107,18 +2109,20 @@ var dash=E('div','card');dash.innerHTML='<h3>Thread board</h3><div style="font-s
 /* accepted */
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Your threads — accepted ('+accepted.length+')</h5></div>');
 accepted.forEach(function(t){var vis=t.vis||'public',mine=(t.initiator||'').match(/^You/)||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f})});
- var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b> <span class="pill '+(vis==='private'?'bl':'')+'">'+(vis==='private'?'🔒 PRIVATE':'PUBLIC')+'</span><div style="font-size:11px;color:var(--dim);margin-top:2px">'+t.loc+'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Objective: '+(OBJ[t.type]||'—')+'</div></div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'waiting')+'</span>');
+ var meter=(t.type==='MISSION'&&t.state&&t.state.objective)?(' · '+t.state.objective.progress+'/'+t.state.objective.target):'';
+ var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b> <span class="pill '+(vis==='private'?'bl':'')+'">'+(vis==='private'?'🔒 PRIVATE':'PUBLIC')+'</span><div style="font-size:11px;color:var(--dim);margin-top:2px">'+t.loc+'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Objective: '+(OBJ[t.type]||'—')+meter+'</div></div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'waiting')+'</span>');
  d.onclick=function(){openT(t.id)};
  if(mine){var tg=E('button','btn gh sm',vis==='private'?'Make public':'Make private');tg.style.marginTop='6px';
   tg.onclick=function(e){e.stopPropagation();t.vis=vis==='private'?'public':'private';if(t.vis==='public'){t.summary=threadSummary(t.type)+' (auto-summary generated on publish — full AI summary at Stage 3.)'}rTL();T('Thread set '+t.vis+(t.vis==='public'?' — a summary was generated and it now enters the public record.':' — hidden from non-participants.'))};d.appendChild(tg)}
  dash.appendChild(d)});
-/* available */
-var avail=[];Object.keys(S.world.history||{}).forEach(function(key){(S.world.history[key]||[]).forEach(function(h){if(/open/i.test(h)){var parts=key.split('/');avail.push({key:key,txt:h,pl:parts[0],lid:parts[1]})}})});
-dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Available missions — open at reachable locations ('+avail.length+')</h5></div>');
-if(!avail.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">None open right now.</div>');
-avail.forEach(function(a){var pp=fPl(a.pl);var lname=(pp&&fLoc(a.pl,a.lid))?fLoc(a.pl,a.lid).name:a.lid;
- var d=E('div','thc','<div><b>'+a.txt.split('·')[0]+'</b><div style="font-size:11px;color:var(--dim);margin-top:2px">'+(pp?pp.p.name:'')+' · '+lname+'</div></div><span class="mono" style="color:var(--faint)">travel to join</span>');
- d.onclick=function(){if(pp){MV.pl=a.pl;MV.lc=a.lid;MV.lv='planet';MV.spaceSel=false;go('map')}};dash.appendChild(d)});
+/* available — Missions V2 slice A: real boards (S.world.missions), not a history-scrape.
+   Flattened across every planet with an unaccepted posting; click jumps the map to that location. */
+var mrows=[];Object.keys(S.world.missions||{}).forEach(function(pid){(S.world.missions[pid]||[]).forEach(function(m){if(!m.accepted)mrows.push(m)})});
+dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Missions — posted nearby ('+mrows.length+')</h5></div>');
+if(!mrows.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">No missions posted right now.</div>');
+mrows.forEach(function(m){var pp=fPl(m.pl);var lname=(pp&&fLoc(m.pl,m.lid))?fLoc(m.pl,m.lid).name:m.lid;
+ var d=E('div','thc','<div><b>'+m.n+'</b><div style="font-size:11px;color:var(--dim);margin-top:2px">'+(pp?pp.p.name:'')+' · '+lname+'</div></div><span class="mono" style="color:var(--faint)">pays '+m.payout+'</span>');
+ d.onclick=function(){if(pp){MV.pl=m.pl;MV.lc=m.lid;MV.lv='planet';MV.spaceSel=false;go('map')}};dash.appendChild(d)});
 /* conflicts */
 var confs=sectorConflicts();
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Sector conflicts — who wars whom ('+confs.length+')</h5></div>');
@@ -2203,6 +2207,24 @@ function concludeThread(t,oc){
  if(sc&&sc.effect&&t.pl){var fp=fPl(t.pl);if(fp){var st=S.world.stats[fp.s.id]=S.world.stats[fp.s.id]||{};
   if(typeof sc.effect.conflict==='number')st.conflict=Math.max(0,(st.conflict||0)+sc.effect.conflict);
   if(typeof sc.effect.prosperity==='number')st.prosperity=Math.max(0,(st.prosperity||0)+sc.effect.prosperity);}}
+ /* Missions V2 slice A: payout + world effect + board removal — a mission thread
+    is spent the moment it concludes, win or lose. */
+ if(t.type==='MISSION'&&t.mission){
+  if(oc.kind==='mission_won'){
+   S.cur+=t.mission.payout;
+   var we=t.mission.world_effect||{};var msec=sectorOfPlanet(t.mission.pl);
+   if(msec&&S.world.stats[msec]){var mst=S.world.stats[msec];
+    if(typeof we.taint==='number')mst.taint=Math.max(0,(mst.taint||0)+we.taint);
+    if(typeof we.prosperity==='number')mst.prosperity=(mst.prosperity||0)+we.prosperity;}
+   S.world.log=S.world.log||[];
+   S.world.log.unshift('◈ MISSION COMPLETE — '+t.mission.n+' ('+t.mission.payout+' paid)');
+  } else if(oc.kind==='mission_lost'){
+   S.world.log=S.world.log||[];
+   S.world.log.unshift('◈ MISSION FAILED — '+t.mission.n);
+  }
+  var mbd=S.world.missions[t.mission.pl]||[];
+  S.world.missions[t.mission.pl]=mbd.filter(function(m){return m.iid!==t.mission.iid});
+ }
  captureOnVictory(t,oc,mineWon);
  S.world.log=S.world.log||[];
  S.world.log.unshift(nowStamp()+' — '+t.n+' concluded: '+(oc.kind==='accord'?'accord struck':mineWon?'victory':oc.victor?('defeat — '+oc.victor+' holds the field'):'mutual ruin')+'.');
@@ -2716,6 +2738,8 @@ function threadView(V,t){
           S.inv.splice(_di,1);removed++;
         }
         THREAD.apply(t,t.state,[{actor:S.active,effect:{kind:'deliver',qty:give}}],D);
+        var doc=THREAD.outcome(t,t.state);            // delivery can complete a non-combat mission outright — this path never runs through the pb.onclick post handler, so it must check outcome itself
+        if(doc)concludeThread(t,doc);
         persist();openT(t.id);
       };
       V.appendChild(db);
