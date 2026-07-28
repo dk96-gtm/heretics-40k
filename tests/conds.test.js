@@ -158,3 +158,13 @@ test('DAAK RULING 1c: a DoT killing blow runs the full kill path — revival win
   assert.strictEqual(gunner.model.loadout.slots[0].it.kills, 1);   // src weapon credited
   assert.ok(rep.some(r => r.who === 'victim' && r.tag === 'DoT' && r.died === true));
 });
+
+test('DAAK RULING 1c (fix round 1): a DoT from a no_revival source permadeaths via the nr carrier', () => {
+  const state = { pools: {}, combatants: {
+    m: combatant({ w: [1, 10], conds: [{ tag: 'DoT', tier: 1, left: 3, src: 'Annihilator', el: 'Warp', nr: true }] }),
+  } };
+  THREAD.tickConds('A', state, canon);
+  assert.strictEqual(state.combatants.m.dead, true);
+  assert.strictEqual(state.combatants.m.permaDeath, true);
+  assert.strictEqual(state.combatants.m.revivalWindow, 0);
+});

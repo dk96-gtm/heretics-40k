@@ -946,9 +946,10 @@ var THREAD=(function(){
             c.w=[nw,c.w[1]];
             if(nw<=0&&!c.dead){
               // DAAK RULING 1c (binding): a DoT kill runs the FULL kill path —
-              // stampKill, trackKill (mission count_kill), and src weapon credit
-              // via the `by` attribution carrier (see instance-shape note below).
-              stampKill(c,inst.el,false,canon);
+              // stampKill (honoring a no_revival source via the `nr` carrier),
+              // trackKill (mission count_kill), and src weapon credit via the
+              // `by` attribution carrier (see instance-shape note below).
+              stampKill(c,inst.el,!!inst.nr,canon);
               trackKill(state,c);
               if(inst.by)creditWeaponKill(state,inst.by,inst.src);
               rep[rep.length-1].died=true;
