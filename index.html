@@ -676,15 +676,8 @@ var THREAD=(function(){
         var _ai=c.model&&c.model.loadout&&c.model.loadout.armour&&c.model.loadout.armour.it;
         if(_ai&&_abs>0)_ai.absorbed=(_ai.absorbed||0)+_abs; // gear battle record (T-ECO-1 prereq)
         c.w=[Math.max(0,c.w[0]-_taken),c.w[1]];
-        if(c.w[0]<=0&&!c.dead){c.dead=true;c.killElement=e.element||null;
-          var RWd=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
-          if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
-          else{var Wd=RWd.windows||{};c.revivalWindow=(e.element&&Wd[e.element])||Wd.Physical||3;c.permaDeath=false;}
-          if(e.weapon){                                     // the killing weapon takes the credit
-            var _am=state.combatants[b.actor]&&state.combatants[b.actor].model;
-            var _sl=(_am&&((_am.loadout&&_am.loadout.slots)||_am.sl))||[];
-            for(var _wi=0;_wi<_sl.length;_wi++){var _wit=_sl[_wi].it;
-              if(_wit&&_wit.n===e.weapon){_wit.kills=(_wit.kills||0)+1;break;}}}
+        if(c.w[0]<=0&&!c.dead){stampKill(c,e.element,e.noRevival,canon);
+          if(e.weapon)creditWeaponKill(state,b.actor,e.weapon);   // the killing weapon takes the credit
           trackKill(state,c);}}
       else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
       else if(e.kind==='move'){var mw=state.combatants[e.who];if(mw&&e.to){mw.x=e.to.x;mw.y=e.to.y;}}
@@ -913,6 +906,63 @@ var THREAD=(function(){
     if(c.w&&c.w[1]){if(c.w[0]<=1)n=Math.min(n,1);else if(c.w[0]<=c.w[1]/2)n=Math.min(n,2)}
     return Math.max(1,n);
   }
+  /* ── T-CMB-1 · Task 2: kill-stamp extraction + tickConds ──────────
+     stampKill is the single place death/revival-window semantics live,
+     shared by apply's damage branch and a DoT kill inside tickConds.
+     creditWeaponKill mirrors apply's inline weapon-credit loop so both
+     call sites share one implementation. */
+  function stampKill(c,element,noRevival,canon){
+    c.dead=true;c.killElement=element||null;
+    var RWd=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
+    if(noRevival){c.revivalWindow=0;c.permaDeath=true;}
+    else{var Wd=RWd.windows||{};c.revivalWindow=(element&&Wd[element])||Wd.Physical||3;c.permaDeath=false;}
+  }
+  function creditWeaponKill(state,actorId,weaponName){
+    if(!actorId||!weaponName)return;
+    var am=state.combatants[actorId]&&state.combatants[actorId].model;
+    var sl=(am&&((am.loadout&&am.loadout.slots)||am.sl))||[];
+    for(var wi=0;wi<sl.length;wi++){var wit=sl[wi].it;
+      if(wit&&wit.n===weaponName){wit.kills=(wit.kills||0)+1;break;}}
+  }
+  /* tickConds: FIFO over a side's living combatants, one pass per call.
+     DAAK RULING 1b (2026-07-28, binding): never ticks during aftermath/
+     deploy — defense in depth even though call sites should already gate. */
+  function tickConds(party,state,canon){
+    var rep=[];
+    if(state&&(state.phase==='aftermath'||state.phase==='deploy'))return rep;
+    Object.keys(state.combatants).forEach(function(id){
+      var c=state.combatants[id];
+      if(!c||c.party!==party||c.dead)return;
+      normConds(c);var conds=c.conds||[];
+      for(var i=0;i<conds.length;i++){var inst=conds[i],d=CONDS[inst.tag];
+        if(d&&d.tick&&!c.dead){var r=d.tick(inst,c);
+          if(r&&r.dw){
+            var dw=r.dw;
+            // DAAK RULING 1a (binding): a Non-Lethal-sourced DoT floors its
+            // tick at 1 wound — never kills, target stays captureable.
+            if(inst.nl&&dw<0)dw=-Math.max(0,Math.min(-dw,c.w[0]-1));
+            var nw=Math.max(0,Math.min(c.w[1],c.w[0]+dw));
+            rep.push({who:id,tag:inst.tag,delta:nw-c.w[0],expired:false,died:false});
+            c.w=[nw,c.w[1]];
+            if(nw<=0&&!c.dead){
+              // DAAK RULING 1c (binding): a DoT kill runs the FULL kill path —
+              // stampKill, trackKill (mission count_kill), and src weapon credit
+              // via the `by` attribution carrier (see instance-shape note below).
+              stampKill(c,inst.el,false,canon);
+              trackKill(state,c);
+              if(inst.by)creditWeaponKill(state,inst.by,inst.src);
+              rep[rep.length-1].died=true;
+            }
+          }
+        }
+        if(inst.left!==Infinity)inst.left-=1;
+      }
+      for(var k=conds.length-1;k>=0;k--)if(conds[k].left<=0&&conds[k].left!==Infinity){
+        rep.push({who:id,tag:conds[k].tag,delta:0,expired:true,died:false});
+        conds.splice(k,1);}
+    });
+    return rep;
+  }
   var NPC_RANK={MELEE:0,SHORT:1,MEDIUM:2,LONG:3};
   function npcReaches(reach,fromPos,tgtPos){return reach>=NPC_RANK[bandOf(cheb(fromPos,tgtPos))];}
   function npcTurn(side,state,board,weaponsOf){
@@ -969,7 +1019,7 @@ var THREAD=(function(){
       d:'The dead, carried from the field. Revive within the window, sell, or offer at a door.',
       ref:snapOf(c,cid),owner_cmdr:meta.owner||null,origin:meta.origin||null,
       takenDay:meta.day!=null?meta.day:null,window:win};}
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
