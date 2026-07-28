@@ -505,7 +505,10 @@ var THREAD=(function(){
     var s={ pools:seed.pools||{}, combatants:seed.combatants||{},
             joined:!!seed.joined, terms:seed.terms||null,
             transit:null, passage:seed.passage||0,
-            board:seed.board||null, phase:seed.phase||null, fog:seed.fog||{} };
+            board:seed.board||null, phase:seed.phase||null, fog:seed.fog||{},
+            objective:seed.objective?{kind:seed.objective.kind,target:seed.objective.target,
+              progress:seed.objective.progress||0,params:seed.objective.params||{},
+              done:!!seed.objective.done}:null };
     if(thread.type==='TRAVEL'&&seed.transit){
       var tier=seed.transit.tier;
       s.transit={ tier:tier,
@@ -625,6 +628,17 @@ var THREAD=(function(){
     }
     return {ok:true,reason:''};
   }
+  /* ── mission objective tracker (Missions V2 slice A) ── */
+  function trackKill(state,victim){
+    var ob=state.objective;
+    if(!ob||ob.done||ob.kind!=='count_kill')return;
+    if(!victim||!victim.gen)return;              // 'hostile' filter: generated foes only
+    ob.progress+=1;if(ob.progress>=ob.target)ob.done=true;
+  }
+  function evalObjective(state){
+    var ob=state&&state.objective;if(!ob)return null;
+    return {won:ob.progress>=ob.target,progress:ob.progress,target:ob.target};
+  }
   function apply(thread,state,block,canon){
     var party=null;
     block.forEach(function(b){
@@ -653,14 +667,16 @@ var THREAD=(function(){
             var _am=state.combatants[b.actor]&&state.combatants[b.actor].model;
             var _sl=(_am&&((_am.loadout&&_am.loadout.slots)||_am.sl))||[];
             for(var _wi=0;_wi<_sl.length;_wi++){var _wit=_sl[_wi].it;
-              if(_wit&&_wit.n===e.weapon){_wit.kills=(_wit.kills||0)+1;break;}}}}}
+              if(_wit&&_wit.n===e.weapon){_wit.kills=(_wit.kills||0)+1;break;}}}
+          trackKill(state,c);}}
       else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
       else if(e.kind==='move'){var mw=state.combatants[e.who];if(mw&&e.to){mw.x=e.to.x;mw.y=e.to.y;}}
       else if(e.kind==='cond'&&c){c.conds=c.conds||[];c.conds.push(e.add);}
-      else if(e.kind==='slay'&&c){c.dead=true;c.intact=!!e.intact;c.killElement=e.element||null;
+      else if(e.kind==='slay'&&c){var _wasDead=c.dead;c.dead=true;c.intact=!!e.intact;c.killElement=e.element||null;
         var RW=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
         if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
-        else{var W=RW.windows||{};c.revivalWindow=(e.element&&W[e.element])||W.Physical||3;c.permaDeath=false;}}
+        else{var W=RW.windows||{};c.revivalWindow=(e.element&&W[e.element])||W.Physical||3;c.permaDeath=false;}
+        if(!_wasDead)trackKill(state,c);}
       else if(e.kind==='capture'&&c){
         if(c.captured||c.dead)return;                  // belt-and-braces: validate should already reject this
         var _cap=state.combatants[b.actor];
@@ -686,6 +702,13 @@ var THREAD=(function(){
             if(_lc.looted)return;                       // belt-and-braces: validate should already reject this
             var _lslot=emptySlotOf(_la);
             if(_lslot){_lslot.it=mkRemains(_lc,e.corpse,e.meta||{});_lc.looted=true;}}}}
+      else if(e.kind==='deliver'){var _ob=state.objective;
+        if(_ob&&!_ob.done&&_ob.kind==='collect_item'){_ob.progress+=(e.qty||0);
+          if(_ob.progress>=_ob.target)_ob.done=true;}}
+      else if(e.kind==='work'){var _ob2=state.objective;
+        if(_ob2&&!_ob2.done&&_ob2.kind==='restore'){
+          var _mw=(_ob2.params&&_ob2.params.min_words)||0;
+          if((e.words||0)>=_mw){_ob2.progress+=1;if(_ob2.progress>=_ob2.target)_ob2.done=true;}}}
       else if(e.kind==='terms'){state.terms=state.terms||{};state.terms.agreed=!!e.agreed;
         if(e.detail)state.terms.detail=e.detail;}
       else if(e.kind==='transit'&&state.transit){
@@ -863,7 +886,7 @@ var THREAD=(function(){
       d:'The dead, carried from the field. Revive within the window, sell, or offer at a door.',
       ref:snapOf(c,cid),owner_cmdr:meta.owner||null,origin:meta.origin||null,
       takenDay:meta.day!=null?meta.day:null,window:win};}
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
