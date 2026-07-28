@@ -110,6 +110,7 @@ input[type=range]{width:100%;accent-color:var(--br)}
 .mr{margin-bottom:7px;font-size:12px}.mr .n{display:flex;justify-content:space-between}
 .mr .a{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim)}
 .band{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--brh)}
+.tickrep{font-size:10.5px;color:var(--dim);margin-bottom:5px;font-style:italic}
 .hp{height:4px;background:#241E18;border-radius:3px;overflow:hidden}.hp i{display:block;height:100%;background:var(--vd)}.hp.lo i{background:var(--blh)}
 .comp{border:1px solid var(--br);border-radius:6px;background:var(--panel);overflow:hidden}
 .comp .ch{padding:8px 13px;background:linear-gradient(90deg,rgba(176,141,62,.12),transparent);border-bottom:1px solid var(--ln);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--brh)}
@@ -2661,9 +2662,10 @@ function threadSidebar(t){
   Object.keys(byParty).forEach(function(p){
     html+='<div class="fg"><h4>'+p+(t.state.pools[p]!=null?' · '+t.state.pools[p]+' AP':'')+'</h4>';
     byParty[p].forEach(function(o){var pct=o.c.w[1]?Math.round(100*o.c.w[0]/o.c.w[1]):0;
+      THREAD.normConds(o.c);   // T-CMB-1 Task 6: heal legacy string conds on first read, never assume hydration did it
       html+='<div class="mr"><div class="n"><span>'+(o.c.model?o.c.model.n:o.id)+(o.c.dead?' ✝':'')+'</span><span class="a">'+o.c.w[0]+'/'+o.c.w[1]+' W'+(o.c.permaDeath?' · no revival':o.c.dead?' · window '+o.c.revivalWindow:'')+'</span></div>'+
         '<div class="hp'+(pct<=50?' lo':'')+'"><i style="width:'+pct+'%"></i></div>'+
-        '<div class="band">'+(o.c.x!=null?('▪ '+bfCellLabel({x:o.c.x,y:o.c.y})):(o.c.band||''))+(o.c.conds&&o.c.conds.length?' · '+o.c.conds.join(', '):'')+'</div></div>';});
+        '<div class="band">'+(o.c.x!=null?('▪ '+bfCellLabel({x:o.c.x,y:o.c.y})):(o.c.band||''))+(o.c.conds&&o.c.conds.length?' · '+condInstancesHTML(o.c.conds):'')+'</div></div>';});
     html+='</div>';});
   html+='</div></div>';sb.insertAdjacentHTML('beforeend',html);
   sb.querySelector('.foldh').onclick=function(){document.getElementById('report').classList.toggle('on')};
@@ -2717,6 +2719,35 @@ function bfCondItemsOf(c){var out=[];if(!c.model)return out;
       if(condTagsOf(s.it).length)out.push(s.it);});
   return out;}
 function condLabelShort(ct){return ct.tag+(ct.tier>1?' '+(['','I','II','III','IV','V'][ct.tier]||ct.tier):'');}
+// T-CMB-1 Task 6: display label for a live condition INSTANCE (as opposed to condLabelShort's
+// staging-picker label for a not-yet-applied {tag,tier} pair) — "DoT II · 4p"; left:Infinity
+// (thread-long/unknown) renders with no post counter at all.
+function condLabel(i){return i.tag+' '+['','I','II','III','IV','V'][i.tier]+(i.left!==Infinity?' · '+i.left+'p':'');}
+// wrap a rendered cond-instance list in the GLOSS tooltip (reuses annotate's "Tag [Tier]" regex —
+// unknown tags simply fail to match and render as plain, un-tooltipped text: inert-but-displayed).
+function condInstancesHTML(list){return (list||[]).map(function(i){return annotate(condLabel(i));}).join(', ');}
+// T-CMB-1 Task 6: fold apply's returned tick report ({who,tag,delta,expired,died}[]) into the post
+// that triggered it — "the mechanical truth always prints next to the fiction" (spec, tick pipeline
+// § 3). One clause per report entry; a DoT kill stamps BOTH delta<0 and died on the same entry (see
+// tickConds), so the suffer clause absorbs the death note rather than emitting a second line.
+var COND_NOUN={Suppressing:'Suppression'};   // display noun for the expiry clause ("Suppression … ends", not "Suppressing")
+function tickReportLines(rep,state){
+  if(!rep||!rep.length||!state||!state.combatants)return [];
+  return rep.map(function(r){
+    var c=state.combatants[r.who],who=(c&&c.model)?c.model.n.split(',')[0]:r.who;
+    if(r.expired)return (COND_NOUN[r.tag]||r.tag)+' on '+who+' ends';
+    if(r.delta>0)return who+' regenerates '+r.delta;
+    if(r.delta<0){
+      var inst=c&&c.conds&&c.conds.filter(function(i){return i.tag===r.tag;})[0];
+      var src=inst&&inst.src;
+      var line=who+' suffers '+(-r.delta)+(src?' ('+r.tag+', '+src+')':' ('+r.tag+')');
+      if(r.died)line+=' and dies ('+((c&&c.permaDeath)?'no revival':'revival window '+(c&&c.revivalWindow)+'p')+')';
+      return line;
+    }
+    return null;
+  }).filter(Boolean);
+}
+function tickReportText(rep,state){var lines=tickReportLines(rep,state);return lines.length?lines.join(' · ')+'.':'';}
 /* ── T-NPC-2b · engine glue for the pure THREAD.npcTurn ──────────────── */
 // weapon capabilities (band/ap/damage/element) — the injected weaponsOf
 function bfWeaponCaps(c){return bfWeaponsOf(c).map(function(it){return {
@@ -2739,15 +2770,16 @@ function npcRespond(t,playerParty){
   var block=THREAD.npcTurn(foe,st,st.board,bfWeaponCaps,D);
   if(!block.length)return;                         // sees nothing / can't act → holds silently
   if(!THREAD.validate(t,st,foe,block,D).ok)return;
-  THREAD.apply(t,st,block,D);
+  var tickRep=THREAD.apply(t,st,block,D,foe);   // T-CMB-1 Task 6: 5th arg ticks foe's own conds first
   if(st.poolsBase&&st.poolsBase[foe]!=null)st.pools[foe]=st.poolsBase[foe];   // refresh foe AP
   var who=bfFoeName(st,foe),lines=block.map(function(b){var e=b.effect;
     if(e.kind==='move')return 'repositions';
     if(e.kind==='damage'){var tn=(st.combatants[e.to]&&st.combatants[e.to].model)?st.combatants[e.to].model.n.split(',')[0]:e.to;
       return 'strikes '+tn+' ('+e.amount+(e.element?' '+e.element:'')+')';}
     return '';}).filter(Boolean);
+  var tickText=tickReportText(tickRep,st);   // prepend the tick report ahead of the move/attack clauses
   if(!t.posts)t.posts=[];
-  t.posts.push({who:who,body:esc(who+' '+lines.join('; ')+'.'),tag:'',stamp:nowStamp(),
+  t.posts.push({who:who,body:esc((tickText?tickText+' ':'')+who+' '+lines.join('; ')+'.'),tag:'',stamp:nowStamp(),
     block:block.map(function(b){return {actor:b.actor,action:(b.effect.kind==='move'?'Move':'Attack'),cost:b.cost,effect:b.effect};})});
 }
 function bfStaged(t){
@@ -3017,7 +3049,10 @@ function threadView(V,t){
     var staged=t.state.board?bfStaged(t):(builder?builder.staged:[]);   // board composer or dropdown
     var val=THREAD.validate(t,t.state,party,staged,D);
     if(!val.ok){T(val.reason);return}
-    THREAD.apply(t,t.state,staged,D);
+    // T-CMB-1 Task 6: 5th arg ticks the posting side's conds first; apply's own gate (SKIRMISH/
+    // INVASION/count_kill MISSION only) makes this a no-op (undefined) on non-combat thread types,
+    // so it's safe to pass unconditionally at this single shared post handler.
+    var tickRep=THREAD.apply(t,t.state,staged,D,party);
     if(t.type==='DIPLOMACY'&&t.state.terms&&t.state.terms.agreed&&!t._closed){
       t._closed=true;
       if(/Vess|Carrion/.test(t.initiator||'')){
@@ -3026,7 +3061,10 @@ function threadView(V,t){
       }
     }
     if(!t.posts)t.posts=[];
-    t.posts.push({who:activeModel().n.split(',')[0],body:v,tag:'you',stamp:nowStamp(),block:staged.map(function(s){return {actor:s.actor,action:s.action,cost:s.cost,effect:s.effect}})});
+    var _tickText=tickReportText(tickRep,t.state);
+    t.posts.push({who:activeModel().n.split(',')[0],
+      body:(_tickText?'<div class="tickrep">⚙ '+esc(_tickText)+'</div>':'')+v,
+      tag:'you',stamp:nowStamp(),block:staged.map(function(s){return {actor:s.actor,action:s.action,cost:s.cost,effect:s.effect}})});
     if(t.type==='MISSION'&&t.state.objective&&t.state.objective.kind==='restore'&&!t.state.objective.done)
       THREAD.apply(t,t.state,[{actor:S.active,effect:{kind:'work',words:THREAD.wordCount(v)}}],D);
     if(t.state.board){t._bf={sel:null,tgt:null,moves:{},acts:[]};   // clear staging; refresh AP for the next turn
@@ -3402,11 +3440,23 @@ function factionFrame(m,big){var col=frameColor(),rk=m.rk||1;
  var pips='';for(var i=1;i<=5;i++)pips+='<i class="'+(i<=rk?'':'off')+'"></i>';
  var sig=m.n.split(' ').map(function(x){return x[0]}).filter(function(c){return /[A-Za-z]/.test(c)}).slice(0,2).join('');
  return '<div class="mframe" style="--fr:'+col+(big?'':';width:64px;height:76px;flex-basis:64px')+'"><div class="rankpips">'+pips+'</div><span class="sig">'+sig+'</span><div class="ph">portrait</div></div>';}
+// T-CMB-1 Task 6: conditions live on the THREAD-state combatant, not the persistent roster model
+// (they're combat-local and never synced back — see concludeThread, which only writes wounds/status
+// home). So the overview's Conditions row looks the model up in whichever open, undone thread has it
+// as a combatant right now; outside combat there's simply nothing to show.
+function liveCondsFor(m){
+ if(!m||m._synthetic||!m.id)return null;
+ var t=(S.threads||[]).filter(function(x){return !x.done&&x.state&&x.state.combatants&&x.state.combatants[m.id];})[0];
+ if(!t)return null;
+ var c=t.state.combatants[m.id];THREAD.normConds(c);
+ return (c.conds&&c.conds.length)?c.conds:null;
+}
 function openModel(idOrModel){
  /* Task 8: also accepts a synthetic model object (see synthModelFromRef) so a frozen
     CAPTIVE/REMAINS snapshot can Inspect through the same overlay a live roster row uses. */
  var m=(idOrModel&&typeof idOrModel==='object')?idOrModel:S.roster.filter(function(x){return x.id===idOrModel})[0];
  if(!m)return;
+ var liveConds=liveCondsFor(m);
  var synth=!!m._synthetic;
  var stcol=m.st==='DEAD'?'var(--blh)':m.st==='DEPLOYED'?'var(--brh)':'var(--dim)';
  var threads=(m.th&&m.th.length)?m.th.map(function(t){return '<div>'+t+'</div>'}).join(''):'<div style="color:var(--dim)">No threads recorded.</div>';
@@ -3432,6 +3482,7 @@ function openModel(idOrModel){
  +'<div><div class="k">Spd</div><div class="v">'+(m.spd||'—')+'</div></div>'
  +'<div><div class="k">Actions</div><div class="v">'+acts(m)+'</div></div>'
  +'<div><div class="k">Wounds</div><div class="v">'+m.w+'</div></div>'
+ +(liveConds?'<div><div class="k">Conditions</div><div class="v" style="font-size:12px">'+condInstancesHTML(liveConds)+'</div></div>':'')
  +'<div><div class="k">Kills</div><div class="v">'+(m.kills||0)+'</div></div>'
  +'<div><div class="k">XP</div><div class="v" style="font-size:12px">'+m.xp+'</div></div>'
  +'<div><div class="k">Force</div><div class="v" style="font-size:12px">'+(m.fo==='—'?'Direct':m.fo)+'</div></div>'
@@ -3463,7 +3514,7 @@ function activeModel(){return S.roster.filter(function(m){return m.id===S.active
 function tierNum(r){if(!r)return 0;return {I:1,II:2,III:3,IV:4,V:5}[String(r).toUpperCase()]||parseInt(r,10)||0}
 /* glossary — values may be a string or a function(tierNumber) for tier-aware text */
 var GLOSS={
- 'DoT':function(t){t=t||1;return 'Damage over Time — deals '+t+' damage each post for '+(2+t)+' posts (tier '+t+'). Stacks with itself.'},
+ 'DoT':function(t){t=t||1;return 'Damage over Time — deals '+t+' damage each post for '+(2+t)+' posts (tier '+t+'). Does not stack — a stronger hit replaces it, a weaker one resets the clock.'},
  'Multihit':function(t){t=t||1;return 'Hits '+(t+1)+' separate targets (or '+(t+1)+' times) in one action (tier '+t+').'},
  'Rapid':function(t){t=t||1;return 'Fires '+t+' extra attack'+(t>1?'s':'')+' at Short range (tier '+t+').'},
  'Venting':function(t){t=t||1;return 'Overheats — wielder takes '+t+' backlash damage, or must cool down '+t+' post'+(t>1?'s':'')+' after firing.'},
@@ -3502,7 +3553,7 @@ var GLOSS={
  'Stealth':'Hidden — interacts with Guided, Ambush, and detection rules.',
  'Effortless':'Costs only the model own AP — no equipment AP modifier is added.',
  'Unwieldy':'Heavy — costs +1 AP and cannot be used the post after moving.',
- 'Suppressing':'Pins the target: it loses 1 action on its next post.',
+ 'Suppressing':function(t){t=t||1;return 'Pins the target: it loses 1 action per post for '+t+' post'+(t>1?'s':'')+' (tier '+t+').'},
  'Consumable':'Single use — destroyed once spent.',
  'Stimm':'Restores 2 wounds, or grants +1 action for one post.',
  'Med':'Medium range band — effective at mid distance.','Melee':'Melee range only — must be in base contact.','Short':'Short range band — close in.','Long':'Long range band — reaches across the field.',

@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.21",
-  "updated": "2026-07-27",
+  "version": "1.22",
+  "updated": "2026-07-28",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -11795,7 +11795,7 @@
    },
    {
     "tag": "DoT",
-    "mechanic": "Target takes 1 dmg per post for X posts; stacks",
+    "mechanic": "Target takes 1 dmg per post for X posts; does not stack — a stronger hit replaces it, a weaker one resets the clock",
     "tiers": "1 / 2 / 3",
     "forge_cost": 10
    },

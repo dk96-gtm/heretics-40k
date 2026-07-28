@@ -46,6 +46,6 @@ test('face_doors values are real door kinds', () => {
     assert.ok(doorKinds.includes(v), v + ' must be a real door kind'));
 });
 
-test('canon is v1.21', () => {
-  assert.strictEqual(canon.meta.version, '1.21');
+test('canon is v1.22', () => {
+  assert.strictEqual(canon.meta.version, '1.22');
 });
