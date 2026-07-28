@@ -18,6 +18,20 @@
 - Spec values are law: no stacking (higher tier replaces, equal/lower refreshes), FIFO tick order, Suppressing = −1 action always (tier t = pin lasts t posts), Regen duration 2+t, hard gates everywhere, unknown tags inert-but-displayed.
 - Base actions per model per post: `(canon.rules.combat && canon.rules.combat.actions_per_post) || 3`.
 
+## Drift alignment (2026-07-28, BINDING — engine moved ~20 hot-lane commits since this plan was written)
+
+Shipped since 2026-07-25: capture/remains (canon v1.20) and Missions Slice A (canon **v1.21**, tests **248/248**). This section overrides any conflicting detail in the tasks below:
+
+1. **Three Daak rulings (spec § "Post-ship intersections", 2026-07-28):**
+   (a) a DoT whose `src` item is `Non-Lethal` floors its ticks at 1 wound (never kills — target stays captureable); implement by resolving the `src` item's tags at tick time or stamping `nl:true` on the instance at application (implementer's choice — stamping is cheaper and hydration-safe; state the choice in the report).
+   (b) `tickConds` NEVER runs when `state.phase==='aftermath'` or `'deploy'`.
+   (c) a DoT killing blow runs the FULL existing kill path: element-correct `revivalWindow`/`permaDeath`, **`trackKill(state, victim)`** (mission `count_kill` progress — this helper now exists in the core), and the `src` weapon's `kills` tally (mirror the existing weapon-credit loop in `apply`'s damage branch).
+2. **MISSION threads run real combat now.** Every condition gate (`validate` speed/action caps) and `tickConds` applies to `thread.type==='MISSION'` combat identically to SKIRMISH/INVASION — the combat branch in `validate` is now `SKIRMISH||INVASION||_combatMission`; hook the gates inside that unified branch, and gate `tickConds` on the thread actually having combatants (non-combat MISSION posts — deliver/work — must not tick anything).
+3. **`apply` grew branches since the plan's quotes:** `deliver`, `work` (mission tracker), `capture`, `free`, `loot` (spoils), plus `trackKill` calls at both kill sites and a `_wasDead` guard in `slay`. Re-read the CURRENT `apply` before inserting the tick call at its top; do not disturb these.
+4. **`initState` now seeds `objective`;** `create` prefers persisted `t.state` (T-THR-5). `normConds` self-healing must therefore run on FIRST READ paths (tick/validate/display), never assume a hydration hook.
+5. **Baselines:** suite starts at **248/248**; canon is **v1.21** — if Task 6's `D.tags` "stacks" correction edits canon, bump `meta.version` to **"1.22"** and bump the pins in `tests/canon.test.js` + `tests/canon-missions.test.js` + `tests/canon-spoils.test.js` (all three pin the version).
+6. **`npcTurn` exists and is exported** (the plan predates uncertainty here) — wire `condMods` into it exactly as the spec says; `npcRespond` already early-returns on `deploy`/`aftermath`, consistent with ruling 1(b).
+
 ## File Structure
 
 - `index.html` — all core code (inside `/*<thread-core>*/…/*</thread-core>*/`) + engine glue (staging, display). One file by project design; region discipline keeps it testable.

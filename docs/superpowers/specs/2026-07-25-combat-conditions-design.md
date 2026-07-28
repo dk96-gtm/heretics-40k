@@ -140,6 +140,25 @@ The staged `cond` effect carries a real payload:
 - One end-to-end `apply` case: post ticks → actions resolve → report contains tick lines.
 - `tests/engine-syntax.test.js` boot proxy stays green.
 
+## Post-ship intersections — RULED (Daak, 2026-07-28)
+
+The spec predates capture/remains (canon v1.20) and Missions Slice A (v1.21). Three
+intersections ruled in the 2026-07-28 sit:
+
+1. **Non-Lethal + DoT (Forge-reachable combo): the floor binds the ticks.** A DoT whose
+   `src` item carries `Non-Lethal` can never take the last wound — ticks floor the target
+   at 1 wound (captureable). NL+DoT is thereby a deliberate slaver's combo.
+2. **Aftermath freezes conditions.** `tickConds` never runs once `state.phase==='aftermath'`
+   (nor during `deploy`, where no side has posted combat) — the last combat post is the
+   final mechanical truth; no DoT bleed-outs or Regen heals while looting.
+3. **DoT kills carry full credit.** A DoT killing blow uses the existing kill path
+   end-to-end: element-correct revival window / permadeath, mission `count_kill` progress
+   (`trackKill`), and the `src` weapon's kill tally.
+
+Scope extension (follows "hard gates everywhere", no new ruling needed): MISSION threads
+now run real combat (v1.21) — every condition gate and tick applies to MISSION combat
+identically to SKIRMISH/INVASION.
+
 ## Coordination
 
 - **Lanes:** spec = docs (parallel-safe, this commit). Implementation = 🔥 engine + tests —
