@@ -1327,6 +1327,7 @@ var WORLD=(function(){
     var startP=((((canon.galaxy||{}).scores||{}).axes||{}).prosperity||{}).start;
     if(typeof startP!=='number')startP=50;
     hold.forEach(function(pid){var f=findPlanet(canon,pid);if(!f)return;
+      var troubled=false;
       var y=typedYield(f.p,canon,side),cap=planetCap(f.p,canon);
       state.world.stock=state.world.stock||{};
       var st=state.world.stock[pid]=state.world.stock[pid]||{Food:0,Material:0,Fuel:0};
@@ -1338,13 +1339,16 @@ var WORLD=(function(){
       var eat=foodDemand(f.p,canon);
       state.world.unrest=state.world.unrest||{};
       if(st.Food>=eat)st.Food-=eat;
-      else {st.Food=0;state.world.unrest[pid]=(state.world.unrest[pid]||0)+1;
+      else {troubled=true;st.Food=0;state.world.unrest[pid]=(state.world.unrest[pid]||0)+1;
             events.push({kind:'unrest',planet:f.p.name,why:'famine'});}
       var keep=upkeepOf(f.p,canon),paid=Math.min(state.cur||0,keep);
       if(paid>=keep)state.cur-=keep;
-      else {state.cur=0;state.world.unrest[pid]=(state.world.unrest[pid]||0)+1;
+      else {troubled=true;state.cur=0;state.world.unrest[pid]=(state.world.unrest[pid]||0)+1;
             events.push({kind:'unrest',planet:f.p.name,why:'tithe'});}
       events.push({kind:'upkeep',planet:f.p.name,amount:paid});
+      if(!troubled&&state.world.unrest[pid]){state.world.unrest[pid]-=1;
+        if(!state.world.unrest[pid]){delete state.world.unrest[pid];
+          events.push({kind:'unrest_eased',planet:f.p.name});}}
       if(!state.world.stats)state.world.stats={};
       var sst=state.world.stats[f.sector]=state.world.stats[f.sector]||{taint:0};
       if(typeof sst.prosperity!=='number')sst.prosperity=startP;});
@@ -1410,6 +1414,9 @@ var WORLD=(function(){
     events.filter(function(e){return e.kind==='unrest';}).forEach(function(e){unrestBy[e.planet+'|'+e.why]=e;});
     Object.keys(unrestBy).forEach(function(k){var e=unrestBy[k];
       lines.push('🔥 Unrest grows on '+e.planet+' ('+(e.why==='famine'?'famine':'the unpaid tithe')+').');});
+    var easeBy={};          // one line per planet
+    events.filter(function(e){return e.kind==='unrest_eased';}).forEach(function(e){easeBy[e.planet]=true;});
+    Object.keys(easeBy).forEach(function(p){lines.push('☑ Unrest subsides on '+p+'.');});
     var upkeepTot=events.filter(function(e){return e.kind==='upkeep';}).reduce(function(a,e){return a+e.amount;},0);
     if(upkeepTot)lines.push('Tithes paid: '+upkeepTot+' currency.');
     var taintBy={};   // aggregate per sector across all ticks (one line each, not per-tick)

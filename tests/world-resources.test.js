@@ -132,3 +132,46 @@ test('produce: a self-feeding world eats without unrest and keeps the surplus', 
   assert.strictEqual((s.world.unrest.iax || 0), 0, 'no unrest on satisfied world');
   assert.ok(!ev.some((e) => e.kind === 'unrest' && e.why === 'famine'), 'no famine event');
 });
+
+test('produce: a healthy day decays unrest by 1; at zero it clears with an eased event', () => {
+  const iax = planetOf('iax');
+  const s = { time: { lastTick: 0 }, cur: 500, player: { faction: 'custodes' },
+              world: { holdings: ['iax'], stock: {}, unrest: { iax: 2 }, stats: {} } };
+
+  // first healthy produce: unrest 2 → 1, no event
+  const ev1 = [];
+  W.produce(s, canon, ev1);
+  assert.strictEqual(s.world.unrest.iax, 1, 'unrest decremented to 1');
+  assert.ok(!ev1.some((e) => e.kind === 'unrest_eased'), 'no eased event yet');
+
+  // second healthy produce: unrest 1 → 0, key deleted, eased event fires
+  const ev2 = [];
+  W.produce(s, canon, ev2);
+  assert.ok(!(('iax' in s.world.unrest)), 'unrest key deleted');
+  assert.ok(ev2.some((e) => e.kind === 'unrest_eased' && e.planet === iax.name), 'unrest_eased event fired');
+});
+
+test('produce: a starving world never decays unrest', () => {
+  const s = { time: { lastTick: 0 }, cur: 500, player: { faction: 'custodes' },
+              world: { holdings: ['terra'], stock: {}, unrest: { terra: 3 }, stats: {} } };
+
+  // Terra is a Hive World with no Food yield → will starve
+  const yield_ = W.typedYield(terra, canon, null);
+  assert.strictEqual(yield_.Food, 0, 'Hive World has no Food yield');
+
+  const ev = [];
+  W.produce(s, canon, ev);
+  assert.ok((s.world.unrest.terra || 0) >= 4, 'unrest increased (famine +1, maybe tithe +1)');
+  assert.ok(!ev.some((e) => e.kind === 'unrest_eased'), 'no eased event on troubled world');
+});
+
+test('digest: unrest_eased renders one line per planet', () => {
+  const d = W.digest([
+    { kind: 'unrest_eased', planet: 'Terra' },
+    { kind: 'unrest_eased', planet: 'Nurth' },
+  ]);
+  const terrLine = d.lines.filter((l) => /Terra/.test(l) && /subsides/.test(l))[0];
+  assert.strictEqual(terrLine, '☑ Unrest subsides on Terra.');
+  const nurthLine = d.lines.filter((l) => /Nurth/.test(l) && /subsides/.test(l))[0];
+  assert.strictEqual(nurthLine, '☑ Unrest subsides on Nurth.');
+});
