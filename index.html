@@ -1290,12 +1290,35 @@ var WORLD=(function(){
     if((sides.Sanctus||[]).indexOf(nm)>=0)return 'Sanctus';
     if((sides.Nihilus||[]).indexOf(nm)>=0)return 'Nihilus';
     return null;}
-  function holdingYield(planet,canon,side){var t=canon.tick||{};
-    var base=Math.max(t.holding_min_per_day||0,
-      Math.round((planet.resources||0)*prodMultOf(planet.type,canon)/(t.holding_divisor||1)));
-    if(side&&planet.rift===side)
-      base=Math.round(base*((((canon.rules||{}).rift||{}).home||{}).prod_mult||1));
-    return base;}
+  function resOut(type,canon){var ts=(canon.galaxy&&canon.galaxy.planet_types)||[];
+    for(var i=0;i<ts.length;i++)if(ts[i].name===type){var o=ts[i].resource_output||{};
+      return {Food:o.food||0,Material:o.material||0,Fuel:o.fuel||0};}
+    return {Food:0,Material:0,Fuel:0};}
+  function homeMult(canon){return ((((canon.rules||{}).rift||{}).home||{}).prod_mult)||1;}
+  function typedYield(planet,canon,side){var o=resOut(planet.type,canon),m=(side&&planet.rift===side)?homeMult(canon):1;
+    return {Food:Math.round(o.Food*m),Material:Math.round(o.Material*m),Fuel:Math.round(o.Fuel*m)};}
+  function surfaceLocs(planet){return (planet.locations||[]).filter(function(l){return l.tier!=='orbit';});}
+  function locShares(planet,canon){var out=resOut(planet.type,canon),locs=surfaceLocs(planet);
+    var W2=0,i;for(i=0;i<locs.length;i++)W2+=(locs[i].level||1);
+    if(!W2)return [];
+    var shares=locs.map(function(l){var lv=l.level||1;
+      return {id:l.id,name:l.name,level:lv,share:{Food:Math.floor(out.Food*lv/W2),Material:Math.floor(out.Material*lv/W2),Fuel:Math.floor(out.Fuel*lv/W2)}};});
+    var top=shares[0];for(i=1;i<shares.length;i++)if(shares[i].level>top.level)top=shares[i];
+    ['Food','Material','Fuel'].forEach(function(k){var got=0;
+      for(i=0;i<shares.length;i++)got+=shares[i].share[k];
+      top.share[k]+=out[k]-got;});                       /* remainder to the highest level */
+    return shares;}
+  function planetCap(planet,canon){var per=((canon.rules||{}).resources||{}).storage_cap_per_level||40;
+    var locs=surfaceLocs(planet),W2=0;for(var i=0;i<locs.length;i++)W2+=(locs[i].level||1);
+    return per*W2;}
+  function locTypeOf(id,canon){var ts=(canon.galaxy&&canon.galaxy.location_types)||[];
+    for(var i=0;i<ts.length;i++)if(ts[i].id===id)return ts[i];return null;}
+  function foodDemand(planet,canon){var locs=surfaceLocs(planet),n=0;
+    for(var i=0;i<locs.length;i++){var t=locTypeOf(locs[i].type,canon);n+=(t&&t.pop_base)||0;}
+    return n;}
+  function upkeepOf(planet,canon){var per=((canon.rules||{}).resources||{}).upkeep_per_level||2;
+    var locs=surfaceLocs(planet),W2=0;for(var i=0;i<locs.length;i++)W2+=(locs[i].level||1);
+    return per*W2;}
   function produce(state,canon,events){
     var hold=(state.world&&state.world.holdings)||[];
     if(!hold.length){                                 // no holdings → flat demo fallback
@@ -1307,12 +1330,27 @@ var WORLD=(function(){
     var startP=((((canon.galaxy||{}).scores||{}).axes||{}).prosperity||{}).start;
     if(typeof startP!=='number')startP=50;
     hold.forEach(function(pid){var f=findPlanet(canon,pid);if(!f)return;
-      var amt=holdingYield(f.p,canon,side);
-      state.cur=(state.cur||0)+amt;
+      var y=typedYield(f.p,canon,side),cap=planetCap(f.p,canon);
+      state.world.stock=state.world.stock||{};
+      var st=state.world.stock[pid]=state.world.stock[pid]||{Food:0,Material:0,Fuel:0};
+      var lost={},anyLost=false;
+      ['Food','Material','Fuel'].forEach(function(k){var v=st[k]+y[k];
+        if(v>cap){lost[k]=v-cap;v=cap;anyLost=true;}st[k]=v;});
+      events.push({kind:'resources',planet:f.p.name,gain:y});
+      if(anyLost)events.push({kind:'overflow',planet:f.p.name,lost:lost});
+      var eat=foodDemand(f.p,canon);
+      state.world.unrest=state.world.unrest||{};
+      if(st.Food>=eat)st.Food-=eat;
+      else {st.Food=0;state.world.unrest[pid]=(state.world.unrest[pid]||0)+1;
+            events.push({kind:'unrest',planet:f.p.name,why:'famine'});}
+      var keep=upkeepOf(f.p,canon);
+      if((state.cur||0)>=keep)state.cur-=keep;
+      else {state.cur=0;state.world.unrest[pid]=(state.world.unrest[pid]||0)+1;
+            events.push({kind:'unrest',planet:f.p.name,why:'tithe'});}
+      events.push({kind:'upkeep',planet:f.p.name,amount:keep});
       if(!state.world.stats)state.world.stats={};
-      var st=state.world.stats[f.sector]=state.world.stats[f.sector]||{taint:0};
-      if(typeof st.prosperity!=='number')st.prosperity=startP;   // a held sector starts tracking
-      events.push({kind:'production',amount:amt,planet:f.p.name,sector:f.sector});});
+      var sst=state.world.stats[f.sector]=state.world.stats[f.sector]||{taint:0};
+      if(typeof sst.prosperity!=='number')sst.prosperity=startP;});
   }
   function driftScores(state,canon,events){
     var tRate=(canon.tick&&canon.tick.taint_per_day)||0;
@@ -1362,6 +1400,21 @@ var WORLD=(function(){
     if(prod)lines.push(pls.length
       ?'Your holdings tithed '+prod+' — '+pls.map(function(p){return p+' '+byPl[p];}).join(', ')+'.'
       :'Production banked: '+prod+'.');
+    var resBy={};      // aggregate typed yield per planet across ticks (one line each)
+    events.filter(function(e){return e.kind==='resources';}).forEach(function(e){
+      var r=resBy[e.planet]=resBy[e.planet]||{Food:0,Material:0,Fuel:0};
+      r.Food+=e.gain.Food;r.Material+=e.gain.Material;r.Fuel+=e.gain.Fuel;});
+    Object.keys(resBy).forEach(function(p){var r=resBy[p];
+      lines.push('⚙ '+p+' yielded '+r.Food+'/'+r.Material+'/'+r.Fuel+' (Food/Material/Fuel).');});
+    var overflowBy={};      // one loss-line per planet, not per tick
+    events.filter(function(e){return e.kind==='overflow';}).forEach(function(e){overflowBy[e.planet]=true;});
+    Object.keys(overflowBy).forEach(function(p){lines.push('⚠ '+p+' — stores overflowed; surplus lost.');});
+    var unrestBy={};        // one line per planet+reason
+    events.filter(function(e){return e.kind==='unrest';}).forEach(function(e){unrestBy[e.planet+'|'+e.why]=e;});
+    Object.keys(unrestBy).forEach(function(k){var e=unrestBy[k];
+      lines.push('🔥 Unrest grows on '+e.planet+' ('+(e.why==='famine'?'famine':'the unpaid tithe')+').');});
+    var upkeepTot=events.filter(function(e){return e.kind==='upkeep';}).reduce(function(a,e){return a+e.amount;},0);
+    if(upkeepTot)lines.push('Tithes paid: '+upkeepTot+' currency.');
     var taintBy={};   // aggregate per sector across all ticks (one line each, not per-tick)
     events.filter(function(e){return e.kind==='taint';}).forEach(function(e){
       taintBy[e.sector]=(taintBy[e.sector]||0)+e.delta;});
@@ -1372,7 +1425,10 @@ var WORLD=(function(){
   }
   return { dayMs:dayMs, ticksElapsed:ticksElapsed, stepDay:stepDay,
            catchUp:catchUp, digest:digest,
-           findPlanet:findPlanet, holdingYield:holdingYield,
+           findPlanet:findPlanet,
+           resOut:resOut, typedYield:typedYield, locShares:locShares,
+           planetCap:planetCap, foodDemand:foodDemand, upkeepOf:upkeepOf,
+           produce:produce,
            sideOfFaction:sideOfFaction, sectorStatus:sectorStatus };
 })();
 /*</world-core>*/

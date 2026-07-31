@@ -18,38 +18,29 @@ function heldState(faction, holdings) {
   };
 }
 
-// Nurth (Death Guard crown): 35 res × 0.3 Death World = 10.5 → /3 = 3.5 → round 4
-// → floored up to holding_min_per_day 8 → Nihilus home ×1.25 = 10
-test('holdingYield: poor crown world hits the floor, then the Rift home bonus', () => {
-  const f = W.findPlanet(canon, 'nurth');
-  assert.ok(f, 'nurth found');
-  assert.strictEqual(f.sector, 'pallid');
-  assert.strictEqual(W.holdingYield(f.p, canon, 'Nihilus'), 10);
-  assert.strictEqual(W.holdingYield(f.p, canon, 'Sanctus'), 8); // wrong side: no bonus
-});
-
-// Terra: 220 × 1.8 Hive World = 396 → /3 = 132 → Sanctus home ×1.25 = 165
-test('holdingYield: rich world scales with resources × prod_mult ÷ divisor', () => {
-  const f = W.findPlanet(canon, 'terra');
-  assert.strictEqual(W.holdingYield(f.p, canon, 'Sanctus'), 165);
-  assert.strictEqual(W.holdingYield(f.p, canon, null), 132); // neutral free-mover
-});
-
 test('sideOfFaction resolves the Rift seat from a faction id', () => {
   assert.strictEqual(W.sideOfFaction('death_guard', canon), 'Nihilus');
   assert.strictEqual(W.sideOfFaction('custodes', canon), 'Sanctus');
   assert.strictEqual(W.sideOfFaction('necrons', canon), null);
 });
 
-test('produce: holdings feed currency + seed sector prosperity; events itemized', () => {
-  const s = heldState('death_guard', ['nurth']);
-  const r = W.catchUp(s, canon, DAY * 3);
-  assert.strictEqual(r.ticks, 3);
-  assert.strictEqual(s.cur, 30); // 10/day × 3
-  const ev = r.events.filter(e => e.kind === 'production');
-  assert.strictEqual(ev.length, 3);
-  assert.strictEqual(ev[0].planet, 'Nurth');
-  assert.strictEqual(ev[0].sector, 'pallid');
+test('produce: holdings accrue typed stock + drain currency via upkeep; events itemized', () => {
+  const s = { time: { lastTick: 0 }, cur: 500, player: { faction: 'death_guard' },
+              world: { stats: {}, holdings: ['nurth'], stock: {}, unrest: {}, rulers: {} } };
+  const ev = [];
+  W.produce(s, canon, ev);
+  const f = W.findPlanet(canon, 'nurth');
+  const side = W.sideOfFaction('death_guard', canon);
+  const y = W.typedYield(f.p, canon, side);
+  const keep = W.upkeepOf(f.p, canon);
+  const st = s.world.stock.nurth;
+  assert.strictEqual(st.Material, y.Material - 0); // grew by typedYield(...).Material − 0
+  assert.strictEqual(st.Fuel, y.Fuel); // Fuel isn't eaten, so it reflects the raw typed gain
+  assert.strictEqual(s.cur, 500 - keep); // dropped by upkeepOf(...) — was: grew
+  const resEv = ev.filter(e => e.kind === 'resources');
+  assert.strictEqual(resEv.length, 1);
+  assert.strictEqual(resEv[0].planet, 'Nurth');
+  assert.strictEqual(f.sector, 'pallid');
   assert.ok(typeof s.world.stats.pallid.prosperity === 'number', 'prosperity tracked');
 });
 
