@@ -137,6 +137,13 @@ holding; sustained Unrest drifts the location toward rebellion/loss via the stat
 (consequence mechanics owned by T-STAT-1). Empires become self-limiting: expansion beyond
 your economy means garrisons go unpaid and worlds slip.
 
+**§6a addendum (Daak rulings 2026-07-31, shipped with T-ECN-1):** Unrest is a
+RECOVERABLE pressure gauge — on any tick where a holding is BOTH fed and fully tithed,
+its counter decays by 1; at 0 the key clears and the digest announces recovery
+("Unrest subsides"). Unhealthy days keep the +1s (famine and unpaid tithe count
+separately). The alpha-window squeeze (all 20 crown worlds food-negative until the E2
+trade valve) ships AS DESIGNED — no crown-world feeding, no digest muting.
+
 ### 6b · Door leveling
 Doors level with currency + typed resources, and construction takes ticks:
 **tier II = 200 currency + 120 Material + 30 Fuel, 3 days · tier III = 500 currency +
