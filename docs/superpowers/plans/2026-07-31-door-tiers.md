@@ -141,11 +141,27 @@ ROWS = [
  ("Vigil World",0.4,1,1,"custodes","A watch-post of the Adeptus Custodes. Few are stationed here, and nothing passes them."),
  ("Infested World",0.3,1,1,"tyranids","A world partly consumed by a Tyranid splinter fleet. What remains of its biosphere feeds the swarm."),
 ]
+# resource_output values (T-ECN-1 landed first; its canon-resources pin test REQUIRES
+# every planet type to carry resource_output — the 20 existing rows already have theirs,
+# preserve them; these are the E1 plan's forward values for the 15 new types):
+R_OUT = {
+ "Garrison World":(4,4,4),"Cult World":(4,4,2),"Pleasure World":(4,2,2),
+ "Anchorage World":(0,3,5),"Explorator World":(0,6,4),"Plague Garden World":(6,2,0),
+ "Athenaeum World":(2,2,2),"Convent World":(2,2,2),"Raider's Nest":(2,2,4),
+ "Chapter World":(2,3,2),"Scrap World":(0,8,4),"Crossroads World":(0,0,2),
+ "Slaughter World":(0,3,2),"Vigil World":(0,1,1),"Infested World":(3,0,0),
+}
+old_by_name = {p['name']: p for p in d['galaxy']['planet_types']}
 pts = []
 for (name, prod, mv, pop, fac, lore) in ROWS:
     row = collections.OrderedDict()
     row['name'] = name; row['prod_mult'] = prod; row['mission_value'] = mv
     row['pop_ceiling'] = pop; row['lore'] = lore
+    if name in old_by_name and 'resource_output' in old_by_name[name]:
+        row['resource_output'] = old_by_name[name]['resource_output']
+    else:
+        f,m,u = R_OUT[name]
+        row['resource_output'] = collections.OrderedDict([("food",f),("material",m),("fuel",u)])
     if fac: row['faction'] = fac
     pts.append(row)
 d['galaxy']['planet_types'] = pts
