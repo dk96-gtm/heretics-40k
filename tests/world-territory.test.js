@@ -34,14 +34,25 @@ test('produce: holdings accrue typed stock + drain currency via upkeep; events i
   const y = W.typedYield(f.p, canon, side);
   const keep = W.upkeepOf(f.p, canon);
   const st = s.world.stock.nurth;
-  assert.strictEqual(st.Material, y.Material - 0); // grew by typedYield(...).Material − 0
-  assert.strictEqual(st.Fuel, y.Fuel); // Fuel isn't eaten, so it reflects the raw typed gain
+  assert.strictEqual(st.Fuel, y.Fuel); // Death World yields Fuel; nothing eats it, so it's the raw typed gain
   assert.strictEqual(s.cur, 500 - keep); // dropped by upkeepOf(...) — was: grew
   const resEv = ev.filter(e => e.kind === 'resources');
   assert.strictEqual(resEv.length, 1);
   assert.strictEqual(resEv[0].planet, 'Nurth');
   assert.strictEqual(f.sector, 'pallid');
   assert.ok(typeof s.world.stats.pallid.prosperity === 'number', 'prosperity tracked');
+});
+
+test('produce via catchUp: multi-tick accrues typed yield per day, lastTick fully advances', () => {
+  const s = { time: { lastTick: 0 }, cur: 1000, player: { faction: 'death_guard' },
+              world: { stats: {}, holdings: ['nurth'], stock: {}, unrest: {}, rulers: {} } };
+  const r = W.catchUp(s, canon, DAY * 3);
+  assert.strictEqual(r.ticks, 3);
+  const f = W.findPlanet(canon, 'nurth');
+  const side = W.sideOfFaction('death_guard', canon);
+  const y = W.typedYield(f.p, canon, side); // Fuel:1×1.25→1/day, never eaten, well under cap
+  assert.strictEqual(s.world.stock.nurth.Fuel, y.Fuel * 3, '3 days of Fuel accrue linearly');
+  assert.strictEqual(s.time.lastTick, DAY * 3);
 });
 
 test('produce: no holdings → flat demo fallback unchanged', () => {

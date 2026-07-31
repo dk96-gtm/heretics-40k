@@ -63,3 +63,38 @@ test('produce: no holdings → flat currency demo fallback unchanged', () => {
   W.produce(s, canon, []);
   assert.strictEqual(s.cur, canon.tick.production_per_day);
 });
+
+test('produce: cur below upkeep pays only what is available; event reports actual paid, unrest ticks', () => {
+  const s = { time: { lastTick: 0 }, cur: 5, player: { faction: 'custodes' },
+              world: { holdings: ['terra'], stock: {}, unrest: {}, stats: {} } };
+  const ev = [];
+  W.produce(s, canon, ev);
+  assert.strictEqual(s.cur, 0, 'currency floored at 0, not negative');
+  assert.ok((s.world.unrest.terra || 0) >= 1, 'unrest ticks');
+  assert.ok(ev.some((e) => e.kind === 'unrest' && e.why === 'tithe'), 'unpaid-tithe unrest event fires');
+  const upkeepEv = ev.filter((e) => e.kind === 'upkeep')[0];
+  assert.ok(upkeepEv, 'upkeep event present');
+  assert.strictEqual(upkeepEv.amount, 5, 'reports the actual amount paid (pre-call cur), not the full keep');
+});
+
+test('digest: templates all four typed-resource event kinds, aggregating amounts', () => {
+  const d = W.digest([
+    { kind: 'resources', planet: 'Nurth', gain: { Food: 3, Material: 0, Fuel: 1 } },
+    { kind: 'resources', planet: 'Nurth', gain: { Food: 3, Material: 0, Fuel: 1 } },
+    { kind: 'overflow', planet: 'Terra', lost: { Material: 5 } },
+    { kind: 'unrest', planet: 'Nurth', why: 'famine' },
+    { kind: 'unrest', planet: 'Terra', why: 'tithe' },
+    { kind: 'upkeep', planet: 'Nurth', amount: 14 },
+    { kind: 'upkeep', planet: 'Terra', amount: 18 },
+  ]);
+  const resLine = d.lines.filter((l) => /Nurth/.test(l) && /yielded/.test(l))[0];
+  assert.strictEqual(resLine, '⚙ Nurth yielded 6/0/2 (Food/Material/Fuel).');
+  const overflowLine = d.lines.filter((l) => /Terra/.test(l) && /overflowed/.test(l))[0];
+  assert.strictEqual(overflowLine, '⚠ Terra — stores overflowed; surplus lost.');
+  const famineLine = d.lines.filter((l) => /Nurth/.test(l) && /Unrest/.test(l))[0];
+  assert.strictEqual(famineLine, '🔥 Unrest grows on Nurth (famine).');
+  const titheLine = d.lines.filter((l) => /Terra/.test(l) && /Unrest/.test(l))[0];
+  assert.strictEqual(titheLine, '🔥 Unrest grows on Terra (the unpaid tithe).');
+  const upkeepLine = d.lines.filter((l) => /Tithes paid/.test(l))[0];
+  assert.strictEqual(upkeepLine, 'Tithes paid: 32 currency.');
+});

@@ -1281,9 +1281,6 @@ var WORLD=(function(){
     ((canon.galaxy&&canon.galaxy.segmentums)||[]).forEach(function(g){(g.zones||[]).forEach(function(z){(z.sectors||[]).forEach(function(s){(s.planets||[]).forEach(function(p){
       if(p.id===pid&&!r)r={p:p,sector:s.id};})})})});
     return r;}
-  function prodMultOf(type,canon){var ts=(canon.galaxy&&canon.galaxy.planet_types)||[];
-    for(var i=0;i<ts.length;i++)if(ts[i].name===type)return ts[i].prod_mult||1;
-    return 1;}
   function sideOfFaction(facId,canon){var fs=canon.factions||[],nm=null;
     for(var i=0;i<fs.length;i++)if(fs[i].id===facId){nm=fs[i].name;break;}
     var sides=(canon.rules.rift&&canon.rules.rift.sides)||{};
@@ -1343,11 +1340,11 @@ var WORLD=(function(){
       if(st.Food>=eat)st.Food-=eat;
       else {st.Food=0;state.world.unrest[pid]=(state.world.unrest[pid]||0)+1;
             events.push({kind:'unrest',planet:f.p.name,why:'famine'});}
-      var keep=upkeepOf(f.p,canon);
-      if((state.cur||0)>=keep)state.cur-=keep;
+      var keep=upkeepOf(f.p,canon),paid=Math.min(state.cur||0,keep);
+      if(paid>=keep)state.cur-=keep;
       else {state.cur=0;state.world.unrest[pid]=(state.world.unrest[pid]||0)+1;
             events.push({kind:'unrest',planet:f.p.name,why:'tithe'});}
-      events.push({kind:'upkeep',planet:f.p.name,amount:keep});
+      events.push({kind:'upkeep',planet:f.p.name,amount:paid});
       if(!state.world.stats)state.world.stats={};
       var sst=state.world.stats[f.sector]=state.world.stats[f.sector]||{taint:0};
       if(typeof sst.prosperity!=='number')sst.prosperity=startP;});
