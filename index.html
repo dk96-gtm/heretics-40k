@@ -1585,7 +1585,7 @@ function loadProfile(){return STORE.get(PROFILE_KEY);}
 function saveProfile(s){return STORE.set(PROFILE_KEY,SAVE.snapshot(s||S));}
 function clearProfile(){STORE.del(PROFILE_KEY);}
 var _persistT=null,_noPersist=false;
-function persist(){ if(_persistT)clearTimeout(_persistT);
+function persist(){ if(_noPersist)return; if(_persistT)clearTimeout(_persistT);
   _persistT=setTimeout(function(){_persistT=null;saveProfile(S);},800); }
 try{window.addEventListener('beforeunload',function(){if(!_noPersist&&S&&S.player)saveProfile(S);});}catch(e){}
 function exportSave(){

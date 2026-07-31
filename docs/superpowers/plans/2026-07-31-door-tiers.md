@@ -16,7 +16,7 @@
 - `index.html` is the HOT lane — claim T-DOOR-1 in `BACKLOG.md` before touching it; `git add <explicit paths>` only, never `-A`.
 - **Blocked on T-ECN-1.** This plan assumes E1 shipped per-holding typed stockpiles. Expected shape (economy spec §3/§7): a per-planet store of `{Food,Material,Fuel}`. Task 5 Step 1 VERIFIES the real landed shape and pins the adapter to it — do not skip that step.
 - ES5 in the engine: `function`, `var`, `{k:k}` object literals. Tests may use modern JS.
-- The tree must pass `node --test` (289 baseline + new) at every commit.
+- The tree must pass `node --test` (299 baseline + new) at every commit.
 - New `S.world` keys (`doorTiers`, `doorBuilds`) MUST seed in BOTH `foundingWorld()` (~line 1678) and `init()` (~line 3307) — known gotcha.
 - No `Date.now()` inside the DOOR core (replay/tests); day math arrives as tick counts from the engine.
 
