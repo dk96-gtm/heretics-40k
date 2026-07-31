@@ -3894,13 +3894,15 @@ function renderCart(){mkCart();var c=S.cart||[];if(!c.length){CART.classList.rem
    Contested ground stocks only common gear; conquest changes what's on the shelves. */
 function doorFactionId(){var f=fPl(S.pos.pl),r=f?pRuler(f.p):null;
  var fac=r?facByName(r.faction):null;return fac?fac.id:null}
-function doorCatalog(kind){var pf=doorFactionId();
+function doorCatalog(kind,tier){var pf=doorFactionId();var t=tier||3;
  function pick(arr){return (arr||[]).filter(function(it){return it.faction==null||it.faction===pf})
    .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}})}
- if(kind==='shop')return pick(D.weapons).concat(pick(D.items)).concat(pick(D.abilities));
- if(kind==='altar')return pick(D.casts);
- if(kind==='reliquary')return (D.legendaries||[]).filter(function(it){return it.faction===pf})
+ if(kind==='shop')return pick(D.weapons).concat(pick(D.items)).concat(pick(D.abilities))
+   .filter(function(it){return DOOR.gearTier(it.pc,D)<=t});
+ if(kind==='altar')return pick(D.casts).filter(function(it){return DOOR.castRank(it.d)<=((D.rules.doors_tiering.altar_rank_by_tier||{})[String(t)]||4)});
+ if(kind==='reliquary'){var L=(D.legendaries||[]).filter(function(it){return it.faction===pf})
    .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}});
+   return t>=2?L:L.slice(0,1)}
  return []}
 function sellPrice(it){
  if(it.cat==='CAPTIVE'||it.cat==='REMAINS'){
@@ -3916,8 +3918,12 @@ function renderDoor(dr,h){var c=E('div','card');
  c.insertAdjacentHTML('beforeend','<div class="doorimg">'+dr.name+'<span>'+dr.kind+' image — art slot</span></div>');
  c.insertAdjacentHTML('beforeend','<h3 style="margin-top:0">'+dr.name+' <span class="pill">'+dr.kind.toUpperCase()+'</span></h3>');
  var kind=dr.kind;
+ /* T-DOOR-1 task 4: real effective tier at this location; the door-demo sandbox
+    (fakeLoc has no .id) stays ungated — default tier 3 is the legacy/preview behavior */
+ var pl=fPl(S.pos.pl).p;
+ var tier=(h&&h.id!=null)?doorTierAt(pl,h,kind):3;
  if(kind==='shop'||kind==='altar'||kind==='reliquary'){
-  var cat=doorCatalog(kind);
+  var cat=doorCatalog(kind,tier);
   cat.forEach(function(it){var r=E('div','shopc');
    r.innerHTML='<div class="clk" data-ent="1"><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span><div class="d">'+annotate(it.d)+'</div></div>';
    var rr=E('div',null,'<span class="price">'+reqPrice(it.pc)+' '+curName()+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px';
@@ -3934,18 +3940,22 @@ function renderDoor(dr,h){var c=E('div','card');
     var bt=E('button','btn gh sm','Sell');bt.onclick=function(){S.cur+=sp;S.inv.splice(S.inv.indexOf(it),1);rW();rShop();T('Sold '+it.n+' for '+sp+' '+curName()+'.')};
     rr.appendChild(bt);r.appendChild(rr);c.appendChild(r)})}
  }
- else if(kind==='forge'){renderForge(c,dr)}
- else if(kind==='armoury'){renderArmoury(c,dr)}
+ else if(kind==='forge'){renderForge(c,dr,tier)}
+ else if(kind==='armoury'){renderArmoury(c,dr,tier)}
  else if(kind==='muster'){c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Recruit rank-and-file into your army. They arrive garrisoned at '+h.name+'.</div>');
-  [{n:'Plague Marine',cls:'Core',pc:34,w:'5/5'},{n:'Poxwalker',cls:'Core',pc:4,w:'1/1'},{n:'Foetid Bloat-Drone',cls:'Flying',pc:90,w:'6/6'}].forEach(function(rec){
-   var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+rec.n+'</b> <span class="pill">'+rec.cls+'</span></span><span class="price">'+rec.pc+'</span></div>');
-   var bt=E('button','btn gh sm','Recruit');bt.style.marginTop='5px';bt.onclick=function(){if(S.cur<rec.pc){T('Not enough '+curName()+'.');return}S.cur-=rec.pc;
+  var bulk=(D.rules.doors_tiering||{}).muster_bulk_discount||0.85;
+  [{n:'Plague Marine',cls:'Core',pc:34,w:'5/5'},{n:'Poxwalker',cls:'Core',pc:4,w:'1/1'},{n:'Foetid Bloat-Drone',cls:'Flying',pc:90,w:'6/6'}]
+   .filter(function(rec){return tier>=2||rec.cls==='Core'})
+   .forEach(function(rec){var price=tier>=3?Math.max(1,Math.round(rec.pc*bulk)):rec.pc;
+   var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+rec.n+'</b> <span class="pill">'+rec.cls+'</span></span><span class="price">'+price+(tier>=3?' <span class="pill" style="font-size:9px">bulk rate</span>':'')+'</span></div>');
+   var bt=E('button','btn gh sm','Recruit');bt.style.marginTop='5px';bt.onclick=function(){if(S.cur<price){T('Not enough '+curName()+'.');return}S.cur-=price;
     var id='r'+S.roster.length+'_'+Date.now();var nm={id:id,n:rec.n+' '+(S.roster.length),tag:'',cls:rec.cls,rk:1,pc:rec.pc,w:rec.w,st:'GARRISON',loc:fPl(S.pos.pl).p.name+' · '+h.name,fo:'—',sub:rec.n+' - R1 - 2 slots',sl:[{k:'WEAPON',it:null},{k:'ITEM',it:null}]};migrateLoadout(nm,S.player.faction);S.roster.push(nm);
     enrichRoster();rW();rRos();rShop();T(rec.n+' recruited — garrisoned at '+h.name+'.')};r.appendChild(bt);c.appendChild(r)})}
  else if(kind==='apothecarion'){var dead=(S.roster||[]).filter(function(m){return m.st==='DEAD'});
+  var feeMult=((D.rules.doors_tiering||{}).apoth_fee_mult||{})[String(tier)];if(feeMult==null)feeMult=1;
   c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Revive fallen models within their revival window — any element, at a cost scaled to point cost.</div>');
   if(!dead.length)c.insertAdjacentHTML('beforeend','<div class="empty">No revivable dead in range.</div>');
-  dead.forEach(function(m){var cost=Math.max(6,m.pc*2);var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span class="clk" data-mid="'+m.id+'"><b>'+m.n+'</b></span><span class="price">'+cost+'</span></div>');
+  dead.forEach(function(m){var cost=Math.max(6,Math.round(m.pc*2*feeMult));var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span class="clk" data-mid="'+m.id+'"><b>'+m.n+'</b></span><span class="price">'+cost+'</span></div>');
    var bt=E('button','btn gh sm','Revive');bt.style.marginTop='5px';bt.onclick=function(){if(S.cur<cost){T('Not enough '+curName()+'.');return}S.cur-=cost;m.st='GARRISON';m.w=m.w.split('/')[1]+'/'+m.w.split('/')[1];m.loc=fPl(S.pos.pl).p.name+' · '+h.name;rW();rRos();rShop();T(m.n.split(' ')[0]+' walks again.')};
    r.appendChild(bt);r.querySelector('[data-mid]').onclick=function(){openModel(m.id)};c.appendChild(r)});
   /* remains carried in your inventory (looted off the field within their window) — a
@@ -3962,11 +3972,12 @@ function renderDoor(dr,h){var c=E('div','card');
     var mine=r.cid?S.roster.filter(function(mm){return mm.id===r.cid&&(mm.st==='DEAD'||mm.st==='TAKEN')})[0]:null;
     if(!live){row.insertAdjacentHTML('beforeend','<div style="margin-top:5px"><button class="btn gh sm" disabled>Beyond the window</button></div>');}
     else if(mine){
-     var rcost=Math.max(6,mine.pc*2);
+     var rcost=Math.max(6,Math.round(mine.pc*2*feeMult));
      var mb=E('button','btn gh sm','Revive ('+rcost+')');mb.style.marginTop='5px';
      mb.onclick=function(){if(S.cur<rcost){T('Not enough '+curName()+'.');return}
       var idx=S.inv.indexOf(it);if(idx<0)return;
-      S.cur-=rcost;mine.st='GARRISON';mine.w='1/'+(mine.w.split('/')[1]||mine.pc||1);mine.loc=fPl(S.pos.pl).p.name+' · '+h.name;
+      var maxw=mine.w.split('/')[1]||mine.pc||1;
+      S.cur-=rcost;mine.st='GARRISON';mine.w=(tier>=3?maxw:'1')+'/'+maxw;mine.loc=fPl(S.pos.pl).p.name+' · '+h.name;
       S.inv.splice(idx,1);rW();rRos();rShop();T(mine.n.split(',')[0]+' claws back within the window.')};
      row.appendChild(mb);
     }else{
@@ -3999,8 +4010,9 @@ function renderDoor(dr,h){var c=E('div','card');
    var bt=E('button','btn gh sm','Initiate');bt.style.marginTop='5px';bt.onclick=function(){if(S.infl<ev.need){T('Requires '+ev.need+' Influence.');return}T(ev.n+' — thread machinery lands with the thread rebuild.')};r.appendChild(bt);c.appendChild(r)})}
  else c.insertAdjacentHTML('beforeend','<div class="d">This door stands open.</div>');
  return c}
-function renderForge(c,dr){
- /* armour upgrade path (v1.7): +1 Defense to one element, tiers I-III */
+function renderForge(c,dr,dtier){
+ var ft=dtier||3;
+ /* armour upgrade path (v1.7): +1 Defense to one element, tiers I-III — T-DOOR-1: capped at this Forge's tier */
  var armPieces=[];
  (S.inv||[]).forEach(function(it){if(it.cat==='ARMOUR')armPieces.push({it:it,where:'inventory'})});
  (S.roster||[]).forEach(function(m){var a=m.loadout&&m.loadout.armour&&m.loadout.armour.it;if(a)armPieces.push({it:a,where:m.n.split(',')[0]})});
@@ -4012,10 +4024,12 @@ function renderForge(c,dr){
   var es=E('select');es.style.cssText='width:100%';ELEM6.forEach(function(e){es.add(new Option(e,e))});c.appendChild(es);
   var acost=E('div','apt','<span style="font-size:11px;color:var(--dim)">Cost</span><span class="n" id="apx">—</span>');c.appendChild(acost);
   var abase=D.equipment_alpha.forge_rules.base_cost;
-  function apr(){var p=armPieces[as.value];var tier=((p&&p.it.upg)||0)+1;acost.querySelector('#apx').textContent=(tier>3?'MAXED (tier III)':(abase*tier)+' '+curName());}
-  as.onchange=apr;apr();
-  var ago=E('button','btn','HARDEN');ago.style.cssText='width:100%;margin-top:9px';c.appendChild(ago);
-  ago.onclick=function(){var p=armPieces[as.value];if(!p)return;var tier=(p.it.upg||0)+1;if(tier>3){T('Already hardened to tier III.');return}var cost=abase*tier;if(S.cur<cost){T('Not enough '+curName()+'.');return}var e=es.value;S.cur-=cost;p.it.def[e]=(p.it.def[e]||0)+1;p.it.upg=tier;rW();rShop();T(p.it.n+' hardened — +1 '+e+' Defense (tier '+['I','II','III'][tier-1]+').')};
+  var ago=E('button','btn','HARDEN');ago.style.cssText='width:100%;margin-top:9px';
+  function apr(){var p=armPieces[as.value];var tier=((p&&p.it.upg)||0)+1;
+   var txt=tier>3?'MAXED (tier III)':tier>ft?('Requires a Tier '+tier+' Forge.'):((abase*tier)+' '+curName());
+   acost.querySelector('#apx').textContent=txt;ago.disabled=(tier>3||tier>ft);}
+  as.onchange=apr;c.appendChild(ago);apr();
+  ago.onclick=function(){var p=armPieces[as.value];if(!p)return;var tier=(p.it.upg||0)+1;if(tier>3){T('Already hardened to tier III.');return}if(tier>ft){T('Requires a Tier '+tier+' Forge.');return}var cost=abase*tier;if(S.cur<cost){T('Not enough '+curName()+'.');return}var e=es.value;S.cur-=cost;p.it.def[e]=(p.it.def[e]||0)+1;p.it.upg=tier;rW();rShop();T(p.it.n+' hardened — +1 '+e+' Defense (tier '+['I','II','III'][tier-1]+').')};
   c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Forge a Weapon Tag</h5></div>');
  }
  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Insert a weapon from your inventory and forge an affinity tag onto it — tiers '+(dr.tiers||'I')+'.</div>');
@@ -4025,9 +4039,16 @@ function renderForge(c,dr){
  var bs=E('select');bs.style.cssText='width:100%';ws.forEach(function(x,i){bs.add(new Option(x.n+' — '+x.d,i))});c.appendChild(bs);
  c.insertAdjacentHTML('beforeend','<label class="f">Affinity tag</label>');var tw=E('div');c.appendChild(tw);
  var _aff=(D.equipment_alpha.forge_affinities&&D.equipment_alpha.forge_affinities[S.player.faction])||[],_affAll=_aff.indexOf('ALL')>=0;
- var tags=((D.tags&&D.tags.weapon)||[]).filter(function(t){return t.forge_cost!=null&&t.forgeable!==false}).map(function(t){var open=_affAll||_aff.indexOf(t.tag)>=0;return{t:t.tag,c:t.forge_cost,d:t.mechanic,lk:!open,rq:'not your forge affinity — needs an allied '+t.tag+'-forge'}});
- (D.equipment_alpha.forge_tags_alpha||[]).forEach(function(t){if(!tags.some(function(x){return x.t===t.tag})){tags.push({t:t.tag,c:t.cost,d:t.d,lk:t.access!=='open'&&!(t.access.indexOf('Drukhari')>=0&&S.dru),rq:'requires '+t.access})}});
- var st=tags[0];
+ /* T-DOOR-1: forge_cost doubles as a gear-tier proxy (same gearTier scale as the Shop) —
+    top-grade tags are gated to a higher-tier Forge, on top of the pre-existing affinity gate */
+ var tags=((D.tags&&D.tags.weapon)||[]).filter(function(t){return t.forge_cost!=null&&t.forgeable!==false}).map(function(t){
+  var open=_affAll||_aff.indexOf(t.tag)>=0,need=DOOR.gearTier(t.forge_cost,D),tierLocked=need>ft;
+  return{t:t.tag,c:t.forge_cost,d:t.mechanic,lk:!open||tierLocked,
+   rq:!open?('not your forge affinity — needs an allied '+t.tag+'-forge'):(tierLocked?('Requires a Tier '+need+' Forge.'):'')}});
+ (D.equipment_alpha.forge_tags_alpha||[]).forEach(function(t){if(!tags.some(function(x){return x.t===t.tag})){
+  var affLocked=t.access!=='open'&&!(t.access.indexOf('Drukhari')>=0&&S.dru),need2=DOOR.gearTier(t.cost,D),tierLocked2=need2>ft;
+  tags.push({t:t.tag,c:t.cost,d:t.d,lk:affLocked||tierLocked2,rq:affLocked?('requires '+t.access):(tierLocked2?('Requires a Tier '+need2+' Forge.'):'')})}});
+ var st=tags.filter(function(t){return !t.lk})[0]||tags[0];
  tags.forEach(function(t){var d=E('div','tg'+(t===st?' sel':'')+(t.lk?' lk':''),'<span data-tip="<b>'+t.t+'</b> — '+t.d+'">'+t.t+' — '+t.d+'</span>'+(t.lk?'<span class="rq">'+t.rq+'</span>':'<span class="mono">+'+t.c+'</span>'));
   if(!t.lk)d.onclick=function(){st=t;tw.querySelectorAll('.tg').forEach(function(x){x.classList.remove('sel')});d.classList.add('sel');pr()};tw.appendChild(d)});
  c.insertAdjacentHTML('beforeend','<label class="f">Name your work</label>');var nm=E('input');nm.type='text';nm.placeholder='It must have a name';nm.style.cssText='width:100%';c.appendChild(nm);
@@ -4036,11 +4057,14 @@ function renderForge(c,dr){
  function pr(){apt.querySelector('#fpx').textContent=(base+st.c)+' '+curName()}pr();
  var go2=E('button','btn','FORGE IT');go2.style.cssText='width:100%;margin-top:9px';c.appendChild(go2);
  go2.onclick=function(){var x=ws[bs.value];if(!x){T('No base weapon.');return}var n=nm.value.trim();if(!n){T('A Named weapon needs a name.');return}
+  if(st.lk){T(st.rq||'That tag is locked.');return}
   var cost=base+st.c;if(S.cur<cost){T('Not enough '+curName()+'.');return}
   S.cur-=cost;S.inv.splice(S.inv.indexOf(x),1);S.inv.push({n:n,cat:'WEAPON',d:'Named '+x.n+' - '+st.t+' I',pc:(x.pc||6)+st.c,origin:dr.name});rW();rShop();T('The forge tolls once. "'+n+'" is made.')}}
-function renderArmoury(c,dr){
+function renderArmoury(c,dr,dtier){
  var fac=doorFactionId();var who=(sel||S.roster[0]);   // the ruler's plate, not yours
- var list=(D.armour||[]).filter(function(p){return p.faction===fac||p.faction===null;});
+ /* T-DOOR-1: heavier weight classes need a higher-tier Armoury (Forge World-homed) */
+ var allowedW=(D.rules.doors_tiering.armour_tiers_by_tier||{})[String(dtier||3)]||['default','light','medium','heavy'];
+ var list=(D.armour||[]).filter(function(p){return (p.faction===fac||p.faction===null)&&allowedW.indexOf(p.tier)>=0;});
  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Buy and fit Armour. Defense is per-element ('+ELEM6.map(function(e){return ELAB[e]}).join(' ')+'); a hit deals max(0, damage − Defense). A <b>0</b> means that element bypasses the plate.</div>');
  var byTier={};list.forEach(function(p){(byTier[p.tier]=byTier[p.tier]||[]).push(p)});
  ['default','light','medium','heavy'].forEach(function(tier){var ps=byTier[tier];if(!ps||!ps.length)return;
