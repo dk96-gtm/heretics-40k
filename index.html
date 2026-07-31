@@ -2291,6 +2291,8 @@ return}
 var f2=fPl(MV.pl),pl=f2.p;
 cr.append(cb('GALAXY',function(){MV.lv='galaxy';rMap()}),' › ',cb(f2.g.name.toUpperCase(),function(){MV.lv='segment';rMap()}),' › ',cb(f2.s.name.toUpperCase(),function(){MV.lv='sector';rMap()}),' › ');
 var s2=E('span',null,pl.name.toUpperCase());s2.style.color='var(--brh)';cr.appendChild(s2);
+var _held=(S.world.holdings&&S.world.holdings.indexOf(pl.id)>=0);
+var _shares=_held?WORLD.locShares(pl,D):[];
 [['orbit','◇ ORBITAL SPACE','var(--vdh)'],['surface','▣ ON THE GROUND — NAMED LOCATIONS','var(--brh)']].forEach(function(tg){
 var locs=pl.locations.filter(function(l){return (l.tier||'surface')===tg[0]});
 if(!locs.length)return;
@@ -2298,7 +2300,8 @@ var zh=E('div','zh','<span style="color:'+tg[2]+';font-weight:600">'+tg[1]+'</sp
 zh.style.cssText='border-left:3px solid '+tg[2]+';padding-left:9px;margin-top:6px';z.appendChild(zh);
 var gg=E('div','mg');
 locs.forEach(function(l){var h=S.pos.pl===pl.id&&S.pos.sp===l.id&&!inTransit();
-var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+((LT(l.type)||{}).name||l.type)+(l.condition!=='intact'?' · '+((CD(l.condition)||{}).name||l.condition):'')+'</div>'+(S.pos.pl===pl.id&&!h&&!inTransit()?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
+var _sh=null;for(var _si=0;_si<_shares.length;_si++)if(_shares[_si].id===l.id){_sh=_shares[_si];break}
+var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+((LT(l.type)||{}).name||l.type)+(l.condition!=='intact'?' · '+((CD(l.condition)||{}).name||l.condition):'')+'</div>'+(_sh?'<div class="pt mono" style="margin-top:3px"><span class="mono" style="color:var(--dim)">+'+_sh.share.Food+'F/'+_sh.share.Material+'M/'+_sh.share.Fuel+'Fu</span></div>':'')+(S.pos.pl===pl.id&&!h&&!inTransit()?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
 d.onclick=function(){MV.lc=l.id;rMap()};gg.appendChild(d)});
 z.appendChild(gg)});
 var l=fLoc(pl.id,MV.lc);
@@ -2307,6 +2310,8 @@ var _lt=LT(l.type)||{name:l.type},_dz=doorsAt(l),_cd=CD(l.condition)||{},isOrbit
 var frLoc=fr.filter(function(x){return x[2]===l.name});
 var h2='<h3>'+pl.name+' — '+pl.type+'</h3>';
 h2+='<div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pRuler(pl)?(pRuler(pl).allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pRuler(pl)?'RULED: '+pRuler(pl).faction+(S.world.holdings&&S.world.holdings.indexOf(pl.id)>=0?' (YOURS)':''):'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+readStatus(f2.s.status)+'</span></div>';
+var _stk=_held?(S.world.stock||{})[pl.id]:null;
+if(_stk)h2+='<div class="d mono" style="margin-bottom:6px">⚙ Stock '+_stk.Food+' Food · '+_stk.Material+' Material · '+_stk.Fuel+' Fuel <span style="color:var(--dim)">/ cap '+WORLD.planetCap(pl,D)+'</span></div>';
 h2+='<div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">'+pl.desc+'</div>';
 /* the named-location page — broken into sections */
 h2+='<div class="locpage"><div class="locimg">'+l.name+'<span>location image — art slot</span></div><div class="locbody">';
