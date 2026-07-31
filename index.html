@@ -434,8 +434,7 @@ function readStatus(st){var r=(D.galaxy.status_readings||{})[st];
 if(!r)return st;return r[S.player.allegiance]||st}
 function popRank(v,facId){var P=D.galaxy.population_ranks;if(!P)return String(v);
 var lad=P.ladders[P.faction_ladder[facId||S.player.faction]||'imperial']||[];
-for(var i=P.bands.length-1;i>=0;i--)if(v>=P.bands[i][0])return lad[i]||String(v);
-return lad[0]||String(v)}
+return lad[popBandIdx(v)]||String(v)}
 /* DEMO sector scores — game STATE, not canon. Stage 2's backend owns these.
    Static demo carries plausible constants; the derivation below is real. */
 var SCORES={vigsec:{prosperity:42,conflict:71,taint:18},
@@ -2567,7 +2566,7 @@ function concludeThread(t,oc){
    overlay S.world.rulers records flips, S.world.holdings is what YOU hold. ── */
 function pRuler(pl){var ov=S.world&&S.world.rulers&&S.world.rulers[pl.id];return ov||pl.ruler||null}
 /* T-DOOR-1: effective tier of a door at a location — sparse overlay over the derived seed */
-function tombDormant(pl){var f2=fPl(pl.id);var sc=f2&&SCORES[f2.s.id];return pl.type==='Tomb World'&&!(sc&&sc.conflict>=((D.rules.doors_tiering||{}).tomb_dormant_conflict||40))}
+function tombDormant(pl){var f2=fPl(pl.id);var sc=f2&&liveScores(f2.s.id);return pl.type==='Tomb World'&&!(sc&&sc.conflict>=((D.rules.doors_tiering||{}).tomb_dormant_conflict||40))}
 function popBandIdx(v){var P=D.galaxy.population_ranks;if(!P)return 0;for(var i=P.bands.length-1;i>=0;i--)if(v>=P.bands[i][0])return i;return 0}
 function doorTierAt(pl,loc,kind){
  var seed=DOOR.seedTier(pl.type,popBandIdx(effPop(loc,pl.id)),kind,D,tombDormant(pl));
