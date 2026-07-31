@@ -115,3 +115,12 @@ test('startBuild returns boolean: false on no world, false on duplicate, true on
 test('canon: altar_rank_by_tier includes R5', () => {
   assert.deepStrictEqual(D.rules.doors_tiering.altar_rank_by_tier, {1:2, 2:3, 3:5});
 });
+
+test('overlay + builds survive a JSON persist round-trip mid-build', () => {
+  const st = { world: { doorTiers: {}, doorBuilds: {} } };
+  DOOR.startBuild(st, 'vighive', 'muster', 2, 3);
+  st.world.doorTiers[DOOR.key('vigport', 'shop')] = 3;
+  const thawed = JSON.parse(JSON.stringify(st));
+  assert.deepStrictEqual(thawed.world.doorBuilds[DOOR.key('vighive', 'muster')], { to: 2, left: 3 });
+  assert.strictEqual(DOOR.doorTier(thawed, 'vigport', 'shop', 1), 3);
+});
