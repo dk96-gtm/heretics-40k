@@ -434,7 +434,7 @@ In `init()`, next to the other `S.world` backfills (~3314):
 
 ```js
 /* T-DOOR-1: effective tier of a door at a location — sparse overlay over the derived seed */
-function tombDormant(pl){var f2=fPl(pl.id);var sc=f2&&SCORES[f2.s.id];return pl.type==='Tomb World'&&!(sc&&sc.conflict>=((D.rules.doors_tiering||{}).tomb_dormant_conflict||40))}
+function tombDormant(pl){var f2=fPl(pl.id);var sc=f2&&liveScores(f2.s.id);  /* live overlay, NOT static SCORES (review finding) */return pl.type==='Tomb World'&&!(sc&&sc.conflict>=((D.rules.doors_tiering||{}).tomb_dormant_conflict||40))}
 function popBandIdx(v){var P=D.galaxy.population_ranks;if(!P)return 0;for(var i=P.bands.length-1;i>=0;i--)if(v>=P.bands[i][0])return i;return 0}
 function doorTierAt(pl,loc,kind){
  var seed=DOOR.seedTier(pl.type,popBandIdx(effPop(loc,pl.id)),kind,D,tombDormant(pl));
