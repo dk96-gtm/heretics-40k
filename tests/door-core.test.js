@@ -76,3 +76,42 @@ test('startBuild + tickBuilds: counts days, applies tier, idempotent finish, JSO
   assert.deepStrictEqual(st2.world.doorBuilds, {});
   assert.strictEqual(DOOR.tickBuilds(st2).length, 0);
 });
+
+test('castRank parses R5 and all canon casts correctly', () => {
+  assert.strictEqual(DOOR.castRank('R5 - Warp 5 - Long - 5 AP'), 5);
+  // Data-driven: every cast in canon parses correctly
+  let hasR5 = false;
+  (D.casts || []).forEach(c => {
+    const m = /^R(\d+)/.exec(c.d || '');
+    const expected = m ? +m[1] : 1;
+    assert.strictEqual(DOOR.castRank(c.d), expected, `cast "${c.d}" should yield rank ${expected}`);
+    if (expected === 5) hasR5 = true;
+  });
+  assert.strictEqual(hasR5, true, 'canon must have at least one R5 cast');
+});
+
+test('canUpgrade with undefined funds returns refusal (no throw)', () => {
+  const cost = { currency: 200, resources: { Material: 120, Fuel: 30 }, days: 3 };
+  const base = { tier: 1, cap: 3, building: false, rules: true, cost: cost };
+  const result = DOOR.canUpgrade(base); // funds undefined
+  assert.strictEqual(result.ok, false);
+  assert.match(result.why, /currency/);
+});
+
+test('startBuild returns boolean: false on no world, false on duplicate, true on success', () => {
+  const noWorld = {};
+  assert.strictEqual(DOOR.startBuild(noWorld, 'locA', 'shop', 2, 3), false);
+
+  const st = { world: {} };
+  const firstOk = DOOR.startBuild(st, 'locA', 'shop', 2, 3);
+  assert.strictEqual(firstOk, true);
+
+  const left1 = st.world.doorBuilds[DOOR.key('locA', 'shop')].left;
+  const dupOk = DOOR.startBuild(st, 'locA', 'shop', 3, 5);
+  assert.strictEqual(dupOk, false);
+  assert.strictEqual(st.world.doorBuilds[DOOR.key('locA', 'shop')].left, left1, 'first build untouched');
+});
+
+test('canon: altar_rank_by_tier includes R5', () => {
+  assert.deepStrictEqual(D.rules.doors_tiering.altar_rank_by_tier, {1:2, 2:3, 3:5});
+});

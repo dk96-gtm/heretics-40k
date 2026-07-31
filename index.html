@@ -1442,7 +1442,7 @@ var WORLD=(function(){
 var DOOR=(function(){
  function cfg(canon){return (canon.rules&&canon.rules.doors_tiering)||{}}
  function gearTier(pc,canon){var g=cfg(canon).gear_tier_pc||{};var t3=g['3']||20,t2=g['2']||12;return pc>=t3?3:pc>=t2?2:1}
- function castRank(d){var m=/^R([1-4])\b/.exec(d||'');return m?+m[1]:1}
+ function castRank(d){var m=/^R(\d+)\b/.exec(d||'');return m?+m[1]:1} /* R5 exists in canon — Daak 2026-07-31: sold at Tier III */
  function tierCap(planetType,kind,canon,tombDormant){var c=cfg(canon);
   if((c.tier1_types||[]).indexOf(planetType)>=0)return 1;
   if(planetType==='Tomb World'&&tombDormant)return 1;
@@ -1463,16 +1463,15 @@ var DOOR=(function(){
           resources:(c.resource_cost||{})[String(targetTier)]||{},
           days:(c.build_days||{})[String(targetTier)]||3}}
  function canUpgrade(o){
+  var F=o.funds||{};
   if(o.tier>=3)return {ok:false,why:'Already at Tier III.'};
   if(o.tier>=o.cap)return {ok:false,why:'This world cannot support a higher tier here.'};
   if(o.building)return {ok:false,why:'Construction already underway.'};
   if(!o.rules)return {ok:false,why:'Only the world\'s ruler may commission upgrades.'};
-  if((o.funds.currency||0)<o.cost.currency)return {ok:false,why:'Not enough currency.'};
-  var R=o.cost.resources;for(var k in R)if((o.funds[k]||0)<R[k])return {ok:false,why:'Not enough '+k+'.'};
+  if((F.currency||0)<o.cost.currency)return {ok:false,why:'Not enough currency.'};
+  var R=o.cost.resources;for(var k in R)if((F[k]||0)<R[k])return {ok:false,why:'Not enough '+k+'.'};
   return {ok:true}}
- function startBuild(state,locId,kind,targetTier,days){
-  state.world.doorBuilds=state.world.doorBuilds||{};
-  state.world.doorBuilds[key(locId,kind)]={to:targetTier,left:days}}
+ function startBuild(state,locId,kind,targetTier,days){if(!state.world)return false;state.world.doorBuilds=state.world.doorBuilds||{};var k=key(locId,kind);if(state.world.doorBuilds[k])return false;state.world.doorBuilds[k]={to:targetTier,left:days};return true}
  function tickBuilds(state){ /* one in-game day; returns finished builds */
   var B=(state.world&&state.world.doorBuilds)||{},done=[];
   Object.keys(B).forEach(function(k){var b=B[k];b.left-=1;
