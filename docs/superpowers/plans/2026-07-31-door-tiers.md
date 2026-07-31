@@ -178,7 +178,7 @@ d['rules']['doors_tiering'] = collections.OrderedDict([
  ("tier1_types",["Death World","Dead World"]),
  ("tomb_dormant_conflict",40),
  ("gear_tier_pc",{"2":12,"3":20}),
- ("altar_rank_by_tier",{"1":2,"2":3,"3":4}),
+ ("altar_rank_by_tier",{"1":2,"2":3,"3":5}),
  ("armour_tiers_by_tier",{"1":["default","light"],"2":["default","light","medium"],"3":["default","light","medium","heavy"]}),
  ("muster_bulk_discount",0.85),
  ("apoth_fee_mult",{"1":1.0,"2":0.8,"3":0.6}),
@@ -188,7 +188,7 @@ d['rules']['doors_tiering'] = collections.OrderedDict([
 TIERS = {
  "shop":       {"1":"Tier-I gear","2":"+ Tier-II gear","3":"+ Tier-III gear — a proper trade hub"},
  "forge":      {"1":"forge tags / harden armour to I","2":"to II","3":"to III — the Forge Temple"},
- "altar":      {"1":"Warp Casts R1-R2","2":"+ R3","3":"+ R4 grand rites"},
+ "altar":      {"1":"Warp Casts R1-R2","2":"+ R3","3":"+ R4-R5 grand rites"},
  "armoury":    {"1":"Light + class-default armour","2":"+ Medium","3":"+ Heavy"},
  "reliquary":  {"1":"one Legendary in stock","2":"both Legendaries","3":"+ relic re-forge (lands with T-FAC-1)"},
  "muster":     {"1":"Core models, rank 1","2":"all classes","3":"all classes at a bulk rate"},
@@ -228,7 +228,7 @@ git commit -m "canon v1.24: 35-type planet registry (standard/subfaction line) +
 
 **Interfaces:**
 - Consumes: `D.rules.doors_tiering` (Task 1).
-- Produces (exact, later tasks call these): `DOOR.gearTier(pc,canon)→1|2|3` · `DOOR.castRank(dStr)→1..4` · `DOOR.tierCap(planetType,kind,canon,tombDormant)→1|2|3` · `DOOR.seedTier(planetType,popIdx,kind,canon,tombDormant)→1|2|3` · `DOOR.doorTier(state,locId,kind,seed)→1|2|3` · `DOOR.upgradeCost(kind,rarity,targetTier,canon)→{currency,resources,days}` · `DOOR.canUpgrade(o)→{ok,why?}` · `DOOR.startBuild(state,locId,kind,targetTier,days)` · `DOOR.tickBuilds(state)→[{loc,kind,to}]` · `DOOR.key(locId,kind)→str`.
+- Produces (exact, later tasks call these): `DOOR.gearTier(pc,canon)→1|2|3` · `DOOR.castRank(dStr)→1..5` · `DOOR.tierCap(planetType,kind,canon,tombDormant)→1|2|3` · `DOOR.seedTier(planetType,popIdx,kind,canon,tombDormant)→1|2|3` · `DOOR.doorTier(state,locId,kind,seed)→1|2|3` · `DOOR.upgradeCost(kind,rarity,targetTier,canon)→{currency,resources,days}` · `DOOR.canUpgrade(o)→{ok,why?}` · `DOOR.startBuild(state,locId,kind,targetTier,days)` · `DOOR.tickBuilds(state)→[{loc,kind,to}]` · `DOOR.key(locId,kind)→str`.
 
 - [ ] **Step 1: Write the failing tests** — `tests/_load-door.js`:
 
@@ -341,7 +341,7 @@ test('startBuild + tickBuilds: counts days, applies tier, idempotent finish, JSO
 var DOOR=(function(){
  function cfg(canon){return (canon.rules&&canon.rules.doors_tiering)||{}}
  function gearTier(pc,canon){var g=cfg(canon).gear_tier_pc||{};var t3=g['3']||20,t2=g['2']||12;return pc>=t3?3:pc>=t2?2:1}
- function castRank(d){var m=/^R([1-4])\b/.exec(d||'');return m?+m[1]:1}
+ function castRank(d){var m=/^R(\d+)\b/.exec(d||'');return m?+m[1]:1}  /* R5 exists in canon — Daak 2026-07-31: sold at Tier III */
  function tierCap(planetType,kind,canon,tombDormant){var c=cfg(canon);
   if((c.tier1_types||[]).indexOf(planetType)>=0)return 1;
   if(planetType==='Tomb World'&&tombDormant)return 1;

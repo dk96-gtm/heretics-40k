@@ -64,7 +64,7 @@ anywhere, but forging to III, armour-hardening to III, and Heavy armour stock ex
 on Forge Worlds (buying vs making).
 
 What each tier means per door is the locked D11 ladder (unchanged): Shop gear tiers ·
-Forge forge/harden depth · Altar cast ranks R1-2/R3/R4 · Armoury Light/Medium/Heavy ·
+Forge forge/harden depth · Altar cast ranks R1-2 / R3 / R4-R5 (R5 casts exist in canon; Daak ruling 2026-07-31: Tier III sells them) · Armoury Light/Medium/Heavy ·
 Reliquary one/both/re-forge (§6.4) · Muster classes+ranks+bulk · Apothecarion
 cost/wounds/window · Shipyard system/warp/capital · Relay sector/segmentum/galaxy ·
 Arena local/cross-sector/galaxy · Warp Gate same-segmentum/cross/any · Throne Room
