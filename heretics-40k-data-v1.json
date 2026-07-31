@@ -11,7 +11,8 @@
    "Doors are GRANTED BY location type, not stored per location. Conditions take them away. Access is allegiance-gated.",
    "Filename stays heretics-40k-data-v1.json across the v1.x series; meta.version carries the real version. Git carries the history.",
    "Scores / production / resources are specced here but require persistence (Stage 2) to run. Static demo reads them as constants.",
-   "v1.8: full Tag Registry migrated from Notion to canon (D.tags: 22 weapon / 11 item / 4 combat / 7 cast-gate / 4 model-state) + per-faction forge_affinities. Engine: GLOSS tooltips for every tag, parseItem recognises the full tag set, the Forge offers the full weapon-tag list gated by faction affinity."
+   "v1.8: full Tag Registry migrated from Notion to canon (D.tags: 22 weapon / 11 item / 4 combat / 7 cast-gate / 4 model-state) + per-faction forge_affinities. Engine: GLOSS tooltips for every tag, parseItem recognises the full tag set, the Forge offers the full weapon-tag list gated by faction affinity.",
+   "v1.23: typed resources (T-ECN-1) - resource_output {food,material,fuel} on every planet type + rules.resources constants (stack 40, storage 40/level, upkeep 2/level). Typed production replaces the interim currency stream from holdings."
   ],
   "migration": {
    "done": [
