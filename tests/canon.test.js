@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.22', () => {
-  assert.strictEqual(canon.meta.version, '1.22');
+test('canon is v1.23', () => {
+  assert.strictEqual(canon.meta.version, '1.23');
 });
 
 test('every faction has a crown world with a walkable surface start (Founding spawn)', () => {
@@ -122,7 +122,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.22');
+  assert.equal(canon.meta.version, '1.23');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
