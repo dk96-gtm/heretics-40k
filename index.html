@@ -383,7 +383,7 @@ canvas.smap{display:block;width:100%;height:auto}
 <div class="stat"><div class="k">Army <small>(PC)</small></div><div class="v" id="warmy"></div></div>
 <div class="stat"><div class="k">Dispatched <small>(AP)</small></div><div class="v" id="wdisp"></div></div></div></div>
 <div class="card"><h3>Your Leaders</h3><div style="font-size:11.5px;color:var(--dim);margin-bottom:9px">Switch the figure you command. Each may stand in a different location.</div><div class="lsw" id="hqlead"></div></div>
-</div></section>
+</div><div id="hqledger"></div></section>
 <section class="screen" id="s-barracks"><div class="crumb">Army management</div><h2>The Barracks</h2>
 <div class="tabs"><button class="tab on" data-b="roster">Roster</button><button class="tab" data-b="armoury">Armoury</button><button class="tab" data-b="forces">Forces</button></div>
 <div class="sub on" id="b-roster"><div class="card"><h3 id="rh"></h3>
@@ -1929,7 +1929,22 @@ document.getElementById('hqsub').textContent=FAC(S.player.faction).name+' · '+a
 document.getElementById('hqw').innerHTML='Wounds '+am.w+' · '+acts(am)+' actions · AP '+AP(am.pc)+' · XP: <span class="mono" style="color:var(--brh)">'+am.xp+'</span>';
 var L=document.getElementById('hqlead');L.innerHTML='';
 leaders().forEach(function(m){var d=E('div','lsc'+(m.id===S.active?' act':''),'<span class="nm">'+m.n.split(',')[0]+(m.id===S.active?' ●':'')+'</span><span class="lo">'+m.loc+'</span>');
-d.onclick=function(){if(m.id===S.active){openModel(m.id)}else{switchTo(m.id)}};L.appendChild(d)})}
+d.onclick=function(){if(m.id===S.active){openModel(m.id)}else{switchTo(m.id)}};L.appendChild(d)});
+/* T-ECN-1: the Ledger — what the empire makes, eats, and owes per day */
+var _lh='<div class="ov"><table><tr><th colspan="6">Ledger — per day</th></tr>'
+ +'<tr><td style="color:var(--dim)">Holding</td><td class="mono">Stock F/M/Fu</td><td class="mono">Yield</td><td class="mono">Food eaten</td><td class="mono">Tithe</td><td class="mono">Unrest</td></tr>';
+var _tot={keep:0};
+(S.world.holdings||[]).forEach(function(pid){var f=fPl(pid);if(!f)return;var p=f.p;
+ var y=WORLD.typedYield(p,D,null),st=(S.world.stock||{})[pid]||{Food:0,Material:0,Fuel:0};
+ var cap=WORLD.planetCap(p,D),eat=WORLD.foodDemand(p,D),keep=WORLD.upkeepOf(p,D);_tot.keep+=keep;
+ _lh+='<tr><td>'+p.name+' <span style="color:var(--dim)">('+p.type+')</span></td>'
+  +'<td class="mono">'+st.Food+'/'+st.Material+'/'+st.Fuel+' <span style="color:var(--dim)">cap '+cap+'</span></td>'
+  +'<td class="mono">+'+y.Food+'/+'+y.Material+'/+'+y.Fuel+'</td>'
+  +'<td class="mono">'+eat+'</td><td class="mono">'+keep+'</td>'
+  +'<td class="mono"'+((S.world.unrest||{})[pid]?' style="color:var(--blh)"':'')+'>'+((S.world.unrest||{})[pid]||0)+'</td></tr>';});
+_lh+='<tr><td colspan="4" style="color:var(--dim)">Total tithe due each day</td><td class="mono">'+_tot.keep+'</td><td></td></tr></table></div>';
+document.getElementById('hqledger').innerHTML=_lh;
+}
 /* ---- barracks ---- */
 var sel=null;
 function chips(m){var c=m.st==='DEAD'?'dead':m.st==='TAKEN'?'tkn':m.st==='DEPLOYED'?'dep':'';return '<span class="tc '+c+'">'+(m.st==='TAKEN'?'⛓ TAKEN':m.st)+(m.st==='DEAD'?' · recoverable':m.st==='GARRISON'?' · standby':'')+'</span>'}
