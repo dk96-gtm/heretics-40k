@@ -1436,6 +1436,56 @@ var WORLD=(function(){
            sideOfFaction:sideOfFaction, sectorStatus:sectorStatus };
 })();
 /*</world-core>*/
+/*<door-core>*/
+/* DOOR — pure tier rules for the 12 common doors (T-DOOR-1). DOM-free; canon and
+   state always arrive as arguments. Spec: docs/superpowers/specs/2026-07-31-door-tiers-signature-doors-design.md */
+var DOOR=(function(){
+ function cfg(canon){return (canon.rules&&canon.rules.doors_tiering)||{}}
+ function gearTier(pc,canon){var g=cfg(canon).gear_tier_pc||{};var t3=g['3']||20,t2=g['2']||12;return pc>=t3?3:pc>=t2?2:1}
+ function castRank(d){var m=/^R([1-4])\b/.exec(d||'');return m?+m[1]:1}
+ function tierCap(planetType,kind,canon,tombDormant){var c=cfg(canon);
+  if((c.tier1_types||[]).indexOf(planetType)>=0)return 1;
+  if(planetType==='Tomb World'&&tombDormant)return 1;
+  if((c.t3_anywhere||[]).indexOf(kind)>=0)return 3;
+  if(c.t3_homes&&c.t3_homes[kind]===planetType)return 3;
+  return 2}
+ function seedTier(planetType,popIdx,kind,canon,tombDormant){var c=cfg(canon);
+  var t=(popIdx>=4)?2:1;
+  if(c.t3_homes&&c.t3_homes[kind]===planetType)t=3;   /* home doors open at III — the lived-in galaxy */
+  return Math.min(t,tierCap(planetType,kind,canon,tombDormant))}
+ function key(locId,kind){return locId+':'+kind}
+ function doorTier(state,locId,kind,seed){
+  var ov=state.world&&state.world.doorTiers&&state.world.doorTiers[key(locId,kind)];
+  return Math.max(ov||0,seed||1)}
+ function upgradeCost(kind,rarity,targetTier,canon){var c=cfg(canon);
+  var base=(c.currency_base_by_kind&&c.currency_base_by_kind[kind])||(c.currency_base||{})[rarity]||100;
+  return {currency:base*targetTier,
+          resources:(c.resource_cost||{})[String(targetTier)]||{},
+          days:(c.build_days||{})[String(targetTier)]||3}}
+ function canUpgrade(o){
+  if(o.tier>=3)return {ok:false,why:'Already at Tier III.'};
+  if(o.tier>=o.cap)return {ok:false,why:'This world cannot support a higher tier here.'};
+  if(o.building)return {ok:false,why:'Construction already underway.'};
+  if(!o.rules)return {ok:false,why:'Only the world\'s ruler may commission upgrades.'};
+  if((o.funds.currency||0)<o.cost.currency)return {ok:false,why:'Not enough currency.'};
+  var R=o.cost.resources;for(var k in R)if((o.funds[k]||0)<R[k])return {ok:false,why:'Not enough '+k+'.'};
+  return {ok:true}}
+ function startBuild(state,locId,kind,targetTier,days){
+  state.world.doorBuilds=state.world.doorBuilds||{};
+  state.world.doorBuilds[key(locId,kind)]={to:targetTier,left:days}}
+ function tickBuilds(state){ /* one in-game day; returns finished builds */
+  var B=(state.world&&state.world.doorBuilds)||{},done=[];
+  Object.keys(B).forEach(function(k){var b=B[k];b.left-=1;
+   if(b.left<=0){var i=k.lastIndexOf(':');
+    state.world.doorTiers=state.world.doorTiers||{};
+    state.world.doorTiers[k]=Math.max(state.world.doorTiers[k]||0,b.to);
+    done.push({loc:k.slice(0,i),kind:k.slice(i+1),to:b.to});delete B[k]}});
+  return done}
+ return {gearTier:gearTier,castRank:castRank,tierCap:tierCap,seedTier:seedTier,
+         doorTier:doorTier,upgradeCost:upgradeCost,canUpgrade:canUpgrade,
+         startBuild:startBuild,tickBuilds:tickBuilds,key:key};
+})();
+/*</door-core>*/
 /*<mission-core>*/
 /* Missions V2 slice A — pure, DOM-free mission generation + payout.
    Canon/state arrive as arguments. NO Date.now()/Math.random(): determinism
