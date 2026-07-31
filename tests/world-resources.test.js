@@ -107,3 +107,28 @@ test('stockpiles + unrest survive a JSON persist round-trip', () => {
   assert.deepStrictEqual(thawed.world.stock.terra, s.world.stock.terra);
   assert.deepStrictEqual(thawed.world.unrest, s.world.unrest);
 });
+
+test('produce: a self-feeding world eats without unrest and keeps the surplus', () => {
+  const iax = planetOf('iax');
+  assert.ok(iax, 'iax planet exists');
+  assert.strictEqual(iax.type, 'Agri World', 'iax is an Agri World');
+
+  const s = { time: { lastTick: 0 }, cur: 500, player: { faction: 'custodes' },
+              world: { holdings: ['iax'], stock: {}, unrest: {}, stats: {} } };
+
+  // custodes is on Sanctus rift; iax is also on Sanctus, so home bonus applies
+  const side = 'Sanctus';
+  const yield_ = W.typedYield(iax, canon, side);
+  const demand = W.foodDemand(iax, canon);
+  assert.ok(yield_.Food > demand, `iax yields ${yield_.Food} Food but demands ${demand}`);
+
+  const ev = [];
+  W.produce(s, canon, ev);
+
+  const st = s.world.stock.iax;
+  const expected = yield_.Food - demand;
+  assert.strictEqual(st.Food, expected, `iax stock.Food is ${expected} (yield ${yield_.Food} - demand ${demand})`);
+
+  assert.strictEqual((s.world.unrest.iax || 0), 0, 'no unrest on satisfied world');
+  assert.ok(!ev.some((e) => e.kind === 'unrest' && e.why === 'famine'), 'no famine event');
+});
