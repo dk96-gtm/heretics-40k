@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.23",
+  "version": "1.24",
   "updated": "2026-07-28",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -12,7 +12,8 @@
    "Filename stays heretics-40k-data-v1.json across the v1.x series; meta.version carries the real version. Git carries the history.",
    "Scores / production / resources are specced here but require persistence (Stage 2) to run. Static demo reads them as constants.",
    "v1.8: full Tag Registry migrated from Notion to canon (D.tags: 22 weapon / 11 item / 4 combat / 7 cast-gate / 4 model-state) + per-faction forge_affinities. Engine: GLOSS tooltips for every tag, parseItem recognises the full tag set, the Forge offers the full weapon-tag list gated by faction affinity.",
-   "v1.23: typed resources (T-ECN-1) - resource_output {food,material,fuel} on every planet type + rules.resources constants (stack 40, storage 40/level, upkeep 2/level). Typed production replaces the interim currency stream from holdings."
+   "v1.23: typed resources (T-ECN-1) - resource_output {food,material,fuel} on every planet type + rules.resources constants (stack 40, storage 40/level, upkeep 2/level). Typed production replaces the interim currency stream from holdings.",
+   "v1.24: door tiers groundwork (T-DOOR-1) - 35-type planet registry (14 standard / 21 subfaction, dormant effect strings replaced by lore), rules.doors_tiering (caps, homes, upgrade economy), per-door tier ladders."
   ],
   "migration": {
    "done": [
@@ -583,6 +584,85 @@
     "Frontier World": {
      "fuel": "promethium"
     }
+   }
+  },
+  "doors_tiering": {
+   "note": "T-DOOR-1 (spec 2026-07-31). Universal Tier-III homes sit on STANDARD (untagged) planet types only. Shop is Tier-III-anywhere (trade-hub investment). Signature doors (T-FAC-1) will be Tier-III on any ruled world. Upgrade = currency base*target_tier + resources + build days on the world tick; you must rule the world.",
+   "currency_base": {
+    "common": 100,
+    "uncommon": 150,
+    "rare": 250,
+    "rarest": 400
+   },
+   "currency_base_by_kind": {
+    "throne_room": 200
+   },
+   "resource_cost": {
+    "2": {
+     "Material": 120,
+     "Fuel": 30
+    },
+    "3": {
+     "Material": 300,
+     "Fuel": 100
+    }
+   },
+   "build_days": {
+    "2": 3,
+    "3": 7
+   },
+   "t3_homes": {
+    "forge": "Forge World",
+    "armoury": "Forge World",
+    "apothecarion": "Hive World",
+    "shipyard": "Industrial World",
+    "relay": "Civilized World",
+    "throne_room": "Fortress World",
+    "altar": "Shrine World",
+    "reliquary": "Shrine World",
+    "arena": "War World",
+    "muster": "Feudal World",
+    "warp_gate": "Frontier World"
+   },
+   "t3_anywhere": [
+    "shop"
+   ],
+   "tier1_types": [
+    "Death World",
+    "Dead World"
+   ],
+   "tomb_dormant_conflict": 40,
+   "gear_tier_pc": {
+    "2": 12,
+    "3": 20
+   },
+   "altar_rank_by_tier": {
+    "1": 2,
+    "2": 3,
+    "3": 4
+   },
+   "armour_tiers_by_tier": {
+    "1": [
+     "default",
+     "light"
+    ],
+    "2": [
+     "default",
+     "light",
+     "medium"
+    ],
+    "3": [
+     "default",
+     "light",
+     "medium",
+     "heavy"
+    ]
+   },
+   "muster_bulk_discount": 0.85,
+   "apoth_fee_mult": {
+    "1": 1.0,
+    "2": 0.8,
+    "3": 0.6
    }
   }
  },
@@ -7641,6 +7721,11 @@
      "gsc": "Cult Cache",
      "votann": "Kin Exchange",
      "harlequins": "—"
+    },
+    "tiers": {
+     "1": "Tier-I gear",
+     "2": "+ Tier-II gear",
+     "3": "+ Tier-III gear — a proper trade hub"
     }
    },
    {
@@ -7660,6 +7745,11 @@
      "gsc": "Cult Workshop",
      "votann": "Ancestral Forge",
      "harlequins": "—"
+    },
+    "tiers": {
+     "1": "forge tags / harden armour to I",
+     "2": "to II",
+     "3": "to III — the Forge Temple"
     }
    },
    {
@@ -7679,6 +7769,11 @@
      "gsc": "Smuggler Berth",
      "votann": "Void-Hold",
      "harlequins": "—"
+    },
+    "tiers": {
+     "1": "system vessels",
+     "2": "warp-capable hulls",
+     "3": "capital hulls"
     }
    },
    {
@@ -7698,6 +7793,11 @@
      "gsc": "Broodmind Nexus",
      "votann": "Ancestral Core",
      "harlequins": "Shadowseer Ring"
+    },
+    "tiers": {
+     "1": "Warp Casts R1-R2",
+     "2": "+ R3",
+     "3": "+ R4 grand rites"
     }
    },
    {
@@ -7717,6 +7817,11 @@
      "gsc": "Cult Sanctum",
      "votann": "Kin Hall",
      "harlequins": "Troupe Ring"
+    },
+    "tiers": {
+     "1": "Core models, rank 1",
+     "2": "all classes",
+     "3": "all classes at a bulk rate"
     }
    },
    {
@@ -7736,6 +7841,11 @@
      "gsc": "Brood Vats",
      "votann": "Ironkin Bay",
      "harlequins": "—"
+    },
+    "tiers": {
+     "1": "revive at 1 wound, full fee",
+     "2": "cheaper fees",
+     "3": "cheapest fees, full-wound revival"
     }
    },
    {
@@ -7755,6 +7865,11 @@
      "gsc": "Hidden Vox",
      "votann": "Kin-Net",
      "harlequins": "—"
+    },
+    "tiers": {
+     "1": "sector comms",
+     "2": "segmentum reach",
+     "3": "galaxy-wide reach"
     }
    },
    {
@@ -7774,6 +7889,11 @@
      "gsc": "Cult Trial",
      "votann": "Grudge Ring",
      "harlequins": "The Masque"
+    },
+    "tiers": {
+     "1": "local duels, small purse",
+     "2": "cross-sector hail",
+     "3": "galaxy hail, grand purse"
     }
    },
    {
@@ -7793,6 +7913,11 @@
      "gsc": "—",
      "votann": "—",
      "harlequins": "Webway Portal"
+    },
+    "tiers": {
+     "1": "same-segmentum gates",
+     "2": "cross-segmentum",
+     "3": "any charted gate"
     }
    },
    {
@@ -7812,6 +7937,11 @@
      "gsc": "Hidden Shrine",
      "votann": "Ancestor Vault",
      "harlequins": "Black Library"
+    },
+    "tiers": {
+     "1": "one Legendary in stock",
+     "2": "both Legendaries",
+     "3": "+ relic re-forge (lands with T-FAC-1)"
     }
    },
    {
@@ -7831,6 +7961,11 @@
      "gsc": "The Sanctum",
      "votann": "The Ancestor Core",
      "harlequins": "—"
+    },
+    "tiers": {
+     "1": "planet events",
+     "2": "+ garrison bonus",
+     "3": "sector-scale events"
     }
    },
    {
@@ -7850,6 +7985,11 @@
      "gsc": "Relic Cache",
      "votann": "Ancestor Armoury",
      "harlequins": "Costume Vault"
+    },
+    "tiers": {
+     "1": "Light + class-default armour",
+     "2": "+ Medium",
+     "3": "+ Heavy"
     }
    }
   ],
@@ -8381,8 +8521,7 @@
     "prod_mult": 2.0,
     "mission_value": 4,
     "pop_ceiling": 4,
-    "effect": "Forge Temples may exist here - the ONLY route to Tier III equipment.",
-    "faction": "Adeptus Mechanicus",
+    "lore": "A world given over entirely to weapons manufacture. The only place where top-grade arms and armour are made.",
     "resource_output": {
      "food": 0,
      "material": 18,
@@ -8394,7 +8533,7 @@
     "prod_mult": 1.8,
     "mission_value": 4,
     "pop_ceiling": 5,
-    "effect": "Hive locations allowed. Highest population ceiling; highest consumption.",
+    "lore": "Continent-sized cities house populations in the billions. The galaxy's largest source of labor, recruits, and trained medicae.",
     "resource_output": {
      "food": 0,
      "material": 14,
@@ -8406,7 +8545,7 @@
     "prod_mult": 1.6,
     "mission_value": 3,
     "pop_ceiling": 4,
-    "effect": "Manufactorums allowed. Volume production, no masterworks.",
+    "lore": "Factories and orbital docks cover the surface. Produces bulk goods and ship hulls in volume.",
     "resource_output": {
      "food": 0,
      "material": 11,
@@ -8418,7 +8557,7 @@
     "prod_mult": 1.4,
     "mission_value": 3,
     "pop_ceiling": 3,
-    "effect": "Feeds the sector: while held, sector Famine threshold drops by 10. Lose it and Famine follows.",
+    "lore": "Farmland spans the whole planet. Feeds the surrounding sector; losing one starves it.",
     "resource_output": {
      "food": 14,
      "material": 0,
@@ -8430,7 +8569,7 @@
     "prod_mult": 1.4,
     "mission_value": 3,
     "pop_ceiling": 2,
-    "effect": "Resources regenerate +50%. The depletion clock's favourite target.",
+    "lore": "Deep excavation of ore and fuel. Supplies the raw material every other industry depends on.",
     "resource_output": {
      "food": 0,
      "material": 8,
@@ -8442,7 +8581,7 @@
     "prod_mult": 1.0,
     "mission_value": 2,
     "pop_ceiling": 4,
-    "effect": "Baseline. No special effect - the control case.",
+    "lore": "Established cities, trade routes, and functioning institutions. The communication hubs that bind a sector run from here.",
     "resource_output": {
      "food": 4,
      "material": 4,
@@ -8454,8 +8593,7 @@
     "prod_mult": 0.6,
     "mission_value": 2,
     "pop_ceiling": 3,
-    "effect": "Altars reach Tier III here. The only non-Forge route to a tier-III door.",
-    "faction": "Ecclesiarchy",
+    "lore": "A place of pilgrimage covered in cathedrals and relic vaults. Holy to millions and a target for their enemies.",
     "resource_output": {
      "food": 2,
      "material": 2,
@@ -8467,7 +8605,7 @@
     "prod_mult": 0.8,
     "mission_value": 2,
     "pop_ceiling": 2,
-    "effect": "All fortification types +1 size rung. Sieges cost attackers double AP.",
+    "lore": "The entire planet is built for defense. Command over a region is traditionally seated behind its walls.",
     "resource_output": {
      "food": 0,
      "material": 3,
@@ -8479,7 +8617,7 @@
     "prod_mult": 0.4,
     "mission_value": 1,
     "pop_ceiling": 2,
-    "effect": "Muster costs -50%. Produces recruits, not goods.",
+    "lore": "Tribal cultures on an untamed world. Produces hardened recruits and little else.",
     "resource_output": {
      "food": 3,
      "material": 1,
@@ -8491,8 +8629,7 @@
     "prod_mult": 0.4,
     "mission_value": 1,
     "pop_ceiling": 2,
-    "effect": "Muster costs -50%; Knight-class models available.",
-    "faction": "Imperial Knights",
+    "lore": "Isolated societies at pre-industrial technology, ruled by martial houses. Produces disciplined soldiers in great numbers.",
     "resource_output": {
      "food": 6,
      "material": 3,
@@ -8504,7 +8641,7 @@
     "prod_mult": 0.3,
     "mission_value": 1,
     "pop_ceiling": 1,
-    "effect": "All models take 1 attrition per post without a Bulwark. Produces survivors.",
+    "lore": "The environment itself kills the unprepared. Whatever lives here makes formidable stock.",
     "resource_output": {
      "food": 2,
      "material": 0,
@@ -8516,7 +8653,7 @@
     "prod_mult": 0.5,
     "mission_value": 2,
     "pop_ceiling": 3,
-    "effect": "Warzone locations allowed anywhere. Conflict decays 50% slower here.",
+    "lore": "A battlefield that never ended. Its arenas and standing warzones are known across segmentums.",
     "resource_output": {
      "food": 0,
      "material": 3,
@@ -8528,85 +8665,85 @@
     "prod_mult": 0.2,
     "mission_value": 1,
     "pop_ceiling": 1,
-    "effect": "Tomb Vaults allowed. Dormant until sector Conflict >= 40, then Necron access opens.",
-    "faction": "Necrons",
+    "lore": "A quiet surface above sleeping Necron vaults. Disturbing it wakes the owners.",
     "resource_output": {
      "food": 0,
      "material": 1,
      "fuel": 1
-    }
+    },
+    "faction": "necrons"
    },
    {
     "name": "Daemon World",
     "prod_mult": 0.8,
     "mission_value": 2,
     "pop_ceiling": 3,
-    "effect": "Chaos prod x1.0; all others x0.1. Warp casts -50% cost. Reality is optional.",
-    "faction": "Chaos",
+    "lore": "A world absorbed into the warp, where daemons hold court. Physical law is negotiable; allegiance is not.",
     "resource_output": {
      "food": 0,
      "material": 3,
      "fuel": 5
-    }
+    },
+    "faction": "daemons"
    },
    {
     "name": "Xenos World",
     "prod_mult": 0.8,
     "mission_value": 2,
     "pop_ceiling": 3,
-    "effect": "Lairs allowed. Ruling xenos faction gains +1 Muster tier.",
-    "faction": "Xenos",
+    "lore": "An untamed world of lairs and hunting grounds. Claimed by no charted power.",
     "resource_output": {
      "food": 3,
      "material": 3,
      "fuel": 2
-    }
+    },
+    "faction": "xenos"
    },
    {
     "name": "Exodite World",
     "prod_mult": 0.6,
     "mission_value": 2,
     "pop_ceiling": 2,
-    "effect": "Webway Portals allowed. Aeldari only; Taint -2/post while held.",
-    "faction": "Aeldari",
+    "lore": "A pastoral Aeldari colony threaded with webway roots. Its keepers defend the land as kin.",
     "resource_output": {
      "food": 4,
      "material": 2,
      "fuel": 0
-    }
+    },
+    "faction": "aeldari"
    },
    {
     "name": "Sept World",
     "prod_mult": 1.2,
     "mission_value": 3,
     "pop_ceiling": 4,
-    "effect": "Diplomacy threads here grant double Influence. Conflict -3/post.",
-    "faction": "T'au Empire",
+    "lore": "A planned T'au colony built to the Greater Good. Order, growth, and negotiation are its exports.",
     "resource_output": {
      "food": 4,
      "material": 6,
      "fuel": 2
-    }
+    },
+    "faction": "tau"
    },
    {
     "name": "Kin Hold",
     "prod_mult": 1.6,
     "mission_value": 3,
     "pop_ceiling": 2,
-    "effect": "Resources never fall below 20. Votann read resources, not status.",
-    "faction": "Leagues of Votann",
+    "lore": "A Votann settlement cut deep into rock around an Ancestor Core. Steady industry under old guidance.",
     "resource_output": {
      "food": 0,
      "material": 10,
      "fuel": 6
-    }
+    },
+    "faction": "votann"
    },
    {
     "name": "Frontier World",
     "prod_mult": 0.8,
     "mission_value": 2,
     "pop_ceiling": 2,
-    "effect": "Resource Strike events 3x more likely. The Expanse's reward.",
+    "lore": "A half-settled world at the edge of charted space. Old warp gates and unclaimed finds draw prospectors.",
     "resource_output": {
      "food": 4,
      "material": 2,
@@ -8618,12 +8755,207 @@
     "prod_mult": 0.0,
     "mission_value": 0,
     "pop_ceiling": 0,
-    "effect": "Produces nothing, forever. Exterminatus output. The one state that never heals.",
+    "lore": "A planet stripped of life, usually by Exterminatus. Produces nothing and never recovers.",
     "resource_output": {
      "food": 0,
      "material": 0,
      "fuel": 0
     }
+   },
+   {
+    "name": "Garrison World",
+    "prod_mult": 0.9,
+    "mission_value": 3,
+    "pop_ceiling": 3,
+    "lore": "A depot world of the Astra Militarum. Whole regiments are raised, drilled, and shipped from here.",
+    "resource_output": {
+     "food": 4,
+     "material": 4,
+     "fuel": 4
+    },
+    "faction": "militarum"
+   },
+   {
+    "name": "Cult World",
+    "prod_mult": 0.9,
+    "mission_value": 2,
+    "pop_ceiling": 4,
+    "lore": "An ordinary world whose population hides a genestealer cult. The infection surfaces only when it is ready.",
+    "resource_output": {
+     "food": 4,
+     "material": 4,
+     "fuel": 2
+    },
+    "faction": "gsc"
+   },
+   {
+    "name": "Pleasure World",
+    "prod_mult": 0.8,
+    "mission_value": 2,
+    "pop_ceiling": 3,
+    "lore": "A world the Emperor's Children devoted to sensation and excess. Every trade here serves appetite.",
+    "resource_output": {
+     "food": 4,
+     "material": 2,
+     "fuel": 2
+    },
+    "faction": "emperors_children"
+   },
+   {
+    "name": "Anchorage World",
+    "prod_mult": 0.7,
+    "mission_value": 2,
+    "pop_ceiling": 2,
+    "lore": "A staging port for the Black Legion's crusade fleets. Warbands gather here to refit and swear their oaths.",
+    "resource_output": {
+     "food": 0,
+     "material": 3,
+     "fuel": 5
+    },
+    "faction": "black_legion"
+   },
+   {
+    "name": "Explorator World",
+    "prod_mult": 0.7,
+    "mission_value": 2,
+    "pop_ceiling": 2,
+    "lore": "A Mechanicus expedition world of archeotech excavation. Its vaults hold technology older than the Imperium.",
+    "resource_output": {
+     "food": 0,
+     "material": 6,
+     "fuel": 4
+    },
+    "faction": "mechanicus"
+   },
+   {
+    "name": "Plague Garden World",
+    "prod_mult": 0.6,
+    "mission_value": 2,
+    "pop_ceiling": 2,
+    "lore": "A world remade by the Death Guard into Nurgle's garden. Blight is cultivated here like a crop.",
+    "resource_output": {
+     "food": 6,
+     "material": 2,
+     "fuel": 0
+    },
+    "faction": "death_guard"
+   },
+   {
+    "name": "Athenaeum World",
+    "prod_mult": 0.6,
+    "mission_value": 2,
+    "pop_ceiling": 1,
+    "lore": "A silent library-world of the Thousand Sons. Forbidden lore is gathered, warded, and studied here.",
+    "resource_output": {
+     "food": 2,
+     "material": 2,
+     "fuel": 2
+    },
+    "faction": "thousand_sons"
+   },
+   {
+    "name": "Convent World",
+    "prod_mult": 0.6,
+    "mission_value": 2,
+    "pop_ceiling": 2,
+    "lore": "Seat of a Sororitas Order's motherhouse. Faith is organized here as thoroughly as any army.",
+    "resource_output": {
+     "food": 2,
+     "material": 2,
+     "fuel": 2
+    },
+    "faction": "sororitas"
+   },
+   {
+    "name": "Raider's Nest",
+    "prod_mult": 0.6,
+    "mission_value": 2,
+    "pop_ceiling": 2,
+    "lore": "A hidden Drukhari anchorage between raids. Its markets price everything in captives.",
+    "resource_output": {
+     "food": 2,
+     "material": 2,
+     "fuel": 4
+    },
+    "faction": "drukhari"
+   },
+   {
+    "name": "Chapter World",
+    "prod_mult": 0.5,
+    "mission_value": 2,
+    "pop_ceiling": 2,
+    "lore": "Home to an Astartes fortress-monastery. Its harsh population supplies the Chapter's aspirants.",
+    "resource_output": {
+     "food": 2,
+     "material": 3,
+     "fuel": 2
+    },
+    "faction": "astartes"
+   },
+   {
+    "name": "Scrap World",
+    "prod_mult": 0.5,
+    "mission_value": 2,
+    "pop_ceiling": 3,
+    "lore": "An Ork world of mek yards and fighting pits. Its junk mountains supply endless crude machinery.",
+    "resource_output": {
+     "food": 0,
+     "material": 8,
+     "fuel": 4
+    },
+    "faction": "orks"
+   },
+   {
+    "name": "Crossroads World",
+    "prod_mult": 0.5,
+    "mission_value": 1,
+    "pop_ceiling": 1,
+    "lore": "A webway junction kept open by Harlequin masques. All travelers pass through; none linger.",
+    "resource_output": {
+     "food": 0,
+     "material": 0,
+     "fuel": 2
+    },
+    "faction": "harlequins"
+   },
+   {
+    "name": "Slaughter World",
+    "prod_mult": 0.4,
+    "mission_value": 1,
+    "pop_ceiling": 2,
+    "lore": "A killing ground consecrated to Khorne by the World Eaters. Nothing is built here; the fighting is the point.",
+    "resource_output": {
+     "food": 0,
+     "material": 3,
+     "fuel": 2
+    },
+    "faction": "world_eaters"
+   },
+   {
+    "name": "Vigil World",
+    "prod_mult": 0.4,
+    "mission_value": 1,
+    "pop_ceiling": 1,
+    "lore": "A watch-post of the Adeptus Custodes. Few are stationed here, and nothing passes them.",
+    "resource_output": {
+     "food": 0,
+     "material": 1,
+     "fuel": 1
+    },
+    "faction": "custodes"
+   },
+   {
+    "name": "Infested World",
+    "prod_mult": 0.3,
+    "mission_value": 1,
+    "pop_ceiling": 1,
+    "lore": "A world partly consumed by a Tyranid splinter fleet. What remains of its biosphere feeds the swarm.",
+    "resource_output": {
+     "food": 3,
+     "material": 0,
+     "fuel": 0
+    },
+    "faction": "tyranids"
    }
   ],
   "population_ranks": {
