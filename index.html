@@ -1732,6 +1732,7 @@ function foundingWorld(){return {
  met:['vess','herald','sskarith','kryv','warden'],
  stats:{vigilus:{taint:12},sangua:{taint:4},nurth:{taint:20},kraithv:{taint:16}},
  rulers:{},holdings:[],
+ stock:{},unrest:{},
  missions:{},missionSeedBase:(Date.now()%2147483647),missionDay:0,   // Missions V2 slice A: founding never gets a reload, so init()'s backfill never fires — seed here too (S.time.epoch isn't in scope yet: commitFounding assigns `world:` before `time:`, so this mirrors init()'s Date.now()-based epoch as closely as scope allows)
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
@@ -3369,6 +3370,8 @@ function init(){
   if(!S.world.missions)S.world.missions={};                              // Missions V2: older saves
   if(S.world.missionSeedBase===undefined)S.world.missionSeedBase=((S.time&&S.time.epoch)||1)%2147483647;
   if(!S.world.missionDay)S.world.missionDay=0;
+  if(!S.world.stock)S.world.stock={};                                    // T-ECN-1: older saves
+  if(!S.world.unrest)S.world.unrest={};
   var _wc=WORLD.catchUp(S,D,Date.now());
   S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
   var _mc=MISSION.catchUpBoards(S,D,_wc.ticks,missionPlanets,missionCtxOf);

@@ -98,3 +98,12 @@ test('digest: templates all four typed-resource event kinds, aggregating amounts
   const upkeepLine = d.lines.filter((l) => /Tithes paid/.test(l))[0];
   assert.strictEqual(upkeepLine, 'Tithes paid: 32 currency.');
 });
+
+test('stockpiles + unrest survive a JSON persist round-trip', () => {
+  const s = { time: { lastTick: 0 }, cur: 500, player: { faction: 'custodes' },
+              world: { holdings: ['terra'], stock: {}, unrest: {}, stats: {} } };
+  W.produce(s, canon, []);
+  const thawed = JSON.parse(JSON.stringify(s));
+  assert.deepStrictEqual(thawed.world.stock.terra, s.world.stock.terra);
+  assert.deepStrictEqual(thawed.world.unrest, s.world.unrest);
+});
