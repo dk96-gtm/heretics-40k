@@ -1932,7 +1932,7 @@ leaders().forEach(function(m){var d=E('div','lsc'+(m.id===S.active?' act':''),'<
 d.onclick=function(){if(m.id===S.active){openModel(m.id)}else{switchTo(m.id)}};L.appendChild(d)});
 /* T-ECN-1: the Ledger — what the empire makes, eats, and owes per day */
 var _lh='<div class="ov"><table><tr><th colspan="6">Ledger — per day</th></tr>'
- +'<tr><td style="color:var(--dim)">Holding</td><td class="mono">Stock F/M/Fu</td><td class="mono">Yield</td><td class="mono">Food eaten</td><td class="mono">Tithe</td><td class="mono">Unrest</td></tr>';
+ +'<tr><td style="color:var(--dim)">Holding</td><td class="mono">Stock F/M/Fu</td><td class="mono">Yield</td><td class="mono">'+annotate('Food')+' eaten</td><td class="mono">'+annotate('Tithe')+'</td><td class="mono">'+annotate('Unrest')+'</td></tr>';
 var _tot={keep:0};
 (S.world.holdings||[]).forEach(function(pid){var f=fPl(pid);if(!f)return;var p=f.p;
  var y=WORLD.typedYield(p,D,null),st=(S.world.stock||{})[pid]||{Food:0,Material:0,Fuel:0};
@@ -2311,7 +2311,7 @@ var frLoc=fr.filter(function(x){return x[2]===l.name});
 var h2='<h3>'+pl.name+' — '+pl.type+'</h3>';
 h2+='<div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pRuler(pl)?(pRuler(pl).allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pRuler(pl)?'RULED: '+pRuler(pl).faction+(S.world.holdings&&S.world.holdings.indexOf(pl.id)>=0?' (YOURS)':''):'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+readStatus(f2.s.status)+'</span></div>';
 var _stk=_held?(S.world.stock||{})[pl.id]:null;
-if(_stk)h2+='<div class="d mono" style="margin-bottom:6px">⚙ Stock '+_stk.Food+' Food · '+_stk.Material+' Material · '+_stk.Fuel+' Fuel <span style="color:var(--dim)">/ cap '+WORLD.planetCap(pl,D)+'</span></div>';
+if(_stk)h2+='<div class="d mono" style="margin-bottom:6px">⚙ Stock '+_stk.Food+' '+annotate('Food')+' · '+_stk.Material+' '+annotate('Material')+' · '+_stk.Fuel+' '+annotate('Fuel')+' <span style="color:var(--dim)">/ cap '+WORLD.planetCap(pl,D)+'</span></div>';
 h2+='<div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">'+pl.desc+'</div>';
 /* the named-location page — broken into sections */
 h2+='<div class="locpage"><div class="locimg">'+l.name+'<span>location image — art slot</span></div><div class="locbody">';
@@ -3433,7 +3433,7 @@ function enterShell(S){
  document.getElementById('shell').style.display='flex';
  rHQ();rRos();rLoad();rMap();rTL();rComms();rShop();
  var _gear=E('button','btn gh sm','⚙ AI');_gear.style.cssText='position:fixed;right:12px;bottom:12px;z-index:60';_gear.onclick=openSettings;document.body.appendChild(_gear);
- saveProfile(S);
+ if(!_noPersist)saveProfile(S);
  renderDigest();
 }
 /* the built-but-dead Founding rite finally spawns a real, saved commander */
@@ -3463,7 +3463,7 @@ function commitFounding(cc){
   npcState:{},active:'cmdr',cart:[]
  };
  S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
- saveProfile(S);
+ if(!_noPersist)saveProfile(S);
  T(commander.n+' is founded. The saga begins.');
  enterShell(S);
 }
@@ -3639,7 +3639,12 @@ var GLOSS={
  'Plasma':'Plasma (Radiation) damage — strong vs Infantry, Flying, Assault.',
  'Energy':'Energy (Shock) damage — strong vs Infantry, Flying, Armament.',
  'Warp':'Warp (psychic) damage — strong vs Infantry, Armament, Flying. Countered by anti-warp.',
- 'AP':'Action Points — the cost to perform this action, drawn from the Force pool.'};
+ 'AP':'Action Points — the cost to perform this action, drawn from the Force pool.',
+ 'Food':'Typed resource points. Locations produce them each in-game day; planets stockpile them up to cap; overflow is lost.',
+ 'Material':'Typed resource points. Locations produce them each in-game day; planets stockpile them up to cap; overflow is lost.',
+ 'Fuel':'Typed resource points. Locations produce them each in-game day; planets stockpile them up to cap; overflow is lost.',
+ 'Tithe':'Daily currency upkeep per held location — 2 × location level. Unpaid tithes breed Unrest.',
+ 'Unrest':'Pressure from famine or unpaid tithes. Consequences arrive with the status machinery (T-STAT-1); the counter is live now.'};
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function glossText(key,tier){var g=GLOSS[key];return typeof g==='function'?g(tier):g}
 var ELEMS=['Phys','Corr','Heat','Plasma','Energy','Warp'],RANGES=['Melee','Short','Med','Medium','Long'];

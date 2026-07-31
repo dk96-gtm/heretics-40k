@@ -12,7 +12,7 @@
 
 - **Spec:** `docs/superpowers/specs/2026-07-31-door-tiers-signature-doors-design.md` — the tables there are law.
 - **Terminology law: always "model", never "chassis".**
-- Canon file stays named `heretics-40k-data-v1.json`; bump `meta.version` `"1.22"` → `"1.23"` (pins live in `tests/canon.test.js:11,125`, `tests/canon-missions.test.js:50`, `tests/canon-spoils.test.js:45`).
+- Canon file stays named `heretics-40k-data-v1.json`; bump `meta.version` `"1.23"` → `"1.24"` (pins live in `tests/canon.test.js:11,125`, `tests/canon-missions.test.js:50`, `tests/canon-spoils.test.js:45`). **Re-pinned 2026-07-31 (T-ECN-1 task 6 close-out):** E1 landed first and already claimed canon v1.23 — this plan originally targeted 1.22→1.23; every version reference below has been bumped one step to 1.23→1.24 to sit after it.
 - `index.html` is the HOT lane — claim T-DOOR-1 in `BACKLOG.md` before touching it; `git add <explicit paths>` only, never `-A`.
 - **Blocked on T-ECN-1.** This plan assumes E1 shipped per-holding typed stockpiles. Expected shape (economy spec §3/§7): a per-planet store of `{Food,Material,Fuel}`. Task 5 Step 1 VERIFIES the real landed shape and pins the adapter to it — do not skip that step.
 - ES5 in the engine: `function`, `var`, `{k:k}` object literals. Tests may use modern JS.
@@ -38,7 +38,7 @@ Door kind ids (canon, exact): `shop forge shipyard altar muster apothecarion rel
 **Files:**
 - Modify: `heretics-40k-data-v1.json`
 - Create: `tests/canon-doors.test.js`
-- Modify: `tests/canon.test.js:11,125`, `tests/canon-missions.test.js:50`, `tests/canon-spoils.test.js:45` (pin `'1.23'`)
+- Modify: `tests/canon.test.js:11,125`, `tests/canon-missions.test.js:50`, `tests/canon-spoils.test.js:45` (pin `'1.24'`)
 
 **Interfaces:**
 - Produces: `D.rules.doors_tiering` (consumed by DOOR core, Task 2), `D.galaxy.planet_types` (35 rows, `{name,prod_mult,mission_value,pop_ceiling,lore,faction?}`), `D.galaxy.doors[*].tiers` (`{"1":str,"2":str,"3":str}`).
@@ -54,8 +54,8 @@ const D = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-da
 
 const PLAYABLE = new Set(['black_legion','death_guard','world_eaters','thousand_sons','emperors_children','daemons','astartes','militarum','mechanicus','sororitas','custodes','tyranids','orks','necrons','aeldari','drukhari','tau','votann','gsc','harlequins']);
 
-test('canon v1.23: 35 planet types, 14 standard / 21 tagged', () => {
-  assert.strictEqual(D.meta.version, '1.23');
+test('canon v1.24: 35 planet types, 14 standard / 21 tagged', () => {
+  assert.strictEqual(D.meta.version, '1.24');
   const pts = D.galaxy.planet_types;
   assert.strictEqual(pts.length, 35);
   const tagged = pts.filter((p) => p.faction);
@@ -94,7 +94,7 @@ test('upgrade economy constants match the locked D11×E2 merge', () => {
 });
 ```
 
-- [ ] **Step 2: Run it — expect FAIL** (`node --test tests/canon-doors.test.js`) with version `'1.22'` / missing keys.
+- [ ] **Step 2: Run it — expect FAIL** (`node --test tests/canon-doors.test.js`) with version `'1.23'` / missing keys.
 
 - [ ] **Step 3: Apply the canon edit.** Write this Python to the scratchpad (NOT the repo) and run it once. It (a) rewrites the 20 existing planet_type rows — strips `effect`, adds `lore`, normalizes `faction` tags to playable ids, de-tags Forge/Shrine/Feudal — (b) appends the 15 new subfaction rows, (c) adds `rules.doors_tiering`, (d) adds `tiers` ladders to all 12 doors, (e) bumps version.
 
@@ -202,20 +202,20 @@ TIERS = {
 for door in d['galaxy']['doors']:
     door['tiers'] = TIERS[door['kind']]
 
-d['meta']['version'] = '1.23'
+d['meta']['version'] = '1.24'
 json.dump(d, open(P,'w'), indent=1, ensure_ascii=False)
-print('canon -> 1.23, planet_types:', len(d['galaxy']['planet_types']))
+print('canon -> 1.24, planet_types:', len(d['galaxy']['planet_types']))
 ```
 
-- [ ] **Step 4: Bump the three version-pin files** — edit `'1.22'` → `'1.23'` at `tests/canon.test.js:11`, `tests/canon.test.js:125`, `tests/canon-missions.test.js:50`, `tests/canon-spoils.test.js:45`.
+- [ ] **Step 4: Bump the three version-pin files** — edit `'1.23'` → `'1.24'` at `tests/canon.test.js:11`, `tests/canon.test.js:125`, `tests/canon-missions.test.js:50`, `tests/canon-spoils.test.js:45`.
 
-- [ ] **Step 5: Run the whole suite** — `node --test`. Expected: all pass (289 baseline + 3 new). If `tests/canon.test.js` location-type legality checks fail, STOP — that means a minted planet already uses a renamed type (should not happen; no types were renamed).
+- [ ] **Step 5: Run the whole suite** — `node --test`. Expected: all pass (299 baseline + 3 new). If `tests/canon.test.js` location-type legality checks fail, STOP — that means a minted planet already uses a renamed type (should not happen; no types were renamed).
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add heretics-40k-data-v1.json tests/canon-doors.test.js tests/canon.test.js tests/canon-missions.test.js tests/canon-spoils.test.js
-git commit -m "canon v1.23: 35-type planet registry (standard/subfaction line) + doors_tiering rules + per-door tier ladders (T-DOOR-1 task 1)"
+git commit -m "canon v1.24: 35-type planet registry (standard/subfaction line) + doors_tiering rules + per-door tier ladders (T-DOOR-1 task 1)"
 ```
 
 ---
