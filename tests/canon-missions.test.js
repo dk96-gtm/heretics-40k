@@ -24,10 +24,13 @@ test('rules.missions tuning block is complete', () => {
 
 test('pilot mission rows: purge, item_request, rebuild', () => {
   const U = canon.missions.universal;
-  assert.ok(Array.isArray(U) && U.length === 3);
+  assert.ok(Array.isArray(U) && U.length === 11);
   const byId = {};
   U.forEach(m => { byId[m.id] = m; });
-  assert.deepStrictEqual(Object.keys(byId).sort(), ['item_request', 'purge', 'rebuild']);
+  assert.deepStrictEqual(Object.keys(byId).sort(), [
+    'assassination', 'bounty_hunt', 'consecration', 'defend', 'desecration',
+    'item_request', 'kill_team', 'liberation', 'purge', 'rebuild', 'trade_haul'
+  ]);
   U.forEach(m => {
     ['id', 'n', 'family', 'kind', 'target_roll', 'params', 'world_effect', 'flavor'].forEach(k =>
       assert.ok(k in m, m.id + ' has ' + k));
@@ -46,6 +49,26 @@ test('face_doors values are real door kinds', () => {
     assert.ok(doorKinds.includes(v), v + ' must be a real door kind'));
 });
 
-test('canon is v1.25', () => {
-  assert.strictEqual(canon.meta.version, '1.25');
+test('canon is v1.26', () => {
+  assert.strictEqual(canon.meta.version, '1.26');
+});
+
+test('canon v1.26: 11 universal missions, modifiers + bounty names', () => {
+  assert.strictEqual(canon.meta.version, '1.26');
+  const U = canon.missions.universal;
+  assert.strictEqual(U.length, 11);
+  const ids = U.map((m) => m.id);
+  for (const id of ['bounty_hunt','kill_team','assassination','liberation','defend','trade_haul','consecration','desecration'])
+    assert.ok(ids.includes(id), id);
+  for (const m of U) {
+    assert.ok(['KILL','HOLD','LOGISTICS','RITUAL'].includes(m.family), m.id);
+    assert.ok(m.kind && m.n && m.faces && m.flavor, m.id + ' complete row');
+  }
+  assert.strictEqual(U.find((m) => m.id === 'consecration').gates.allegiance, 'imperial');
+  assert.strictEqual(U.find((m) => m.id === 'desecration').gates.allegiance, 'chaos');
+  const M = canon.rules.missions.modifiers;
+  assert.deepStrictEqual(Object.keys(M), ['understrength','lone_wolf','low_tech','ironman','blitz']);
+  assert.strictEqual(M.understrength.pc_max, 150);
+  assert.strictEqual(M.blitz.post_mult, 0.6);
+  assert.ok(canon.rules.missions.bounty_names.length >= 20);
 });

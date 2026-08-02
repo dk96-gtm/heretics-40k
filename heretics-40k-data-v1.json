@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.25",
-  "updated": "2026-07-28",
+  "version": "1.26",
+  "updated": "2026-08-03",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -14,7 +14,8 @@
    "v1.8: full Tag Registry migrated from Notion to canon (D.tags: 22 weapon / 11 item / 4 combat / 7 cast-gate / 4 model-state) + per-faction forge_affinities. Engine: GLOSS tooltips for every tag, parseItem recognises the full tag set, the Forge offers the full weapon-tag list gated by faction affinity.",
    "v1.23: typed resources (T-ECN-1) - resource_output {food,material,fuel} on every planet type + rules.resources constants (stack 40, storage 40/level, upkeep 2/level). Typed production replaces the interim currency stream from holdings.",
    "v1.24: door tiers groundwork (T-DOOR-1) - 35-type planet registry (14 standard / 21 subfaction, dormant effect strings replaced by lore), rules.doors_tiering (caps, homes, upgrade economy), per-door tier ladders.",
-   "v1.25: shop Exchange valve (T-ECN-2a) - currency<->resource lots at tier-scaled rates, ruled-worlds only."
+   "v1.25: shop Exchange valve (T-ECN-2a) - currency<->resource lots at tier-scaled rates, ruled-worlds only.",
+   "v1.26: Missions Slice B (T-MSN-1B) - 8 universal rows (KILL x4, Defend, Trade Haul, RITUAL x2), modifier registry (x1.5 stacking), bounty name pool."
   ],
   "migration": {
    "done": [
@@ -562,7 +563,50 @@
     "HOLD": "throne_room",
     "LOGISTICS": "shop",
     "RITUAL": "altar"
-   }
+   },
+   "modifiers": {
+    "understrength": {
+     "label": "Understrength",
+     "pc_max": 150
+    },
+    "lone_wolf": {
+     "label": "Lone Wolf",
+     "models": 1
+    },
+    "low_tech": {
+     "label": "Low-Tech",
+     "gear_tier_max": 1
+    },
+    "ironman": {
+     "label": "Ironman"
+    },
+    "blitz": {
+     "label": "Blitz",
+     "post_mult": 0.6
+    }
+   },
+   "bounty_names": [
+    "Varkon the Flayed",
+    "Sister-Excommunicate Halix",
+    "Threx Iron-Tongue",
+    "Baron Ushallow",
+    "Kessa Nine-Fingers",
+    "The Widow of Kaltrace",
+    "Doctor Embrus Voss",
+    "Grand Deacon Ophelian Krey",
+    "Marchion Tull the Unmade",
+    "Reeve Solvane Ashwick",
+    "The Cindersmith",
+    "Praetor Ilsvane Dorn",
+    "Hask, Broker of Debts",
+    "Sister Malvorna Quiet-Blade",
+    "Old Captain Rethis Grael",
+    "The Salt-Priest of Karvahn",
+    "Ordovic Half-Chain",
+    "Wren the Unspoken",
+    "Magistrix Corvel Thane",
+    "The Rustling Man"
+   ]
   },
   "resources": {
    "note": "T-ECN-1 (spec 2026-07-27 §1-§3,§6a). Typed production replaces the interim currency stream from holdings; the no-holdings demo fallback keeps paying tick.production_per_day. Locations produce (level-weighted shares); planets stockpile; overflow past cap is lost at tick; population eats Food; held locations tithe currency upkeep.",
@@ -15062,7 +15106,12 @@
     "world_effect": {
      "taint": -4
     },
-    "flavor": "Hostile elements fester here. Root them out — every kill is a knife drawn from this ground."
+    "flavor": "Hostile elements fester here. Root them out — every kill is a knife drawn from this ground.",
+    "faces": {
+     "door": "muster",
+     "notice": "Purge order"
+    },
+    "gates": {}
    },
    {
     "id": "item_request",
@@ -15077,7 +15126,12 @@
     "world_effect": {
      "prosperity": 2
     },
-    "flavor": "A local quartermaster posts a want-list. Deliver the goods, take the coin."
+    "flavor": "A local quartermaster posts a want-list. Deliver the goods, take the coin.",
+    "faces": {
+     "door": "shop",
+     "notice": "Want-list posted"
+    },
+    "gates": {}
    },
    {
     "id": "rebuild",
@@ -15095,7 +15149,193 @@
     "world_effect": {
      "prosperity": 4
     },
-    "flavor": "This place is rubble and memory. Direct the work-gangs; write it back into being."
+    "flavor": "This place is rubble and memory. Direct the work-gangs; write it back into being.",
+    "faces": {
+     "door": "throne_room",
+     "notice": "Work-order filed"
+    },
+    "gates": {}
+   },
+   {
+    "id": "bounty_hunt",
+    "n": "Bounty Hunt",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "filter": "named"
+    },
+    "faces": {
+     "door": "relay",
+     "notice": "WANTED — by name"
+    },
+    "gates": {},
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "A name, a place, a price. Bring the killing done."
+   },
+   {
+    "id": "kill_team",
+    "n": "Kill-Team",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     4,
+     8
+    ],
+    "params": {
+     "filter": "class",
+     "cls": "Assault"
+    },
+    "faces": {
+     "door": "muster",
+     "notice": "Cull order"
+    },
+    "gates": {},
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "A specific breed of enemy is thriving here. Thin it."
+   },
+   {
+    "id": "assassination",
+    "n": "Assassination",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "filter": "named",
+     "alone": true
+    },
+    "faces": {
+     "npc": true,
+     "notice": "A quiet commission"
+    },
+    "gates": {},
+    "world_effect": {
+     "conflict": -3
+    },
+    "flavor": "One target. One visitor. The location must see you arrive alone."
+   },
+   {
+    "id": "liberation",
+    "n": "Liberation",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     0,
+     0
+    ],
+    "params": {
+     "filter": "any",
+     "clear_all": true
+    },
+    "faces": {
+     "door": "throne_room",
+     "notice": "Reclamation writ"
+    },
+    "gates": {},
+    "world_effect": {
+     "conflict": -4,
+     "clear_condition": true
+    },
+    "flavor": "Clear every hostile from the location and hand it back to its people."
+   },
+   {
+    "id": "defend",
+    "n": "Defend",
+    "family": "HOLD",
+    "kind": "survive_rounds",
+    "target_roll": [
+     3,
+     6
+    ],
+    "params": {},
+    "faces": {
+     "door": "muster",
+     "notice": "Hold the line"
+    },
+    "gates": {},
+    "world_effect": {
+     "conflict": -3,
+     "prosperity": 2
+    },
+    "flavor": "They are coming. Be standing when they stop."
+   },
+   {
+    "id": "trade_haul",
+    "n": "Trade Haul",
+    "family": "LOGISTICS",
+    "kind": "collect_item",
+    "target_roll": [
+     3,
+     6
+    ],
+    "params": {
+     "granted": true
+    },
+    "faces": {
+     "door": "shop",
+     "notice": "Consignment contract"
+    },
+    "gates": {},
+    "world_effect": {
+     "prosperity": 2
+    },
+    "flavor": "The cargo is yours the moment you sign. So is the debt until it lands."
+   },
+   {
+    "id": "consecration",
+    "n": "Consecration",
+    "family": "RITUAL",
+    "kind": "restore",
+    "target_roll": [
+     3,
+     5
+    ],
+    "params": {},
+    "faces": {
+     "door": "altar",
+     "notice": "Rite of sanctification"
+    },
+    "gates": {
+     "allegiance": "imperial"
+    },
+    "world_effect": {
+     "taint": -4,
+     "prosperity": 2
+    },
+    "flavor": "Speak the rites. Scour the ground. Leave it holier than you found it."
+   },
+   {
+    "id": "desecration",
+    "n": "Desecration",
+    "family": "RITUAL",
+    "kind": "restore",
+    "target_roll": [
+     3,
+     5
+    ],
+    "params": {},
+    "faces": {
+     "door": "altar",
+     "notice": "Rite of despoilment"
+    },
+    "gates": {
+     "allegiance": "chaos"
+    },
+    "world_effect": {
+     "taint": 4,
+     "prosperity": -2
+    },
+    "flavor": "Every altar serves someone. Teach this one a new name."
    }
   ],
   "signatures": {}

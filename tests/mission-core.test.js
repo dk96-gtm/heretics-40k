@@ -48,10 +48,14 @@ test('refillBoard fills to within [board_min, board_max] and faces every mission
   const r = MISSION.rng(7);
   const board = MISSION.refillBoard([], CTX(), canon, r, 0);
   assert.ok(board.length >= 4 && board.length <= 6, 'got ' + board.length);
+  const rowsById = {};
+  canon.missions.universal.forEach(rw => { rowsById[rw.id] = rw; });
   board.forEach(m => {
     assert.ok(['door', 'npc', 'notice'].indexOf(m.face.kind) >= 0);
     assert.ok(m.payout > 0);
-    assert.ok(m.target >= 2, 'targets come from target_roll');
+    const tr = rowsById[m.mid].target_roll;
+    assert.ok(m.target >= tr[0] && m.target <= tr[1],
+      'target ' + m.target + ' must fall within ' + m.mid + "'s own target_roll " + JSON.stringify(tr));
     assert.strictEqual(m.accepted, false);
     assert.strictEqual(m.pl, 'testp');
   });
