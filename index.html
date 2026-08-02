@@ -1623,6 +1623,15 @@ var MISSION=(function(){
     var premium=(inst.params&&inst.params.filter==='named')?(M.named_premium||1):1;
     return Math.round(base*size*(prodMult||1)*premium);
   }
+  /* T-MSN-1B task 4: pure payout-stacking seam so concludeThread's mission-won branch (and
+     tests) can drive the ×1.5^n modifier math without re-deriving it inline. base is the
+     mission's already-priced payout (payoutOf's result, possibly already reprice-adjusted
+     for a clamped combat target); validCount is THREAD.modCheck(...).valid.length — voided
+     ids never enter this, only the count of ones that actually held at conclude. */
+  function finalPayout(base,validCount,canon){
+    var mult=R(canon).modifier_mult||1.5;
+    return Math.round((base||0)*Math.pow(mult,validCount||0));
+  }
   function faceOf(row,loc,canon){
     var M=R(canon);var want=(M.face_doors||{})[row.family];
     if(want&&loc.doors&&loc.doors.indexOf(want)>=0)
@@ -1774,7 +1783,7 @@ var MISSION=(function(){
     }
     return res;
   }
-  return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,
+  return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,finalPayout:finalPayout,
           rollMission:rollMission,genHostiles:genHostiles,targetFor:targetFor,
           pickForce:pickForce,
           refillBoard:refillBoard,catchUpBoards:catchUpBoards};
@@ -2120,10 +2129,28 @@ function startThread(pid,l,type,npcId){var loc=fPl(pid).p.name+' · '+l.name;
  S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
  T(type+' thread opened at '+l.name+(fname?' — '+fname+' committed':'')+'. Now in the location\'s public record.');
  go('threads');rTL();}
+/* T-MSN-1B task 4: modifier picker. MOD_IDS is the fixed display order (matches the canon
+   registry insertion order); MOD_TIP is the plain-language predicate shown as each chip's
+   title-attr tooltip; MOD_VOID_MSG is the readable phrasing for a conclude-time voided line.
+   _msel is the accept-card's own transient selection scratch — keyed by board-row iid (not
+   thread id, which doesn't exist yet) so a chip toggle survives the rMap() redraw it triggers. */
+var MOD_IDS=['understrength','lone_wolf','low_tech','ironman','blitz'];
+var MOD_TIP={understrength:'Force under 150 PC at accept.',
+  lone_wolf:'Exactly 1 living model in the sent force.',
+  low_tech:'No equipped gear (or armour) above Tier 1.',
+  ironman:'Your own models\' deaths are permanent — no revival.',
+  blitz:'Finish within a tight post budget.'};
+var MOD_VOID_MSG={understrength:'Understrength voided — the force grew too large.',
+  lone_wolf:'Lone Wolf voided — not alone.',
+  low_tech:'Low-Tech voided — high-tier gear was equipped.',
+  blitz:'Blitz voided — too slow.'};
+var _msel={};
 /* accept a posted mission instance (Missions V2 slice A) — mirrors startThread's push
    pattern but skips the briefing gate (accepting from the board IS the briefing) and
-   seeds the objective AFTER seedCombat, since seedCombat replaces t.seedState wholesale. */
-function acceptMission(inst,pl,l){
+   seeds the objective AFTER seedCombat, since seedCombat replaces t.seedState wholesale.
+   mods (T-MSN-1B task 4, optional): chosen modifier ids from the accept card's chips. */
+function acceptMission(inst,pl,l,mods){
+ mods=mods||[];
  var cap=(D.rules.missions&&D.rules.missions.accept_cap)||3;
  var live=S.threads.filter(function(t){return t.type==='MISSION'&&t.accepted&&!t.done}).length;
  if(live>=cap){T('Mission cap reached ('+cap+') — finish or abandon one first.');return;}
@@ -2137,10 +2164,15 @@ function acceptMission(inst,pl,l){
  var pick=MISSION.pickForce(inst.params,idleInfo);
  if(pick.reason){T(pick.reason);return;}
  var force=idle.filter(function(f){return f.n===pick.force.n;})[0];
+ // T-MSN-1B task 4: snapshot the accepted force's PC total + living member count off the
+ // same roster scan idleInfo already used — this is what modCheck's understrength/lone_wolf
+ // predicates read back at conclude.
+ var _mine=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'&&m.st!=='TAKEN'});
+ var acceptPC=_mine.reduce(function(a,m){return a+(m.pc||0)},0),acceptModels=_mine.length;
  var id='m'+Date.now().toString(36);
  var t={id:id,type:'MISSION',n:inst.n+' — '+l.name,loc:pl.name+' · '+l.name,pl:pl.id,lid:l.id,
   turn:'you',vis:'public',initiator:'You',about:inst.flavor,accepted:true,
-  forces:force?[force.n]:[],
+  forces:force?[force.n]:[],mods:mods.slice(),
   mission:{iid:inst.iid,mid:inst.mid,payout:inst.payout,world_effect:inst.world_effect,pl:inst.pl,lid:inst.lid,n:inst.n}};
  // T-MSN-1B task 3 fix: the spawn gate used to be count_kill-only — Defend (survive_rounds)
  // is combat-flavored too (THREAD.combatKind) and needs real hostiles + a board, or state.round
@@ -2163,7 +2195,18 @@ function acceptMission(inst,pl,l){
   // actually happening; the board row (inst) keeps its minted payout
   if(ct!==inst.target)t.mission.payout=MISSION.payoutOf({family:inst.family,target:ct,params:inst.params},((missionCtxOf(inst.pl)||{}).pl||{}).prod_mult||1,D);
  }
+ // T-MSN-1B task 4: mods/acceptPC/acceptModels/blitzCap ride seedState -> initState already
+ // whitelists them onto state (T-MSN-1B task 2). blitzCap only computed when blitz is chosen
+ // (else 0 — modCheck's own fallback would also read 0 as "no explicit cap", so leaving it 0
+ // makes an unchosen blitz's cap irrelevant either way); read off the FINAL objective.target
+ // so a combat-kind mission's clamp/reprice above is already reflected.
+ t.seedState.mods=mods.slice();t.seedState.acceptPC=acceptPC;t.seedState.acceptModels=acceptModels;
+ if(mods.indexOf('blitz')>=0){
+  var _pm=((D.rules.missions.modifiers||{}).blitz&&D.rules.missions.modifiers.blitz.post_mult)||0.6;
+  t.seedState.blitzCap=(t.seedState.objective.target||0)*4*_pm;
+ } else t.seedState.blitzCap=0;
  S.threads.push(t);inst.accepted=true;inst.tid=id;
+ delete _msel[inst.iid];
  persist();T('Mission accepted: '+inst.n);openT(id);
 }
 function curTravel(){return S.threads.filter(function(t){return t.type==='TRAVEL'})[0]||null;}
@@ -2603,12 +2646,21 @@ if(_dz.length)h2+='<div class="lsec"><h5>Doors — click to enter</h5>'+_dz.map(
 h2+='<div class="lsec"><h5>Forces present — click for auspex intel</h5>'+(frLoc.length?frLoc.map(function(x){var known=!!forceIntel(x[0]);return '<div class="lrow'+(known?'':' unknown')+'" data-force="'+esc(x[0])+'">▸ <b>'+x[0]+'</b> — '+x[1]+(known?' <span class="mono" style="color:var(--vdh)">◉ known</span>':' <span class="mono" style="color:var(--dim)">no intel</span>')+'</div>'}).join(''):'<span style="color:var(--dim)">· none known</span>')+'</div>';
 /* THREAD HISTORY — clickable with summaries */
 h2+='<div class="lsec"><h5>Thread history — click for summary</h5>'+(hi.length?hi.map(function(t,ti){return '<div class="lrow" data-hist="'+ti+'">▸ '+t+'</div>'}).join(''):'<span style="color:var(--dim)">No threads recorded yet.</span>')+'</div>';
-/* MISSIONS — posted here, unaccepted (Missions V2 slice A) */
+/* MISSIONS — posted here, unaccepted (Missions V2 slice A + T-MSN-1B task 4 modifier chips) */
 var _mb=((S.world.missions||{})[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted});
 if(_mb.length)h2+='<div class="lsec"><h5>Missions — posted here ('+_mb.length+')</h5>'+
- _mb.map(function(m,i){return '<div class="lrow" data-mission="'+i+'"><b>'+m.n+'</b>'+namedTargetTag(m)+' · '+
+ _mb.map(function(m,i){var _sel=_msel[m.iid]||{};
+  return '<div class="lrow" data-mission="'+i+'" style="cursor:default"><b>'+m.n+'</b>'+namedTargetTag(m)+' · '+
   m.face.label+' · target '+m.target+' · pays '+m.payout+
-  '<div class="d">'+m.flavor+'</div></div>';}).join('')+'</div>';
+  '<div class="d">'+m.flavor+'</div>'+
+  '<div style="margin-top:6px">'+MOD_IDS.map(function(mid){
+    var reg=(D.rules.missions.modifiers||{})[mid]||{},on=!!_sel[mid];
+    return '<span class="chip" data-mission-mod="'+i+'|'+mid+'" title="'+esc(MOD_TIP[mid]||'')+'" '
+     +'style="cursor:pointer'+(on?';border-color:var(--brh);color:var(--brh)':'')+'">'+(reg.label||mid)
+     +' <span class="pill'+(on?' br':'')+'">×'+(D.rules.missions.modifier_mult||1.5)+'</span></span>';
+  }).join('')+'</div>'+
+  '<button class="btn sm" data-accept-mission="'+i+'" style="margin-top:7px">Accept mission</button>'+
+  '</div>';}).join('')+'</div>';
 /* NPCs — clickable sheets */
 if(np.length)h2+='<div class="lsec"><h5>Known here — click for their sheet</h5>'+np.map(function(n,ni){return '<div class="lrow" data-npc="'+n.id+'">▸ <b>'+n.name+'</b> — '+n.kind+', '+n.faction+'</div>'}).join('')+'</div>';
 var atHere=(S.pos.pl===pl.id&&S.pos.sp===l.id&&!inTransit()&&!S.pos.void),openDoors=_dz.filter(function(x){return x.open});
@@ -2623,8 +2675,16 @@ p.querySelectorAll('.lrow[data-door]').forEach(function(el){el.onclick=function(
 p.querySelectorAll('.lrow[data-force]').forEach(function(el){el.onclick=function(){openForce(el.getAttribute('data-force'))}});
 p.querySelectorAll('.lrow[data-hist]').forEach(function(el){el.onclick=function(){openHist(hi[+el.dataset.hist],pl.name+' · '+l.name)}});
 p.querySelectorAll('.lrow[data-npc]').forEach(function(el){el.onclick=function(){openNPC(el.dataset.npc)}});
-p.querySelectorAll('.lrow[data-mission]').forEach(function(r){r.onclick=function(){
- acceptMission(_mb[+r.getAttribute('data-mission')],pl,l)};});
+/* T-MSN-1B task 4: chips toggle a per-mission (keyed by iid) modifier selection and redraw
+   via rMap() (MV state is unchanged, so the same panel comes back with _msel intact); the
+   Accept button reads the current selection and passes it through to acceptMission. */
+p.querySelectorAll('[data-mission-mod]').forEach(function(c){c.onclick=function(){
+ var parts=c.getAttribute('data-mission-mod').split('|'),m=_mb[+parts[0]],mid=parts[1];
+ _msel[m.iid]=_msel[m.iid]||{};_msel[m.iid][mid]=!_msel[m.iid][mid];rMap();};});
+p.querySelectorAll('[data-accept-mission]').forEach(function(b){b.onclick=function(){
+ var m=_mb[+b.getAttribute('data-accept-mission')],sel=_msel[m.iid]||{};
+ var chosen=MOD_IDS.filter(function(mid){return sel[mid];});
+ acceptMission(m,pl,l,chosen)};});
 if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){go('shop')};
  var tb=document.getElementById('locthr');if(tb)tb.onclick=function(){var tm=document.getElementById('loctm');
   if(tm.innerHTML){tm.innerHTML='';return}
@@ -2660,7 +2720,15 @@ var dash=E('div','card');dash.innerHTML='<h3>Thread board</h3><div style="font-s
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Your threads — accepted ('+accepted.length+')</h5></div>');
 accepted.forEach(function(t){var vis=t.vis||'public',mine=(t.initiator||'').match(/^You/)||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f})});
  var meter=(t.type==='MISSION'&&t.state&&t.state.objective)?(' · '+t.state.objective.progress+'/'+t.state.objective.target):'';
- var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b> <span class="pill '+(vis==='private'?'bl':'')+'">'+(vis==='private'?'🔒 PRIVATE':'PUBLIC')+'</span><div style="font-size:11px;color:var(--dim);margin-top:2px">'+t.loc+'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Objective: '+(OBJ[t.type]||'—')+meter+'</div></div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'waiting')+'</span>');
+ // T-MSN-1B task 4: Mission Log chips — neutral pills while unconcluded ("valid-unknown until
+ // conclude"); once t.modResult exists (set by concludeThread's mission-won branch) valid ids
+ // go bright, voided ones dim + struck.
+ var modChips=(t.type==='MISSION'&&t.mods&&t.mods.length)?('<div style="margin-top:3px">'+t.mods.map(function(mid){
+   var lab=((D.rules.missions.modifiers||{})[mid]||{}).label||mid,mr=t.modResult,
+     valid=mr&&mr.valid.indexOf(mid)>=0,voided=mr&&mr.voided.indexOf(mid)>=0;
+   return '<span class="pill'+(valid?' br':'')+'" style="margin-right:3px'+(voided?';opacity:.45;text-decoration:line-through':'')+'">'+lab+'</span>';
+ }).join('')+'</div>'):'';
+ var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b> <span class="pill '+(vis==='private'?'bl':'')+'">'+(vis==='private'?'🔒 PRIVATE':'PUBLIC')+'</span><div style="font-size:11px;color:var(--dim);margin-top:2px">'+t.loc+'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Objective: '+(OBJ[t.type]||'—')+meter+'</div>'+modChips+'</div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'waiting')+'</span>');
  d.onclick=function(){openT(t.id)};
  if(mine){var tg=E('button','btn gh sm',vis==='private'?'Make public':'Make private');tg.style.marginTop='6px';
   tg.onclick=function(e){e.stopPropagation();t.vis=vis==='private'?'public':'private';if(t.vis==='public'){t.summary=threadSummary(t.type)+' (auto-summary generated on publish — full AI summary at Stage 3.)'}rTL();T('Thread set '+t.vis+(t.vis==='public'?' — a summary was generated and it now enters the public record.':' — hidden from non-participants.'))};d.appendChild(tg)}
@@ -2758,16 +2826,25 @@ function concludeThread(t,oc){
   if(typeof sc.effect.conflict==='number')st.conflict=Math.max(0,(st.conflict||0)+sc.effect.conflict);
   if(typeof sc.effect.prosperity==='number')st.prosperity=Math.max(0,(st.prosperity||0)+sc.effect.prosperity);}}
  /* Missions V2 slice A: payout + world effect + board removal — a mission thread
-    is spent the moment it concludes, win or lose. */
+    is spent the moment it concludes, win or lose. T-MSN-1B task 4: chosen modifiers that
+    still hold their predicate at conclude (THREAD.modCheck) multiply the payout ×1.5 each,
+    stacked (MISSION.finalPayout); voided ones drop out of the exponent and surface as their
+    own THE RECORD line. A lost mission never reaches this branch — it always pays nothing. */
  if(t.type==='MISSION'&&t.mission){
   if(oc.kind==='mission_won'){
-   S.cur+=t.mission.payout;
+   var mc=THREAD.modCheck(t.state,t.mods||[],D,(t.posts||[]).length);
+   t.modResult=mc;
+   var payout=MISSION.finalPayout(t.mission.payout,mc.valid.length,D);
+   S.cur+=payout;
    var we=t.mission.world_effect||{};var msec=sectorOfPlanet(t.mission.pl);
    if(msec&&S.world.stats[msec]){var mst=S.world.stats[msec];
     if(typeof we.taint==='number')mst.taint=Math.max(0,(mst.taint||0)+we.taint);
     if(typeof we.prosperity==='number')mst.prosperity=(mst.prosperity||0)+we.prosperity;}
    S.world.log=S.world.log||[];
-   S.world.log.unshift('◈ MISSION COMPLETE — '+t.mission.n+' ('+t.mission.payout+' paid)');
+   S.world.log.unshift('◈ MISSION COMPLETE — '+t.mission.n+' ('+payout+' paid)'
+    +(mc.valid.length?' · '+mc.valid.length+' modifier(s) honored':''));
+   mc.voided.forEach(function(mid){
+    t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:'⚠ '+(MOD_VOID_MSG[mid]||(mid+' voided.'))});});
   } else if(oc.kind==='mission_lost'){
    S.world.log=S.world.log||[];
    S.world.log.unshift('◈ MISSION FAILED — '+t.mission.n);
