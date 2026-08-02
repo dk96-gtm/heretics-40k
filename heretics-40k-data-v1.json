@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.24",
+  "version": "1.25",
   "updated": "2026-07-28",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -13,7 +13,8 @@
    "Scores / production / resources are specced here but require persistence (Stage 2) to run. Static demo reads them as constants.",
    "v1.8: full Tag Registry migrated from Notion to canon (D.tags: 22 weapon / 11 item / 4 combat / 7 cast-gate / 4 model-state) + per-faction forge_affinities. Engine: GLOSS tooltips for every tag, parseItem recognises the full tag set, the Forge offers the full weapon-tag list gated by faction affinity.",
    "v1.23: typed resources (T-ECN-1) - resource_output {food,material,fuel} on every planet type + rules.resources constants (stack 40, storage 40/level, upkeep 2/level). Typed production replaces the interim currency stream from holdings.",
-   "v1.24: door tiers groundwork (T-DOOR-1) - 35-type planet registry (14 standard / 21 subfaction, dormant effect strings replaced by lore), rules.doors_tiering (caps, homes, upgrade economy), per-door tier ladders."
+   "v1.24: door tiers groundwork (T-DOOR-1) - 35-type planet registry (14 standard / 21 subfaction, dormant effect strings replaced by lore), rules.doors_tiering (caps, homes, upgrade economy), per-door tier ladders.",
+   "v1.25: shop Exchange valve (T-ECN-2a) - currency<->resource lots at tier-scaled rates, ruled-worlds only."
   ],
   "migration": {
    "done": [
@@ -583,6 +584,20 @@
     },
     "Frontier World": {
      "fuel": "promethium"
+    }
+   },
+   "exchange": {
+    "note": "T-ECN-2a: shop Exchange section. Lots of 10 points; buy costs currency per lot by shop tier, sell pays currency per lot. Unfavorable by design — the valve, not the economy.",
+    "lot": 10,
+    "buy_per_lot": {
+     "1": 40,
+     "2": 30,
+     "3": 20
+    },
+    "sell_per_lot": {
+     "1": 5,
+     "2": 8,
+     "3": 10
     }
    }
   },
@@ -7706,7 +7721,7 @@
    {
     "kind": "shop",
     "name": "Shop",
-    "does": "buy weapons, items, abilities, armour",
+    "does": "buy weapons, items, abilities, armour, exchange resources",
     "rarity": "common",
     "skins": {
      "imperial": "Requisition",
@@ -7722,9 +7737,9 @@
      "harlequins": "—"
     },
     "tiers": {
-     "1": "Tier-I gear + Light armour",
+     "1": "Tier-I gear + Light armour + Exchange (poor rates)",
      "2": "+ Tier-II gear + Medium armour",
-     "3": "+ Tier-III gear + Heavy armour — a proper trade hub"
+     "3": "+ Tier-III gear + Heavy armour — a proper trade hub + best Exchange rates"
     }
    },
    {

@@ -115,6 +115,18 @@ test('canon: altar_rank_by_tier includes R5', () => {
   assert.deepStrictEqual(D.rules.doors_tiering.altar_rank_by_tier, {1:2, 2:3, 3:5});
 });
 
+test('exchangeRates: tier-scaled buy/sell in lots of 10 (T-ECN-2a)', () => {
+  assert.deepStrictEqual(DOOR.exchangeRates(1, D), { lot: 10, buy: 40, sell: 5 });
+  assert.deepStrictEqual(DOOR.exchangeRates(2, D), { lot: 10, buy: 30, sell: 8 });
+  assert.deepStrictEqual(DOOR.exchangeRates(3, D), { lot: 10, buy: 20, sell: 10 });
+});
+
+test('exchangeRates: safe default shape when canon lacks the exchange block', () => {
+  assert.deepStrictEqual(DOOR.exchangeRates(1, {}), { lot: 10, buy: 40, sell: 5 });
+  assert.deepStrictEqual(DOOR.exchangeRates(3, { rules: {} }), { lot: 10, buy: 40, sell: 5 });
+  assert.deepStrictEqual(DOOR.exchangeRates(undefined, D), { lot: 10, buy: 40, sell: 5 });
+});
+
 test('overlay + builds survive a JSON persist round-trip mid-build', () => {
   const st = { world: { doorTiers: {}, doorBuilds: {} } };
   DOOR.startBuild(st, 'vighive', 'muster', 2, 3);
