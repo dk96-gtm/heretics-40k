@@ -2573,7 +2573,7 @@ function doorTierAt(pl,loc,kind){
  return DOOR.doorTier(S,loc.id,kind,seed)}
 /* T-DOOR-1: the only functions that touch E1 stockpile state — keep it that way */
 function stockOf(pid){return (S.world.stock&&S.world.stock[pid])||{Food:0,Material:0,Fuel:0}}
-function spendStock(pid,res){var st=stockOf(pid);for(var k in res)st[k]=(st[k]||0)-res[k]}
+function spendStock(pid,res){S.world.stock=S.world.stock||{};var st=S.world.stock[pid]||(S.world.stock[pid]={Food:0,Material:0,Fuel:0});for(var k in res)st[k]=(st[k]||0)-res[k]}
 function crownOf(facId){var f=FAC(facId);if(!f)return null;var r=null;
  D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){
   if(!r&&p.crown&&p.ruler&&p.ruler.faction===f.name)r=p.id})})})});return r}
@@ -3933,7 +3933,7 @@ function renderDoor(dr,h){var c=E('div','card');
  if(h&&h.id!=null){
   var _cap=DOOR.tierCap(pl.type,kind,D,tombDormant(pl));
   var _bld=(S.world.doorBuilds||{})[DOOR.key(h.id,kind)];
-  if(_bld){c.insertAdjacentHTML('beforeend','<div class="d" style="color:var(--dim)">⚒ Upgrading to Tier '+['','I','II','III'][_bld.to]+' — '+_bld.left+' day'+(_bld.left>1?'s':'')+' remain.</div>');}
+  if(_bld){c.insertAdjacentHTML('beforeend','<div class="d" style="color:var(--dim)">⚒ Upgrading to Tier '+['','I','II','III'][_bld.to]+' — '+_bld.left+' '+(_bld.left>1?'days remain':'day remains')+'.</div>');}
   else if(tier<3){
    var _cost=DOOR.upgradeCost(kind,_dr.rarity,tier+1,D);
    var _fac=FAC(S.player.faction);
@@ -3947,6 +3947,7 @@ function renderDoor(dr,h){var c=E('div','card');
    _row.appendChild(_bt);
    if(!_gate.ok)_row.insertAdjacentHTML('beforeend','<span class="d" style="color:var(--blh)"> '+_gate.why+'</span>');
    else _bt.onclick=function(){
+    if(S.cur<_cost.currency){T('Not enough '+curName()+'.');return}
     if(!DOOR.startBuild(S,h.id,kind,tier+1,_cost.days)){T('Construction already underway here.');return}
     S.cur-=_cost.currency;spendStock(pl.id,_cost.resources);
     persist();T('⚒ Construction begins — Tier '+['','I','II','III'][tier+1]+' in '+_cost.days+' days.');rShop();
@@ -4066,7 +4067,7 @@ function renderForge(c,dr,dtier){
   ago.onclick=function(){var p=armPieces[as.value];if(!p)return;var tier=(p.it.upg||0)+1;if(tier>3){T('Already hardened to tier III.');return}if(tier>ft){T('Requires a Tier '+tier+' Forge.');return}var cost=abase*tier;if(S.cur<cost){T('Not enough '+curName()+'.');return}var e=es.value;S.cur-=cost;p.it.def[e]=(p.it.def[e]||0)+1;p.it.upg=tier;rW();rShop();T(p.it.n+' hardened — +1 '+e+' Defense (tier '+['I','II','III'][tier-1]+').')};
   c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Forge a Weapon Tag</h5></div>');
  }
- c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Insert a weapon from your inventory and forge an affinity tag onto it — tiers '+(dr.tiers||'I')+'.</div>');
+ c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Insert a weapon from your inventory and forge an affinity tag onto it.</div>');
  var ws=(S.inv||[]).filter(function(i){return i.cat==='WEAPON'});
  if(!ws.length){c.insertAdjacentHTML('beforeend','<div class="empty">No weapon in your inventory to modify. Buy or unequip one first.</div>');return}
  c.insertAdjacentHTML('beforeend','<label class="f">Weapon to modify</label>');
