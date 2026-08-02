@@ -44,7 +44,7 @@ Default cap **Tier II** everywhere. Exceptions:
 
 | Door | Tier-III home |
 |---|---|
-| Forge, Armoury | Forge World |
+| Forge | Forge World |
 | Apothecarion | Hive World |
 | Shipyard | Industrial World |
 | Relay | Civilized World |
@@ -93,7 +93,7 @@ dormant tuning data. `faction` tags only on subfaction types, only playable subf
 
 | Type | prod | Tier III | Lore |
 |---|--:|---|---|
-| Forge World | 2.0 | Forge · Armoury | A world given over entirely to weapons manufacture. The only place where top-grade arms and armour are made. |
+| Forge World | 2.0 | Forge | A world given over entirely to weapons manufacture. The only place where top-grade arms and armour are made. |
 | Hive World | 1.8 | Apothecarion | Continent-sized cities house populations in the billions. The galaxy's largest source of labor, recruits, and trained medicae. |
 | Industrial World | 1.6 | Shipyard | Factories and orbital docks cover the surface. Produces bulk goods and ship hulls in volume. |
 | Agri World | 1.4 | — | Farmland spans the whole planet. Feeds the surrounding sector; losing one starves it. |

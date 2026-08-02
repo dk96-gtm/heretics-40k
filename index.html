@@ -3977,7 +3977,7 @@ function renderDoor(dr,h){var c=E('div','card');
   if(kind==='shop')renderShopArmour(c,tier);
   /* sell section */
   var sellable=(S.inv||[]).filter(function(it){return doorSells(kind,it.cat)});
-  if(sellable.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — this door buys '+ (kind==='altar'?'casts at 60%':kind==='reliquary'?'legendary items at 60%':'weapons, items, abilities, armour & spoils')+'</h5></div>');
+  if(sellable.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — this door buys '+ (kind==='altar'?'casts at 60%':kind==='reliquary'?'legendary items at 60%':'weapons, items, abilities & spoils')+'</h5></div>');
    sellable.forEach(function(it){var r=E('div','shopc');var sp=sellPrice(it);
     r.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span></span></div>';
     var rr=E('div',null,'<span class="price" style="color:var(--vdh)">+'+sp+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:4px';
