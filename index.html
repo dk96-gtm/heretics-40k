@@ -2380,7 +2380,7 @@ h2+='<div class="d" style="margin:4px 0 8px">'+(l.desc||_lt.effect||'')+'</div>'
 if(!isOrbit&&l.tier!=='space')h2+='<div class="statusbar"><span>Population <b>'+popRank(effPop(l,pl.id))+'</b></span><span>Condition <b>'+((_cd.name)||l.condition||'Intact')+'</b></span><span>Level <b>'+(l.level||1)+'</b></span><span>Sector <b>'+readStatus(f2.s.status)+'</b></span></div>';
 if(isOrbit)h2+='<div class="lsec"><h5>Ships in orbit</h5>'+(l.ships&&l.ships.length?l.ships.map(function(o){return '· '+o}).join('<br>'):'<span style="color:var(--dim)">· empty</span>')+'</div>';
 /* DOORS — each clickable to enter */
-if(_dz.length)h2+='<div class="lsec"><h5>Doors — click to enter</h5>'+_dz.map(function(s,di){return s.open?'<div class="lrow" data-door="'+s.kind+'">▸ <b>'+s.name+'</b> <span class="pill">'+s.kind.toUpperCase()+'</span>'+(s.kind==='forge'?' <span class="mono" style="color:var(--dim)">tiers '+(s.tiers||'I')+'</span>':'')+'</div>':'<div class="lrow closed">▸ '+s.name+' <span class="pill">'+s.kind.toUpperCase()+'</span> <span style="color:var(--blh)">— closed</span></div>'}).join('')+'</div>';
+if(_dz.length)h2+='<div class="lsec"><h5>Doors — click to enter</h5>'+_dz.map(function(s,di){return s.open?'<div class="lrow" data-door="'+s.kind+'">▸ <b>'+s.name+'</b> <span class="pill">'+s.kind.toUpperCase()+'</span> <span class="mono" style="color:var(--dim)">'+['','◉○○','◉◉○','◉◉◉'][doorTierAt(pl,l,s.kind)]+'</span></div>':'<div class="lrow closed">▸ '+s.name+' <span class="pill">'+s.kind.toUpperCase()+'</span> <span style="color:var(--blh)">— closed</span></div>'}).join('')+'</div>';
 /* FORCES — clickable if you hold intel on them */
 h2+='<div class="lsec"><h5>Forces present — click for auspex intel</h5>'+(frLoc.length?frLoc.map(function(x){var known=!!forceIntel(x[0]);return '<div class="lrow'+(known?'':' unknown')+'" data-force="'+esc(x[0])+'">▸ <b>'+x[0]+'</b> — '+x[1]+(known?' <span class="mono" style="color:var(--vdh)">◉ known</span>':' <span class="mono" style="color:var(--dim)">no intel</span>')+'</div>'}).join(''):'<span style="color:var(--dim)">· none known</span>')+'</div>';
 /* THREAD HISTORY — clickable with summaries */
@@ -2571,6 +2571,9 @@ function popBandIdx(v){var P=D.galaxy.population_ranks;if(!P)return 0;for(var i=
 function doorTierAt(pl,loc,kind){
  var seed=DOOR.seedTier(pl.type,popBandIdx(effPop(loc,pl.id)),kind,D,tombDormant(pl));
  return DOOR.doorTier(S,loc.id,kind,seed)}
+/* T-DOOR-1: the only functions that touch E1 stockpile state — keep it that way */
+function stockOf(pid){return (S.world.stock&&S.world.stock[pid])||{Food:0,Material:0,Fuel:0}}
+function spendStock(pid,res){var st=stockOf(pid);for(var k in res)st[k]=(st[k]||0)-res[k]}
 function crownOf(facId){var f=FAC(facId);if(!f)return null;var r=null;
  D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){
   if(!r&&p.crown&&p.ruler&&p.ruler.faction===f.name)r=p.id})})})});return r}
@@ -3922,6 +3925,35 @@ function renderDoor(dr,h){var c=E('div','card');
     (fakeLoc has no .id) stays ungated — default tier 3 is the legacy/preview behavior */
  var pl=fPl(S.pos.pl).p;
  var tier=(h&&h.id!=null)?doorTierAt(pl,h,kind):3;
+ /* T-DOOR-1 task 5: tier header + upgrade block — every door branch shares it.
+    Demo sandbox (h.id==null) shows the tier pips but never the upgrade block:
+    there is no real location to upgrade there. */
+ var _dr=DR(kind)||{};
+ c.insertAdjacentHTML('beforeend','<div class="d" style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="mono" title="Door tier">'+['','◉○○','◉◉○','◉◉◉'][tier]+' Tier '+['','I','II','III'][tier]+'</span><span style="color:var(--dim)">'+((_dr.tiers||{})[String(tier)]||'')+'</span></div>');
+ if(h&&h.id!=null){
+  var _cap=DOOR.tierCap(pl.type,kind,D,tombDormant(pl));
+  var _bld=(S.world.doorBuilds||{})[DOOR.key(h.id,kind)];
+  if(_bld){c.insertAdjacentHTML('beforeend','<div class="d" style="color:var(--dim)">⚒ Upgrading to Tier '+['','I','II','III'][_bld.to]+' — '+_bld.left+' day'+(_bld.left>1?'s':'')+' remain.</div>');}
+  else if(tier<3){
+   var _cost=DOOR.upgradeCost(kind,_dr.rarity,tier+1,D);
+   var _fac=FAC(S.player.faction);
+   var _rul=pRuler(pl);
+   var _funds={currency:S.cur},_stk=stockOf(pl.id);for(var _fk in _stk)_funds[_fk]=_stk[_fk];
+   var _gate=DOOR.canUpgrade({tier:tier,cap:_cap,building:false,
+     rules:!!(_rul&&_fac&&_rul.faction===_fac.name),
+     funds:_funds,cost:_cost});
+   var _lbl='Upgrade to Tier '+['','I','II','III'][tier+1]+' — '+_cost.currency+' '+curName()+' + '+(_cost.resources.Material||0)+' Material + '+(_cost.resources.Fuel||0)+' Fuel · '+_cost.days+' days';
+   var _row=E('div','shopc');var _bt=E('button','btn gh sm',_lbl);_bt.disabled=!_gate.ok;
+   _row.appendChild(_bt);
+   if(!_gate.ok)_row.insertAdjacentHTML('beforeend','<span class="d" style="color:var(--blh)"> '+_gate.why+'</span>');
+   else _bt.onclick=function(){
+    if(!DOOR.startBuild(S,h.id,kind,tier+1,_cost.days)){T('Construction already underway here.');return}
+    S.cur-=_cost.currency;spendStock(pl.id,_cost.resources);
+    persist();T('⚒ Construction begins — Tier '+['','I','II','III'][tier+1]+' in '+_cost.days+' days.');rShop();
+   };
+   c.appendChild(_row);
+  }
+ }
  if(kind==='shop'||kind==='altar'||kind==='reliquary'){
   var cat=doorCatalog(kind,tier);
   cat.forEach(function(it){var r=E('div','shopc');
