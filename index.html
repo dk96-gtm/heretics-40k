@@ -521,6 +521,7 @@ var THREAD=(function(){
             joined:!!seed.joined, terms:seed.terms||null,
             transit:null, passage:seed.passage||0,
             board:seed.board||null, phase:seed.phase||null, fog:seed.fog||{},
+            round:seed.round||0,                       // T-MSN-1B: survives reload (T-THR-5 pattern)
             objective:seed.objective?{kind:seed.objective.kind,target:seed.objective.target,
               progress:seed.objective.progress||0,params:seed.objective.params||{},
               done:!!seed.objective.done}:null };
@@ -666,15 +667,47 @@ var THREAD=(function(){
     }
     return {ok:true,reason:''};
   }
-  /* ── mission objective tracker (Missions V2 slice A) ── */
+  /* ── mission objective tracker (Missions V2 slice A + B) ── */
   function trackKill(state,victim){
     var ob=state.objective;
     if(!ob||ob.done||ob.kind!=='count_kill')return;
-    if(!victim||!victim.gen)return;              // 'hostile' filter: generated foes only
+    if(!victim||!victim.gen)return;              // count_kill only ever tracks generated hostiles
+    // T-MSN-1B task 2: filter extensions — 'hostile'/'any'/clear_all count any generated kill;
+    // 'named'/'class' narrow to the specific target the mission row named at generation.
+    var filt=(ob.params&&ob.params.filter)||'hostile';
+    if(filt==='named'&&victim.gen.n!==(ob.params&&ob.params.target_name))return;
+    if(filt==='class'&&victim.gen.cls!==(ob.params&&ob.params.cls))return;
     ob.progress+=1;if(ob.progress>=ob.target)ob.done=true;
+  }
+  function _enemyAliveCount(state){                // generated hostiles still standing (mission "enemy side")
+    var C=state.combatants||{},n=0;
+    Object.keys(C).forEach(function(id){var c=C[id];if(c&&c.gen&&!c.dead&&!c.captured)n++;});
+    return n;
+  }
+  function _mineAlive(state){                       // any non-generated (player) combatant still standing
+    var C=state.combatants||{},alive=false;
+    Object.keys(C).forEach(function(id){var c=C[id];if(c&&!c.gen&&!c.dead)alive=true;});
+    return alive;
+  }
+  /* T-MSN-1B task 2: a "round" = one enemy post. npcRespond (engine glue,
+     outside this standalone-extracted core) is the unambiguous "an enemy
+     post landed" choke point — it calls this tiny pure fn so tests can
+     drive the counter directly without needing the glue. */
+  function tickRound(state){
+    state.round=(state.round||0)+1;
+    return state.round;
   }
   function evalObjective(state){
     var ob=state&&state.objective;if(!ob)return null;
+    if(ob.kind==='count_kill'&&ob.params&&ob.params.clear_all){
+      // T-MSN-1B: clear_all (Liberation) wins on enemy-side wipe, independent of the
+      // (possibly still-floored) numeric target — honest liberation before Task 3's spawn-count wiring.
+      return {won:_enemyAliveCount(state)===0,progress:ob.progress,target:ob.target};
+    }
+    if(ob.kind==='survive_rounds'){
+      var rnd=(state&&state.round)||0;
+      return {won:rnd>=ob.target&&_mineAlive(state),progress:rnd,target:ob.target};
+    }
     return {won:ob.progress>=ob.target,progress:ob.progress,target:ob.target};
   }
   function apply(thread,state,block,canon,party){
@@ -710,7 +743,9 @@ var THREAD=(function(){
         var _ai=c.model&&c.model.loadout&&c.model.loadout.armour&&c.model.loadout.armour.it;
         if(_ai&&_abs>0)_ai.absorbed=(_ai.absorbed||0)+_abs; // gear battle record (T-ECO-1 prereq)
         c.w=[Math.max(0,c.w[0]-_taken),c.w[1]];
-        if(c.w[0]<=0&&!c.dead){stampKill(c,e.element,e.noRevival,canon);
+        if(c.w[0]<=0&&!c.dead){
+          var _iron=!!(state.mods&&state.mods.indexOf('ironman')>=0&&!c.gen);  // T-MSN-1B: Ironman permadeaths the player's OWN kills
+          stampKill(c,e.element,e.noRevival||_iron,canon);
           if(e.weapon)creditWeaponKill(state,b.actor,e.weapon);   // the killing weapon takes the credit
           trackKill(state,c);}}
       else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
@@ -718,8 +753,9 @@ var THREAD=(function(){
       else if(e.kind==='cond'&&c){
         applyCond(state,e.to,(e.add&&e.add.tag)?e.add:{tag:String(e.add),tier:1},canon,b.actor);}
       else if(e.kind==='slay'&&c){var _wasDead=c.dead;c.dead=true;c.intact=!!e.intact;c.killElement=e.element||null;
+        var _iron2=!!(state.mods&&state.mods.indexOf('ironman')>=0&&!c.gen);   // T-MSN-1B: mirrors the damage-branch Ironman hook
         var RW=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
-        if(e.noRevival){c.revivalWindow=0;c.permaDeath=true;}
+        if(e.noRevival||_iron2){c.revivalWindow=0;c.permaDeath=true;}
         else{var W=RW.windows||{};c.revivalWindow=(e.element&&W[e.element])||W.Physical||3;c.permaDeath=false;}
         if(!_wasDead)trackKill(state,c);}
       else if(e.kind==='capture'&&c){
@@ -778,7 +814,12 @@ var THREAD=(function(){
       var parties={};Object.keys(state.combatants||{}).forEach(function(id){
         var c=state.combatants[id];parties[c.party]=parties[c.party]||{alive:0};
         if(!c.dead&&!c.captured)parties[c.party].alive++;});
-      if(ob.progress>=ob.target){
+      // T-MSN-1B task 2: clear_all/survive_rounds re-derive win the same way evalObjective does,
+      // so the two never disagree (seam map §1's "two sources of truth" gap does not widen here).
+      var _won=ob.kind==='count_kill'&&ob.params&&ob.params.clear_all ? _enemyAliveCount(state)===0
+        : ob.kind==='survive_rounds' ? ((state.round||0)>=ob.target&&_mineAlive(state))
+        : ob.progress>=ob.target;
+      if(_won){
         var others=Object.keys(parties).filter(function(p){return p!==myParty;});
         return {kind:'mission_won',victor:myParty,defeated:others};
       }
@@ -984,7 +1025,8 @@ var THREAD=(function(){
               // stampKill (honoring a no_revival source via the `nr` carrier),
               // trackKill (mission count_kill), and src weapon credit via the
               // `by` attribution carrier (see instance-shape note below).
-              stampKill(c,inst.el,!!inst.nr,canon);
+              var _iron3=!!(state.mods&&state.mods.indexOf('ironman')>=0&&!c.gen);  // T-MSN-1B: DoT kills honor Ironman too
+              stampKill(c,inst.el,!!inst.nr||_iron3,canon);
               trackKill(state,c);
               if(inst.by)creditWeaponKill(state,inst.by,inst.src);
               rep[rep.length-1].died=true;
@@ -1096,7 +1138,55 @@ var THREAD=(function(){
       d:'The dead, carried from the field. Revive within the window, sell, or offer at a door.',
       ref:snapOf(c,cid),owner_cmdr:meta.owner||null,origin:meta.origin||null,
       takenDay:meta.day!=null?meta.day:null,window:win};}
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond };
+  /* T-MSN-1B task 2: mirrors DOOR.gearTier (index.html, DOOR core, ~line 1447) inline —
+     the THREAD core is standalone-extracted for tests (tests/_load.js evals this region
+     alone) and must not reference DOOR, a different region unavailable in that realm.
+     Keep this band formula in sync with DOOR.gearTier if doors_tiering ever changes shape. */
+  function _gearTierPC(pc,canon){
+    var g=(canon&&canon.rules&&canon.rules.doors_tiering&&canon.rules.doors_tiering.gear_tier_pc)||{};
+    var t3=g['3']||20,t2=g['2']||12;
+    return pc>=t3?3:pc>=t2?2:1;
+  }
+  /* T-MSN-1B task 2: modCheck evaluates each chosen modifier's predicate at conclude.
+     A modifier that fails its predicate is VOIDED (its ×1.5 payout bonus is dropped) —
+     it never fails the mission itself (Daak ruling, plan Global Constraints). Ironman
+     is an effect (enforced at kill-time via the hooks above), not a predicate, so it's
+     always valid here. blitzCap defaults to objective.target*4 posts (the norm-derived
+     budget) when accept never set state.blitzCap explicitly (Task 4 owns that snapshot). */
+  function modCheck(state,mods,canon){
+    var M=(canon&&canon.rules&&canon.rules.missions&&canon.rules.missions.modifiers)||{};
+    var out={valid:[],voided:[]};
+    (mods||[]).forEach(function(id){
+      var ok=true;
+      if(id==='understrength'){
+        var pcMax=(M.understrength&&M.understrength.pc_max);if(pcMax==null)pcMax=Infinity;
+        ok=(state.acceptPC||0)<=pcMax;
+      } else if(id==='lone_wolf'){
+        var want=(M.lone_wolf&&M.lone_wolf.models);if(want==null)want=1;
+        ok=(state.acceptModels||0)<=want;
+      } else if(id==='low_tech'){
+        var maxTier=(M.low_tech&&M.low_tech.gear_tier_max);if(maxTier==null)maxTier=1;
+        var C=state.combatants||{};
+        Object.keys(C).forEach(function(cid){
+          var c=C[cid];if(!c||c.gen)return;             // player-side only
+          var sl=(c.model&&((c.model.loadout&&c.model.loadout.slots)||c.model.sl))||[];
+          sl.forEach(function(s){
+            var it=s&&s.it;if(!it||typeof it.pc!=='number')return;
+            if(_gearTierPC(it.pc,canon)>maxTier)ok=false;
+          });
+        });
+      } else if(id==='ironman'){
+        ok=true;                                        // effect, not a predicate — always valid
+      } else if(id==='blitz'){
+        var cap=state.blitzCap;
+        if(cap==null){var ob=state.objective;cap=((ob&&ob.target)||0)*4;}   // budget = objective.target * 4 posts
+        ok=(state.posts?state.posts.length:0)<=Math.ceil(cap);
+      }
+      (ok?out.valid:out.voided).push(id);
+    });
+    return out;
+  }
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
@@ -2921,6 +3011,7 @@ function npcRespond(t,playerParty){
   if(!block.length)return;                         // sees nothing / can't act → holds silently
   if(!THREAD.validate(t,st,foe,block,D).ok)return;
   var tickRep=THREAD.apply(t,st,block,D,foe);   // T-CMB-1 Task 6: 5th arg ticks foe's own conds first
+  THREAD.tickRound(st);   // T-MSN-1B task 2: a round = one enemy post; this is that post landing
   if(st.poolsBase&&st.poolsBase[foe]!=null)st.pools[foe]=st.poolsBase[foe];   // refresh foe AP
   var who=bfFoeName(st,foe),lines=block.map(function(b){var e=b.effect;
     if(e.kind==='move')return 'repositions';
