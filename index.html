@@ -3963,7 +3963,7 @@ function renderDoor(dr,h){var c=E('div','card');
     if(S.cur<_cost.currency){T('Not enough '+curName()+'.');return}
     if(!DOOR.startBuild(S,h.id,kind,tier+1,_cost.days)){T('Construction already underway here.');return}
     S.cur-=_cost.currency;spendStock(pl.id,_cost.resources);
-    persist();T('⚒ Construction begins — Tier '+['','I','II','III'][tier+1]+' in '+_cost.days+' days.');rShop();
+    rW();persist();T('⚒ Construction begins — Tier '+['','I','II','III'][tier+1]+' in '+_cost.days+' days.');rShop();
    };
    c.appendChild(_row);
   }
@@ -3983,7 +3983,7 @@ function renderDoor(dr,h){var c=E('div','card');
      stripped {n,cat,d,pc} shape would drop the per-element def/cls/tier fields
      armour mitigation needs) — see renderShopArmour. */
   if(kind==='shop')renderShopArmour(c,tier);
-  if(kind==='shop')renderShopExchange(c,tier,pl,h);
+  if(kind==='shop'&&h&&h.id!=null)renderShopExchange(c,tier,pl);
   /* sell section */
   var sellable=(S.inv||[]).filter(function(it){return doorSells(kind,it.cat)});
   if(sellable.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — this door buys '+ (kind==='altar'?'casts at 60%':kind==='reliquary'?'legendary items at 60%':'weapons, items, abilities & spoils')+'</h5></div>');
@@ -4145,37 +4145,36 @@ function renderShopArmour(c,tier){
 }
 /* T-ECN-2a: the Shop's Exchange section — the early currency<->resource valve.
    Only meaningful at a real location (h.id!=null — the demo sandbox has nowhere
-   to bank goods) and only for worlds YOUR faction rules (goods deposit into that
-   world's own stockpile — no free teleport; T-ECN-2 hauling still matters). */
-function renderShopExchange(c,tier,pl,h){
- if(!(h&&h.id!=null))return;
+   to bank goods, gated at the call site alongside renderShopArmour's own gate)
+   and only for worlds YOUR faction rules (goods deposit into that world's own
+   stockpile — no free teleport; T-ECN-2 hauling still matters). */
+function renderShopExchange(c,tier,pl){
  c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>'+annotate('Exchange')+'</h5></div>');
  var rul=pRuler(pl),fac=FAC(S.player.faction),ruled=!!(rul&&fac&&rul.faction===fac.name);
  if(!ruled){
   c.insertAdjacentHTML('beforeend','<div class="d" style="color:var(--dim)">Exchange requires a world under your banner — goods must be banked in a stockpile you rule.</div>');
   return;
  }
- var rates=DOOR.exchangeRates(tier,D),cap=WORLD.planetCap(pl,D);
+ var rates=DOOR.exchangeRates(tier,D),cap=WORLD.planetCap(pl,D),stk=stockOf(pl.id);
  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Trade '+curName()+' for typed goods banked into '+pl.name+"'"+'s stockpile, in lots of '+rates.lot+' — unfavorable rates by design, worse at low Shop tier.</div>');
  ['Food','Material','Fuel'].forEach(function(res){
-  var stk=stockOf(pl.id);
   var r=E('div','shopc');
   r.innerHTML='<div><b>'+annotate(res)+'</b><div class="d mono" style="color:var(--dim)">Stock: '+(stk[res]||0)+' / cap '+cap+'</div></div>';
   var rr=E('div',null);rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:5px;gap:6px';
   var bb=E('button','btn gh sm','Buy '+rates.lot+' — '+rates.buy+' '+curName());
   bb.onclick=function(){
-   var now=stockOf(pl.id);
+   var now=stockOf(pl.id);   // live re-read — double-click safety
    if(S.cur<rates.buy){T('Not enough '+curName()+'.');return}
    if((now[res]||0)+rates.lot>cap){T('Stores are full.');return}
    S.cur-=rates.buy;var dep={};dep[res]=rates.lot;addStock(pl.id,dep);
-   persist();T('Bought '+rates.lot+' '+res+' for '+rates.buy+' '+curName()+' — banked at '+pl.name+'.');rShop();
+   rW();persist();T('Bought '+rates.lot+' '+res+' for '+rates.buy+' '+curName()+' — banked at '+pl.name+'.');rShop();
   };
   var sb=E('button','btn gh sm','Sell '+rates.lot+' — +'+rates.sell+' '+curName());
   sb.onclick=function(){
-   var now=stockOf(pl.id);
+   var now=stockOf(pl.id);   // live re-read — double-click safety
    if((now[res]||0)<rates.lot){T('Not enough '+res+' banked here.');return}
    var wd={};wd[res]=rates.lot;spendStock(pl.id,wd);S.cur+=rates.sell;
-   persist();T('Sold '+rates.lot+' '+res+' for '+rates.sell+' '+curName()+'.');rShop();
+   rW();persist();T('Sold '+rates.lot+' '+res+' for '+rates.sell+' '+curName()+'.');rShop();
   };
   rr.appendChild(bb);rr.appendChild(sb);r.appendChild(rr);c.appendChild(r);
  });
