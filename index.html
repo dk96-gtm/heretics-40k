@@ -1165,12 +1165,17 @@ var THREAD=(function(){
      calls with `(t.posts||[]).length`; state carries no posts field of its own) — FAILS
      CLOSED (voided) when absent/non-numeric, so blitz can never pass on missing data.
      blitzCap falls back to objective.target * 4 posts * the modifier's own post_mult
-     (the norm-derived budget) only when accept never set state.blitzCap explicitly. */
+     (the norm-derived budget) only when accept never set state.blitzCap explicitly.
+     T-MSN-1B task 4 fix round: an id that matches none of the five known branches FAILS
+     CLOSED (voided) rather than defaulting to the initial `ok=true` — a bogus/unknown id
+     must never silently inflate the payout multiplier (defense in depth alongside the
+     acceptMission-side registry filter; Stage 2 needs this trustworthy against arbitrary
+     client-supplied mods, not just today's own UI). */
   function modCheck(state,mods,canon,postCount){
     var M=(canon&&canon.rules&&canon.rules.missions&&canon.rules.missions.modifiers)||{};
     var out={valid:[],voided:[]};
     (mods||[]).forEach(function(id){
-      var ok=true;
+      var ok=false;
       if(id==='understrength'){
         var pcMax=(M.understrength&&M.understrength.pc_max);if(pcMax==null)pcMax=Infinity;
         ok=(state.acceptPC||0)<=pcMax;
@@ -1178,6 +1183,7 @@ var THREAD=(function(){
         var want=(M.lone_wolf&&M.lone_wolf.models);if(want==null)want=1;
         ok=(state.acceptModels||0)===want;              // fail-closed: absent snapshot -> 0 -> !==1 -> voided
       } else if(id==='low_tech'){
+        ok=true;                                          // innocent until a violation is found below
         var maxTier=(M.low_tech&&M.low_tech.gear_tier_max);if(maxTier==null)maxTier=1;
         var C=state.combatants||{};
         Object.keys(C).forEach(function(cid){
@@ -1199,6 +1205,8 @@ var THREAD=(function(){
           cap=((ob&&ob.target)||0)*4*pm;
         }
         ok=(typeof postCount==='number')&&postCount<=Math.ceil(cap);
+      } else {
+        ok=false;                                          // unknown/bogus id — fail closed, never valid
       }
       (ok?out.valid:out.voided).push(id);
     });
@@ -2150,7 +2158,12 @@ var _msel={};
    seeds the objective AFTER seedCombat, since seedCombat replaces t.seedState wholesale.
    mods (T-MSN-1B task 4, optional): chosen modifier ids from the accept card's chips. */
 function acceptMission(inst,pl,l,mods){
- mods=mods||[];
+ // T-MSN-1B task 4 fix round: filter against the canon registry before anything is stored —
+ // an unknown/bogus id (typo, stale UI, or an arbitrary client payload once Stage 2 lands)
+ // must never reach t.mods/t.seedState.mods at all. THREAD.modCheck also fails closed on
+ // unknown ids (defense in depth), but this is the layer that keeps t.mods itself clean.
+ var _regIds=Object.keys((D.rules.missions&&D.rules.missions.modifiers)||{});
+ mods=(mods||[]).filter(function(id){return _regIds.indexOf(id)>=0;});
  var cap=(D.rules.missions&&D.rules.missions.accept_cap)||3;
  var live=S.threads.filter(function(t){return t.type==='MISSION'&&t.accepted&&!t.done}).length;
  if(live>=cap){T('Mission cap reached ('+cap+') — finish or abandon one first.');return;}

@@ -104,3 +104,38 @@ test('LOST missions are a distinct outcome kind from WON (concludeThread only mu
   assert.strictEqual(oc.kind, 'mission_lost');
   assert.notStrictEqual(oc.kind, 'mission_won');
 });
+
+/* T-MSN-1B task 4 fix round: an unknown/bogus modifier id must fail closed (voided), never
+   default into valid — modCheck's if/else-if chain used to leave the shared `ok` at its
+   initial value for any id matching none of the five known branches; that initial value is
+   now `false` (with an explicit trailing `else{ok=false}` for readability), and `low_tech`
+   (the one branch that relies on "innocent until a violation is found") now sets `ok=true`
+   itself at branch entry instead of inheriting the old shared default. */
+test('modCheck: an unknown modifier id is voided, not valid (fails closed)', () => {
+  const state = { acceptPC: 0, acceptModels: 0, combatants: {}, objective: { kind: 'count_kill', target: 1 } };
+  const mc = THREAD.modCheck(state, ['bogus_id'], canon, 1);
+  assert.deepStrictEqual(mc.valid, []);
+  assert.deepStrictEqual(mc.voided, ['bogus_id']);
+});
+
+test('modCheck: a mixed known+bogus array voids only the bogus id', () => {
+  const state = { acceptPC: 0, acceptModels: 0, combatants: {}, objective: { kind: 'count_kill', target: 1 } };
+  // ironman is an effect, always valid; bogus_id matches no branch -> voided
+  const mc = THREAD.modCheck(state, ['ironman', 'bogus_id'], canon, 1);
+  assert.deepStrictEqual(mc.valid, ['ironman']);
+  assert.deepStrictEqual(mc.voided, ['bogus_id']);
+  assert.strictEqual(mc.valid.length, 1);
+});
+
+test('modCheck: low_tech still validates correctly after the fail-closed default change '
+  + '(regression guard on the ok=true-at-branch-entry fix)', () => {
+  const cheapGear = { pc: 5 }; // tier 1 by default gear_tier_pc thresholds
+  const state = {
+    acceptPC: 0, acceptModels: 1,
+    combatants: { m1: { gen: false, model: { loadout: { slots: [{ it: cheapGear }], armour: null } } } },
+    objective: { kind: 'count_kill', target: 1 },
+  };
+  const mc = THREAD.modCheck(state, ['low_tech'], canon, 1);
+  assert.deepStrictEqual(mc.valid, ['low_tech']);
+  assert.deepStrictEqual(mc.voided, []);
+});
