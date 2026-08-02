@@ -493,7 +493,7 @@ Then update the shop/altar/reliquary door branches to pass `doorTierAt(pl,loc,ki
 
 - [ ] **Step 2: Gate the Forge and Armoury.** In `renderForge`, cap the offered forge-tag tier and armour-harden tier at `doorTierAt(...,'forge')` (the tag-tier buttons I/II/III already exist — disable those above the cap with the reason `Requires a Tier <N> Forge.`). In `renderArmoury`, filter the armour catalog by `D.rules.doors_tiering.armour_tiers_by_tier[String(tier)]` against each piece's `tier` field (`default|light|medium|heavy`).
 
-- [ ] **Step 3: Gate Muster + Apothecarion.** Muster branch: tier 1 → only `cls==='Core'` models offered; tier 2 → all classes; tier 3 → all classes at `muster_bulk_discount` (0.85×) on the hire price, labeled `bulk rate`. Apothecarion branch: multiply the revive fee by `apoth_fee_mult[String(tier)]` (1.0/0.8/0.6); at tier 3 revived models return at full wounds instead of 1 (adjust the revive handler's wound-set line).
+- [ ] **Step 3: Gate Muster + Apothecarion.** Muster branch: tier 1 → only `cls==='Core'` models offered; tier 2 → all classes; tier 3 → all classes at `muster_bulk_discount` (0.85×) on the hire price, labeled `bulk rate`. Apothecarion branch: multiply the revive fee by `apoth_fee_mult[String(tier)]` (1.0/0.8/0.6); revived wounds by tier (Daak ruling 2026-08-01): tier 1 -> 1 wound, tier 2 -> ceil(max/2), tier 3 -> full max (both revive paths).
 
 - [ ] **Step 4: Manual browser verify** (Playwright MCP): on the demo save, open a Requisition at the demo location — shop list shrinks at tier 1 vs before (pc≥12 gear gone), altar hides R3+ casts at tier 1, armoury hides medium/heavy at tier 1. `node --test` still green.
 
