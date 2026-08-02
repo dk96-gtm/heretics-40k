@@ -522,6 +522,8 @@ var THREAD=(function(){
             transit:null, passage:seed.passage||0,
             board:seed.board||null, phase:seed.phase||null, fog:seed.fog||{},
             round:seed.round||0,                       // T-MSN-1B: survives reload (T-THR-5 pattern)
+            mods:seed.mods||[], acceptPC:seed.acceptPC||0, acceptModels:seed.acceptModels||0,
+            blitzCap:seed.blitzCap||0,                 // T-MSN-1B fix round: Task 4's accept-time snapshot survives seedState->state promotion
             objective:seed.objective?{kind:seed.objective.kind,target:seed.objective.target,
               progress:seed.objective.progress||0,params:seed.objective.params||{},
               done:!!seed.objective.done}:null };
@@ -562,6 +564,10 @@ var THREAD=(function(){
     });
     return out;
   }
+  // T-MSN-1B fix round: both count_kill and survive_rounds are combat-flavored MISSION
+  // kinds (live combatants, AP pools, cond-ticks) — survive_rounds was inert behind a
+  // count_kill-only gate at these THREE core seams (catalog/validate/apply's tick gate).
+  function combatKind(k){return k==='count_kill'||k==='survive_rounds';}
   function catalog(thread,state,party,canon){
     if(thread.type==='SKIRMISH'||thread.type==='INVASION')return combatCatalog(state,party,canon);
     if(thread.type==='DIPLOMACY')return [
@@ -572,14 +578,14 @@ var THREAD=(function(){
     if(thread.type==='TRAVEL')return [
       {actor:party,action:'Transit post',group:'m',cost:0,kind:'transit'},
       {actor:party,action:'Arrival challenge',group:'m',cost:0,kind:null} ];
-    if(thread.type==='MISSION'&&state&&state.objective&&state.objective.kind==='count_kill'
+    if(thread.type==='MISSION'&&state&&state.objective&&combatKind(state.objective.kind)
        &&state.combatants&&Object.keys(state.combatants).length)
       return combatCatalog(state,party,canon);
     return [];
   }
   function validate(thread,state,party,block,canon){
     if(thread.type==='TRAVEL'||thread.type==='DIPLOMACY')return {ok:true,reason:''};
-    var _combatMission=thread.type==='MISSION'&&state.objective&&state.objective.kind==='count_kill';
+    var _combatMission=thread.type==='MISSION'&&state.objective&&combatKind(state.objective.kind);
     if(thread.type==='SKIRMISH'||thread.type==='INVASION'||_combatMission){
       var pool=state.pools[party]||0;
       var spent=block.reduce(function(a,b){return a+(b.cost||0)},0);
@@ -686,7 +692,7 @@ var THREAD=(function(){
   }
   function _mineAlive(state){                       // any non-generated (player) combatant still standing
     var C=state.combatants||{},alive=false;
-    Object.keys(C).forEach(function(id){var c=C[id];if(c&&!c.gen&&!c.dead)alive=true;});
+    Object.keys(C).forEach(function(id){var c=C[id];if(c&&!c.gen&&!c.dead&&!c.captured)alive=true;});
     return alive;
   }
   /* T-MSN-1B task 2: a "round" = one enemy post. npcRespond (engine glue,
@@ -695,6 +701,9 @@ var THREAD=(function(){
      drive the counter directly without needing the glue. */
   function tickRound(state){
     state.round=(state.round||0)+1;
+    // T-MSN-1B fix round: keep the objective's own progress field in sync for survive_rounds
+    // so evalObjective, outcome, and the board's progress/target meter all agree on one number.
+    if(state.objective&&state.objective.kind==='survive_rounds')state.objective.progress=state.round;
     return state.round;
   }
   function evalObjective(state){
@@ -717,7 +726,7 @@ var THREAD=(function(){
        report. Legacy 4-arg callers get `party===undefined` → no tick, and
        the function returns undefined exactly as before. */
     var tickRep;
-    var _combatMission=thread.type==='MISSION'&&state.objective&&state.objective.kind==='count_kill'
+    var _combatMission=thread.type==='MISSION'&&state.objective&&combatKind(state.objective.kind)
       &&state.combatants&&Object.keys(state.combatants).length;
     if(party!=null&&(thread.type==='SKIRMISH'||thread.type==='INVASION'||_combatMission))
       tickRep=tickConds(party,state,canon);
@@ -1138,22 +1147,26 @@ var THREAD=(function(){
       d:'The dead, carried from the field. Revive within the window, sell, or offer at a door.',
       ref:snapOf(c,cid),owner_cmdr:meta.owner||null,origin:meta.origin||null,
       takenDay:meta.day!=null?meta.day:null,window:win};}
-  /* T-MSN-1B task 2: mirrors DOOR.gearTier (index.html, DOOR core, ~line 1447) inline —
-     the THREAD core is standalone-extracted for tests (tests/_load.js evals this region
-     alone) and must not reference DOOR, a different region unavailable in that realm.
-     Keep this band formula in sync with DOOR.gearTier if doors_tiering ever changes shape. */
+  /* T-MSN-1B task 2: mirrors DOOR.gearTier (index.html, DOOR core, function gearTier —
+     grep `function gearTier` for the live line, it drifts) inline — the THREAD core is
+     standalone-extracted for tests (tests/_load.js evals this region alone) and must not
+     reference DOOR, a different region unavailable in that realm. Keep this band formula
+     in sync with DOOR.gearTier if doors_tiering ever changes shape. */
   function _gearTierPC(pc,canon){
     var g=(canon&&canon.rules&&canon.rules.doors_tiering&&canon.rules.doors_tiering.gear_tier_pc)||{};
     var t3=g['3']||20,t2=g['2']||12;
     return pc>=t3?3:pc>=t2?2:1;
   }
-  /* T-MSN-1B task 2: modCheck evaluates each chosen modifier's predicate at conclude.
-     A modifier that fails its predicate is VOIDED (its ×1.5 payout bonus is dropped) —
-     it never fails the mission itself (Daak ruling, plan Global Constraints). Ironman
-     is an effect (enforced at kill-time via the hooks above), not a predicate, so it's
-     always valid here. blitzCap defaults to objective.target*4 posts (the norm-derived
-     budget) when accept never set state.blitzCap explicitly (Task 4 owns that snapshot). */
-  function modCheck(state,mods,canon){
+  /* T-MSN-1B task 2 (+ fix round): modCheck evaluates each chosen modifier's predicate
+     at conclude. A modifier that fails its predicate is VOIDED (its ×1.5 payout bonus is
+     dropped) — it never fails the mission itself (Daak ruling, plan Global Constraints).
+     Ironman is an effect (enforced at kill-time via the hooks above), not a predicate, so
+     it's always valid here. `postCount` is the caller-supplied real post count (Task 4
+     calls with `(t.posts||[]).length`; state carries no posts field of its own) — FAILS
+     CLOSED (voided) when absent/non-numeric, so blitz can never pass on missing data.
+     blitzCap falls back to objective.target * 4 posts * the modifier's own post_mult
+     (the norm-derived budget) only when accept never set state.blitzCap explicitly. */
+  function modCheck(state,mods,canon,postCount){
     var M=(canon&&canon.rules&&canon.rules.missions&&canon.rules.missions.modifiers)||{};
     var out={valid:[],voided:[]};
     (mods||[]).forEach(function(id){
@@ -1163,7 +1176,7 @@ var THREAD=(function(){
         ok=(state.acceptPC||0)<=pcMax;
       } else if(id==='lone_wolf'){
         var want=(M.lone_wolf&&M.lone_wolf.models);if(want==null)want=1;
-        ok=(state.acceptModels||0)<=want;
+        ok=(state.acceptModels||0)===want;              // fail-closed: absent snapshot -> 0 -> !==1 -> voided
       } else if(id==='low_tech'){
         var maxTier=(M.low_tech&&M.low_tech.gear_tier_max);if(maxTier==null)maxTier=1;
         var C=state.combatants||{};
@@ -1174,13 +1187,18 @@ var THREAD=(function(){
             var it=s&&s.it;if(!it||typeof it.pc!=='number')return;
             if(_gearTierPC(it.pc,canon)>maxTier)ok=false;
           });
+          var ar=c.model&&c.model.loadout&&c.model.loadout.armour&&c.model.loadout.armour.it;  // armour is its own hard slot — also gear
+          if(ar&&typeof ar.pc==='number'&&_gearTierPC(ar.pc,canon)>maxTier)ok=false;
         });
       } else if(id==='ironman'){
         ok=true;                                        // effect, not a predicate — always valid
       } else if(id==='blitz'){
         var cap=state.blitzCap;
-        if(cap==null){var ob=state.objective;cap=((ob&&ob.target)||0)*4;}   // budget = objective.target * 4 posts
-        ok=(state.posts?state.posts.length:0)<=Math.ceil(cap);
+        if(cap==null){                                    // budget = objective.target * 4 posts * blitz.post_mult
+          var ob=state.objective,pm=(M.blitz&&M.blitz.post_mult)||0.6;
+          cap=((ob&&ob.target)||0)*4*pm;
+        }
+        ok=(typeof postCount==='number')&&postCount<=Math.ceil(cap);
       }
       (ok?out.valid:out.voided).push(id);
     });

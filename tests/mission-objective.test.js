@@ -201,7 +201,9 @@ function surviveSeed(target) {
       objective: { kind: 'survive_rounds', target: target, progress: 0, params: {}, done: false },
       pools: { Mine: 20, Foe: 10 },
       combatants: {
-        m1: { w: [4, 4], conds: [], party: 'Mine', armour: null },
+        m1: { w: [4, 4], conds: [], party: 'Mine', armour: null,
+              model: { id: 'm1', n: 'Test Marine', cls: 'Core', pc: 10,
+                       sl: [{ k: 'WEAPON', it: { n: 'Combat Blade', cat: 'WEAPON', d: '2 Physical' } }] } },
         e0: { w: [1, 1], conds: [], party: 'Foe', armour: null,
               gen: { id: 'e0', n: 'Grunt', cls: 'Core', pc: 10 } }
       },
@@ -229,6 +231,67 @@ test('survive_rounds: reaching the round target does not win if the player side 
   assert.deepStrictEqual(THREAD.outcome(t, t.state), { kind: 'mission_lost', victor: 'Foe', defeated: ['Mine'] });
 });
 
+test('survive_rounds: reaching the round target does not win if the player side is entirely captured', () => {
+  const t = THREAD.create(surviveSeed(2), canon);
+  THREAD.tickRound(t.state); THREAD.tickRound(t.state);
+  t.state.combatants.m1.captured = true;
+  assert.strictEqual(THREAD.evalObjective(t.state).won, false, 'captured, not dead - still not "alive" for survive_rounds');
+});
+
+test('survive_rounds: tickRound keeps objective.progress in sync (all three readers agree)', () => {
+  const t = THREAD.create(surviveSeed(3), canon);
+  THREAD.tickRound(t.state);
+  assert.strictEqual(t.state.objective.progress, 1, 'the board meter reads objective.progress directly');
+  THREAD.tickRound(t.state); THREAD.tickRound(t.state);
+  assert.strictEqual(t.state.objective.progress, 3);
+  assert.strictEqual(THREAD.evalObjective(t.state).progress, 3);
+});
+
+// ── T-MSN-1B fix round: survive_rounds is combat-flavored (combatKind gates) ──
+test('combatKind gates: survive_rounds gets the combat catalog, not an empty one', () => {
+  const t = THREAD.create(surviveSeed(3), canon);
+  const acts = THREAD.catalog(t, t.state, 'Mine', canon);
+  assert.ok(acts.length > 0, 'survive_rounds MISSION with live combatants must expose combat actions');
+});
+
+test('combatKind gates: validate enforces the AP pool on a survive_rounds thread', () => {
+  const t = THREAD.create(surviveSeed(3), canon);
+  const overspend = THREAD.validate(t, t.state, 'Mine',
+    [{ actor: 'm1', cost: 999, effect: { kind: 'damage', to: 'e0', amount: 1, element: 'Physical' } }], canon);
+  assert.strictEqual(overspend.ok, false, 'survive_rounds must be gated like any other combat mission');
+});
+
+test('combatKind gates: apply ticks the posting side\'s conditions on a survive_rounds thread', () => {
+  const t = THREAD.create(surviveSeed(3), canon);
+  t.state.combatants.m1.conds = [{ tag: 'DoT', tier: 1, left: 2, src: null, el: null }];
+  THREAD.apply(t, t.state, [], canon, 'Mine');
+  assert.strictEqual(t.state.combatants.m1.w[0], 3, 'DoT ticked for -1 - proves tickConds ran for this party');
+});
+
+// ── T-MSN-1B fix round: seedState -> live state carries mods/snapshots through ──
+test('seedState mods/snapshots survive THREAD.create/initState promotion (the acceptMission path)', () => {
+  const t = THREAD.create({
+    id: 'mi2', type: 'MISSION', n: 'Ironman test', turn: 'you', forces: ['Mine'],
+    seedState: {
+      objective: { kind: 'count_kill', target: 1, progress: 0, params: { filter: 'hostile' }, done: false },
+      mods: ['ironman'], acceptPC: 40, acceptModels: 1,
+      pools: { Mine: 20, Foe: 10 },
+      combatants: {
+        m1: { w: [4, 4], conds: [], party: 'Mine', armour: null },
+        e0: { w: [1, 1], conds: [], party: 'Foe', armour: null,
+              gen: { id: 'e0', n: 'Cultist', cls: 'Core', pc: 10 } }
+      },
+      joined: true
+    }
+  }, canon);
+  assert.deepStrictEqual(t.state.mods, ['ironman'], 'initState must whitelist seedState.mods through to live state');
+  assert.strictEqual(t.state.acceptPC, 40);
+  assert.strictEqual(t.state.acceptModels, 1);
+  THREAD.apply(t, t.state,
+    [{ actor: 'e0', cost: 1, effect: { kind: 'damage', to: 'm1', amount: 9, element: 'Physical' } }], canon);
+  assert.strictEqual(t.state.combatants.m1.permaDeath, true, 'Ironman fires on a player kill reached via the real seedState path');
+});
+
 // ── T-MSN-1B task 2: modCheck predicate truth table ─────────────────────
 test('modCheck: understrength valid at/under pc_max (150), voided over it', () => {
   assert.deepStrictEqual(THREAD.modCheck({ acceptPC: 140 }, ['understrength'], canon),
@@ -237,28 +300,47 @@ test('modCheck: understrength valid at/under pc_max (150), voided over it', () =
     { valid: [], voided: ['understrength'] });
 });
 
-test('modCheck: lone_wolf valid at exactly 1 model, voided at 2', () => {
+test('modCheck: lone_wolf valid at exactly 1 model, voided at 2 (and voided with no snapshot)', () => {
   assert.deepStrictEqual(THREAD.modCheck({ acceptModels: 1 }, ['lone_wolf'], canon),
     { valid: ['lone_wolf'], voided: [] });
   assert.deepStrictEqual(THREAD.modCheck({ acceptModels: 2 }, ['lone_wolf'], canon),
     { valid: [], voided: ['lone_wolf'] });
+  assert.deepStrictEqual(THREAD.modCheck({}, ['lone_wolf'], canon),
+    { valid: [], voided: ['lone_wolf'] }, 'fail-closed: no acceptModels snapshot -> 0 -> !==1 -> voided');
 });
 
-test('modCheck: low_tech valid when every player item is gear-tier 1, voided if any is tier 3', () => {
-  const lowGearState = { combatants: { m1: { model: { sl: [{ it: { pc: 8 } }] } },
+test('modCheck: low_tech valid when every player item AND armour is gear-tier 1, voided if any is tier 3', () => {
+  const lowGearState = { combatants: { m1: { model: { sl: [{ it: { pc: 8 } }], loadout: { armour: { it: { pc: 8 } } } } },
                                         e0: { gen: { id: 'e0' }, model: { sl: [{ it: { pc: 30 } }] } } } };
   const highGearState = { combatants: { m1: { model: { sl: [{ it: { pc: 20 } }] } } } };
+  const highArmourState = { combatants: { m1: { model: { sl: [{ it: { pc: 8 } }], loadout: { armour: { it: { pc: 25 } } } } } } };
   assert.deepStrictEqual(THREAD.modCheck(lowGearState, ['low_tech'], canon),
-    { valid: ['low_tech'], voided: [] }, 'pc 8 => tier 1; enemy-side gear is ignored');
+    { valid: ['low_tech'], voided: [] }, 'pc 8 weapon + pc 8 armour => tier 1; enemy-side gear is ignored');
   assert.deepStrictEqual(THREAD.modCheck(highGearState, ['low_tech'], canon),
-    { valid: [], voided: ['low_tech'] }, 'pc 20 => tier 3 > gear_tier_max 1');
+    { valid: [], voided: ['low_tech'] }, 'pc 20 weapon => tier 3 > gear_tier_max 1');
+  assert.deepStrictEqual(THREAD.modCheck(highArmourState, ['low_tech'], canon),
+    { valid: [], voided: ['low_tech'] }, 'armour is its own hard slot - a heavy-tier plate voids low_tech too');
 });
 
-test('modCheck: blitz valid within the post budget, voided over it', () => {
-  const under = { blitzCap: 20, posts: new Array(10) };
-  const over = { blitzCap: 20, posts: new Array(30) };
-  assert.deepStrictEqual(THREAD.modCheck(under, ['blitz'], canon), { valid: ['blitz'], voided: [] });
-  assert.deepStrictEqual(THREAD.modCheck(over, ['blitz'], canon), { valid: [], voided: ['blitz'] });
+test('modCheck: blitz fails CLOSED when postCount is absent, even under a generous cap', () => {
+  const state = { blitzCap: 999 };
+  assert.deepStrictEqual(THREAD.modCheck(state, ['blitz'], canon),
+    { valid: [], voided: ['blitz'] }, 'no real post count supplied -> void, never silently valid');
+});
+
+test('modCheck: blitz valid within the real post-count budget, voided over it', () => {
+  const state = { blitzCap: 20 };
+  assert.deepStrictEqual(THREAD.modCheck(state, ['blitz'], canon, 10), { valid: ['blitz'], voided: [] });
+  assert.deepStrictEqual(THREAD.modCheck(state, ['blitz'], canon, 30), { valid: [], voided: ['blitz'] });
+});
+
+test('modCheck: blitz fallback cap = objective.target * 4 * modifiers.blitz.post_mult when state.blitzCap is unset', () => {
+  const pm = canon.rules.missions.modifiers.blitz.post_mult; // 0.6
+  const state = { objective: { target: 10 } };                // fallback cap = 10*4*0.6 = 24
+  assert.deepStrictEqual(THREAD.modCheck(state, ['blitz'], canon, Math.floor(10 * 4 * pm)),
+    { valid: ['blitz'], voided: [] });
+  assert.deepStrictEqual(THREAD.modCheck(state, ['blitz'], canon, Math.ceil(10 * 4 * pm) + 5),
+    { valid: [], voided: ['blitz'] });
 });
 
 test('modCheck: ironman is always valid - it is an effect, not a predicate', () => {
@@ -267,10 +349,10 @@ test('modCheck: ironman is always valid - it is an effect, not a predicate', () 
 });
 
 test('modCheck: a full mixed roster evaluates each modifier independently', () => {
-  const state = { acceptPC: 140, acceptModels: 1, blitzCap: 20, posts: new Array(5),
+  const state = { acceptPC: 140, acceptModels: 1, blitzCap: 20,
     combatants: { m1: { model: { sl: [{ it: { pc: 8 } }] } } } };
   const mods = ['understrength', 'lone_wolf', 'low_tech', 'ironman', 'blitz'];
-  assert.deepStrictEqual(THREAD.modCheck(state, mods, canon), { valid: mods, voided: [] });
+  assert.deepStrictEqual(THREAD.modCheck(state, mods, canon, 5), { valid: mods, voided: [] });
 });
 
 // ── T-MSN-1B task 2: Ironman kill hook ──────────────────────────────────
