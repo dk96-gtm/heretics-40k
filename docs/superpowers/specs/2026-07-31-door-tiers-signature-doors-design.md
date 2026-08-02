@@ -70,6 +70,17 @@ cost/wounds/window · Shipyard system/warp/capital · Relay sector/segmentum/gal
 Arena local/cross-sector/galaxy · Warp Gate same-segmentum/cross/any · Throne Room
 planet/discount/sector-events.
 
+## 3b — ARMOURY MERGE (Daak ruling 2026-08-02, supersedes the Armoury rows above)
+
+The **Armoury door is retired** (12 doors → 11). Armour stock moves into the **Shop**
+(one place buys all gear), weight-gated by shop tier: **default/Light → I · Medium → II ·
+Heavy → III**. Because Shop III is the invest-anywhere trade hub, **Heavy armour is
+buyable at any Tier-III Shop** — consciously overriding the old Forge-World-only Heavy
+lock. The **Forge is THE armour-upgrade path** (per-element hardening, capped by Forge
+door tier — Forge III still Forge-World-only, preserving the "making" identity). E2's
+armour repair/melt-down lands at the Forge. Forge World's universal Tier-III home is now
+**Forge only**; fitting armour stays in the Barracks Armoury tab.
+
 ## 4 — Planet-type registry (canon edit: 35 types, replaces the 20)
 
 All 35 minted into `galaxy.planet_types` NOW (the 21 subfaction types exist in the

@@ -197,6 +197,12 @@ rites**:
   blockade inside a travel thread), gift diplomacy (currency → standing — except honor-bound
   factions, where a bribe is an insult that costs standing; Relay intel tells you who's who).
 
+**Early-valve ruling (Daak 2026-08-02):** the Tradeport currency↔resource exchange is
+pulled FORWARD out of full E2 as its own small slice (T-ECN-2a) — every faction can buy
+Material/Fuel with currency at unfavorable rates, so no crown-world resource mix is a
+hard wall. Pairs with T-GX-G7's crown floor rule (every crown type yields nonzero
+Material AND Fuel).
+
 ## 7 · Implementation phases (each gets its own plan)
 
 - **Phase E1 — resource core:** canon `resource_output` + `rules.resources` (types, stack 40,
