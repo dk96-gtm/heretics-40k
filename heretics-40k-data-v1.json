@@ -613,7 +613,6 @@
    },
    "t3_homes": {
     "forge": "Forge World",
-    "armoury": "Forge World",
     "apothecarion": "Hive World",
     "shipyard": "Industrial World",
     "relay": "Civilized World",
@@ -7707,7 +7706,7 @@
    {
     "kind": "shop",
     "name": "Shop",
-    "does": "buy weapons, items, abilities",
+    "does": "buy weapons, items, abilities, armour",
     "rarity": "common",
     "skins": {
      "imperial": "Requisition",
@@ -7723,9 +7722,9 @@
      "harlequins": "—"
     },
     "tiers": {
-     "1": "Tier-I gear",
-     "2": "+ Tier-II gear",
-     "3": "+ Tier-III gear — a proper trade hub"
+     "1": "Tier-I gear + Light armour",
+     "2": "+ Tier-II gear + Medium armour",
+     "3": "+ Tier-III gear + Heavy armour — a proper trade hub"
     }
    },
    {
@@ -7967,30 +7966,6 @@
      "2": "+ garrison bonus",
      "3": "sector-scale events"
     }
-   },
-   {
-    "kind": "armoury",
-    "name": "Armoury",
-    "does": "buy and fit Armour",
-    "rarity": "common",
-    "skins": {
-     "imperial": "The Panoply",
-     "chaos": "Panoply of Spite",
-     "tyranids": "Moult-Pit",
-     "orks": "Mek's Plate-Shack",
-     "necrons": "Reclamation Vault",
-     "aeldari": "Wargear Shrine",
-     "drukhari": "Flesh-Fitters",
-     "tau": "Fitting Bay",
-     "gsc": "Relic Cache",
-     "votann": "Ancestor Armoury",
-     "harlequins": "Costume Vault"
-    },
-    "tiers": {
-     "1": "Light + class-default armour",
-     "2": "+ Medium",
-     "3": "+ Heavy"
-    }
    }
   ],
   "location_types": [
@@ -8003,8 +7978,7 @@
     "doors": [
      "shop",
      "shop",
-     "muster",
-     "armoury"
+     "muster"
     ],
     "planet_types": [
      "Hive World",
@@ -8126,8 +8100,7 @@
     "pop_base": 2,
     "doors": [
      "forge",
-     "muster",
-     "armoury"
+     "muster"
     ],
     "forge_tiers": "I-II",
     "planet_types": [
@@ -8145,8 +8118,7 @@
      "forge",
      "muster",
      "relay",
-     "apothecarion",
-     "armoury"
+     "apothecarion"
     ],
     "forge_tiers": "I-II",
     "planet_types": [

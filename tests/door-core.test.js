@@ -18,7 +18,6 @@ test('gearTier bands and castRank parsing', () => {
 
 test('tierCap: homes 3, shop anywhere 3, floor types 1, dormant tomb 1, default 2', () => {
   assert.strictEqual(DOOR.tierCap('Forge World', 'forge', D, false), 3);
-  assert.strictEqual(DOOR.tierCap('Forge World', 'armoury', D, false), 3);
   assert.strictEqual(DOOR.tierCap('Forge World', 'altar', D, false), 2);
   assert.strictEqual(DOOR.tierCap('Agri World', 'shop', D, false), 3);
   assert.strictEqual(DOOR.tierCap('Death World', 'shop', D, false), 1);

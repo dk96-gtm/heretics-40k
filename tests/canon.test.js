@@ -71,10 +71,21 @@ test('armour catalog: 143 pieces, valid shape, 80 faction defaults', () => {
   assert.strictEqual(defaults.length, 80, `defaults ${defaults.length}`);
 });
 
-test('armoury door exists with per-faction skins', () => {
-  const d = canon.galaxy.doors.find((x) => x.kind === 'armoury');
-  assert.ok(d, 'armoury door present');
-  assert.ok(d.skins && d.skins.chaos && d.skins.imperial, 'armoury skins');
+test('T-DOOR-2: armoury door retired — 11 doors, shop absorbs armour weight-gated by tier', () => {
+  assert.strictEqual(canon.galaxy.doors.length, 11, 'doors[] shrank 12→11');
+  assert.ok(!canon.galaxy.doors.some((x) => x.kind === 'armoury'), 'no armoury door kind');
+  canon.galaxy.location_types.forEach((lt) => {
+    assert.ok(!(lt.doors || []).includes('armoury'), `${lt.id} doors list has no armoury`);
+  });
+  const shop = canon.galaxy.doors.find((x) => x.kind === 'shop');
+  assert.match(shop.does, /armour/i, 'shop does-text mentions armour');
+  assert.ok(!canon.rules.doors_tiering.t3_homes.armoury, 'armoury removed from t3_homes');
+  const at = canon.rules.doors_tiering.armour_tiers_by_tier;
+  assert.deepStrictEqual(at, {
+    1: ['default', 'light'],
+    2: ['default', 'light', 'medium'],
+    3: ['default', 'light', 'medium', 'heavy'],
+  }, 'armour_tiers_by_tier preserved as the shop weight gate');
 });
 
 test('forge can upgrade armour', () => {

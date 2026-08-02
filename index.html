@@ -2090,7 +2090,7 @@ var slot=sel.loadout.armour;document.getElementById('pkh').textContent=sel.n+' �
 var L=document.getElementById('pkl');L.innerHTML='';
 if(slot.it){var r=E('div','pki','<div><b>'+slot.it.n+'</b><div class="d">'+armLine(slot.it.def)+'</div></div>');var b=E('button','btn gh sm','Unfit');b.onclick=function(){S.inv.push(slot.it);slot.it=null;PB.classList.remove('on');afterEquip();T('Armour removed — now unarmoured.')};r.appendChild(b);L.appendChild(r)}
 var lg=LOADOUT.legalItems('ARMOUR',S.inv);
-if(!lg.length&&!slot.it)L.appendChild(E('div','empty','No armour in inventory. Buy some at an Armoury.'));
+if(!lg.length&&!slot.it)L.appendChild(E('div','empty','No armour in inventory. Buy some at a Shop.'));
 lg.forEach(function(it){var r=E('div','pki','<div><b>'+it.n+'</b><div class="d">'+armLine(it.def)+'</div></div>');var b=E('button','btn sm','Fit');
  b.onclick=function(){if(slot.it)S.inv.push(slot.it);slot.it=it;S.inv.splice(S.inv.indexOf(it),1);PB.classList.remove('on');afterEquip();T(it.n+' fitted.')};r.appendChild(b);L.appendChild(r)});
 PB.classList.add('on')}
@@ -3920,7 +3920,7 @@ function sellPrice(it){
  return Math.max(1,Math.round(pc*0.6))}
 /* doorSells IS the generic "accepts" hook for now — when the T-FAC-1 signature doors land,
    they declare their own accepted categories through this same function. */
-function doorSells(kind,cat){if(kind==='shop')return cat==='WEAPON'||cat==='ITEM'||cat==='ABILITY'||cat==='CAPTIVE'||cat==='REMAINS';if(kind==='altar')return cat==='CAST';if(kind==='reliquary')return cat==='LEGENDARY';return false}
+function doorSells(kind,cat){if(kind==='shop')return cat==='WEAPON'||cat==='ITEM'||cat==='ABILITY'||cat==='ARMOUR'||cat==='CAPTIVE'||cat==='REMAINS';if(kind==='altar')return cat==='CAST';if(kind==='reliquary')return cat==='LEGENDARY';return false}
 /* render one door as a functional card */
 function renderDoor(dr,h){var c=E('div','card');
  c.insertAdjacentHTML('beforeend','<div class="doorimg">'+dr.name+'<span>'+dr.kind+' image — art slot</span></div>');
@@ -3969,9 +3969,15 @@ function renderDoor(dr,h){var c=E('div','card');
    rr.appendChild(bt);r.appendChild(rr);
    r.querySelector('[data-ent]').onclick=function(){openEntity(it,{owner:'This door ('+dr.name+')',origin:h.name,threads:[]})};
    c.appendChild(r)});
+  /* T-DOOR-2: Armoury door retired — the Shop sells armour, weight-gated by the
+     Shop's own tier (Heavy is buyable at any Tier-III Shop — Daak ruling 2026-08-02).
+     Kept as a distinct buy/fit block (not routed through the generic cart, whose
+     stripped {n,cat,d,pc} shape would drop the per-element def/cls/tier fields
+     armour mitigation needs) — see renderShopArmour. */
+  if(kind==='shop')renderShopArmour(c,tier);
   /* sell section */
   var sellable=(S.inv||[]).filter(function(it){return doorSells(kind,it.cat)});
-  if(sellable.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — this door buys '+ (kind==='altar'?'casts at 60%':kind==='reliquary'?'legendary items at 60%':'weapons, items, abilities & spoils')+'</h5></div>');
+  if(sellable.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — this door buys '+ (kind==='altar'?'casts at 60%':kind==='reliquary'?'legendary items at 60%':'weapons, items, abilities, armour & spoils')+'</h5></div>');
    sellable.forEach(function(it){var r=E('div','shopc');var sp=sellPrice(it);
     r.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+it.n+'</b> <span class="pill">'+it.cat+'</span></span></div>';
     var rr=E('div',null,'<span class="price" style="color:var(--vdh)">+'+sp+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:4px';
@@ -3979,7 +3985,6 @@ function renderDoor(dr,h){var c=E('div','card');
     rr.appendChild(bt);r.appendChild(rr);c.appendChild(r)})}
  }
  else if(kind==='forge'){renderForge(c,dr,tier)}
- else if(kind==='armoury'){renderArmoury(c,dr,tier)}
  else if(kind==='muster'){c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Recruit rank-and-file into your army. They arrive garrisoned at '+h.name+'.</div>');
   var bulk=(D.rules.doors_tiering||{}).muster_bulk_discount||0.85;
   [{n:'Plague Marine',cls:'Core',pc:34,w:'5/5'},{n:'Poxwalker',cls:'Core',pc:4,w:'1/1'},{n:'Foetid Bloat-Drone',cls:'Flying',pc:90,w:'6/6'}]
@@ -4100,15 +4105,26 @@ function renderForge(c,dr,dtier){
   if(st.lk){T(st.rq||'That tag is locked.');return}
   var cost=base+st.c;if(S.cur<cost){T('Not enough '+curName()+'.');return}
   S.cur-=cost;S.inv.splice(S.inv.indexOf(x),1);S.inv.push({n:n,cat:'WEAPON',d:'Named '+x.n+' - '+st.t+' I',pc:(x.pc||6)+st.c,origin:dr.name});rW();rShop();T('The forge tolls once. "'+n+'" is made.')}}
-function renderArmoury(c,dr,dtier){
+/* T-DOOR-2: the Armoury door is retired (Daak ruling 2026-08-02) — its buy/fit
+   surface now lives inside the Shop door, weight-gated by the SHOP's own tier
+   (armour_tiers_by_tier: I=default+light, II=+medium, III=+heavy — Heavy is
+   buyable at ANY Tier-III Shop, overriding the old Forge-World-only Heavy lock).
+   Kept as its own small block reusing the former armoury buy/Buy&Fit handlers
+   verbatim (deep-copies the full D.armour piece — def/cls/tier/faction — into
+   S.inv) rather than routing through doorCatalog/cartAdd, whose {n,cat,d,pc}
+   cart shape would drop the per-element def block armour mitigation needs.
+   Selling owned armour is NOT duplicated here — doorSells('shop','ARMOUR')
+   folds it into the shop's generic sell section. */
+function renderShopArmour(c,tier){
  var fac=doorFactionId();var who=(sel||S.roster[0]);   // the ruler's plate, not yours
- /* T-DOOR-1: heavier weight classes need a higher-tier Armoury (Forge World-homed) */
- var allowedW=(((D.rules||{}).doors_tiering||{}).armour_tiers_by_tier||{})[String(dtier||3)]||['default','light','medium','heavy'];
+ var allowedW=(((D.rules||{}).doors_tiering||{}).armour_tiers_by_tier||{})[String(tier||3)]||['default','light','medium','heavy'];
  var list=(D.armour||[]).filter(function(p){return (p.faction===fac||p.faction===null)&&allowedW.indexOf(p.tier)>=0;});
+ if(!list.length)return;
+ c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Armour</h5></div>');
  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Buy and fit Armour. Defense is per-element ('+ELEM6.map(function(e){return ELAB[e]}).join(' ')+'); a hit deals max(0, damage − Defense). A <b>0</b> means that element bypasses the plate.</div>');
  var byTier={};list.forEach(function(p){(byTier[p.tier]=byTier[p.tier]||[]).push(p)});
- ['default','light','medium','heavy'].forEach(function(tier){var ps=byTier[tier];if(!ps||!ps.length)return;
-  c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:10px"><h5>'+tier.toUpperCase()+(tier==='default'?' — issued by class':'')+'</h5></div>');
+ ['default','light','medium','heavy'].forEach(function(atier){var ps=byTier[atier];if(!ps||!ps.length)return;
+  c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:10px"><h5>'+atier.toUpperCase()+(atier==='default'?' — issued by class':'')+'</h5></div>');
   ps.forEach(function(p){var r=E('div','shopc');
    r.innerHTML='<div><b>'+p.n+'</b>'+(p.cls?' <span class="pill">'+p.cls+'</span>':'')+'<div class="d">'+armLine(p.def)+'</div><div class="d" style="color:var(--dim)">'+annotate(p.d||'')+'</div></div>';
    var pcR=reqPrice(p.pc);
@@ -4116,14 +4132,7 @@ function renderArmoury(c,dr,dtier){
    var bt=E('button','btn gh sm','Buy');bt.onclick=function(){if(S.cur<pcR){T('Not enough '+curName()+'.');return}S.cur-=pcR;var cp=JSON.parse(JSON.stringify(p));cp.origin=fLoc(S.pos.pl,S.pos.sp).name;S.inv.push(cp);rW();rShop();T('Bought '+p.n+'.')};
    var ft=E('button','btn sm','Buy & Fit');ft.onclick=function(){if(!who){T('No model selected.');return}if(who.st==='DEPLOYED'){T(who.n.split(',')[0]+' is in an active thread — cannot refit.');return}if(S.cur<pcR){T('Not enough '+curName()+'.');return}S.cur-=pcR;var copy=JSON.parse(JSON.stringify(p));copy.origin=fLoc(S.pos.pl,S.pos.sp).name;if(who.loadout.armour.it)S.inv.push(who.loadout.armour.it);who.loadout.armour.it=copy;rW();rShop();T(p.n+' fitted to '+who.n.split(',')[0]+'.')};
    rr.appendChild(bt);rr.appendChild(ft);r.appendChild(rr);c.appendChild(r)})});
- var owned=(S.inv||[]).filter(function(it){return it.cat==='ARMOUR'});
- if(owned.length){c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Sell — buys armour at 60%</h5></div>');
-  owned.forEach(function(it){var r=E('div','shopc');var sp=sellPrice(it);
-   r.innerHTML='<div><b>'+it.n+'</b><div class="d">'+armLine(it.def)+'</div></div>';
-   var rr=E('div',null,'<span class="price" style="color:var(--vdh)">+'+sp+'</span>');rr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-top:4px';
-   var bt=E('button','btn gh sm','Sell');bt.onclick=function(){S.cur+=sp;S.inv.splice(S.inv.indexOf(it),1);rW();rShop();T('Sold '+it.n+'.')};
-   rr.appendChild(bt);r.appendChild(rr);c.appendChild(r)})}
- c.insertAdjacentHTML('beforeend','<div class="d" style="margin-top:10px;color:var(--dim)">Fitting to <b>'+(who?who.n.split(',')[0]:'—')+'</b> — change the selected model in the Barracks loadout tab.</div>');
+ c.insertAdjacentHTML('beforeend','<div class="d" style="margin-top:4px;color:var(--dim)">Fitting to <b>'+(who?who.n.split(',')[0]:'—')+'</b> — change the selected model in the Barracks loadout tab.</div>');
 }
 /* ─── v8: procedural sector chart (first real map visual) ─── */
 var ALCOL={imperial:'#D8B45E',chaos:'#C4503F',xenos:'#6FA893',con:'#8F8674'};
