@@ -1616,7 +1616,12 @@ var MISSION=(function(){
     var norm=(M.family_norms||{})[inst.family]||5;
     var clamp=M.size_clamp||[0.5,4];
     var size=Math.max(clamp[0],Math.min(clamp[1],inst.target/norm));
-    return Math.round(base*size*(prodMult||1));
+    // T-MSN-1B task 3 fix round: named missions (bounty_hunt/assassination) spawn a x1.5-pc
+    // boss + escort, which the plain family/size math doesn't price for — least-invasive thread:
+    // payoutOf reads inst.params (already carried on every mint-time AND accept-reprice inst
+    // object) rather than taking a new argument, so both call sites get the premium for free.
+    var premium=(inst.params&&inst.params.filter==='named')?(M.named_premium||1):1;
+    return Math.round(base*size*(prodMult||1)*premium);
   }
   function faceOf(row,loc,canon){
     var M=R(canon);var want=(M.face_doors||{})[row.family];
@@ -1662,16 +1667,23 @@ var MISSION=(function(){
      tagged named:true with n set to the seeded target_name (trackKill's named filter reads
      victim.gen.n === params.target_name) — plus a reduced escort (half the generic count, min 1).
      Anything else (hostile/any/class/no filter) is the original generic Core-class round-robin. */
-  function genHostiles(params,mineCount,facModels,wep){
+  function genHostiles(params,mineCount,facModels,wep,canon){
     var models=facModels||[];
     var pool=models.filter(function(m){return m.cls==='Core'});
     if(!pool.length)pool=models;
     if(!pool.length)return [];
-    var slotOf=function(){return [{k:'WEAPON',it:{n:wep.n,cat:wep.cat||'WEAPON',d:wep.d}}]};
+    // fix round: wep can be missing/partial from a stale call site — guard like the generic
+    // branch always implicitly could (npcWeaponFor's own fallback is 'Rending Claws'; here the
+    // bare-minimum default is just enough to never emit an undefined weapon name).
+    var slotOf=function(){return [{k:'WEAPON',it:{n:(wep&&wep.n)||'Claws',cat:(wep&&wep.cat)||'WEAPON',d:wep&&wep.d}}]};
     var out=[];
-    if(params&&params.filter==='named'&&params.target_name){
+    if(params&&params.filter==='named'){
+      // fix round: a stale pre-1B board row (or any 'named' instance minted before target_name
+      // existed) can reach accept with no target_name at all — fall back deterministically to
+      // the first canon bounty name rather than spawning a nameless/undefined boss.
+      var tname=params.target_name||((canon&&R(canon).bounty_names)||[])[0]||'Unknown Target';
       var boss=models.slice().sort(function(a,b){return (b.pc||0)-(a.pc||0);})[0]||pool[0];
-      out.push({id:'e0',n:params.target_name,cls:boss.cls,pc:Math.round((boss.pc||0)*1.5),
+      out.push({id:'e0',n:tname,cls:boss.cls,pc:Math.round((boss.pc||0)*1.5),
         spd:boss.sp,w:boss.w,sub:boss.n+' — named target',named:true,sl:slotOf()});
       var n0=Math.max(2,Math.min(4,mineCount));
       var escN=Math.max(1,Math.floor(n0/2));
@@ -1699,14 +1711,22 @@ var MISSION=(function(){
     }
     return inst.target;
   }
-  /* T-MSN-1B task 3: assassination's 'alone' accept-gate, pulled out as a pure predicate so
-     it's unit-testable the same way as everything else here — null means "accept is fine",
-     a string is the refusal reason (mirrors the idle-force gate's UX: refuse, don't silently
-     drop the extra models). */
-  function aloneGateReason(params,memberCount){
-    if(!params||!params.alone)return null;
-    if(memberCount===1)return null;
-    return 'This commission demands you arrive alone — your committed force must be exactly 1 model (has '+memberCount+').';
+  /* T-MSN-1B task 3 fix round: assassination's 'alone' accept-gate must not silently bind
+     whichever idle force happened to be filtered first — that could refuse (or worse, accept
+     with a stale headcount) a force the player never meant to send. idleForces is a plain
+     [{n,memberCount}] summary (engine builds it off S.forces/S.roster); pickForce prefers the
+     first idle force with exactly 1 living member when params.alone, and only refuses — naming
+     the force it checked, mirroring the idle-force gate's own UX — when none qualifies.
+     Non-alone missions just take the first idle force, same as before. */
+  function pickForce(params,idleForces){
+    var list=idleForces||[];
+    if(!list.length)return {force:null,reason:null};
+    if(params&&params.alone){
+      for(var i=0;i<list.length;i++){if(list[i].memberCount===1)return {force:list[i],reason:null};}
+      var f0=list[0];
+      return {force:null,reason:f0.n+' counts '+f0.memberCount+' models — this commission demands a lone visitor.'};
+    }
+    return {force:list[0],reason:null};
   }
   function refillBoard(board,ctx,canon,r,day){
     var M=R(canon);
@@ -1756,7 +1776,7 @@ var MISSION=(function(){
   }
   return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,
           rollMission:rollMission,genHostiles:genHostiles,targetFor:targetFor,
-          aloneGateReason:aloneGateReason,
+          pickForce:pickForce,
           refillBoard:refillBoard,catchUpBoards:catchUpBoards};
 })();
 /*</mission-core>*/
@@ -2049,6 +2069,12 @@ function npcWeaponFor(facId){
  ws=ws.slice().sort(function(a,b){return (a.pc||0)-(b.pc||0)});
  var w=ws[0]||{n:'Rending Claws',cat:'WEAPON',d:'Phys 2 - Melee'};
  return {n:w.n,cat:'WEAPON',d:w.d};}
+/* T-MSN-1B task 3 fix round: display the bounty — both board-card surfaces (location panel
+   + the thread board's "posted nearby" section, which doubles as the Mission Log) append the
+   named target so the player knows who they're hunting before they accept. */
+function namedTargetTag(m){
+ return (m.params&&m.params.filter==='named'&&m.params.target_name)?' — target: '+esc(m.params.target_name):'';
+}
 /* seed both sides: your committed force's models vs a detachment generated from
    the local NPC force's faction roster. Enemy models persist via c.gen (SAVE.relink).
    missionParams (optional, T-MSN-1B task 3): an accepted mission's objective.params —
@@ -2070,7 +2096,7 @@ function seedCombat(t,pid,l,npcId,force,missionParams){
  var fac=host&&host.faction?facByName(host.faction):null;
  if(!fac)return;                                     // nobody garrisons this ground → social thread
  var wep=npcWeaponFor(fac.id),ap=0;
- var specs=MISSION.genHostiles(missionParams||{},mine.length,fac.models||[],wep);
+ var specs=MISSION.genHostiles(missionParams||{},mine.length,fac.models||[],wep,D);
  if(!specs.length)return;
  specs.forEach(function(spec){
   var gen={id:spec.id,n:spec.n,cls:spec.cls,pc:spec.pc,spd:spec.spd,sub:spec.sub,sl:spec.sl};
@@ -2101,13 +2127,16 @@ function acceptMission(inst,pl,l){
  var cap=(D.rules.missions&&D.rules.missions.accept_cap)||3;
  var live=S.threads.filter(function(t){return t.type==='MISSION'&&t.accepted&&!t.done}).length;
  if(live>=cap){T('Mission cap reached ('+cap+') — finish or abandon one first.');return;}
- var force=S.forces.filter(function(f){return !threadOfForce(f.n);})[0];
- if(!force){T('All forces are committed — finish or exit a thread before accepting a mission.');return;}
- // T-MSN-1B task 3: assassination's alone gate ('params.alone') — mirrors the idle-force
- // gate's UX (refuse with a reason, no partial accept) rather than silently ignoring extra models.
- var aloneN=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'&&m.st!=='TAKEN'}).length;
- var aloneReason=MISSION.aloneGateReason(inst.params,aloneN);
- if(aloneReason){T(aloneReason);return;}
+ var idle=S.forces.filter(function(f){return !threadOfForce(f.n);});
+ if(!idle.length){T('All forces are committed — finish or exit a thread before accepting a mission.');return;}
+ // T-MSN-1B task 3 fix round: MISSION.pickForce prefers an exactly-1-model idle force when
+ // params.alone (assassination) rather than blindly binding the first idle force and then
+ // gating on IT — refuses (naming the force it checked) only if no idle force qualifies.
+ var idleInfo=idle.map(function(f){return {n:f.n,
+   memberCount:S.roster.filter(function(m){return m.fo===f.n&&m.st!=='DEAD'&&m.st!=='TAKEN'}).length};});
+ var pick=MISSION.pickForce(inst.params,idleInfo);
+ if(pick.reason){T(pick.reason);return;}
+ var force=idle.filter(function(f){return f.n===pick.force.n;})[0];
  var id='m'+Date.now().toString(36);
  var t={id:id,type:'MISSION',n:inst.n+' — '+l.name,loc:pl.name+' · '+l.name,pl:pl.id,lid:l.id,
   turn:'you',vis:'public',initiator:'You',about:inst.flavor,accepted:true,
@@ -2132,7 +2161,7 @@ function acceptMission(inst,pl,l){
   t.seedState.objective.target=ct;
   // target changed from mint-time → reprice this thread's payout so pay matches the fight
   // actually happening; the board row (inst) keeps its minted payout
-  if(ct!==inst.target)t.mission.payout=MISSION.payoutOf({family:inst.family,target:ct},((missionCtxOf(inst.pl)||{}).pl||{}).prod_mult||1,D);
+  if(ct!==inst.target)t.mission.payout=MISSION.payoutOf({family:inst.family,target:ct,params:inst.params},((missionCtxOf(inst.pl)||{}).pl||{}).prod_mult||1,D);
  }
  S.threads.push(t);inst.accepted=true;inst.tid=id;
  persist();T('Mission accepted: '+inst.n);openT(id);
@@ -2577,7 +2606,7 @@ h2+='<div class="lsec"><h5>Thread history — click for summary</h5>'+(hi.length
 /* MISSIONS — posted here, unaccepted (Missions V2 slice A) */
 var _mb=((S.world.missions||{})[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted});
 if(_mb.length)h2+='<div class="lsec"><h5>Missions — posted here ('+_mb.length+')</h5>'+
- _mb.map(function(m,i){return '<div class="lrow" data-mission="'+i+'"><b>'+m.n+'</b> · '+
+ _mb.map(function(m,i){return '<div class="lrow" data-mission="'+i+'"><b>'+m.n+'</b>'+namedTargetTag(m)+' · '+
   m.face.label+' · target '+m.target+' · pays '+m.payout+
   '<div class="d">'+m.flavor+'</div></div>';}).join('')+'</div>';
 /* NPCs — clickable sheets */
@@ -2642,7 +2671,7 @@ var mrows=[];Object.keys(S.world.missions||{}).forEach(function(pid){(S.world.mi
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Missions — posted nearby ('+mrows.length+')</h5></div>');
 if(!mrows.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">No missions posted right now.</div>');
 mrows.forEach(function(m){var pp=fPl(m.pl);var lname=(pp&&fLoc(m.pl,m.lid))?fLoc(m.pl,m.lid).name:m.lid;
- var d=E('div','thc','<div><b>'+m.n+'</b><div style="font-size:11px;color:var(--dim);margin-top:2px">'+(pp?pp.p.name:'')+' · '+lname+'</div></div><span class="mono" style="color:var(--faint)">pays '+m.payout+'</span>');
+ var d=E('div','thc','<div><b>'+m.n+'</b>'+namedTargetTag(m)+'<div style="font-size:11px;color:var(--dim);margin-top:2px">'+(pp?pp.p.name:'')+' · '+lname+'</div></div><span class="mono" style="color:var(--faint)">pays '+m.payout+'</span>');
  d.onclick=function(){if(pp){MV.pl=m.pl;MV.lc=m.lid;MV.lv='planet';MV.spaceSel=false;go('map')}};dash.appendChild(d)});
 /* conflicts */
 var confs=sectorConflicts();

@@ -558,6 +558,7 @@
    ],
    "modifier_mult": 1.5,
    "signature_premium": 1.5,
+   "named_premium": 1.5,
    "face_doors": {
     "KILL": "muster",
     "HOLD": "throne_room",
@@ -15168,6 +15169,7 @@
     "params": {
      "filter": "named"
     },
+    "needs_hostiles": true,
     "faces": {
      "door": "relay",
      "notice": "WANTED — by name"
@@ -15191,6 +15193,7 @@
      "filter": "class",
      "cls": "Assault"
     },
+    "needs_hostiles": true,
     "faces": {
      "door": "muster",
      "notice": "Cull order"
@@ -15214,6 +15217,7 @@
      "filter": "named",
      "alone": true
     },
+    "needs_hostiles": true,
     "faces": {
      "npc": true,
      "notice": "A quiet commission"
@@ -15237,6 +15241,7 @@
      "filter": "any",
      "clear_all": true
     },
+    "needs_hostiles": true,
     "faces": {
      "door": "throne_room",
      "notice": "Reclamation writ"
@@ -15258,6 +15263,7 @@
      6
     ],
     "params": {},
+    "needs_hostiles": true,
     "faces": {
      "door": "muster",
      "notice": "Hold the line"

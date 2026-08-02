@@ -19,6 +19,7 @@ test('rules.missions tuning block is complete', () => {
   assert.deepStrictEqual(M.size_clamp, [0.5, 4]);
   assert.strictEqual(M.modifier_mult, 1.5);
   assert.strictEqual(M.signature_premium, 1.5);
+  assert.strictEqual(M.named_premium, 1.5);
   assert.deepStrictEqual(M.face_doors, { KILL: 'muster', HOLD: 'throne_room', LOGISTICS: 'shop', RITUAL: 'altar' });
 });
 
@@ -41,6 +42,10 @@ test('pilot mission rows: purge, item_request, rebuild', () => {
   assert.strictEqual(byId.rebuild.kind, 'restore');
   assert.strictEqual(byId.rebuild.prefer_condition, 'Ruined');
   assert.strictEqual(byId.purge.needs_hostiles, true);
+  // fix round (CRITICAL): every combat-flavored row needs a garrison to mint, not just purge —
+  // otherwise a garrison-less planet mints a permanently-unacceptable "stale notice".
+  ['bounty_hunt', 'kill_team', 'assassination', 'liberation', 'defend'].forEach(id =>
+    assert.strictEqual(byId[id].needs_hostiles, true, id + ' must require a garrison'));
 });
 
 test('face_doors values are real door kinds', () => {

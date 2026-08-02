@@ -243,15 +243,97 @@ test('Defend accept produces real combatants + a real board, round target straig
     'round target comes straight from the roll, never re-derived from hostile count');
 });
 
-test('aloneGateReason: assassination refuses a 2-model force, accepts exactly 1', () => {
-  const assRow = canon.missions.universal.find(rw => rw.id === 'assassination');
-  assert.strictEqual(assRow.params.alone, true);
-  assert.strictEqual(typeof MISSION.aloneGateReason(assRow.params, 2), 'string', 'refused for 2 models');
-  assert.strictEqual(MISSION.aloneGateReason(assRow.params, 1), null, 'accepted for exactly 1');
+// ── fix round: pickForce replaces aloneGateReason (must not silently bind whichever idle
+// force happened to be first — prefer an exactly-1-model idle force, else refuse by name) ──
+
+test('pickForce: assassination prefers the first idle force with exactly 1 living member', () => {
+  const idleForces = [
+    { n: 'Alpha', memberCount: 3 },
+    { n: 'Bravo', memberCount: 1 },
+    { n: 'Charlie', memberCount: 1 }
+  ];
+  const pick = MISSION.pickForce({ alone: true }, idleForces);
+  assert.strictEqual(pick.reason, null);
+  assert.strictEqual(pick.force.n, 'Bravo', 'first exactly-1-model idle force wins, not just the first idle force');
 });
 
-test('aloneGateReason: missions without an alone param never gate on force size', () => {
-  const purgeRow = canon.missions.universal.find(rw => rw.id === 'purge');
-  assert.strictEqual(MISSION.aloneGateReason(purgeRow.params, 5), null);
-  assert.strictEqual(MISSION.aloneGateReason(undefined, 5), null);
+test('pickForce: refuses and names the checked (first idle) force when none qualifies', () => {
+  const idleForces = [{ n: 'Alpha', memberCount: 3 }, { n: 'Bravo', memberCount: 2 }];
+  const pick = MISSION.pickForce({ alone: true }, idleForces);
+  assert.strictEqual(pick.force, null);
+  assert.strictEqual(pick.reason, 'Alpha counts 3 models — this commission demands a lone visitor.');
+});
+
+test('pickForce: non-alone missions just take the first idle force', () => {
+  const idleForces = [{ n: 'Alpha', memberCount: 3 }, { n: 'Bravo', memberCount: 1 }];
+  const pick = MISSION.pickForce({ filter: 'hostile' }, idleForces);
+  assert.strictEqual(pick.reason, null);
+  assert.strictEqual(pick.force.n, 'Alpha');
+});
+
+test('pickForce: no idle forces at all -> no force, no reason (engine\'s separate "all committed" gate applies)', () => {
+  const pick = MISSION.pickForce({ alone: true }, []);
+  assert.strictEqual(pick.force, null);
+  assert.strictEqual(pick.reason, null);
+});
+
+// ── fix round item 1 (CRITICAL): needs_hostiles must cover every combat-flavored row, not
+// just purge, or bounty_hunt/kill_team/assassination/liberation/defend mint on garrison-less
+// planets and can NEVER be accepted (permanent "stale notice") ──
+
+test('canon: all five other combat-flavored rows are marked needs_hostiles (purge already was)', () => {
+  ['bounty_hunt', 'kill_team', 'assassination', 'liberation', 'defend'].forEach(id => {
+    const row = canon.missions.universal.find(rw => rw.id === id);
+    assert.strictEqual(row.needs_hostiles, true, id + ' must require a garrison to mint');
+  });
+});
+
+test('needs_hostiles: no garrisoned loc -> board NEVER contains any combat-flavored row', () => {
+  const r = MISSION.rng(11);
+  const combatIds = ['purge', 'bounty_hunt', 'kill_team', 'assassination', 'liberation', 'defend'];
+  for (let day = 0; day < 15; day++) {
+    const board = MISSION.refillBoard([], CTX_NO_GARRISON(), canon, r, day);
+    combatIds.forEach(id => {
+      assert.ok(!board.some(m => m.mid === id), id + ' must never mint without a garrison, got it on day ' + day);
+    });
+    assert.ok(board.length >= 4 && board.length <= 6, 'board still fills from the other rows, got ' + board.length);
+  }
+});
+
+// ── fix round item 2: genHostiles must fall back to a deterministic name when a 'named' row
+// somehow reaches accept with no target_name (stale/pre-1B board row) ──
+
+test('genHostiles: falls back to the first canon bounty name when target_name is missing', () => {
+  const specs = MISSION.genHostiles({ filter: 'named' }, 3, FAC_MODELS, WEP, canon);
+  const boss = specs.find(s => s.id === 'e0');
+  assert.ok(boss);
+  assert.strictEqual(boss.n, canon.rules.missions.bounty_names[0]);
+  assert.strictEqual(boss.named, true);
+});
+
+test('genHostiles: guards a missing/partial weapon (wep.n falls back to \'Claws\')', () => {
+  const specs = MISSION.genHostiles({ filter: 'hostile' }, 2, FAC_MODELS, null);
+  specs.forEach(s => assert.strictEqual(s.sl[0].it.n, 'Claws'));
+});
+
+// ── fix round item 4: named missions pay a premium on top of the plain family/size floor ──
+
+test('payoutOf: named missions pay rules.missions.named_premium x their family floor', () => {
+  assert.strictEqual(canon.rules.missions.named_premium, 1.5);
+  const named = { family: 'KILL', target: 1, params: { filter: 'named', target_name: 'Test' } };
+  // KILL base 10, norm 5, target 1 -> raw size 0.2 -> clamped to floor 0.5 -> 10*0.5=5 -> x1.5 -> 7.5 -> round 8
+  assert.strictEqual(MISSION.payoutOf(named, 1.0, canon), 8);
+  const plain = { family: 'KILL', target: 1, params: { filter: 'hostile' } };
+  assert.strictEqual(MISSION.payoutOf(plain, 1.0, canon), 5, 'a non-named mission at the same target/family must not get the premium');
+});
+
+test('rollMission: bounty_hunt\'s minted payout already carries the named premium', () => {
+  const bountyRow = canon.missions.universal.find(rw => rw.id === 'bounty_hunt');
+  const r = MISSION.rng(77);
+  const inst = MISSION.rollMission(bountyRow, CTX(), r, 0, canon);
+  const plainEquivalent = MISSION.payoutOf(
+    { family: inst.family, target: inst.target, params: { filter: 'hostile' } },
+    CTX().pl.prod_mult, canon
+  );
+  assert.strictEqual(inst.payout, Math.round(plainEquivalent * canon.rules.missions.named_premium));
 });
