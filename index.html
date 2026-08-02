@@ -1204,7 +1204,7 @@ var THREAD=(function(){
     });
     return out;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
@@ -1639,13 +1639,74 @@ var MISSION=(function(){
     if(!loc)loc=locs[Math.floor(r()*locs.length)]||{id:null,name:'?',doors:[],npc:null};
     var tr=row.target_roll||[3,5];
     var target=tr[0]+Math.floor(r()*(tr[1]-tr[0]+1));
+    var params=JSON.parse(JSON.stringify(row.params||{}));
+    // T-MSN-1B task 3: bounty_hunt/assassination (params.filter==='named') get a deterministic
+    // target_name drawn from the SAME seed stream as the rest of the roll (no Date.now/Math.random) —
+    // same seed -> same name every time, so a garrison-less refresh can't silently rename a bounty.
+    if(params.filter==='named'){
+      var names=(R(canon).bounty_names)||[];
+      if(names.length)params.target_name=names[Math.floor(r()*names.length)];
+    }
     var inst={iid:ctx.pl.id+'-'+row.id+'-'+day+'-'+Math.floor(r()*1e6),
       mid:row.id,n:row.n,family:row.family,kind:row.kind,
-      target:target,params:JSON.parse(JSON.stringify(row.params||{})),
+      target:target,params:params,
       face:faceOf(row,loc,canon),world_effect:row.world_effect||null,
       flavor:row.flavor||'',pl:ctx.pl.id,lid:loc.id,day:day,accepted:false};
     inst.payout=payoutOf(inst,ctx.pl.prod_mult,canon);
     return inst;
+  }
+  /* T-MSN-1B task 3: reusable hostile-generation math, extracted so the engine's seedCombat
+     (DOM/state glue, outside this pure core) and node tests share one source of truth.
+     params.filter==='named' (bounty_hunt/assassination) spawns ONE named boss — the highest-pc
+     model in the whole faction roster, priced x1.5 like the generic spawn's pc-derived stats,
+     tagged named:true with n set to the seeded target_name (trackKill's named filter reads
+     victim.gen.n === params.target_name) — plus a reduced escort (half the generic count, min 1).
+     Anything else (hostile/any/class/no filter) is the original generic Core-class round-robin. */
+  function genHostiles(params,mineCount,facModels,wep){
+    var models=facModels||[];
+    var pool=models.filter(function(m){return m.cls==='Core'});
+    if(!pool.length)pool=models;
+    if(!pool.length)return [];
+    var slotOf=function(){return [{k:'WEAPON',it:{n:wep.n,cat:wep.cat||'WEAPON',d:wep.d}}]};
+    var out=[];
+    if(params&&params.filter==='named'&&params.target_name){
+      var boss=models.slice().sort(function(a,b){return (b.pc||0)-(a.pc||0);})[0]||pool[0];
+      out.push({id:'e0',n:params.target_name,cls:boss.cls,pc:Math.round((boss.pc||0)*1.5),
+        spd:boss.sp,w:boss.w,sub:boss.n+' — named target',named:true,sl:slotOf()});
+      var n0=Math.max(2,Math.min(4,mineCount));
+      var escN=Math.max(1,Math.floor(n0/2));
+      for(var ei=0;ei<escN;ei++){var em=pool[ei%pool.length];
+        out.push({id:'e'+(ei+1),n:em.n+' '+(ei+1),cls:em.cls,pc:em.pc,spd:em.sp,w:em.w,
+          sub:em.n+' — hostile',sl:slotOf()});}
+    } else {
+      var n=Math.max(2,Math.min(4,mineCount));
+      for(var i=0;i<n;i++){var bm=pool[i%pool.length];
+        out.push({id:'e'+i,n:bm.n+' '+(i+1),cls:bm.cls,pc:bm.pc,spd:bm.sp,w:bm.w,
+          sub:bm.n+' — hostile',sl:slotOf()});}
+    }
+    return out;
+  }
+  /* T-MSN-1B task 3: the live objective.target an accepted combat-kind mission should carry,
+     given the hostile count actually spawned this instant (garrisons drift between mint and
+     accept). count_kill+clear_all (Liberation) reads honest -> target IS the spawned count
+     (the core still wins clear_all on enemy-wipe regardless of what target says, THREAD.outcome);
+     plain count_kill clamps the rolled target down to what's actually there (floor 1); anything
+     else (survive_rounds/Defend's round count, etc) is untouched — the roll stands as-is. */
+  function targetFor(inst,hostileCount){
+    if(inst.kind==='count_kill'){
+      if(inst.params&&inst.params.clear_all)return hostileCount;
+      return Math.max(1,Math.min(inst.target,hostileCount));
+    }
+    return inst.target;
+  }
+  /* T-MSN-1B task 3: assassination's 'alone' accept-gate, pulled out as a pure predicate so
+     it's unit-testable the same way as everything else here — null means "accept is fine",
+     a string is the refusal reason (mirrors the idle-force gate's UX: refuse, don't silently
+     drop the extra models). */
+  function aloneGateReason(params,memberCount){
+    if(!params||!params.alone)return null;
+    if(memberCount===1)return null;
+    return 'This commission demands you arrive alone — your committed force must be exactly 1 model (has '+memberCount+').';
   }
   function refillBoard(board,ctx,canon,r,day){
     var M=R(canon);
@@ -1694,7 +1755,8 @@ var MISSION=(function(){
     return res;
   }
   return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,
-          rollMission:rollMission,
+          rollMission:rollMission,genHostiles:genHostiles,targetFor:targetFor,
+          aloneGateReason:aloneGateReason,
           refillBoard:refillBoard,catchUpBoards:catchUpBoards};
 })();
 /*</mission-core>*/
@@ -1988,8 +2050,12 @@ function npcWeaponFor(facId){
  var w=ws[0]||{n:'Rending Claws',cat:'WEAPON',d:'Phys 2 - Melee'};
  return {n:w.n,cat:'WEAPON',d:w.d};}
 /* seed both sides: your committed force's models vs a detachment generated from
-   the local NPC force's faction roster. Enemy models persist via c.gen (SAVE.relink). */
-function seedCombat(t,pid,l,npcId,force){
+   the local NPC force's faction roster. Enemy models persist via c.gen (SAVE.relink).
+   missionParams (optional, T-MSN-1B task 3): an accepted mission's objective.params —
+   when params.filter==='named' (bounty_hunt/assassination) MISSION.genHostiles swaps the
+   generic round-robin for one named boss + a reduced escort; SKIRMISH/INVASION callers
+   (startThread) never pass it, so they keep the original generic behavior unchanged. */
+function seedCombat(t,pid,l,npcId,force,missionParams){
  if(!force)return;
  var mine=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'&&m.st!=='TAKEN'});
  if(!mine.length)return;
@@ -2003,14 +2069,14 @@ function seedCombat(t,pid,l,npcId,force){
  if(!host){var fr=npcForceAt(pid,l.name);if(fr)host={name:fr.name,faction:npcFactionOf(fr.desc)};}
  var fac=host&&host.faction?facByName(host.faction):null;
  if(!fac)return;                                     // nobody garrisons this ground → social thread
- var pool=(fac.models||[]).filter(function(m){return m.cls==='Core'});
- if(!pool.length)pool=fac.models||[];if(!pool.length)return;
- var n=Math.max(2,Math.min(4,mine.length)),ap=0,wep=npcWeaponFor(fac.id);
- for(var i=0;i<n;i++){var bm=pool[i%pool.length];
-  var gen={id:'e'+i,n:bm.n+' '+(i+1),cls:bm.cls,pc:bm.pc,spd:bm.sp,
-   sub:bm.n+' — hostile',sl:[{k:'WEAPON',it:{n:wep.n,cat:'WEAPON',d:wep.d}}]};
-  C['e'+i]={w:[bm.w,bm.w],conds:[],party:host.name,model:gen,gen:gen,armour:null};
-  ap+=AP(bm.pc);}
+ var wep=npcWeaponFor(fac.id),ap=0;
+ var specs=MISSION.genHostiles(missionParams||{},mine.length,fac.models||[],wep);
+ if(!specs.length)return;
+ specs.forEach(function(spec){
+  var gen={id:spec.id,n:spec.n,cls:spec.cls,pc:spec.pc,spd:spec.spd,sub:spec.sub,sl:spec.sl};
+  if(spec.named)gen.named=true;
+  C[spec.id]={w:[spec.w,spec.w],conds:[],party:host.name,model:gen,gen:gen,armour:null};
+  ap+=AP(spec.pc);});
  pools[host.name]=ap;
  if(t.forces.indexOf(host.name)<0)t.forces.push(host.name);
  t.seedState={pools:pools,combatants:C,joined:false};
@@ -2037,24 +2103,35 @@ function acceptMission(inst,pl,l){
  if(live>=cap){T('Mission cap reached ('+cap+') — finish or abandon one first.');return;}
  var force=S.forces.filter(function(f){return !threadOfForce(f.n);})[0];
  if(!force){T('All forces are committed — finish or exit a thread before accepting a mission.');return;}
+ // T-MSN-1B task 3: assassination's alone gate ('params.alone') — mirrors the idle-force
+ // gate's UX (refuse with a reason, no partial accept) rather than silently ignoring extra models.
+ var aloneN=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'&&m.st!=='TAKEN'}).length;
+ var aloneReason=MISSION.aloneGateReason(inst.params,aloneN);
+ if(aloneReason){T(aloneReason);return;}
  var id='m'+Date.now().toString(36);
  var t={id:id,type:'MISSION',n:inst.n+' — '+l.name,loc:pl.name+' · '+l.name,pl:pl.id,lid:l.id,
   turn:'you',vis:'public',initiator:'You',about:inst.flavor,accepted:true,
   forces:force?[force.n]:[],
   mission:{iid:inst.iid,mid:inst.mid,payout:inst.payout,world_effect:inst.world_effect,pl:inst.pl,lid:inst.lid,n:inst.n}};
- if(inst.kind==='count_kill')seedCombat(t,pl.id,l,null,force);
+ // T-MSN-1B task 3 fix: the spawn gate used to be count_kill-only — Defend (survive_rounds)
+ // is combat-flavored too (THREAD.combatKind) and needs real hostiles + a board, or state.round
+ // can never advance.
+ if(THREAD.combatKind(inst.kind))seedCombat(t,pl.id,l,null,force,inst.params);
  t.seedState=t.seedState||{};
  var hn;
- if(inst.kind==='count_kill'){
+ if(THREAD.combatKind(inst.kind)){
   hn=Object.keys(t.seedState.combatants||{}).filter(function(k){return (t.seedState.combatants[k].party)!==force.n;}).length;
   if(hn===0){T('The notice is stale — no hostile presence remains here.');return;}
  }
  t.seedState.objective={kind:inst.kind,target:inst.target,progress:0,params:inst.params,done:false};
- if(inst.kind==='count_kill'){
-  var ct=Math.max(1,Math.min(inst.target,hn));
+ if(THREAD.combatKind(inst.kind)){
+  // MISSION.targetFor: count_kill clamps to what's actually garrisoned (clear_all/Liberation
+  // reads honest — target IS the spawned count, not the mint-time roll); survive_rounds/Defend
+  // is untouched — its target is a round count from the roll, not a hostile count.
+  var ct=MISSION.targetFor(inst,hn);
   t.seedState.objective.target=ct;
-  // target clamped down from mint-time → reprice this thread's payout so pay matches
-  // the fight actually happening; the board row (inst) keeps its minted payout
+  // target changed from mint-time → reprice this thread's payout so pay matches the fight
+  // actually happening; the board row (inst) keeps its minted payout
   if(ct!==inst.target)t.mission.payout=MISSION.payoutOf({family:inst.family,target:ct},((missionCtxOf(inst.pl)||{}).pl||{}).prod_mult||1,D);
  }
  S.threads.push(t);inst.accepted=true;inst.tid=id;
