@@ -2380,7 +2380,7 @@ h2+='<div class="d" style="margin:4px 0 8px">'+(l.desc||_lt.effect||'')+'</div>'
 if(!isOrbit&&l.tier!=='space')h2+='<div class="statusbar"><span>Population <b>'+popRank(effPop(l,pl.id))+'</b></span><span>Condition <b>'+((_cd.name)||l.condition||'Intact')+'</b></span><span>Level <b>'+(l.level||1)+'</b></span><span>Sector <b>'+readStatus(f2.s.status)+'</b></span></div>';
 if(isOrbit)h2+='<div class="lsec"><h5>Ships in orbit</h5>'+(l.ships&&l.ships.length?l.ships.map(function(o){return '· '+o}).join('<br>'):'<span style="color:var(--dim)">· empty</span>')+'</div>';
 /* DOORS — each clickable to enter */
-if(_dz.length)h2+='<div class="lsec"><h5>Doors — click to enter</h5>'+_dz.map(function(s,di){return s.open?'<div class="lrow" data-door="'+s.kind+'">▸ <b>'+s.name+'</b> <span class="pill">'+s.kind.toUpperCase()+'</span> <span class="mono" style="color:var(--dim)">'+['','◉○○','◉◉○','◉◉◉'][doorTierAt(pl,l,s.kind)]+'</span></div>':'<div class="lrow closed">▸ '+s.name+' <span class="pill">'+s.kind.toUpperCase()+'</span> <span style="color:var(--blh)">— closed</span></div>'}).join('')+'</div>';
+if(_dz.length)h2+='<div class="lsec"><h5>Doors — click to enter</h5>'+_dz.map(function(s,di){return s.open?'<div class="lrow" data-door="'+s.kind+'">▸ <b>'+s.name+'</b> <span class="pill">'+s.kind.toUpperCase()+'</span> '+doorTierTip(s.kind,doorTierAt(pl,l,s.kind))+'</div>':'<div class="lrow closed">▸ '+s.name+' <span class="pill">'+s.kind.toUpperCase()+'</span> <span style="color:var(--blh)">— closed</span></div>'}).join('')+'</div>';
 /* FORCES — clickable if you hold intel on them */
 h2+='<div class="lsec"><h5>Forces present — click for auspex intel</h5>'+(frLoc.length?frLoc.map(function(x){var known=!!forceIntel(x[0]);return '<div class="lrow'+(known?'':' unknown')+'" data-force="'+esc(x[0])+'">▸ <b>'+x[0]+'</b> — '+x[1]+(known?' <span class="mono" style="color:var(--vdh)">◉ known</span>':' <span class="mono" style="color:var(--dim)">no intel</span>')+'</div>'}).join(''):'<span style="color:var(--dim)">· none known</span>')+'</div>';
 /* THREAD HISTORY — clickable with summaries */
@@ -3718,7 +3718,12 @@ var GLOSS={
  'Material':'Typed resource points. Locations produce them each in-game day; planets stockpile them up to cap; overflow is lost.',
  'Fuel':'Typed resource points. Locations produce them each in-game day; planets stockpile them up to cap; overflow is lost.',
  'Tithe':'Daily currency upkeep per held location — 2 × location level. Unpaid tithes breed Unrest.',
- 'Unrest':'Pressure from famine or unpaid tithes. Consequences arrive with the status machinery (T-STAT-1); the counter is live now.'};
+ 'Unrest':'Pressure from famine or unpaid tithes. Consequences arrive with the status machinery (T-STAT-1); the counter is live now.',
+ 'Door Tier':'Doors level I→III. Tier gates what the door offers; upgrades cost currency + resources and take days of construction. Tier III lives on specific standard world types — Shop excepted, which can reach III anywhere.'};
+/* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
+function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
+ var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');
+ return '<span class="tipable mono" style="color:var(--dim)" data-tip="'+tip.replace(/"/g,'&quot;')+'">'+['','◉○○','◉◉○','◉◉◉'][tier]+' Tier '+['','I','II','III'][tier]+'</span>'}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function glossText(key,tier){var g=GLOSS[key];return typeof g==='function'?g(tier):g}
 var ELEMS=['Phys','Corr','Heat','Plasma','Energy','Warp'],RANGES=['Melee','Short','Med','Medium','Long'];
@@ -3929,7 +3934,7 @@ function renderDoor(dr,h){var c=E('div','card');
     Demo sandbox (h.id==null) shows the tier pips but never the upgrade block:
     there is no real location to upgrade there. */
  var _dr=DR(kind)||{};
- c.insertAdjacentHTML('beforeend','<div class="d" style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="mono" title="Door tier">'+['','◉○○','◉◉○','◉◉◉'][tier]+' Tier '+['','I','II','III'][tier]+'</span><span style="color:var(--dim)">'+((_dr.tiers||{})[String(tier)]||'')+'</span></div>');
+ c.insertAdjacentHTML('beforeend','<div class="d" style="display:flex;justify-content:space-between;margin-bottom:6px">'+doorTierTip(kind,tier)+'<span style="color:var(--dim)">'+((_dr.tiers||{})[String(tier)]||'')+'</span></div>');
  if(h&&h.id!=null){
   var _cap=DOOR.tierCap(pl.type,kind,D,tombDormant(pl));
   var _bld=(S.world.doorBuilds||{})[DOOR.key(h.id,kind)];
