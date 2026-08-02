@@ -1641,11 +1641,19 @@ var MISSION=(function(){
     return Math.round((base||0)*Math.pow(mult,validCount||0));
   }
   function faceOf(row,loc,canon){
-    var M=R(canon);var want=(M.face_doors||{})[row.family];
+    // T-MSN-1B task 5: every row now declares its own faces.door (not just the family
+    // default) — bounty_hunt wants 'relay', assassination declares no door at all
+    // (faces:{npc:true,...}) and must go straight to NPC/notice, never fall back to its
+    // family's generic door. The M.face_doors fallback only fires when a row has NO
+    // faces object whatsoever (legacy/defensive — every canon row today declares one).
+    // Priority: row-declared door open at THIS location -> NPC present here -> row's own
+    // notice text -> generic anonymous fallback.
+    var F=row.faces;var M=R(canon);
+    var want=F?F.door:(M.face_doors||{})[row.family];
     if(want&&loc.doors&&loc.doors.indexOf(want)>=0)
       return {kind:'door',label:want+' at '+loc.name};
     if(loc.npc)return {kind:'npc',label:loc.npc};
-    return {kind:'notice',label:'Anonymous notice — '+loc.name};
+    return {kind:'notice',label:(F&&F.notice)||('Anonymous notice — '+loc.name)};
   }
   function rollMission(row,ctx,r,day,canon){
     // location: needs_hostiles rows are hard-gated to garrisoned locs (filter BEFORE
@@ -1671,7 +1679,7 @@ var MISSION=(function(){
     }
     var inst={iid:ctx.pl.id+'-'+row.id+'-'+day+'-'+Math.floor(r()*1e6),
       mid:row.id,n:row.n,family:row.family,kind:row.kind,
-      target:target,params:params,
+      target:target,params:params,gates:row.gates||{},
       face:faceOf(row,loc,canon),world_effect:row.world_effect||null,
       flavor:row.flavor||'',pl:ctx.pl.id,lid:loc.id,day:day,accepted:false};
     inst.payout=payoutOf(inst,ctx.pl.prod_mult,canon);
@@ -1745,6 +1753,19 @@ var MISSION=(function(){
     }
     return {force:list[0],reason:null};
   }
+  /* T-MSN-1B task 5: boards stay player-agnostic at generation (a single seeded board can
+     serve any allegiance in a multi-player future) — allegiance gating is a VIEW/ACCEPT
+     concern, not a generation concern. This is the one pure gate both call sites share:
+     the location-panel render filters gated rows out of the list, and acceptMission calls
+     it again (defense in depth — a stale client payload must never bypass render-side
+     hiding) and refuses in-fiction rather than silently no-op'ing. row/inst are
+     interchangeable here since rollMission copies row.gates onto every minted instance. */
+  function gateReason(row,playerAllegiance){
+    var g=(row&&row.gates)||{};
+    if(g.allegiance&&g.allegiance!==playerAllegiance)
+      return 'The rite is not yours to perform.';
+    return null;
+  }
   function refillBoard(board,ctx,canon,r,day){
     var M=R(canon);
     var keep=board.filter(function(m){
@@ -1793,7 +1814,7 @@ var MISSION=(function(){
   }
   return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,finalPayout:finalPayout,
           rollMission:rollMission,genHostiles:genHostiles,targetFor:targetFor,
-          pickForce:pickForce,
+          pickForce:pickForce,gateReason:gateReason,
           refillBoard:refillBoard,catchUpBoards:catchUpBoards};
 })();
 /*</mission-core>*/
@@ -2158,6 +2179,12 @@ var _msel={};
    seeds the objective AFTER seedCombat, since seedCombat replaces t.seedState wholesale.
    mods (T-MSN-1B task 4, optional): chosen modifier ids from the accept card's chips. */
 function acceptMission(inst,pl,l,mods){
+ // T-MSN-1B task 5: allegiance gate, checked again at accept (defense in depth — render
+ // already hides gated rows, but a stale client payload or a board minted before the
+ // player's allegiance was known must never slip an Imperial rite to a Chaos Commander
+ // or vice versa). In-fiction refusal, no silent no-op.
+ var _gr=MISSION.gateReason(inst,S.player.allegiance);
+ if(_gr){T(_gr);return;}
  // T-MSN-1B task 4 fix round: filter against the canon registry before anything is stored —
  // an unknown/bogus id (typo, stale UI, or an arbitrary client payload once Stage 2 lands)
  // must never reach t.mods/t.seedState.mods at all. THREAD.modCheck also fails closed on
@@ -2660,7 +2687,10 @@ h2+='<div class="lsec"><h5>Forces present — click for auspex intel</h5>'+(frLo
 /* THREAD HISTORY — clickable with summaries */
 h2+='<div class="lsec"><h5>Thread history — click for summary</h5>'+(hi.length?hi.map(function(t,ti){return '<div class="lrow" data-hist="'+ti+'">▸ '+t+'</div>'}).join(''):'<span style="color:var(--dim)">No threads recorded yet.</span>')+'</div>';
 /* MISSIONS — posted here, unaccepted (Missions V2 slice A + T-MSN-1B task 4 modifier chips) */
-var _mb=((S.world.missions||{})[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted});
+/* T-MSN-1B task 5: boards are minted player-agnostic — an allegiance-gated row (e.g.
+   Consecration/Desecration) is hidden here rather than never generated, so the same
+   seeded board can serve any allegiance later. */
+var _mb=((S.world.missions||{})[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted&&!MISSION.gateReason(m,S.player.allegiance)});
 if(_mb.length)h2+='<div class="lsec"><h5>Missions — posted here ('+_mb.length+')</h5>'+
  _mb.map(function(m,i){var _sel=_msel[m.iid]||{};
   return '<div class="lrow" data-mission="'+i+'" style="cursor:default"><b>'+m.n+'</b>'+namedTargetTag(m)+' · '+
@@ -2748,7 +2778,7 @@ accepted.forEach(function(t){var vis=t.vis||'public',mine=(t.initiator||'').matc
  dash.appendChild(d)});
 /* available — Missions V2 slice A: real boards (S.world.missions), not a history-scrape.
    Flattened across every planet with an unaccepted posting; click jumps the map to that location. */
-var mrows=[];Object.keys(S.world.missions||{}).forEach(function(pid){(S.world.missions[pid]||[]).forEach(function(m){if(!m.accepted)mrows.push(m)})});
+var mrows=[];Object.keys(S.world.missions||{}).forEach(function(pid){(S.world.missions[pid]||[]).forEach(function(m){if(!m.accepted&&!MISSION.gateReason(m,S.player.allegiance))mrows.push(m)})});
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Missions — posted nearby ('+mrows.length+')</h5></div>');
 if(!mrows.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">No missions posted right now.</div>');
 mrows.forEach(function(m){var pp=fPl(m.pl);var lname=(pp&&fLoc(m.pl,m.lid))?fLoc(m.pl,m.lid).name:m.lid;

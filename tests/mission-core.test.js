@@ -15,14 +15,25 @@ const CTX = () => ({
   pl: { id: 'testp', type: 'Forge World', prod_mult: 2.0 },
   locs: [
     { id: 'l1', name: 'The Foundry', cond: null,     doors: ['shop', 'muster'], npc: null, garrison: true },
-    { id: 'l2', name: 'Shattered Row', cond: 'Ruined', doors: [],               npc: 'Magos Vex', garrison: false }
+    // T-MSN-1B task 5 fix round: cond values are the REAL canon condition ids
+    // (galaxy.conditions[].id — lowercase), not the old placeholder "Ruined". rebuild's
+    // prefer_condition was fixed to match (see canon v1.27 note).
+    { id: 'l2', name: 'Shattered Row', cond: 'ruined', doors: [],               npc: 'Magos Vex', garrison: false }
   ]
 });
 const CTX_NO_GARRISON = () => ({
   pl: { id: 'testp', type: 'Forge World', prod_mult: 2.0 },
   locs: [
     { id: 'l1', name: 'The Foundry', cond: null,     doors: ['shop', 'muster'], npc: null, garrison: false },
-    { id: 'l2', name: 'Shattered Row', cond: 'Ruined', doors: [],               npc: 'Magos Vex', garrison: false }
+    { id: 'l2', name: 'Shattered Row', cond: 'ruined', doors: [],               npc: 'Magos Vex', garrison: false }
+  ]
+});
+// T-MSN-1B task 5: a garrisoned, besieged location — for the defend/besieged condition-weight test.
+const CTX_BESIEGED = () => ({
+  pl: { id: 'testp', type: 'Forge World', prod_mult: 2.0 },
+  locs: [
+    { id: 'l1', name: 'The Foundry', cond: null,      doors: ['shop', 'muster'], npc: null, garrison: true },
+    { id: 'l2', name: 'The Last Wall', cond: 'besieged', doors: ['muster'],      npc: null, garrison: true }
   ]
 });
 function mkState() {
@@ -336,4 +347,93 @@ test('rollMission: bounty_hunt\'s minted payout already carries the named premiu
     CTX().pl.prod_mult, canon
   );
   assert.strictEqual(inst.payout, Math.round(plainEquivalent * canon.rules.missions.named_premium));
+});
+
+// ── T-MSN-1B task 5: condition-weighted picks extended to besieged/infested + allegiance
+// gating (player-agnostic generation, gated at render+accept) + face priority for new rows ──
+
+test('canon: prefer_condition values are real galaxy.conditions ids, not placeholders', () => {
+  const realIds = canon.galaxy.conditions.map(c => c.id);
+  ['rebuild', 'liberation', 'defend'].forEach(id => {
+    const row = canon.missions.universal.find(rw => rw.id === id);
+    assert.ok(realIds.includes(row.prefer_condition),
+      row.id + '.prefer_condition (' + row.prefer_condition + ') must be a real condition id');
+  });
+  const row = canon.missions.universal.find(rw => rw.id === 'rebuild');
+  assert.strictEqual(row.prefer_condition, 'ruined');
+  assert.strictEqual(canon.missions.universal.find(rw => rw.id === 'liberation').prefer_condition, 'infested');
+  assert.strictEqual(canon.missions.universal.find(rw => rw.id === 'defend').prefer_condition, 'besieged');
+});
+
+test('condition preference: a besieged, garrisoned location prefers defend', () => {
+  // mirrors the existing "Ruined location draws rebuild" mechanism/test shape exactly,
+  // just against the besieged/defend pairing added this task
+  const r = MISSION.rng(5);
+  let sawDefendOnSiege = false;
+  for (let day = 0; day < 10 && !sawDefendOnSiege; day++) {
+    const board = MISSION.refillBoard([], CTX_BESIEGED(), canon, r, day);
+    sawDefendOnSiege = board.some(m => m.mid === 'defend' && m.lid === 'l2');
+  }
+  assert.ok(sawDefendOnSiege, 'defend must land on the besieged location within 10 rolls');
+});
+
+test('gateReason: allegiance-gated rows (consecration/desecration) refuse the wrong allegiance, admit the right one', () => {
+  const consecration = canon.missions.universal.find(rw => rw.id === 'consecration');
+  const desecration = canon.missions.universal.find(rw => rw.id === 'desecration');
+  assert.strictEqual(MISSION.gateReason(consecration, 'chaos'), 'The rite is not yours to perform.');
+  assert.strictEqual(MISSION.gateReason(consecration, 'imperial'), null);
+  assert.strictEqual(MISSION.gateReason(desecration, 'imperial'), 'The rite is not yours to perform.');
+  assert.strictEqual(MISSION.gateReason(desecration, 'chaos'), null);
+  // xenos gets neither RITUAL rite
+  assert.ok(MISSION.gateReason(consecration, 'xenos'));
+  assert.ok(MISSION.gateReason(desecration, 'xenos'));
+});
+
+test('gateReason: ungated rows (e.g. purge) never refuse, for any allegiance', () => {
+  const purgeRow = canon.missions.universal.find(rw => rw.id === 'purge');
+  ['imperial', 'chaos', 'xenos'].forEach(al => assert.strictEqual(MISSION.gateReason(purgeRow, al), null));
+});
+
+test('rollMission carries the row\'s gates forward onto the minted instance (so accept can gate on inst alone)', () => {
+  const consecration = canon.missions.universal.find(rw => rw.id === 'consecration');
+  const r = MISSION.rng(1);
+  const inst = MISSION.rollMission(consecration, CTX(), r, 0, canon);
+  assert.deepStrictEqual(inst.gates, { allegiance: 'imperial' });
+  assert.strictEqual(MISSION.gateReason(inst, 'chaos'), 'The rite is not yours to perform.');
+});
+
+test('faceOf via rollMission: consecration resolves to the altar door when one is present', () => {
+  const consecration = canon.missions.universal.find(rw => rw.id === 'consecration');
+  const ctxWithAltar = {
+    pl: { id: 'testp', type: 'Shrine World', prod_mult: 1 },
+    locs: [{ id: 'l1', name: 'The Reliquary', cond: null, doors: ['altar'], npc: null, garrison: false }]
+  };
+  const r = MISSION.rng(2);
+  const inst = MISSION.rollMission(consecration, ctxWithAltar, r, 0, canon);
+  assert.deepStrictEqual(inst.face, { kind: 'door', label: 'altar at The Reliquary' });
+});
+
+test('faceOf via rollMission: bounty_hunt wants its OWN declared door (relay), not the KILL family default (muster)', () => {
+  const bountyRow = canon.missions.universal.find(rw => rw.id === 'bounty_hunt');
+  // location has muster (the KILL family default) open but NOT relay (bounty_hunt's declared door)
+  const ctxMusterOnly = {
+    pl: { id: 'testp', type: 'Hive World', prod_mult: 1 },
+    locs: [{ id: 'l1', name: 'Sump District', cond: null, doors: ['muster'], npc: null, garrison: true }]
+  };
+  const r = MISSION.rng(6);
+  const inst = MISSION.rollMission(bountyRow, ctxMusterOnly, r, 0, canon);
+  assert.notStrictEqual(inst.face.kind, 'door', 'must not fall back to the family door bounty_hunt did not declare');
+  assert.strictEqual(inst.face.kind, 'notice');
+  assert.strictEqual(inst.face.label, 'WANTED — by name');
+});
+
+test('faceOf via rollMission: assassination (faces:{npc:true}, no door) goes NPC-first even when the KILL family door (muster) is open', () => {
+  const assRow = canon.missions.universal.find(rw => rw.id === 'assassination');
+  const ctxNpcAndMuster = {
+    pl: { id: 'testp', type: 'Hive World', prod_mult: 1 },
+    locs: [{ id: 'l1', name: 'Backroom', cond: null, doors: ['muster'], npc: 'The Broker', garrison: true }]
+  };
+  const r = MISSION.rng(9);
+  const inst = MISSION.rollMission(assRow, ctxNpcAndMuster, r, 0, canon);
+  assert.deepStrictEqual(inst.face, { kind: 'npc', label: 'The Broker' });
 });

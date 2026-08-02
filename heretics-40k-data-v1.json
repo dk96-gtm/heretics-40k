@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.26",
+  "version": "1.27",
   "updated": "2026-08-03",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -15,7 +15,8 @@
    "v1.23: typed resources (T-ECN-1) - resource_output {food,material,fuel} on every planet type + rules.resources constants (stack 40, storage 40/level, upkeep 2/level). Typed production replaces the interim currency stream from holdings.",
    "v1.24: door tiers groundwork (T-DOOR-1) - 35-type planet registry (14 standard / 21 subfaction, dormant effect strings replaced by lore), rules.doors_tiering (caps, homes, upgrade economy), per-door tier ladders.",
    "v1.25: shop Exchange valve (T-ECN-2a) - currency<->resource lots at tier-scaled rates, ruled-worlds only.",
-   "v1.26: Missions Slice B (T-MSN-1B) - 8 universal rows (KILL x4, Defend, Trade Haul, RITUAL x2), modifier registry (x1.5 stacking), bounty name pool."
+   "v1.26: Missions Slice B (T-MSN-1B) - 8 universal rows (KILL x4, Defend, Trade Haul, RITUAL x2), modifier registry (x1.5 stacking), bounty name pool.",
+   "v1.27: T-MSN-1B task 5 - condition-weighted generation extended to the real condition ids (rebuild prefer_condition fixed from stray 'Ruined' to canon 'ruined'; liberation prefers 'infested', defend prefers 'besieged'). Allegiance gates (consecration/desecration) are player-agnostic at generation; enforced at render (hidden) and accept (refused) only."
   ],
   "migration": {
    "done": [
@@ -15146,7 +15147,7 @@
     "params": {
      "min_words": 40
     },
-    "prefer_condition": "Ruined",
+    "prefer_condition": "ruined",
     "world_effect": {
      "prosperity": 4
     },
@@ -15242,6 +15243,7 @@
      "clear_all": true
     },
     "needs_hostiles": true,
+    "prefer_condition": "infested",
     "faces": {
      "door": "throne_room",
      "notice": "Reclamation writ"
@@ -15264,6 +15266,7 @@
     ],
     "params": {},
     "needs_hostiles": true,
+    "prefer_condition": "besieged",
     "faces": {
      "door": "muster",
      "notice": "Hold the line"

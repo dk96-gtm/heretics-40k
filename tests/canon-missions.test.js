@@ -40,7 +40,9 @@ test('pilot mission rows: purge, item_request, rebuild', () => {
   assert.strictEqual(byId.purge.kind, 'count_kill');
   assert.strictEqual(byId.item_request.kind, 'collect_item');
   assert.strictEqual(byId.rebuild.kind, 'restore');
-  assert.strictEqual(byId.rebuild.prefer_condition, 'Ruined');
+  // T-MSN-1B task 5: fixed from the placeholder 'Ruined' to the real galaxy.conditions id 'ruined'
+  // (location.condition on real galaxy locations is always lowercase — the old value never matched).
+  assert.strictEqual(byId.rebuild.prefer_condition, 'ruined');
   assert.strictEqual(byId.purge.needs_hostiles, true);
   // fix round (CRITICAL): every combat-flavored row needs a garrison to mint, not just purge —
   // otherwise a garrison-less planet mints a permanently-unacceptable "stale notice".
@@ -54,12 +56,12 @@ test('face_doors values are real door kinds', () => {
     assert.ok(doorKinds.includes(v), v + ' must be a real door kind'));
 });
 
-test('canon is v1.26', () => {
-  assert.strictEqual(canon.meta.version, '1.26');
+test('canon is v1.27', () => {
+  assert.strictEqual(canon.meta.version, '1.27');
 });
 
-test('canon v1.26: 11 universal missions, modifiers + bounty names', () => {
-  assert.strictEqual(canon.meta.version, '1.26');
+test('canon v1.27: 11 universal missions, modifiers + bounty names', () => {
+  assert.strictEqual(canon.meta.version, '1.27');
   const U = canon.missions.universal;
   assert.strictEqual(U.length, 11);
   const ids = U.map((m) => m.id);
@@ -71,6 +73,11 @@ test('canon v1.26: 11 universal missions, modifiers + bounty names', () => {
   }
   assert.strictEqual(U.find((m) => m.id === 'consecration').gates.allegiance, 'imperial');
   assert.strictEqual(U.find((m) => m.id === 'desecration').gates.allegiance, 'chaos');
+  // T-MSN-1B task 5: condition-weighted picks extended, real galaxy.conditions ids only
+  const condIds = canon.galaxy.conditions.map((c) => c.id);
+  assert.strictEqual(U.find((m) => m.id === 'liberation').prefer_condition, 'infested');
+  assert.strictEqual(U.find((m) => m.id === 'defend').prefer_condition, 'besieged');
+  ['ruined', 'infested', 'besieged'].forEach((id) => assert.ok(condIds.includes(id), id));
   const M = canon.rules.missions.modifiers;
   assert.deepStrictEqual(Object.keys(M), ['understrength','lone_wolf','low_tech','ironman','blitz']);
   assert.strictEqual(M.understrength.pc_max, 150);
