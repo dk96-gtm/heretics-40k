@@ -4026,7 +4026,7 @@
          {
           "id": "kraithv",
           "name": "Kraith Verge",
-          "type": "Dead World - splinter-touched",
+          "type": "Infested World",
           "rift": "Nihilus",
           "canon": false,
           "ruler": {
@@ -8231,7 +8231,8 @@
      "Death World",
      "Dead World",
      "Tomb World",
-     "Daemon World"
+     "Daemon World",
+     "Infested World"
     ],
     "effect": "Xenos ground. You do not buy from a Tyranid - bio-forge only, no shop."
    },
