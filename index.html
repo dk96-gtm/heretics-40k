@@ -3899,7 +3899,7 @@ function doorCatalog(kind,tier){var pf=doorFactionId();var t=tier||3;
    .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}})}
  if(kind==='shop')return pick(D.weapons).concat(pick(D.items)).concat(pick(D.abilities))
    .filter(function(it){return DOOR.gearTier(it.pc,D)<=t});
- if(kind==='altar')return pick(D.casts).filter(function(it){return DOOR.castRank(it.d)<=((D.rules.doors_tiering.altar_rank_by_tier||{})[String(t)]||4)});
+ if(kind==='altar')return pick(D.casts).filter(function(it){return DOOR.castRank(it.d)<=((((D.rules||{}).doors_tiering||{}).altar_rank_by_tier||{})[String(t)]||2)});
  if(kind==='reliquary'){var L=(D.legendaries||[]).filter(function(it){return it.faction===pf})
    .map(function(it){return {n:it.n,cat:it.cat,d:it.d,pc:it.pc}});
    return t>=2?L:L.slice(0,1)}
@@ -3956,7 +3956,9 @@ function renderDoor(dr,h){var c=E('div','card');
   c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Revive fallen models within their revival window — any element, at a cost scaled to point cost.</div>');
   if(!dead.length)c.insertAdjacentHTML('beforeend','<div class="empty">No revivable dead in range.</div>');
   dead.forEach(function(m){var cost=Math.max(6,Math.round(m.pc*2*feeMult));var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span class="clk" data-mid="'+m.id+'"><b>'+m.n+'</b></span><span class="price">'+cost+'</span></div>');
-   var bt=E('button','btn gh sm','Revive');bt.style.marginTop='5px';bt.onclick=function(){if(S.cur<cost){T('Not enough '+curName()+'.');return}S.cur-=cost;m.st='GARRISON';m.w=m.w.split('/')[1]+'/'+m.w.split('/')[1];m.loc=fPl(S.pos.pl).p.name+' · '+h.name;rW();rRos();rShop();T(m.n.split(' ')[0]+' walks again.')};
+   var bt=E('button','btn gh sm','Revive');bt.style.marginTop='5px';bt.onclick=function(){if(S.cur<cost){T('Not enough '+curName()+'.');return}S.cur-=cost;
+    var mx=+m.w.split('/')[1],rw=tier>=3?mx:tier>=2?Math.max(1,Math.ceil(mx/2)):1;
+    m.st='GARRISON';m.w=rw+'/'+mx;m.loc=fPl(S.pos.pl).p.name+' · '+h.name;rW();rRos();rShop();T(m.n.split(' ')[0]+' walks again.')};
    r.appendChild(bt);r.querySelector('[data-mid]').onclick=function(){openModel(m.id)};c.appendChild(r)});
   /* remains carried in your inventory (looted off the field within their window) — a
      separate, cheaper path from the in-place dead-list above: the recovery risk was
@@ -3976,8 +3978,8 @@ function renderDoor(dr,h){var c=E('div','card');
      var mb=E('button','btn gh sm','Revive ('+rcost+')');mb.style.marginTop='5px';
      mb.onclick=function(){if(S.cur<rcost){T('Not enough '+curName()+'.');return}
       var idx=S.inv.indexOf(it);if(idx<0)return;
-      var maxw=mine.w.split('/')[1]||mine.pc||1;
-      S.cur-=rcost;mine.st='GARRISON';mine.w=(tier>=3?maxw:'1')+'/'+maxw;mine.loc=fPl(S.pos.pl).p.name+' · '+h.name;
+      var maxw=+(mine.w.split('/')[1]||mine.pc||1),rw2=tier>=3?maxw:tier>=2?Math.max(1,Math.ceil(maxw/2)):1;
+      S.cur-=rcost;mine.st='GARRISON';mine.w=rw2+'/'+maxw;mine.loc=fPl(S.pos.pl).p.name+' · '+h.name;
       S.inv.splice(idx,1);rW();rRos();rShop();T(mine.n.split(',')[0]+' claws back within the window.')};
      row.appendChild(mb);
     }else{
@@ -4063,7 +4065,7 @@ function renderForge(c,dr,dtier){
 function renderArmoury(c,dr,dtier){
  var fac=doorFactionId();var who=(sel||S.roster[0]);   // the ruler's plate, not yours
  /* T-DOOR-1: heavier weight classes need a higher-tier Armoury (Forge World-homed) */
- var allowedW=(D.rules.doors_tiering.armour_tiers_by_tier||{})[String(dtier||3)]||['default','light','medium','heavy'];
+ var allowedW=(((D.rules||{}).doors_tiering||{}).armour_tiers_by_tier||{})[String(dtier||3)]||['default','light','medium','heavy'];
  var list=(D.armour||[]).filter(function(p){return (p.faction===fac||p.faction===null)&&allowedW.indexOf(p.tier)>=0;});
  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Buy and fit Armour. Defense is per-element ('+ELEM6.map(function(e){return ELAB[e]}).join(' ')+'); a hit deals max(0, damage − Defense). A <b>0</b> means that element bypasses the plate.</div>');
  var byTier={};list.forEach(function(p){(byTier[p.tier]=byTier[p.tier]||[]).push(p)});

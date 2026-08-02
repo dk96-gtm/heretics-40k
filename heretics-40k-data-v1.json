@@ -7844,7 +7844,7 @@
     },
     "tiers": {
      "1": "revive at 1 wound, full fee",
-     "2": "cheaper fees",
+     "2": "cheaper fees, revive at half wounds",
      "3": "cheapest fees, full-wound revival"
     }
    },
