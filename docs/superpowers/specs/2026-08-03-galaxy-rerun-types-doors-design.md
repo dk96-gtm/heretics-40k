@@ -75,6 +75,11 @@ each home type must actually carry a granting location. Fixes:
   lists of **Warzone** (whose lore line literally names arenas; all 3 remaining War
   Worlds carry one → Tier-III route lives) and **Lair** (Drukhari wych-pits, Ork
   fight-clubs at I–II). No new location type — doors live in location-type door lists.
+- **Reliquary → Shrine World (addendum, Daak 2026-08-03):** planning survey caught a
+  fourth broken route the criteria missed — Hydraphur's retype removes the only Shrine
+  World carrying a reliquary-granting location. Fix: the **Shrine location type's door
+  list gains `reliquary`** (its planet-type lore line literally says "relic vaults");
+  every Shrine World then routes Tier III via its shrine location.
 - **Warp Gate → Frontier World:** add ONE `webway_portal` location to **Dal'yth Verge**
   (kestar) — the galaxy's only Tier-III (travel-anywhere, passage-free) gate, T'au-held
   at boot. Deliberate conquest bait; scarcity protects the passage-cost economy.
@@ -131,7 +136,11 @@ No speculative extensions beyond what minted planets and evident lore require.
 | hive | Sump-Haven (haloz) | **infested** |
 | shrine | Solace (cicatrix) | **besieged** |
 | fortress | Mordath (cicatrix) | **besieged** |
-| space_station | Kraith Verge (kraith) | **infested** |
+| manufactorum | Cominor (infestus) | **infested** |
+
+(5th seat moved from Kraith Verge's space_station — Daak 2026-08-03: that station is
+already authored `drifting`, the galaxy's only void-side condition; the cult surfacing
+inside Cominor's factory is the better infestation story.)
 
 Never on a crown; each seat is a place where the condition's door pain (gates shut /
 shops offline) IS the story. Three segmentums covered.
