@@ -179,3 +179,23 @@ missions · `objective` versioned in the seed so pre-mission saves load clean ·
 Civilians+gender (T-MOD-1) · destructibles (T-MISC-2) · waves · travel-legs Convoy
 (T-THR-3) · space (T-SPACE-1) · door tiers/signature doors (D11 — separate sit) ·
 NPC mission *agency* (Slice 2b) · real-AI mission text (T-AI-1, Stage 3).
+
+
+## Slice-B rulings addendum (Daak sit 2026-08-03)
+
+- **Trade Haul destination gate:** at generation the mission picks a seeded DESTINATION —
+  a different same-planet location carrying a shop door; delivery only lands there (the
+  Deliver control activates only when the Commander is at the destination). Locations with
+  no valid destination don't mint the row (needs-destination eligibility, like
+  needs_hostiles).
+- **Modifiers are combat-only:** the hardship picker offers — and modCheck validates —
+  modifiers ONLY on combat-kind missions (count_kill / survive_rounds). Rituals and
+  logistics pay flat.
+- **named_premium stays 1.5** (tuning; revisit in play).
+- **Capture counts, dead or alive:** capturing the named target completes a bounty /
+  assassination objective same as killing it — and the Commander keeps the CAPTIVE
+  (sell/ransom on top of the payout). GLOSS updated to match.
+- Engineering folds (no ruling needed): class-spawn deployment spreads to adjacent free
+  cells (8-model kill-teams no longer stack on one square); mission conflict writes
+  initialize an unset sector conflict from the displayed default (10) before applying the
+  delta, so canon's −2/−3/−4 are felt as authored.
