@@ -3593,6 +3593,15 @@
             "level": 3,
             "tier": "surface",
             "desc": "A hab-hive of chained menials worked to death for the war-effort."
+           },
+           {
+            "id": "ironrelchainyards",
+            "name": "The Chained Yards",
+            "type": "orbital_dock",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "desc": "Captive shipwrights weld crusade hulls under Black Legion guns."
            }
           ],
           "resources": 95,
@@ -6056,6 +6065,15 @@
             "level": 2,
             "tier": "surface",
             "desc": "The Fire Caste's spearhead into the Verge."
+           },
+           {
+            "id": "dalythfencedgate",
+            "name": "The Fenced Gate",
+            "type": "webway_portal",
+            "tier": "surface",
+            "condition": "intact",
+            "level": 1,
+            "desc": "An ancient warp gate the earth caste has ringed with survey pylons — studied, feared, and quietly used."
            }
           ],
           "resources": 50,
@@ -6632,6 +6650,15 @@
             "level": 2,
             "tier": "surface",
             "desc": "A trade-city between the forge-stacks."
+           },
+           {
+            "id": "konoryards",
+            "name": "Konor Yards",
+            "type": "orbital_dock",
+            "tier": "orbit",
+            "condition": "intact",
+            "level": 1,
+            "desc": "Slipway rings above Konor — hulls for the Ultramar battlefleets take shape here."
            }
           ],
           "resources": 85,
@@ -8239,7 +8266,8 @@
     "pop_base": 2,
     "doors": [
      "altar",
-     "apothecarion"
+     "apothecarion",
+     "reliquary"
     ],
     "planet_types": [
      "Shrine World",
@@ -8257,7 +8285,8 @@
     "doors": [
      "forge",
      "muster",
-     "altar"
+     "altar",
+     "arena"
     ],
     "forge_tiers": "I-II",
     "forge_kind": "bio",
@@ -8315,7 +8344,9 @@
     "size": "Large",
     "output_base": 0.0,
     "pop_base": 0,
-    "doors": [],
+    "doors": [
+     "arena"
+    ],
     "planet_types": [
      "*"
     ],

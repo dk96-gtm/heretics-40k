@@ -64,3 +64,24 @@ test('G7 crown floor rule: every type hosting a crown yields Material AND Fuel (
     assert.ok(ro.fuel > 0, p.id + ' (' + p.type + ') crown yields Fuel');
   }
 });
+
+test('G7 routes: every homed door kind reachable at Tier III (criterion 1 + reliquary addendum)', () => {
+  const LT = Object.fromEntries(D.galaxy.location_types.map((l) => [l.id, l]));
+  const homes = D.rules.doors_tiering.t3_homes;
+  for (const [kind, home] of Object.entries(homes)) {
+    const ok = planets().some((p) => p.type === home &&
+      p.locations.some((l) => (LT[l.type] && LT[l.type].doors || []).includes(kind)));
+    assert.ok(ok, kind + ': some ' + home + ' planet carries a granting location');
+  }
+});
+
+test('G7 routes: the three authored locations exist with correct tier', () => {
+  const konor = byId.konor.locations.find((l) => l.type === 'orbital_dock');
+  const ironr = byId.ironreliquary.locations.find((l) => l.type === 'orbital_dock');
+  const gate = byId.dalyth.locations.find((l) => l.type === 'webway_portal');
+  assert.ok(konor && konor.tier === 'orbit' && konor.condition === 'intact');
+  assert.ok(ironr && ironr.tier === 'orbit' && ironr.condition === 'intact');
+  assert.ok(gate && gate.tier === 'surface' && gate.condition === 'intact');
+  const ids = planets().flatMap((p) => p.locations.map((l) => l.id));
+  assert.strictEqual(ids.length, new Set(ids).size, 'location ids unique galaxy-wide');
+});
