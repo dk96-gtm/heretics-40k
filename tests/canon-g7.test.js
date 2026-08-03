@@ -43,3 +43,24 @@ test('G7: legality lists carry no ghost planet types', () => {
     for (const t of lt.planet_types || [])
       assert.ok(t === '*' || names.has(t), lt.id + ' legality ghost: ' + t);
 });
+
+test('G7 resource rows: the 8 tuned rows exact (Daak 2026-08-03)', () => {
+  const by = Object.fromEntries(D.galaxy.planet_types.map((p) => [p.name, p.resource_output]));
+  assert.deepStrictEqual(by['Plague Garden World'], { food: 6, material: 2, fuel: 1 });
+  assert.deepStrictEqual(by['Crossroads World'], { food: 0, material: 1, fuel: 2 });
+  assert.deepStrictEqual(by['Infested World'], { food: 3, material: 1, fuel: 1 });
+  assert.deepStrictEqual(by['Exodite World'], { food: 4, material: 2, fuel: 1 });
+  assert.deepStrictEqual(by['Vigil World'], { food: 0, material: 2, fuel: 3 });
+  assert.deepStrictEqual(by['Scrap World'], { food: 0, material: 7, fuel: 2 });
+  assert.deepStrictEqual(by['Athenaeum World'], { food: 1, material: 2, fuel: 3 });
+  assert.deepStrictEqual(by['Convent World'], { food: 3, material: 2, fuel: 1 });
+});
+
+test('G7 crown floor rule: every type hosting a crown yields Material AND Fuel (Daak 2026-08-02)', () => {
+  const by = Object.fromEntries(D.galaxy.planet_types.map((p) => [p.name, p.resource_output]));
+  for (const p of planets().filter((p) => p.crown)) {
+    const ro = by[p.type];
+    assert.ok(ro.material > 0, p.id + ' (' + p.type + ') crown yields Material');
+    assert.ok(ro.fuel > 0, p.id + ' (' + p.type + ') crown yields Fuel');
+  }
+});

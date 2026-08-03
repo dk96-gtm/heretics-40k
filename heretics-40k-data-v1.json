@@ -8750,7 +8750,7 @@
     "resource_output": {
      "food": 4,
      "material": 2,
-     "fuel": 0
+     "fuel": 1
     },
     "faction": "aeldari"
    },
@@ -8878,7 +8878,7 @@
     "resource_output": {
      "food": 6,
      "material": 2,
-     "fuel": 0
+     "fuel": 1
     },
     "faction": "death_guard"
    },
@@ -8889,9 +8889,9 @@
     "pop_ceiling": 1,
     "lore": "A silent library-world of the Thousand Sons. Forbidden lore is gathered, warded, and studied here.",
     "resource_output": {
-     "food": 2,
+     "food": 1,
      "material": 2,
-     "fuel": 2
+     "fuel": 3
     },
     "faction": "thousand_sons"
    },
@@ -8902,9 +8902,9 @@
     "pop_ceiling": 2,
     "lore": "Seat of a Sororitas Order's motherhouse. Faith is organized here as thoroughly as any army.",
     "resource_output": {
-     "food": 2,
+     "food": 3,
      "material": 2,
-     "fuel": 2
+     "fuel": 1
     },
     "faction": "sororitas"
    },
@@ -8942,8 +8942,8 @@
     "lore": "An Ork world of mek yards and fighting pits. Its junk mountains supply endless crude machinery.",
     "resource_output": {
      "food": 0,
-     "material": 8,
-     "fuel": 4
+     "material": 7,
+     "fuel": 2
     },
     "faction": "orks"
    },
@@ -8955,7 +8955,7 @@
     "lore": "A webway junction kept open by Harlequin masques. All travelers pass through; none linger.",
     "resource_output": {
      "food": 0,
-     "material": 0,
+     "material": 1,
      "fuel": 2
     },
     "faction": "harlequins"
@@ -8981,8 +8981,8 @@
     "lore": "A watch-post of the Adeptus Custodes. Few are stationed here, and nothing passes them.",
     "resource_output": {
      "food": 0,
-     "material": 1,
-     "fuel": 1
+     "material": 2,
+     "fuel": 3
     },
     "faction": "custodes"
    },
@@ -8994,8 +8994,8 @@
     "lore": "A world partly consumed by a Tyranid splinter fleet. What remains of its biosphere feeds the swarm.",
     "resource_output": {
      "food": 3,
-     "material": 0,
-     "fuel": 0
+     "material": 1,
+     "fuel": 1
     },
     "faction": "tyranids"
    }
