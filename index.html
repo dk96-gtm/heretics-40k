@@ -3019,12 +3019,20 @@ function convertSpoils(t){
     S.world.log=S.world.log||[];
     S.world.log.unshift(nowStamp()+' — '+vm.n.split(',')[0]+' was TAKEN alive. A ransom may follow.');}}});
 }
-/* Slice-B fix round 2 (IMPORTANT 3): one shared baseline so every sector-stats writer
-   starts an unset conflict at the SAME default liveScores already displays (10) — before
-   this, only the mission branch did it; the thread_scales sibling's first write landed
-   silently on 0, a lower value than what the player was already looking at. Small glue
-   helper (not core): mutates st.conflict in place if unset, and returns st for chaining. */
-function confBase(st){if(typeof st.conflict!=='number')st.conflict=10;return st;}
+/* Slice-B fix round 3: statBase generalizes round 2's confBase to EVERY unset-baseline
+   sector-stat, not just conflict — every writer must start an unset stat at the SAME
+   default liveScores already displays (conflict 10, prosperity 50), never 0, or the very
+   first write reads like a huge swing against what the player is already looking at (a
+   +2 mission on a fresh sector was showing prosperity crash to 2 instead of rise to 52 —
+   round 2 closed the identical bug for conflict but missed prosperity's own 50 baseline).
+   Taint is untouched: both writer sites already seed it numeric 0 at auto-create
+   (S.world.stats[msec]||{taint:0}), so 0 IS its correct baseline already. Small glue
+   helper (not core): mutates st in place for any unset field, returns st for chaining. */
+function statBase(st){
+ if(typeof st.conflict!=='number')st.conflict=10;
+ if(typeof st.prosperity!=='number')st.prosperity=50;
+ return st;
+}
 function concludeThread(t,oc){
  t.done={kind:oc.kind,victor:oc.victor||null,defeated:oc.defeated||[],at:Date.now()};
  var C=(t.state&&t.state.combatants)||{};
@@ -3045,9 +3053,11 @@ function concludeThread(t,oc){
   S.world.history[key].unshift(t.type+' — '+t.n+' · concluded, '+(oc.kind==='accord'?'accord':mineWon?'victory':oc.victor?'defeat':'mutual ruin'));}
  var scaleKey=t.type==='SKIRMISH'?'Skirmish':t.type==='INVASION'?'Invasion':t.type==='DIPLOMACY'?'Diplomacy':null;
  var sc=scaleKey?(D.galaxy.thread_scales||{})[scaleKey]:null;
- if(sc&&sc.effect&&t.pl){var fp=fPl(t.pl);if(fp){var st=confBase(S.world.stats[fp.s.id]=S.world.stats[fp.s.id]||{});
+ if(sc&&sc.effect&&t.pl){var fp=fPl(t.pl);if(fp){var st=statBase(S.world.stats[fp.s.id]=S.world.stats[fp.s.id]||{});
   if(typeof sc.effect.conflict==='number')st.conflict=Math.max(0,st.conflict+sc.effect.conflict);
-  if(typeof sc.effect.prosperity==='number')st.prosperity=Math.max(0,(st.prosperity||0)+sc.effect.prosperity);}}
+  // fix round 3: mirror WORLD.driftScores' own prosperity clamp (0..100) on the write —
+  // conflict has no ceiling clamp at write time either (drift doesn't clamp it, only display does).
+  if(typeof sc.effect.prosperity==='number')st.prosperity=Math.min(100,Math.max(0,st.prosperity+sc.effect.prosperity));}}
  /* Missions V2 slice A: payout + world effect + board removal — a mission thread
     is spent the moment it concludes, win or lose. T-MSN-1B task 4: chosen modifiers that
     still hold their predicate at conclude (THREAD.modCheck) multiply the payout ×1.5 each,
@@ -3069,9 +3079,13 @@ function concludeThread(t,oc){
    // sector's stats entry rather than requiring one to pre-exist. Roughly 23 sectors never
    // had a stats row minted (no prior SKIRMISH/INVASION/DIPLOMACY there), so a mission
    // world_effect on any of them was silently dropped on the floor.
-   if(msec){var mst=confBase(S.world.stats[msec]=S.world.stats[msec]||{taint:0});
+   if(msec){var mst=statBase(S.world.stats[msec]=S.world.stats[msec]||{taint:0});
     if(typeof we.taint==='number')mst.taint=Math.max(0,(mst.taint||0)+we.taint);
-    if(typeof we.prosperity==='number')mst.prosperity=Math.max(0,(mst.prosperity||0)+we.prosperity);
+    // Slice-B ruling: an unset sector prosperity is displayed as 50 (liveScores' own
+    // default) — a mission's authored delta must land on that same baseline, not on 0
+    // (fix round 3). Ceiling-clamped at 100 too, mirroring WORLD.driftScores' own write-time
+    // prosperity clamp.
+    if(typeof we.prosperity==='number')mst.prosperity=Math.min(100,Math.max(0,mst.prosperity+we.prosperity));
     // Slice-B ruling: an unset sector conflict is displayed as 10 (liveScores' own default) —
     // a mission's authored -2/-3/-4 delta must land on that same baseline, not on 0, or the
     // very first write reads like a no-op against what the player already sees on screen.
