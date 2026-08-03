@@ -2831,7 +2831,7 @@
          {
           "id": "custodwatch",
           "name": "Custodian's Watch",
-          "type": "Fortress World",
+          "type": "Vigil World",
           "rift": "Sanctus",
           "canon": false,
           "ruler": {
@@ -2941,7 +2941,7 @@
          {
           "id": "cadmus",
           "name": "Cadmus Prime",
-          "type": "Fortress World",
+          "type": "Garrison World",
           "rift": "Sanctus",
           "canon": false,
           "ruler": {
@@ -3434,7 +3434,7 @@
          {
           "id": "karzhorn",
           "name": "Kar Zhorn",
-          "type": "Daemon World",
+          "type": "Anchorage World",
           "rift": "Nihilus",
           "canon": false,
           "ruler": {
@@ -3664,7 +3664,7 @@
          {
           "id": "nurth",
           "name": "Nurth",
-          "type": "Death World",
+          "type": "Plague Garden World",
           "rift": "Nihilus",
           "canon": false,
           "ruler": {
@@ -3741,7 +3741,7 @@
          {
           "id": "skallaxp",
           "name": "Skallax",
-          "type": "War World",
+          "type": "Slaughter World",
           "rift": "Nihilus",
           "canon": false,
           "ruler": {
@@ -3913,7 +3913,7 @@
          {
           "id": "prosperinep",
           "name": "Prosperine Ash",
-          "type": "Daemon World",
+          "type": "Athenaeum World",
           "rift": "Nihilus",
           "canon": false,
           "ruler": {
@@ -4165,7 +4165,7 @@
          {
           "id": "gorkamorka",
           "name": "Gorkamorka",
-          "type": "Xenos World",
+          "type": "Scrap World",
           "rift": "Nihilus",
           "canon": false,
           "ruler": {
@@ -4581,7 +4581,7 @@
          {
           "id": "screamsink",
           "name": "The Screaming Sinks",
-          "type": "Daemon World",
+          "type": "Pleasure World",
           "rift": "Nihilus",
           "canon": false,
           "ruler": {
@@ -4943,7 +4943,7 @@
          {
           "id": "shaadom",
           "name": "Shaa-Dom",
-          "type": "Xenos World",
+          "type": "Raider's Nest",
           "rift": "Nihilus",
           "canon": false,
           "ruler": {
@@ -5124,7 +5124,7 @@
          {
           "id": "devourermaw",
           "name": "The Devourer's Maw",
-          "type": "Xenos World",
+          "type": "Infested World",
           "rift": "Nihilus",
           "canon": false,
           "ruler": {
@@ -5315,7 +5315,7 @@
          {
           "id": "hydraphur",
           "name": "Hydraphur",
-          "type": "Shrine World",
+          "type": "Convent World",
           "rift": "Sanctus",
           "canon": true,
           "ruler": {
@@ -5531,7 +5531,7 @@
          {
           "id": "metalica_reach",
           "name": "Metalica-Reach",
-          "type": "Forge World",
+          "type": "Explorator World",
           "rift": "Sanctus",
           "canon": false,
           "ruler": {
@@ -5753,7 +5753,7 @@
          {
           "id": "saimhael",
           "name": "Saim-Reach",
-          "type": "Xenos World",
+          "type": "Exodite World",
           "rift": "Sanctus",
           "canon": true,
           "ruler": {
@@ -6439,7 +6439,7 @@
          {
           "id": "macragge",
           "name": "Macragge",
-          "type": "Fortress World",
+          "type": "Chapter World",
           "rift": "Sanctus",
           "canon": true,
           "ruler": {
@@ -7195,7 +7195,7 @@
          {
           "id": "sanctumprime",
           "name": "Sanctum Prime",
-          "type": "Hive World",
+          "type": "Cult World",
           "rift": "Nihilus",
           "canon": false,
           "ruler": {
@@ -7600,7 +7600,7 @@
          {
           "id": "masque",
           "name": "The Masque",
-          "type": "Exodite World",
+          "type": "Crossroads World",
           "rift": "Sanctus",
           "canon": false,
           "ruler": {
@@ -8045,7 +8045,8 @@
     "planet_types": [
      "Hive World",
      "Civilized World",
-     "Industrial World"
+     "Industrial World",
+     "Cult World"
     ],
     "effect": "Two shops: the underhive sells what the spire denies exists."
    },
@@ -8116,7 +8117,8 @@
     "planet_types": [
      "Forge World",
      "Industrial World",
-     "Hive World"
+     "Hive World",
+     "Explorator World"
     ],
     "effect": "Highest output of any type. Volume over sanctity - never produces a masterwork."
    },
@@ -8133,7 +8135,7 @@
     "forge_tiers": "I-III",
     "planet_types": [
      "Forge World",
-     "Frontier Forge World"
+     "Explorator World"
     ],
     "faction": "Adeptus Mechanicus",
     "effect": "The only ground-side Tier III forge. Taking a Forge World is the only route to Tier III."
@@ -8241,9 +8243,8 @@
     ],
     "planet_types": [
      "Shrine World",
-     "Chapel World",
-     "Cemetery World",
-     "Civilized World"
+     "Civilized World",
+     "Convent World"
     ],
     "effect": "No commerce. Altars reach tier III on Shrine Worlds."
    },
@@ -8266,7 +8267,12 @@
      "Dead World",
      "Tomb World",
      "Daemon World",
-     "Infested World"
+     "Infested World",
+     "Anchorage World",
+     "Athenaeum World",
+     "Pleasure World",
+     "Scrap World",
+     "Raider's Nest"
     ],
     "effect": "Xenos ground. You do not buy from a Tyranid - bio-forge only, no shop."
    },
@@ -8332,7 +8338,7 @@
     "planet_types": [
      "Death World",
      "Daemon World",
-     "Plague World"
+     "Plague Garden World"
     ],
     "effect": "Nurgle's own forge. Reaches Tier III without Mechanicus rites - the Chaos answer to the Forge Temple."
    },
@@ -8409,7 +8415,8 @@
      "Hive World",
      "Civilized World",
      "Industrial World",
-     "Mining World"
+     "Mining World",
+     "Cult World"
     ],
     "effect": "Hidden. Invisible to other factions until sector Conflict >= 40 reveals it."
    },
