@@ -466,6 +466,55 @@ test('capture: a captured model is excluded from further DoT ticks (no post-capt
   assert.strictEqual(t.state.combatants.e0.dead, undefined, 'still captured, never also flagged dead');
 });
 
+// ── Slice-B fix round 2 (minor 5) · trackKill's per-victim _counted flag ──
+// A captured combatant is not permanently unreachable: the 'free' effect can restore one
+// to the field (its captor's CAPTIVE item is stripped/looted, e.g. off a corpse) — if that
+// freed model is then killed for real, trackKill must not credit the objective a second
+// time for the SAME victim. Constructed directly (bypassing validate, matching every other
+// objective test in this file): capture credits once, free restores the model to the field,
+// a second kill on it must be inert.
+function captureFreeKillSeed() {
+  return {
+    id: 'mcfk', type: 'MISSION', n: 'Capture-free-kill test', turn: 'you', forces: ['Mine'],
+    seedState: {
+      objective: { kind: 'count_kill', target: 2, progress: 0, params: { filter: 'hostile' }, done: false },
+      pools: { Mine: 20, Foe: 10 },
+      combatants: {
+        m1: { w: [4, 4], conds: [], party: 'Mine', armour: null, x: 2, y: 2,
+              model: { n: 'Captor', pc: 10, cls: 'Core',
+                loadout: { slots: [{ type: 'ITEM', it: SHACKLES }, { type: 'ITEM', it: null }] } } },
+        e0: { w: [1, 1], conds: [], party: 'Foe', armour: null, x: 3, y: 2,
+              gen: { id: 'e0', n: 'Grunt', cls: 'Core', pc: 10 } },
+        e1: { w: [1, 1], conds: [], party: 'Foe', armour: null, x: 5, y: 5,
+              gen: { id: 'e1', n: 'Grunt 2', cls: 'Core', pc: 10 } }
+      },
+      joined: true
+    }
+  };
+}
+test('trackKill._counted: capture -> free -> kill cannot double-credit the same victim', () => {
+  const t = THREAD.create(captureFreeKillSeed(), canon);
+  // capture e0 - first (and only legitimate) credit
+  THREAD.apply(t, t.state,
+    [{ actor: 'm1', cost: 3, item: SHACKLES, effect: { kind: 'capture', to: 'e0' } }], canon);
+  assert.strictEqual(t.state.objective.progress, 1);
+  assert.strictEqual(t.state.combatants.e0.captured, true);
+  assert.strictEqual(t.state.combatants.e0._counted, true);
+  // e0 is sprung: m1's CAPTIVE item (ref.cid === 'e0') is stripped, e0 returns to the field
+  THREAD.apply(t, t.state,
+    [{ actor: 'e1', effect: { kind: 'free', corpse: 'm1', cid: 'e0' } }], canon);
+  assert.strictEqual(t.state.combatants.e0.captured, false, 'freed - back on the field');
+  assert.strictEqual(t.state.combatants.e0.dead, undefined);
+  // kill the freed model again - must NOT re-credit the objective
+  THREAD.apply(t, t.state, [{ actor: 'e1', effect: { kind: 'slay', to: 'e0' } }], canon);
+  assert.strictEqual(t.state.objective.progress, 1, 'the same victim must never be counted twice');
+  assert.strictEqual(THREAD.evalObjective(t.state).won, false, 'target is 2 - a real second hostile kill is still required');
+  // a genuinely different victim still counts normally
+  THREAD.apply(t, t.state, [{ actor: 'm1', cost: 1, effect: { kind: 'slay', to: 'e1' } }], canon);
+  assert.strictEqual(t.state.objective.progress, 2);
+  assert.strictEqual(THREAD.evalObjective(t.state).won, true);
+});
+
 // ── Slice-B rulings addendum (Daak sit 2026-08-03) · modifiers are combat-only ──
 test('modCheck: a non-combat objective (e.g. restore/collect_item) voids every modifier outright', () => {
   const restoreState = { objective: { kind: 'restore', target: 3 }, acceptPC: 50, acceptModels: 1 };

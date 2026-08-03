@@ -687,11 +687,19 @@ var THREAD=(function(){
     var ob=state.objective;
     if(!ob||ob.done||ob.kind!=='count_kill')return;
     if(!victim||!victim.gen)return;              // count_kill only ever tracks generated hostiles
+    // Slice-B fix round 2 (minor 5): a per-victim _counted flag, checked before anything
+    // else — a capture already credits the objective (T-MSN-1B rulings), and a captured
+    // model CAN be freed (the 'free' effect) and killed again later if its captor dies
+    // and someone loots/frees the CAPTIVE item; without this flag that second credit
+    // would double-count the same victim. Plain boolean on the combatant, JSON-safe
+    // (survives SAVE.snapshot/relink exactly like c.dead/c.captured already do).
+    if(victim._counted)return;
     // T-MSN-1B task 2: filter extensions — 'hostile'/'any'/clear_all count any generated kill;
     // 'named'/'class' narrow to the specific target the mission row named at generation.
     var filt=(ob.params&&ob.params.filter)||'hostile';
     if(filt==='named'&&victim.gen.n!==(ob.params&&ob.params.target_name))return;
     if(filt==='class'&&victim.gen.cls!==(ob.params&&ob.params.cls))return;
+    victim._counted=true;
     ob.progress+=1;if(ob.progress>=ob.target)ob.done=true;
   }
   function _enemyAliveCount(state){                // generated hostiles still standing (mission "enemy side")
@@ -1870,14 +1878,21 @@ var MISSION=(function(){
       d:'Consigned cargo, bonded to this contract — worthless anywhere but the buyer\'s dock.',pc:1});
     return out;
   }
-  /* Slice-B ruling: pure destination gate for the collect_item deliver control — a
-     needs_destination row's params carry dest_loc; delivery only lands there. Rows
-     without dest_loc (item_request, etc.) are ungated. Location ids are globally unique
-     across the galaxy (verified against the galaxy mint), so matching pos.sp alone also
-     proves the Commander is on the correct planet — no separate pl check needed. */
-  function deliverGate(params,pos){
-    if(!(params&&params.dest_loc))return true;
-    return !!(pos&&pos.sp===params.dest_loc);
+  /* Slice-B ruling (fix round 2): pure destination gate for the collect_item deliver
+     control. Discriminates on params.granted, NOT on dest_loc's mere presence — only
+     granted (trade_haul-style) rows are ever destination-gated at all; a granted row
+     that somehow carries no dest_loc (a legacy/stale instance minted before this gate
+     existed) FAILS CLOSED rather than defaulting to ungated, since that was the exact
+     shape of the original exploit. Non-granted rows (item_request, etc.) stay ungated,
+     matching Slice-A behavior. Location ids are globally unique across the galaxy
+     (verified against the galaxy mint), so matching pos.sp alone also proves the
+     Commander is on the correct planet — no separate pl check needed. inTransit/isVoid
+     are threaded in as plain booleans (not read from a global) so this stays pure —
+     the caller (engine glue) supplies inTransit()/S.pos.void. */
+  function deliverGate(params,pos,inTransit,isVoid){
+    if(!(params&&params.granted))return true;
+    if(!params.dest_loc)return false;
+    return !!(pos&&pos.sp===params.dest_loc&&!inTransit&&!isVoid);
   }
   function refillBoard(board,ctx,canon,r,day){
     var M=R(canon);
@@ -2317,6 +2332,16 @@ function acceptMission(inst,pl,l,mods){
  // or vice versa). In-fiction refusal, no silent no-op.
  var _gr=MISSION.gateReason(inst,S.player.allegiance);
  if(_gr){T(_gr);return;}
+ // Slice-B fix round 2 (IMPORTANT — remote-accept bypass): a granted row (trade_haul —
+ // the consignment crates are handed over the instant you sign) can only be signed for
+ // in person at its ORIGIN — otherwise a Commander standing at the destination could
+ // accept the board posting remotely (map panel jump, no travel) and deliver instantly,
+ // skipping the whole point of the destination gate. Mirrors the atHere idiom (~2858).
+ // Other mission kinds keep remote accept — established Slice-A behavior, untouched.
+ if(inst.params&&inst.params.granted){
+  var _here=S.pos.pl===inst.pl&&S.pos.sp===inst.lid&&!inTransit()&&!S.pos.void;
+  if(!_here){T('Sign for the consignment in person.');return;}
+ }
  // T-MSN-1B task 4 fix round: filter against the canon registry before anything is stored —
  // an unknown/bogus id (typo, stale UI, or an arbitrary client payload once Stage 2 lands)
  // must never reach t.mods/t.seedState.mods at all. THREAD.modCheck also fails closed on
@@ -2994,6 +3019,12 @@ function convertSpoils(t){
     S.world.log=S.world.log||[];
     S.world.log.unshift(nowStamp()+' — '+vm.n.split(',')[0]+' was TAKEN alive. A ransom may follow.');}}});
 }
+/* Slice-B fix round 2 (IMPORTANT 3): one shared baseline so every sector-stats writer
+   starts an unset conflict at the SAME default liveScores already displays (10) — before
+   this, only the mission branch did it; the thread_scales sibling's first write landed
+   silently on 0, a lower value than what the player was already looking at. Small glue
+   helper (not core): mutates st.conflict in place if unset, and returns st for chaining. */
+function confBase(st){if(typeof st.conflict!=='number')st.conflict=10;return st;}
 function concludeThread(t,oc){
  t.done={kind:oc.kind,victor:oc.victor||null,defeated:oc.defeated||[],at:Date.now()};
  var C=(t.state&&t.state.combatants)||{};
@@ -3014,8 +3045,8 @@ function concludeThread(t,oc){
   S.world.history[key].unshift(t.type+' — '+t.n+' · concluded, '+(oc.kind==='accord'?'accord':mineWon?'victory':oc.victor?'defeat':'mutual ruin'));}
  var scaleKey=t.type==='SKIRMISH'?'Skirmish':t.type==='INVASION'?'Invasion':t.type==='DIPLOMACY'?'Diplomacy':null;
  var sc=scaleKey?(D.galaxy.thread_scales||{})[scaleKey]:null;
- if(sc&&sc.effect&&t.pl){var fp=fPl(t.pl);if(fp){var st=S.world.stats[fp.s.id]=S.world.stats[fp.s.id]||{};
-  if(typeof sc.effect.conflict==='number')st.conflict=Math.max(0,(st.conflict||0)+sc.effect.conflict);
+ if(sc&&sc.effect&&t.pl){var fp=fPl(t.pl);if(fp){var st=confBase(S.world.stats[fp.s.id]=S.world.stats[fp.s.id]||{});
+  if(typeof sc.effect.conflict==='number')st.conflict=Math.max(0,st.conflict+sc.effect.conflict);
   if(typeof sc.effect.prosperity==='number')st.prosperity=Math.max(0,(st.prosperity||0)+sc.effect.prosperity);}}
  /* Missions V2 slice A: payout + world effect + board removal — a mission thread
     is spent the moment it concludes, win or lose. T-MSN-1B task 4: chosen modifiers that
@@ -3034,15 +3065,17 @@ function concludeThread(t,oc){
    // (Liberation) were both minted onto canon rows and silently ignored. Mirrors the taint
    // line's floor-at-0 clamp (MINOR FOLD: prosperity now floors at 0 too — desecration's -2
    // was the first negative drift, and it could push a sector below zero unclamped).
-   if(msec&&S.world.stats[msec]){var mst=S.world.stats[msec];
+   // fix round 2 (IMPORTANT 2): mirror the thread_scales sibling above — auto-create the
+   // sector's stats entry rather than requiring one to pre-exist. Roughly 23 sectors never
+   // had a stats row minted (no prior SKIRMISH/INVASION/DIPLOMACY there), so a mission
+   // world_effect on any of them was silently dropped on the floor.
+   if(msec){var mst=confBase(S.world.stats[msec]=S.world.stats[msec]||{taint:0});
     if(typeof we.taint==='number')mst.taint=Math.max(0,(mst.taint||0)+we.taint);
     if(typeof we.prosperity==='number')mst.prosperity=Math.max(0,(mst.prosperity||0)+we.prosperity);
     // Slice-B ruling: an unset sector conflict is displayed as 10 (liveScores' own default) —
     // a mission's authored -2/-3/-4 delta must land on that same baseline, not on 0, or the
     // very first write reads like a no-op against what the player already sees on screen.
-    if(typeof we.conflict==='number'){
-     if(typeof mst.conflict!=='number')mst.conflict=10;
-     mst.conflict=Math.max(0,mst.conflict+we.conflict);}}
+    if(typeof we.conflict==='number')mst.conflict=Math.max(0,mst.conflict+we.conflict);}
    // clear_condition (Liberation): write an 'intact' override into the locConds overlay —
    // see effCond() for the single reader every condition-consuming call site goes through.
    if(we.clear_condition&&t.mission.lid){
@@ -3778,10 +3811,11 @@ function threadView(V,t){
       // LEGENDARY spoils on S.inv are never counted or stripped by this button
       var _plainDeliverable=function(it){return ob.params.item_n?it.n===ob.params.item_n:it.cat==='ITEM'};
       var have=S.inv.filter(_plainDeliverable).length;
-      // Slice-B ruling (Trade Haul destination gate): a needs_destination row's crates only
-      // land at the seeded destination — MISSION.deliverGate is the single source of truth,
-      // driven by S.pos so the exploit ("deliver from anywhere") is closed at the render seam.
-      if(!MISSION.deliverGate(ob.params,S.pos)){
+      // Slice-B ruling (Trade Haul destination gate): a needs_destination/granted row's
+      // crates only land at the seeded destination — MISSION.deliverGate is the single
+      // source of truth, driven by S.pos so the exploit ("deliver from anywhere") is
+      // closed at the render seam.
+      if(!MISSION.deliverGate(ob.params,S.pos,inTransit(),S.pos.void)){
         var dz=E('div','d',null);dz.style.cssText='margin-top:10px;color:var(--dim);font-size:11.5px';
         dz.textContent='Consignment bound for '+((ob.params&&ob.params.dest_name)||'the buyer')+'.';
         V.appendChild(dz);
@@ -3789,6 +3823,12 @@ function threadView(V,t){
       var db=E('button','btn sm','Deliver items ('+have+' held)');db.style.marginTop='10px';
       db.disabled=!have;
       db.onclick=function(){
+        // fix round 2: re-check at click-time (stale-render guard) — S.pos can have
+        // shifted since this button was drawn without a redraw ever landing in between.
+        if(!MISSION.deliverGate(ob.params,S.pos,inTransit(),S.pos.void)){
+          T('Consignment bound for '+((ob.params&&ob.params.dest_name)||'the buyer')+' — you are not there.');
+          return;
+        }
         var give=Math.min(have,ob.target-ob.progress),removed=0;
         for(var _di=S.inv.length-1;_di>=0&&removed<give;_di--){
           if(!_plainDeliverable(S.inv[_di]))continue;

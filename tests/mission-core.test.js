@@ -642,17 +642,33 @@ test('refillBoard: a two-location planet with exactly one shop CAN mint trade_ha
 
 // ── MISSION.deliverGate — pure destination gate the deliver-button render/click seam drives ──
 
-test('deliverGate: ungated when params carry no dest_loc (e.g. item_request)', () => {
+test('deliverGate: ungated when params are not a granted row at all (e.g. item_request)', () => {
   assert.strictEqual(MISSION.deliverGate({}, { pl: 'x', sp: 'anywhere' }), true);
+  // even a stray dest_loc on a non-granted row is irrelevant - the discriminator is `granted`
+  assert.strictEqual(MISSION.deliverGate({ dest_loc: 'l2' }, { pl: 'x', sp: 'l1' }), true);
 });
 
-test('deliverGate: refuses at the origin (or anywhere but the destination)', () => {
-  const params = { dest_loc: 'l2', dest_name: 'Trade Row' };
+test('deliverGate: a granted row refuses at the origin (or anywhere but the destination)', () => {
+  const params = { granted: true, dest_loc: 'l2', dest_name: 'Trade Row' };
   assert.strictEqual(MISSION.deliverGate(params, { pl: 'testp', sp: 'l1' }), false);
   assert.strictEqual(MISSION.deliverGate(params, { pl: 'testp', sp: null }), false);
 });
 
-test('deliverGate: accepts exactly at the destination location', () => {
-  const params = { dest_loc: 'l2', dest_name: 'Trade Row' };
+test('deliverGate: a granted row accepts exactly at the destination location', () => {
+  const params = { granted: true, dest_loc: 'l2', dest_name: 'Trade Row' };
   assert.strictEqual(MISSION.deliverGate(params, { pl: 'testp', sp: 'l2' }), true);
+});
+
+test('deliverGate: fix round 2 (minor) - a granted row with no dest_loc at all fails CLOSED (legacy/stale instance)', () => {
+  const params = { granted: true };
+  assert.strictEqual(MISSION.deliverGate(params, { pl: 'testp', sp: 'l2' }), false);
+  assert.strictEqual(MISSION.deliverGate(params, { pl: 'testp', sp: null }), false);
+});
+
+test('deliverGate: fix round 2 (minor) - inTransit or void refuses even standing on the right cell', () => {
+  const params = { granted: true, dest_loc: 'l2', dest_name: 'Trade Row' };
+  const pos = { pl: 'testp', sp: 'l2' };
+  assert.strictEqual(MISSION.deliverGate(params, pos, true, false), false, 'mid-transit must refuse');
+  assert.strictEqual(MISSION.deliverGate(params, pos, false, true), false, 'in the void must refuse');
+  assert.strictEqual(MISSION.deliverGate(params, pos, false, false), true, 'grounded and present -> accepted');
 });
