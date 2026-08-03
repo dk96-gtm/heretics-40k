@@ -15291,6 +15291,7 @@
      "granted": true,
      "item_n": "Consignment Crate"
     },
+    "needs_destination": true,
     "faces": {
      "door": "shop",
      "notice": "Consignment contract"

@@ -554,3 +554,105 @@ test('CRITICAL 3: granted crates match the deliver seam\'s named-item filter exa
   assert.strictEqual(t.state.objective.progress, 3);
   assert.deepStrictEqual(THREAD.outcome(t, t.state), { kind: 'mission_won', victor: null, defeated: [] });
 });
+
+// ── Slice-B rulings addendum (Daak sit 2026-08-03) · Trade Haul destination gate ──
+
+const TRADE_ROW = canon.missions.universal.find(rw => rw.id === 'trade_haul');
+const CTX_TWO_SHOPS = () => ({
+  pl: { id: 'testp', type: 'Forge World', prod_mult: 2.0 },
+  locs: [
+    { id: 'l1', name: 'The Foundry', cond: null, doors: ['shop', 'muster'], npc: null, garrison: true },
+    { id: 'l2', name: 'Trade Row',   cond: null, doors: ['shop'],           npc: null, garrison: false },
+    { id: 'l3', name: 'Barracks',    cond: null, doors: ['muster'],         npc: null, garrison: true }
+  ]
+});
+// exactly one shop-door location on the planet: a valid mint still exists (origin = the
+// non-shop location, dest = the lone shop) but the shop location itself can never be origin.
+const CTX_ONE_SHOP = () => ({
+  pl: { id: 'testp', type: 'Forge World', prod_mult: 2.0 },
+  locs: [
+    { id: 'l1', name: 'The Foundry', cond: null, doors: ['shop'], npc: null, garrison: false },
+    { id: 'l2', name: 'Barracks',    cond: null, doors: [],       npc: null, garrison: false }
+  ]
+});
+const CTX_NO_SHOP = () => ({
+  pl: { id: 'testp', type: 'Forge World', prod_mult: 2.0 },
+  locs: [
+    { id: 'l1', name: 'Barracks',    cond: null, doors: [],        npc: null, garrison: false },
+    { id: 'l2', name: 'Muster Yard', cond: null, doors: ['muster'], npc: null, garrison: false }
+  ]
+});
+// origin-only planet: a single location, even though it carries a shop door itself.
+const CTX_SOLO_SHOP = () => ({
+  pl: { id: 'testp', type: 'Forge World', prod_mult: 2.0 },
+  locs: [
+    { id: 'l1', name: 'The Foundry', cond: null, doors: ['shop'], npc: null, garrison: false }
+  ]
+});
+
+test('canon: trade_haul declares needs_destination (mirrors needs_hostiles)', () => {
+  assert.strictEqual(TRADE_ROW.needs_destination, true);
+});
+
+test('rollMission: trade_haul mints a destination distinct from the origin, on a location with a shop door', () => {
+  const ctx = CTX_TWO_SHOPS();
+  const inst = MISSION.rollMission(TRADE_ROW, ctx, MISSION.rng(777), 1, canon);
+  assert.ok(inst.params.dest_loc, 'a destination must be minted');
+  assert.notStrictEqual(inst.params.dest_loc, inst.lid, 'destination must not be the origin');
+  const destLoc = ctx.locs.find(l => l.id === inst.params.dest_loc);
+  assert.ok(destLoc, 'dest_loc must be a real location on this planet');
+  assert.ok(destLoc.doors.indexOf('shop') >= 0, 'destination must carry a shop door');
+  assert.strictEqual(inst.params.dest_name, destLoc.name);
+});
+
+test('rollMission: destination pick is deterministic for a given seed/day/ctx', () => {
+  const a = MISSION.rollMission(TRADE_ROW, CTX_TWO_SHOPS(), MISSION.rng(42), 3, canon);
+  const b = MISSION.rollMission(TRADE_ROW, CTX_TWO_SHOPS(), MISSION.rng(42), 3, canon);
+  assert.strictEqual(a.lid, b.lid);
+  assert.strictEqual(a.params.dest_loc, b.params.dest_loc);
+});
+
+test('rollMission: with only one shop on the planet, that shop is never the origin (else no valid dest)', () => {
+  const ctx = CTX_ONE_SHOP();
+  for (let seed = 1; seed < 60; seed++) {
+    const inst = MISSION.rollMission(TRADE_ROW, ctx, MISSION.rng(seed), 1, canon);
+    assert.notStrictEqual(inst.lid, 'l1', 'l1 is the only shop - picking it as origin would strand the mission');
+    assert.strictEqual(inst.params.dest_loc, 'l1');
+  }
+});
+
+test('refillBoard: a planet with no shop door anywhere never mints trade_haul', () => {
+  const board = MISSION.refillBoard([], CTX_NO_SHOP(), canon, MISSION.rng(9), 1);
+  assert.ok(!board.some(m => m.mid === 'trade_haul'), 'trade_haul must never appear with zero shop-door locations');
+});
+
+test('refillBoard: a single-location planet never mints trade_haul, even if that lone location has a shop', () => {
+  const board = MISSION.refillBoard([], CTX_SOLO_SHOP(), canon, MISSION.rng(9), 1);
+  assert.ok(!board.some(m => m.mid === 'trade_haul'), 'a lone shop location has no distinct destination to send crates to');
+});
+
+test('refillBoard: a two-location planet with exactly one shop CAN mint trade_haul', () => {
+  let minted = false;
+  for (let seed = 1; seed < 200 && !minted; seed++) {
+    const board = MISSION.refillBoard([], CTX_ONE_SHOP(), canon, MISSION.rng(seed), 1);
+    if (board.some(m => m.mid === 'trade_haul')) minted = true;
+  }
+  assert.ok(minted, 'trade_haul should mint at least once across many seeded refills when a valid dest exists');
+});
+
+// ── MISSION.deliverGate — pure destination gate the deliver-button render/click seam drives ──
+
+test('deliverGate: ungated when params carry no dest_loc (e.g. item_request)', () => {
+  assert.strictEqual(MISSION.deliverGate({}, { pl: 'x', sp: 'anywhere' }), true);
+});
+
+test('deliverGate: refuses at the origin (or anywhere but the destination)', () => {
+  const params = { dest_loc: 'l2', dest_name: 'Trade Row' };
+  assert.strictEqual(MISSION.deliverGate(params, { pl: 'testp', sp: 'l1' }), false);
+  assert.strictEqual(MISSION.deliverGate(params, { pl: 'testp', sp: null }), false);
+});
+
+test('deliverGate: accepts exactly at the destination location', () => {
+  const params = { dest_loc: 'l2', dest_name: 'Trade Row' };
+  assert.strictEqual(MISSION.deliverGate(params, { pl: 'testp', sp: 'l2' }), true);
+});

@@ -359,7 +359,9 @@ test('modCheck: blitz valid within the real post-count budget, voided over it', 
 
 test('modCheck: blitz fallback cap = objective.target * 4 * modifiers.blitz.post_mult when state.blitzCap is unset', () => {
   const pm = canon.rules.missions.modifiers.blitz.post_mult; // 0.6
-  const state = { objective: { target: 10 } };                // fallback cap = 10*4*0.6 = 24
+  // kind: 'count_kill' - a real accepted mission's objective always carries a kind; blitz
+  // is combat-only (Slice-B ruling), so a kindless fixture would now be voided outright.
+  const state = { objective: { kind: 'count_kill', target: 10 } };  // fallback cap = 10*4*0.6 = 24
   assert.deepStrictEqual(THREAD.modCheck(state, ['blitz'], canon, Math.floor(10 * 4 * pm)),
     { valid: ['blitz'], voided: [] });
   assert.deepStrictEqual(THREAD.modCheck(state, ['blitz'], canon, Math.ceil(10 * 4 * pm) + 5),
@@ -407,4 +409,75 @@ test('ironman: absent mods list behaves exactly as before (no regression)', () =
     canon);
   assert.strictEqual(t.state.combatants.m1.permaDeath, false);
   assert.strictEqual(t.state.combatants.m1.revivalWindow, canon.rules.death.revival_window.windows.Physical);
+});
+
+// ── Slice-B rulings addendum (Daak sit 2026-08-03) · capture counts, dead or alive ──
+const SHACKLES = { n: 'Shackles', cat: 'ITEM', d: 'Capture I - restraints' };
+function captureBountySeed() {
+  return {
+    id: 'mcap', type: 'MISSION', n: 'Bounty capture test', turn: 'you', forces: ['Mine'],
+    seedState: {
+      objective: { kind: 'count_kill', target: 1, progress: 0,
+                   params: { filter: 'named', target_name: 'Varkon the Flayed' }, done: false },
+      pools: { Mine: 20, Foe: 10 },
+      combatants: {
+        m1: { w: [4, 4], conds: [], party: 'Mine', armour: null, x: 2, y: 2,
+              model: { n: 'Captor', pc: 10, cls: 'Core',
+                loadout: { slots: [{ type: 'ITEM', it: SHACKLES }, { type: 'ITEM', it: null }] } } },
+        e0: { w: [1, 1], conds: [], party: 'Foe', armour: null, x: 3, y: 2,
+              gen: { id: 'e0', n: 'Varkon the Flayed', cls: 'Assault', pc: 30 } }
+      },
+      joined: true
+    }
+  };
+}
+function captureBlock() {
+  return [{ actor: 'm1', cost: 3, item: SHACKLES, effect: { kind: 'capture', to: 'e0' } }];
+}
+test('capture completes a named-target objective exactly like a kill: progress 1/1, mission_won', () => {
+  const t = THREAD.create(captureBountySeed(), canon);
+  assert.ok(THREAD.validate(t, t.state, 'Mine', captureBlock(), canon).ok);
+  THREAD.apply(t, t.state, captureBlock(), canon);
+  const tgt = t.state.combatants.e0;
+  assert.ok(tgt.captured, 'the target is held, not slain');
+  assert.strictEqual(tgt.dead, undefined, 'captured is not dead - the player keeps the CAPTIVE');
+  assert.strictEqual(t.state.objective.progress, 1);
+  assert.strictEqual(THREAD.evalObjective(t.state).won, true);
+  assert.deepStrictEqual(THREAD.outcome(t, t.state), { kind: 'mission_won', victor: 'Mine', defeated: ['Foe'] });
+});
+test('capture never double-counts: a stray damage effect against an already-captured model is a no-op for progress', () => {
+  const t = THREAD.create(captureBountySeed(), canon);
+  THREAD.apply(t, t.state, captureBlock(), canon);
+  assert.strictEqual(t.state.objective.progress, 1);
+  // objective.done already true - trackKill's own guard makes any further call inert
+  THREAD.apply(t, t.state,
+    [{ actor: 'm1', cost: 1, effect: { kind: 'damage', to: 'e0', amount: 9, element: 'Physical' } }], canon);
+  assert.strictEqual(t.state.objective.progress, 1, 'progress must not climb past target from a second hit on the same model');
+});
+test('capture: a captured model is excluded from further DoT ticks (no post-capture second stampKill/trackKill)', () => {
+  const t = THREAD.create(captureBountySeed(), canon);
+  // give the about-to-be-captured target a lingering DoT from before capture
+  t.state.combatants.e0.conds = [{ tag: 'DoT', tier: 1, left: 3, src: 'Blight', el: 'Corrosive' }];
+  THREAD.apply(t, t.state, captureBlock(), canon);
+  assert.strictEqual(t.state.objective.progress, 1);
+  const rep = THREAD.tickConds('Foe', t.state, canon);
+  assert.deepStrictEqual(rep, [], 'a captured combatant must never still tick - it is off the field');
+  assert.strictEqual(t.state.objective.progress, 1, 'no second kill-credit from a DoT that outlived the capture');
+  assert.strictEqual(t.state.combatants.e0.dead, undefined, 'still captured, never also flagged dead');
+});
+
+// ── Slice-B rulings addendum (Daak sit 2026-08-03) · modifiers are combat-only ──
+test('modCheck: a non-combat objective (e.g. restore/collect_item) voids every modifier outright', () => {
+  const restoreState = { objective: { kind: 'restore', target: 3 }, acceptPC: 50, acceptModels: 1 };
+  const mods = ['understrength', 'lone_wolf', 'low_tech', 'ironman', 'blitz'];
+  assert.deepStrictEqual(THREAD.modCheck(restoreState, mods, canon, 1), { valid: [], voided: mods });
+  const collectState = { objective: { kind: 'collect_item', target: 4 } };
+  assert.deepStrictEqual(THREAD.modCheck(collectState, ['ironman'], canon), { valid: [], voided: ['ironman'] });
+});
+test('modCheck: a combat objective (count_kill/survive_rounds) is unaffected by the non-combat gate', () => {
+  const state = { objective: { kind: 'count_kill', target: 3 }, acceptPC: 50, acceptModels: 1 };
+  assert.deepStrictEqual(THREAD.modCheck(state, ['understrength', 'lone_wolf'], canon),
+    { valid: ['understrength', 'lone_wolf'], voided: [] });
+  const state2 = { objective: { kind: 'survive_rounds', target: 5 } };
+  assert.deepStrictEqual(THREAD.modCheck(state2, ['ironman'], canon), { valid: ['ironman'], voided: [] });
 });

@@ -785,7 +785,11 @@ var THREAD=(function(){
         var _cap=state.combatants[b.actor];
         var _slot=_cap&&emptySlotOf(_cap);
         if(_slot){_slot.it=mkCaptive(c,e.to,e.meta||{});
-          c.captured=true;c.heldBy=b.actor;c.x=null;c.y=null;}}
+          c.captured=true;c.heldBy=b.actor;c.x=null;c.y=null;
+          // Slice-B ruling: capture counts dead or alive — the same tracker seam a kill
+          // uses (trackKill's own filters already narrow this to a matching count_kill
+          // objective, so a plain Purge capture or a named bounty capture both "just work").
+          trackKill(state,c);}}
       else if(e.kind==='free'){
         var _fc=state.combatants[e.corpse],_fv=state.combatants[e.cid];
         if(_fc&&_fv){var _fsl=(_fc.model&&_fc.model.loadout&&_fc.model.loadout.slots)||[];
@@ -1032,7 +1036,11 @@ var THREAD=(function(){
     if(state&&(state.phase==='aftermath'||state.phase==='deploy'))return rep;
     Object.keys(state.combatants).forEach(function(id){
       var c=state.combatants[id];
-      if(!c||c.party!==party||c.dead)return;
+      // Slice-B fix: a captured (not dead) combatant is off the field — a lingering DoT from
+      // before capture must never still tick it down to a second stampKill/trackKill (the
+      // capture already counted the objective; a later "death" here would double-credit it
+      // and contradict captured+dead simultaneously).
+      if(!c||c.party!==party||c.dead||c.captured)return;
       normConds(c);var conds=c.conds||[];
       for(var i=0;i<conds.length;i++){var inst=conds[i],d=CONDS[inst.tag];
         if(d&&d.tick&&!c.dead){var r=d.tick(inst,c);
@@ -1189,7 +1197,12 @@ var THREAD=(function(){
   function modCheck(state,mods,canon,postCount){
     var M=(canon&&canon.rules&&canon.rules.missions&&canon.rules.missions.modifiers)||{};
     var out={valid:[],voided:[]};
+    // Slice-B ruling: modifiers are combat-only (count_kill / survive_rounds). Defense in
+    // depth alongside acceptMission's own drop — a non-combat objective (rituals, logistics)
+    // voids every smuggled/legacy id outright, never evaluating its predicate.
+    var _nonCombat=!!(state&&state.objective&&!combatKind(state.objective.kind));
     (mods||[]).forEach(function(id){
+      if(_nonCombat){out.voided.push(id);return;}
       var ok=false;
       if(id==='understrength'){
         var pcMax=(M.understrength&&M.understrength.pc_max);if(pcMax==null)pcMax=Infinity;
@@ -1670,12 +1683,28 @@ var MISSION=(function(){
     if(loc.npc)return {kind:'npc',label:loc.npc};
     return {kind:'notice',label:(F&&F.notice)||('Anonymous notice — '+loc.name)};
   }
+  /* Slice-B rulings (Daak 2026-08-03): trade_haul-style rows carry needs_destination —
+     a same-planet location, distinct from the origin, that carries an open 'shop' door.
+     shopLocsOf/hasDestCapacity are the shared eligibility math refillBoard's gate reuses
+     so a row that could never mint a valid dest is never drawn at all (mirrors needs_hostiles'
+     draw-BEFORE-discard discipline). */
+  function shopLocsOf(ctx){return (ctx.locs||[]).filter(function(l){return (l.doors||[]).indexOf('shop')>=0;});}
+  function hasDestCapacity(ctx){
+    var shops=shopLocsOf(ctx);
+    return shops.length>0&&(ctx.locs||[]).length>=2;
+  }
   function rollMission(row,ctx,r,day,canon){
     // location: needs_hostiles rows are hard-gated to garrisoned locs (filter BEFORE
     // drawing — never draw-then-discard, keeps rng consumption a pure fn of (seed,ctx));
     // honor prefer_condition next, else uniform over the (possibly gated) pool
     var locs=ctx.locs||[];
     if(row.needs_hostiles)locs=locs.filter(function(l){return l.garrison;});
+    if(row.needs_destination){
+      // an origin only qualifies if SOME other location carries a shop door — otherwise
+      // picking it as origin would strand the row with zero valid destinations
+      var _shops=shopLocsOf(ctx);
+      locs=locs.filter(function(l){return _shops.some(function(sl){return sl.id!==l.id;});});
+    }
     var loc=null;
     if(row.prefer_condition){
       var pref=locs.filter(function(l){return l.cond===row.prefer_condition;});
@@ -1691,6 +1720,15 @@ var MISSION=(function(){
     if(params.filter==='named'){
       var names=(R(canon).bounty_names)||[];
       if(names.length)params.target_name=names[Math.floor(r()*names.length)];
+    }
+    // Slice-B ruling: trade_haul draws its DESTINATION from the same seeded stream, right
+    // after the origin is settled — a different same-planet location with an open shop door.
+    if(row.needs_destination){
+      var destCands=(ctx.locs||[]).filter(function(l){return l.id!==loc.id&&(l.doors||[]).indexOf('shop')>=0;});
+      if(destCands.length){
+        var dest=destCands[Math.floor(r()*destCands.length)];
+        params.dest_loc=dest.id;params.dest_name=dest.name;
+      }
     }
     var inst={iid:ctx.pl.id+'-'+row.id+'-'+day+'-'+Math.floor(r()*1e6),
       mid:row.id,n:row.n,family:row.family,kind:row.kind,
@@ -1832,6 +1870,15 @@ var MISSION=(function(){
       d:'Consigned cargo, bonded to this contract — worthless anywhere but the buyer\'s dock.',pc:1});
     return out;
   }
+  /* Slice-B ruling: pure destination gate for the collect_item deliver control — a
+     needs_destination row's params carry dest_loc; delivery only lands there. Rows
+     without dest_loc (item_request, etc.) are ungated. Location ids are globally unique
+     across the galaxy (verified against the galaxy mint), so matching pos.sp alone also
+     proves the Commander is on the correct planet — no separate pl check needed. */
+  function deliverGate(params,pos){
+    if(!(params&&params.dest_loc))return true;
+    return !!(pos&&pos.sp===params.dest_loc);
+  }
   function refillBoard(board,ctx,canon,r,day){
     var M=R(canon);
     var keep=board.filter(function(m){
@@ -1843,7 +1890,10 @@ var MISSION=(function(){
     // loc — filtered here, BEFORE any rng draw, so a garrison-less planet just never
     // rolls that row (no draw-then-discard, rng stays a pure fn of (seed,ctx,board))
     var hasGarrison=(ctx.locs||[]).some(function(l){return l.garrison;});
-    var elig=rows.filter(function(rw){return !rw.needs_hostiles||hasGarrison;});
+    // Slice-B ruling: needs_destination rows (trade_haul) are equally ineligible when this
+    // planet's location pool can't furnish a distinct shop-door destination anywhere.
+    var hasDest=hasDestCapacity(ctx);
+    var elig=rows.filter(function(rw){return (!rw.needs_hostiles||hasGarrison)&&(!rw.needs_destination||hasDest);});
     // condition-preferring rows first so ruins actually get their rebuild
     var ordered=elig.slice().sort(function(a,b){
       return (b.prefer_condition?1:0)-(a.prefer_condition?1:0);});
@@ -1880,7 +1930,7 @@ var MISSION=(function(){
   }
   return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,finalPayout:finalPayout,
           rollMission:rollMission,genHostiles:genHostiles,targetFor:targetFor,
-          pickForce:pickForce,gateReason:gateReason,grantItems:grantItems,
+          pickForce:pickForce,gateReason:gateReason,grantItems:grantItems,deliverGate:deliverGate,
           refillBoard:refillBoard,catchUpBoards:catchUpBoards};
 })();
 /*</mission-core>*/
@@ -2179,6 +2229,13 @@ function npcWeaponFor(facId){
 function namedTargetTag(m){
  return (m.params&&m.params.filter==='named'&&m.params.target_name)?' — target: '+esc(m.params.target_name):'';
 }
+/* Slice-B ruling: trade_haul carries a seeded destination — every board card and the
+   Mission Log surface it as "→ <dest_name>" so the player knows where the crates are
+   bound before (and after) they accept. m may be a board mission instance (m.params
+   directly) or a live thread's state.objective (also .params) — same shape either way. */
+function destTag(m){
+ return (m&&m.params&&m.params.dest_name)?' → '+esc(m.params.dest_name):'';
+}
 /* MINOR FOLD: Liberation mints with target_roll [0,0] (the live target is only known once
    accept-time seedCombat spawns hostiles, T-MSN-1B task 3) — the pre-accept board card must
    not read "target 0", which looks broken. clear_all rows show their real intent instead. */
@@ -2266,6 +2323,9 @@ function acceptMission(inst,pl,l,mods){
  // unknown ids (defense in depth), but this is the layer that keeps t.mods itself clean.
  var _regIds=Object.keys((D.rules.missions&&D.rules.missions.modifiers)||{});
  mods=(mods||[]).filter(function(id){return _regIds.indexOf(id)>=0;});
+ // Slice-B ruling: modifiers are combat-only — a non-combat objective (rituals, logistics)
+ // never carries any, even if the render-side gate above were somehow bypassed.
+ if(!THREAD.combatKind(inst.kind))mods=[];
  var cap=(D.rules.missions&&D.rules.missions.accept_cap)||3;
  var live=S.threads.filter(function(t){return t.type==='MISSION'&&t.accepted&&!t.done}).length;
  if(live>=cap){T('Mission cap reached ('+cap+') — finish or abandon one first.');return;}
@@ -2779,16 +2839,18 @@ h2+='<div class="lsec"><h5>Thread history — click for summary</h5>'+(hi.length
 var _mb=((S.world.missions||{})[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted&&!MISSION.gateReason(m,S.player.allegiance)});
 if(_mb.length)h2+='<div class="lsec"><h5>Missions — posted here ('+_mb.length+')</h5>'+
  _mb.map(function(m,i){var _sel=_msel[m.iid]||{};
-  return '<div class="lrow" data-mission="'+i+'" style="cursor:default"><b>'+annotate(m.n)+'</b>'+namedTargetTag(m)+' · '+
+  return '<div class="lrow" data-mission="'+i+'" style="cursor:default"><b>'+annotate(m.n)+'</b>'+namedTargetTag(m)+destTag(m)+' · '+
   m.face.label+' · '+missionTargetLabel(m)+' · pays '+m.payout+
   '<div class="d">'+m.flavor+'</div>'+
+  // Slice-B ruling: the hardship picker is combat-only — rituals/logistics pay flat, no chips at all
+  (THREAD.combatKind(m.kind)?(
   '<div style="margin-top:6px;font-size:10.5px;color:var(--dim)">'+annotate('Modifiers')+'</div>'+
   '<div style="margin-top:2px">'+MOD_IDS.map(function(mid){
     var reg=(D.rules.missions.modifiers||{})[mid]||{},on=!!_sel[mid];
     return '<span class="chip" data-mission-mod="'+i+'|'+mid+'" title="'+esc(MOD_TIP[mid]||'')+'" '
      +'style="cursor:pointer'+(on?';border-color:var(--brh);color:var(--brh)':'')+'">'+(reg.label||mid)
      +' <span class="pill'+(on?' br':'')+'">×'+(D.rules.missions.modifier_mult||1.5)+'</span></span>';
-  }).join('')+'</div>'+
+  }).join('')+'</div>'):'')+
   '<button class="btn sm" data-accept-mission="'+i+'" style="margin-top:7px">Accept mission</button>'+
   '</div>';}).join('')+'</div>';
 /* NPCs — clickable sheets */
@@ -2849,7 +2911,7 @@ var dash=E('div','card');dash.innerHTML='<h3>Thread board</h3><div style="font-s
 /* accepted */
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Your threads — accepted ('+accepted.length+')</h5></div>');
 accepted.forEach(function(t){var vis=t.vis||'public',mine=(t.initiator||'').match(/^You/)||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f})});
- var meter=(t.type==='MISSION'&&t.state&&t.state.objective)?(' · '+t.state.objective.progress+'/'+t.state.objective.target):'';
+ var meter=(t.type==='MISSION'&&t.state&&t.state.objective)?(' · '+t.state.objective.progress+'/'+t.state.objective.target+destTag(t.state.objective)):'';
  // T-MSN-1B task 4: Mission Log chips — neutral pills while unconcluded ("valid-unknown until
  // conclude"); once t.modResult exists (set by concludeThread's mission-won branch) valid ids
  // go bright, voided ones dim + struck.
@@ -2869,7 +2931,7 @@ var mrows=[];Object.keys(S.world.missions||{}).forEach(function(pid){(S.world.mi
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Missions — posted nearby ('+mrows.length+')</h5></div>');
 if(!mrows.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">No missions posted right now.</div>');
 mrows.forEach(function(m){var pp=fPl(m.pl);var lname=(pp&&fLoc(m.pl,m.lid))?fLoc(m.pl,m.lid).name:m.lid;
- var d=E('div','thc','<div><b>'+annotate(m.n)+'</b>'+namedTargetTag(m)+'<div style="font-size:11px;color:var(--dim);margin-top:2px">'+(pp?pp.p.name:'')+' · '+lname+'</div></div><span class="mono" style="color:var(--faint)">pays '+m.payout+'</span>');
+ var d=E('div','thc','<div><b>'+annotate(m.n)+'</b>'+namedTargetTag(m)+destTag(m)+'<div style="font-size:11px;color:var(--dim);margin-top:2px">'+(pp?pp.p.name:'')+' · '+lname+'</div></div><span class="mono" style="color:var(--faint)">pays '+m.payout+'</span>');
  d.onclick=function(){if(pp){MV.pl=m.pl;MV.lc=m.lid;MV.lv='planet';MV.spaceSel=false;go('map')}};dash.appendChild(d)});
 /* conflicts */
 var confs=sectorConflicts();
@@ -2975,7 +3037,12 @@ function concludeThread(t,oc){
    if(msec&&S.world.stats[msec]){var mst=S.world.stats[msec];
     if(typeof we.taint==='number')mst.taint=Math.max(0,(mst.taint||0)+we.taint);
     if(typeof we.prosperity==='number')mst.prosperity=Math.max(0,(mst.prosperity||0)+we.prosperity);
-    if(typeof we.conflict==='number')mst.conflict=Math.max(0,(mst.conflict||0)+we.conflict);}
+    // Slice-B ruling: an unset sector conflict is displayed as 10 (liveScores' own default) —
+    // a mission's authored -2/-3/-4 delta must land on that same baseline, not on 0, or the
+    // very first write reads like a no-op against what the player already sees on screen.
+    if(typeof we.conflict==='number'){
+     if(typeof mst.conflict!=='number')mst.conflict=10;
+     mst.conflict=Math.max(0,mst.conflict+we.conflict);}}
    // clear_condition (Liberation): write an 'intact' override into the locConds overlay —
    // see effCond() for the single reader every condition-consuming call site goes through.
    if(we.clear_condition&&t.mission.lid){
@@ -3266,16 +3333,34 @@ function bfWeaponBand(c){
   return best>=0?keys[best]:null;
 }
 function bfTag(id,c){var n=(c.model?c.model.n:id)||'?';return n.charAt(0).toUpperCase();}
+/* Slice-B engineering fold: the computed deploy cell can already be taken (an 8-model
+   kill-team's y=1+k*2 ladder clamps to z.y1 and starts colliding around k=4) — scan the
+   rest of the SAME deploy zone for the nearest free cell (Manhattan distance, row-major
+   tie-break) instead of stacking two models on one square. Deploy zones are carved fully
+   open by genBoard, so no terrain check is needed here, only occupancy. */
+function bfFreeCell(zone,cx,cy,occ){
+  var k0=cx+','+cy;if(!occ[k0])return {x:cx,y:cy};
+  var best=null,bestD=Infinity;
+  for(var y=zone.y0;y<=zone.y1;y++)for(var x=zone.x0;x<=zone.x1;x++){
+    var k=x+','+y;if(occ[k])continue;
+    var d=Math.abs(x-cx)+Math.abs(y-cy);
+    if(d<bestD){bestD=d;best={x:x,y:y};}
+  }
+  return best||{x:cx,y:cy};                          // zone genuinely full — fall back to the stacked cell
+}
 function bfSetup(t){
   if(!t.state||t.state.board)return;                 // idempotent — one board per thread
   var C=t.state.combatants||{},ids=Object.keys(C);if(!ids.length)return;
   var parties=[];ids.forEach(function(id){var p=C[id].party;if(parties.indexOf(p)<0)parties.push(p);});
   var board=THREAD.genBoard({w:14,h:10,density:0.16,palette:['forest','ruins','mtn','fort'],zoneDepth:2},Math.random);
   var zoneOf={};zoneOf[parties[0]]=board.zones.A;if(parties[1])zoneOf[parties[1]]=board.zones.B;
-  var n={};
+  var n={},occByParty={};
   ids.forEach(function(id){var c=C[id],z=zoneOf[c.party]||board.zones.A,k=n[c.party]=(n[c.party]||0);
-    c.x=(c.party===parties[0])?z.x1:z.x0;           // inner edge of the party's zone
-    c.y=Math.min(z.y1,1+k*2);n[c.party]=k+1;
+    var cx=(c.party===parties[0])?z.x1:z.x0;         // inner edge of the party's zone
+    var cy=Math.min(z.y1,1+k*2);n[c.party]=k+1;
+    var occ=occByParty[c.party]=occByParty[c.party]||{};
+    var cell=bfFreeCell(z,cx,cy,occ);                 // spread onto the nearest free cell if taken
+    c.x=cell.x;c.y=cell.y;occ[cell.x+','+cell.y]=true;
     c.sight=THREAD.sightOf(bfWeaponBand(c)||c.band||'MEDIUM',0);
     c.spd=(c.model&&(c.model.spd||c.model.speed))||3;});
   t.state.board=board;t.state.phase='deploy';        // Slice E: blind deploy first, then Lock In → battle
@@ -3693,6 +3778,14 @@ function threadView(V,t){
       // LEGENDARY spoils on S.inv are never counted or stripped by this button
       var _plainDeliverable=function(it){return ob.params.item_n?it.n===ob.params.item_n:it.cat==='ITEM'};
       var have=S.inv.filter(_plainDeliverable).length;
+      // Slice-B ruling (Trade Haul destination gate): a needs_destination row's crates only
+      // land at the seeded destination — MISSION.deliverGate is the single source of truth,
+      // driven by S.pos so the exploit ("deliver from anywhere") is closed at the render seam.
+      if(!MISSION.deliverGate(ob.params,S.pos)){
+        var dz=E('div','d',null);dz.style.cssText='margin-top:10px;color:var(--dim);font-size:11.5px';
+        dz.textContent='Consignment bound for '+((ob.params&&ob.params.dest_name)||'the buyer')+'.';
+        V.appendChild(dz);
+      } else {
       var db=E('button','btn sm','Deliver items ('+have+' held)');db.style.marginTop='10px';
       db.disabled=!have;
       db.onclick=function(){
@@ -3707,6 +3800,7 @@ function threadView(V,t){
         persist();openT(t.id);
       };
       V.appendChild(db);
+      }
     }
   }
   if(t.state.phase==='aftermath'){
@@ -4162,7 +4256,7 @@ var GLOSS={
  'Door Tier':'Doors level I→III. Tier gates what the door offers; upgrades cost currency + resources and take days of construction. Tier III lives on specific standard world types — Shop excepted, which can reach III anywhere.',
  'Exchange':'Trade currency for Food/Material/Fuel (and back) in lots of 10 at the Shop. Rates are unfavorable and improve with shop tier. Works only on worlds you rule — goods bank into that world\'s stockpile.',
  'Modifiers':'Optional hardships chosen at mission accept — each valid at conclusion multiplies the payout ×1.5. Violating one voids its bonus, never the mission.',
- 'Bounty':'A named target — Bounty Hunt and Assassination missions post a specific enemy boss by name; the board shows who before you accept, and only that model\'s death counts toward the objective.'};
+ 'Bounty':'A named target — Bounty Hunt and Assassination missions post a specific enemy boss by name; the board shows who before you accept, and bringing them down — dead or captured — completes the objective.'};
 /* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
 function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
  var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');
