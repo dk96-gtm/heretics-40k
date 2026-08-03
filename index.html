@@ -415,15 +415,24 @@ function CD(id){return (D.galaxy.conditions||[]).filter(function(c){return c.id=
 function DR(k){return (D.galaxy.doors||[]).filter(function(d){return d.kind===k})[0]}
 function skin(kind,alleg,facId){var d=DR(kind);if(!d||!d.skins)return kind;
 return d.skins[facId]||d.skins[alleg]||d.name||kind}
+/* T-MSN-1B final fix wave (IMPORTANT 1): liberation's world_effect.clear_condition needs a
+   place to write "this location is no longer Infested/Besieged/Ruined" — canon locations are
+   read-only data, so the override lives in a save-state overlay (same shape/pattern as
+   S.world.doorTiers: sparse map keyed by location id — location ids are unique galaxy-wide,
+   same assumption doorTierAt already makes — seeded in both foundingWorld() and init() per
+   the S.world key-seeding convention). effCond() is the ONE reader every condition-consuming
+   call site now goes through instead of the raw l.condition field. */
+function effCond(l){var ov=S.world&&S.world.locConds&&S.world.locConds[l.id];return ov!=null?ov:l.condition}
 /* doors present at a location, each with open/closed + WHY */
 function doorsAt(l){var t=LT(l.type);if(!t)return [];
-var c=CD(l.condition)||{},off=c.doors_offline||[],seen={};
+var _ec=effCond(l);
+var c=CD(_ec)||{},off=c.doors_offline||[],seen={};
 return (t.doors||[]).map(function(k){seen[k]=(seen[k]||0)+1;
 var shut=off.indexOf('*')>=0||off.indexOf(k)>=0;
 var nm=(l.door_names&&l.door_names[k])||skin(k,S.player.allegiance,S.player.faction);
 if(seen[k]>1)nm=nm+' II';
 return{kind:k,name:nm,open:!shut,tiers:t.forge_tiers,
-reason:shut?(c.name||l.condition)+' — '+(c.effect||'stations offline'):null}})}
+reason:shut?(c.name||_ec)+' — '+(c.effect||'stations offline'):null}})}
 /* worst_of(planet, sector) — a planet can never be better than its sector */
 var STORD=['Thriving','Peace','Warring','Famine','Corrupted'];
 function statusOf(pid){var f=fPl(pid);if(!f)return null;
@@ -469,7 +478,7 @@ function sectorHeader(f){var sc=liveScores(f.s.id),st=sc?WORLD.sectorStatus(sc,D
  el.innerHTML=h;return el}
 /* effective population = base x condition x status — computed, never stored */
 function effPop(l,pid){var t=LT(l.type);if(!t)return 0;
-var c=CD(l.condition)||{pop_mult:1},se=(D.galaxy.status_effects||{})[statusOf(pid)]||{pop_mult:1};
+var c=CD(effCond(l))||{pop_mult:1},se=(D.galaxy.status_effects||{})[statusOf(pid)]||{pop_mult:1};
 return (t.pop_base||0)*(c.pop_mult===undefined?1:c.pop_mult)*(se.pop_mult===undefined?1:se.pop_mult)}
 function FACS(al){return D.factions.filter(function(f){return f.allegiance===al})}
 function szTag(pc){var t=D.rules.force_size_tags;for(var i=0;i<t.length;i++)if(t[i].pc_max===null||pc<=t[i].pc_max)return t[i].tag;return 'CRUSADE'}
@@ -498,7 +507,7 @@ function missionCtxOf(pid){var f=fPl(pid);if(!f)return null;var p=f.p;
 var pt=(D.galaxy.planet_types||[]).filter(function(t){return t.name===p.type})[0]||{};
 return {pl:{id:p.id,type:p.type,prod_mult:pt.prod_mult||1},
 locs:(p.locations||[]).map(function(l){
-return {id:l.id,name:l.name,cond:l.condition||null,doors:doorKindsOf(l),npc:npcNameAt(p.id,l.id),garrison:!!npcForceAt(p.id,l.name)}})}}
+return {id:l.id,name:l.name,cond:effCond(l)||null,doors:doorKindsOf(l),npc:npcNameAt(p.id,l.id),garrison:!!npcForceAt(p.id,l.name)}})}}
 /* pure thread rules: no DOM, no globals; every input is an argument (node-tested) */
 /*<thread-core>*/
 var THREAD=(function(){
@@ -715,7 +724,11 @@ var THREAD=(function(){
     }
     if(ob.kind==='survive_rounds'){
       var rnd=(state&&state.round)||0;
-      return {won:rnd>=ob.target&&_mineAlive(state),progress:rnd,target:ob.target};
+      // T-MSN-1B final fix wave (CRITICAL 2): npcRespond early-returns with no living foe,
+      // so state.round can never reach the round target once the attackers are wiped —
+      // Defend must ALSO win on enemy wipe (reuses clear_all's own _enemyAliveCount clause),
+      // same as Liberation, as long as the player side still stands.
+      return {won:(rnd>=ob.target||_enemyAliveCount(state)===0)&&_mineAlive(state),progress:rnd,target:ob.target};
     }
     return {won:ob.progress>=ob.target,progress:ob.progress,target:ob.target};
   }
@@ -825,8 +838,10 @@ var THREAD=(function(){
         if(!c.dead&&!c.captured)parties[c.party].alive++;});
       // T-MSN-1B task 2: clear_all/survive_rounds re-derive win the same way evalObjective does,
       // so the two never disagree (seam map §1's "two sources of truth" gap does not widen here).
+      // T-MSN-1B final fix wave (CRITICAL 2): mirrors evalObjective's enemy-wipe clause —
+      // see the comment there.
       var _won=ob.kind==='count_kill'&&ob.params&&ob.params.clear_all ? _enemyAliveCount(state)===0
-        : ob.kind==='survive_rounds' ? ((state.round||0)>=ob.target&&_mineAlive(state))
+        : ob.kind==='survive_rounds' ? (((state.round||0)>=ob.target||_enemyAliveCount(state)===0)&&_mineAlive(state))
         : ob.progress>=ob.target;
       if(_won){
         var others=Object.keys(parties).filter(function(p){return p!==myParty;});
@@ -1691,8 +1706,11 @@ var MISSION=(function(){
      model in the whole faction roster, priced x1.5 like the generic spawn's pc-derived stats,
      tagged named:true with n set to the seeded target_name (trackKill's named filter reads
      victim.gen.n === params.target_name) — plus a reduced escort (half the generic count, min 1).
-     Anything else (hostile/any/class/no filter) is the original generic Core-class round-robin. */
-  function genHostiles(params,mineCount,facModels,wep,canon){
+     params.filter==='class' (kill_team) guarantees at least `target` spawns tagged with the
+     wanted class (T-MSN-1B final fix wave, CRITICAL 1) — see the branch below. Anything else
+     (hostile/any/no filter) is the original generic Core-class round-robin. `target` (optional,
+     6th arg): the mission's rolled objective.target, only consulted by the class branch. */
+  function genHostiles(params,mineCount,facModels,wep,canon,target){
     var models=facModels||[];
     var pool=models.filter(function(m){return m.cls==='Core'});
     if(!pool.length)pool=models;
@@ -1715,6 +1733,32 @@ var MISSION=(function(){
       for(var ei=0;ei<escN;ei++){var em=pool[ei%pool.length];
         out.push({id:'e'+(ei+1),n:em.n+' '+(ei+1),cls:em.cls,pc:em.pc,spd:em.sp,w:em.w,
           sub:em.n+' — hostile',sl:slotOf()});}
+    } else if(params&&params.filter==='class'){
+      // CRITICAL 1 fix: the generic branch below only ever spawns Core-class models, but
+      // trackKill's 'class' filter (kill_team) only counts a kill matching victim.gen.cls
+      // === params.cls (Assault) — the spawner and the tracker never intersected, making
+      // Kill-Team mathematically unwinnable. Guarantee at least `target` spawns of the
+      // wanted class; pad out to the usual generic headcount with Core if target is smaller.
+      var clsWanted=params.cls;
+      var clsPool=models.filter(function(m){return m.cls===clsWanted});
+      var reskin=false;
+      if(!clsPool.length){
+        // canon rosters all carry >=1 model of every class — this is defense-in-depth only,
+        // dead code against real data. Reskin the highest-pc model with the wanted class so
+        // the spawn is still mathematically winnable against a custom/incomplete roster.
+        var top=models.slice().sort(function(a,b){return (b.pc||0)-(a.pc||0);})[0]||pool[0];
+        if(top){clsPool=[top];reskin=true;}
+      }
+      if(!clsPool.length)clsPool=pool;
+      var wantClassed=Math.max(1,target||0);
+      var genericN=Math.max(2,Math.min(4,mineCount));
+      var totalN=Math.max(genericN,wantClassed);
+      for(var ci=0;ci<wantClassed;ci++){var cm=clsPool[ci%clsPool.length];
+        out.push({id:'e'+ci,n:cm.n+' '+(ci+1),cls:reskin?clsWanted:cm.cls,pc:cm.pc,spd:cm.sp,w:cm.w,
+          sub:cm.n+' — hostile',sl:slotOf()});}
+      for(var ri=0;ri<(totalN-wantClassed);ri++){var rm=pool[ri%pool.length];
+        out.push({id:'e'+(wantClassed+ri),n:rm.n+' '+(wantClassed+ri+1),cls:rm.cls,pc:rm.pc,spd:rm.sp,w:rm.w,
+          sub:rm.n+' — hostile',sl:slotOf()});}
     } else {
       var n=Math.max(2,Math.min(4,mineCount));
       for(var i=0;i<n;i++){var bm=pool[i%pool.length];
@@ -1728,10 +1772,16 @@ var MISSION=(function(){
      accept). count_kill+clear_all (Liberation) reads honest -> target IS the spawned count
      (the core still wins clear_all on enemy-wipe regardless of what target says, THREAD.outcome);
      plain count_kill clamps the rolled target down to what's actually there (floor 1); anything
-     else (survive_rounds/Defend's round count, etc) is untouched — the roll stands as-is. */
-  function targetFor(inst,hostileCount){
+     else (survive_rounds/Defend's round count, etc) is untouched — the roll stands as-is.
+     CRITICAL 1 fix round: a class-filter row (kill_team) must clamp against the count of
+     matching-class spawns specifically (classCount), not the total hostile headcount — mirrors
+     clear_all's honesty, since trackKill only counts kills matching params.cls. classCount is
+     optional; when the caller doesn't supply it (legacy callers), falls back to hostileCount. */
+  function targetFor(inst,hostileCount,classCount){
     if(inst.kind==='count_kill'){
       if(inst.params&&inst.params.clear_all)return hostileCount;
+      if(inst.params&&inst.params.filter==='class')
+        return Math.max(1,Math.min(inst.target,classCount!=null?classCount:hostileCount));
       return Math.max(1,Math.min(inst.target,hostileCount));
     }
     return inst.target;
@@ -1765,6 +1815,22 @@ var MISSION=(function(){
     if(g.allegiance&&g.allegiance!==playerAllegiance)
       return 'The rite is not yours to perform.';
     return null;
+  }
+  /* T-MSN-1B final fix wave (CRITICAL 3): trade_haul's params.granted:true was read nowhere —
+     accepting the mission never actually handed over the consignment. grantItems(inst) is the
+     pure half of the fix: it returns the plain-ITEM objects acceptMission (DOM glue) pushes
+     onto S.inv. Shaped exactly like the deliver seam's plain-ITEM match (index.html's
+     _plainDeliverable: ob.params.item_n?it.n===ob.params.item_n:it.cat==='ITEM') so the same
+     crates the player is granted are the ones the deliver button counts and consumes — never
+     the player's own gear, since item_n narrows the match to the exact granted name. Priced at
+     pc:1 (worthless to sell, they're not the player's goods — only worth delivering). */
+  function grantItems(inst){
+    if(!(inst&&inst.params&&inst.params.granted))return [];
+    var nm=(inst.params&&inst.params.item_n)||'Consignment Crate';
+    var out=[],n=inst.target||0;
+    for(var i=0;i<n;i++)out.push({n:nm,cat:'ITEM',
+      d:'Consigned cargo, bonded to this contract — worthless anywhere but the buyer\'s dock.',pc:1});
+    return out;
   }
   function refillBoard(board,ctx,canon,r,day){
     var M=R(canon);
@@ -1814,7 +1880,7 @@ var MISSION=(function(){
   }
   return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,finalPayout:finalPayout,
           rollMission:rollMission,genHostiles:genHostiles,targetFor:targetFor,
-          pickForce:pickForce,gateReason:gateReason,
+          pickForce:pickForce,gateReason:gateReason,grantItems:grantItems,
           refillBoard:refillBoard,catchUpBoards:catchUpBoards};
 })();
 /*</mission-core>*/
@@ -2024,7 +2090,7 @@ function foundingWorld(){return {
  stats:{vigilus:{taint:12},sangua:{taint:4},nurth:{taint:20},kraithv:{taint:16}},
  rulers:{},holdings:[],
  stock:{},unrest:{},
- doorTiers:{},doorBuilds:{},
+ doorTiers:{},doorBuilds:{},locConds:{},
  missions:{},missionSeedBase:(Date.now()%2147483647),missionDay:0,   // Missions V2 slice A: founding never gets a reload, so init()'s backfill never fires — seed here too (S.time.epoch isn't in scope yet: commitFounding assigns `world:` before `time:`, so this mirrors init()'s Date.now()-based epoch as closely as scope allows)
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
@@ -2113,13 +2179,22 @@ function npcWeaponFor(facId){
 function namedTargetTag(m){
  return (m.params&&m.params.filter==='named'&&m.params.target_name)?' — target: '+esc(m.params.target_name):'';
 }
+/* MINOR FOLD: Liberation mints with target_roll [0,0] (the live target is only known once
+   accept-time seedCombat spawns hostiles, T-MSN-1B task 3) — the pre-accept board card must
+   not read "target 0", which looks broken. clear_all rows show their real intent instead. */
+function missionTargetLabel(m){
+ return (m.params&&m.params.clear_all)?'clear all hostiles':('target '+m.target);
+}
 /* seed both sides: your committed force's models vs a detachment generated from
    the local NPC force's faction roster. Enemy models persist via c.gen (SAVE.relink).
    missionParams (optional, T-MSN-1B task 3): an accepted mission's objective.params —
    when params.filter==='named' (bounty_hunt/assassination) MISSION.genHostiles swaps the
    generic round-robin for one named boss + a reduced escort; SKIRMISH/INVASION callers
-   (startThread) never pass it, so they keep the original generic behavior unchanged. */
-function seedCombat(t,pid,l,npcId,force,missionParams){
+   (startThread) never pass it, so they keep the original generic behavior unchanged.
+   missionTarget (optional, T-MSN-1B final fix wave): the accepted instance's rolled
+   objective.target — only genHostiles' class-filter branch (kill_team) reads it, to know
+   how many matching-class hostiles it must guarantee. */
+function seedCombat(t,pid,l,npcId,force,missionParams,missionTarget){
  if(!force)return;
  var mine=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'&&m.st!=='TAKEN'});
  if(!mine.length)return;
@@ -2134,7 +2209,7 @@ function seedCombat(t,pid,l,npcId,force,missionParams){
  var fac=host&&host.faction?facByName(host.faction):null;
  if(!fac)return;                                     // nobody garrisons this ground → social thread
  var wep=npcWeaponFor(fac.id),ap=0;
- var specs=MISSION.genHostiles(missionParams||{},mine.length,fac.models||[],wep,D);
+ var specs=MISSION.genHostiles(missionParams||{},mine.length,fac.models||[],wep,D,missionTarget);
  if(!specs.length)return;
  specs.forEach(function(spec){
   var gen={id:spec.id,n:spec.n,cls:spec.cls,pc:spec.pc,spd:spec.spd,sub:spec.sub,sl:spec.sl};
@@ -2217,24 +2292,34 @@ function acceptMission(inst,pl,l,mods){
  // T-MSN-1B task 3 fix: the spawn gate used to be count_kill-only — Defend (survive_rounds)
  // is combat-flavored too (THREAD.combatKind) and needs real hostiles + a board, or state.round
  // can never advance.
- if(THREAD.combatKind(inst.kind))seedCombat(t,pl.id,l,null,force,inst.params);
+ if(THREAD.combatKind(inst.kind))seedCombat(t,pl.id,l,null,force,inst.params,inst.target);
  t.seedState=t.seedState||{};
- var hn;
+ var hn,hCls;
  if(THREAD.combatKind(inst.kind)){
-  hn=Object.keys(t.seedState.combatants||{}).filter(function(k){return (t.seedState.combatants[k].party)!==force.n;}).length;
+  var _hostiles=Object.keys(t.seedState.combatants||{}).filter(function(k){return (t.seedState.combatants[k].party)!==force.n;});
+  hn=_hostiles.length;
   if(hn===0){T('The notice is stale — no hostile presence remains here.');return;}
+  // CRITICAL 1 fix: class-filter rows (kill_team) clamp against the matching-class spawn
+  // count specifically, not the total hostile headcount — see MISSION.targetFor.
+  if(inst.params&&inst.params.filter==='class')
+   hCls=_hostiles.filter(function(k){var g=t.seedState.combatants[k].gen;return g&&g.cls===inst.params.cls;}).length;
  }
  t.seedState.objective={kind:inst.kind,target:inst.target,progress:0,params:inst.params,done:false};
  if(THREAD.combatKind(inst.kind)){
   // MISSION.targetFor: count_kill clamps to what's actually garrisoned (clear_all/Liberation
-  // reads honest — target IS the spawned count, not the mint-time roll); survive_rounds/Defend
-  // is untouched — its target is a round count from the roll, not a hostile count.
-  var ct=MISSION.targetFor(inst,hn);
+  // reads honest — target IS the spawned count, not the mint-time roll); class-filter clamps
+  // to the matching-class spawn count; survive_rounds/Defend is untouched — its target is a
+  // round count from the roll, not a hostile count.
+  var ct=MISSION.targetFor(inst,hn,hCls);
   t.seedState.objective.target=ct;
   // target changed from mint-time → reprice this thread's payout so pay matches the fight
   // actually happening; the board row (inst) keeps its minted payout
   if(ct!==inst.target)t.mission.payout=MISSION.payoutOf({family:inst.family,target:ct,params:inst.params},((missionCtxOf(inst.pl)||{}).pl||{}).prod_mult||1,D);
  }
+ // CRITICAL 3 fix: trade_haul's params.granted:true was dead — MISSION.grantItems returns
+ // the consignment crates to hand over the moment the contract is signed; shaped to match
+ // exactly what the collect_item deliver seam (_plainDeliverable) later counts and consumes.
+ if(inst.params&&inst.params.granted)Array.prototype.push.apply(S.inv,MISSION.grantItems(inst));
  // T-MSN-1B task 4: mods/acceptPC/acceptModels/blitzCap ride seedState -> initState already
  // whitelists them onto state (T-MSN-1B task 2). blitzCap only computed when blitz is chosen
  // (else 0 — modCheck's own fallback would also read 0 as "no explicit cap", so leaving it 0
@@ -2549,7 +2634,7 @@ var st=statusOf(S.pos.pl),hd=E('div','card');
 hd.innerHTML='<h3>'+h.name+' <span class="pill">'+lt.name+'</span></h3>'
 +'<div class="d" style="margin-bottom:6px">'+(lt.effect||'')+'</div>'
 +'<div class="mono" style="font-size:11px;color:var(--dim)">'
-+'Population: '+popRank(effPop(h,S.pos.pl))+' · Condition: '+((CD(h.condition)||{}).name||h.condition)
++'Population: '+popRank(effPop(h,S.pos.pl))+' · Condition: '+((CD(effCond(h))||{}).name||effCond(h))
 +' · Level '+(h.level||1)+' · Sector: '+readStatus(st)+'</div>';
 b.appendChild(hd);
 if(!dz.length){b.insertAdjacentHTML('beforeend','<div class="empty"><b>'+h.name+'</b> — no doors stand here.<br><span class="mono" style="font-size:11px">A '+lt.name+' grants none, by definition.</span></div>');return}
@@ -2662,12 +2747,13 @@ zh.style.cssText='border-left:3px solid '+tg[2]+';padding-left:9px;margin-top:6p
 var gg=E('div','mg');
 locs.forEach(function(l){var h=S.pos.pl===pl.id&&S.pos.sp===l.id&&!inTransit();
 var _sh=null;for(var _si=0;_si<_shares.length;_si++)if(_shares[_si].id===l.id){_sh=_shares[_si];break}
-var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+((LT(l.type)||{}).name||l.type)+(l.condition!=='intact'?' · '+((CD(l.condition)||{}).name||l.condition):'')+'</div>'+(_sh?'<div class="pt mono" style="margin-top:3px"><span class="mono" style="color:var(--dim)">+'+_sh.share.Food+'F/'+_sh.share.Material+'M/'+_sh.share.Fuel+'Fu</span></div>':'')+(S.pos.pl===pl.id&&!h&&!inTransit()?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
+var _ec=effCond(l);
+var d=E('div','mn'+(l.id===MV.lc?' sel':''),(h?'<span class="here">YOU ARE HERE</span>':'')+'<div class="pn">'+l.name+'</div><div class="pt">'+((LT(l.type)||{}).name||l.type)+(_ec!=='intact'?' · '+((CD(_ec)||{}).name||_ec):'')+'</div>'+(_sh?'<div class="pt mono" style="margin-top:3px"><span class="mono" style="color:var(--dim)">+'+_sh.share.Food+'F/'+_sh.share.Material+'M/'+_sh.share.Fuel+'Fu</span></div>':'')+(S.pos.pl===pl.id&&!h&&!inTransit()?'<div class="pt mono" style="margin-top:3px">'+D.travel.same_planet.posts+' post</div>':''));
 d.onclick=function(){MV.lc=l.id;rMap()};gg.appendChild(d)});
 z.appendChild(gg)});
 var l=fLoc(pl.id,MV.lc);
 var fr=forcesAt(pl.id),hi=histAt(pl.id,l.id),np=npcsAt(pl.id,l.id);
-var _lt=LT(l.type)||{name:l.type},_dz=doorsAt(l),_cd=CD(l.condition)||{},isOrbit=(l.tier==='orbit');
+var _lt=LT(l.type)||{name:l.type},_dz=doorsAt(l),_lc=effCond(l),_cd=CD(_lc)||{},isOrbit=(l.tier==='orbit');
 var frLoc=fr.filter(function(x){return x[2]===l.name});
 var h2='<h3>'+pl.name+' — '+pl.type+'</h3>';
 h2+='<div style="margin-bottom:7px"><span class="tc">'+pl.rift+'</span><span class="tc">'+(pl.canon?'CANON':'CUSTOM')+'</span><span class="tc '+(pRuler(pl)?(pRuler(pl).allegiance===S.player.allegiance?'dead':'loc'):'')+'">'+(pRuler(pl)?'RULED: '+pRuler(pl).faction+(S.world.holdings&&S.world.holdings.indexOf(pl.id)>=0?' (YOURS)':''):'CONTESTED')+'</span><span class="stt '+f2.s.status+'">SECTOR: '+readStatus(f2.s.status)+'</span></div>';
@@ -2676,9 +2762,9 @@ if(_stk)h2+='<div class="d mono" style="margin-bottom:6px">⚙ Stock '+_stk.Food
 h2+='<div style="font-size:12.5px;color:var(--dim);margin-bottom:9px">'+pl.desc+'</div>';
 /* the named-location page — broken into sections */
 h2+='<div class="locpage"><div class="locimg">'+l.name+'<span>location image — art slot</span></div><div class="locbody">';
-h2+='<div class="locttl">'+l.name.toUpperCase()+' <span class="pill">'+(_lt.name||'')+'</span>'+(l.condition&&l.condition!=='intact'?' <span class="pill bl">'+(_cd.name||l.condition)+'</span>':'')+'</div>';
+h2+='<div class="locttl">'+l.name.toUpperCase()+' <span class="pill">'+(_lt.name||'')+'</span>'+(_lc&&_lc!=='intact'?' <span class="pill bl">'+(_cd.name||_lc)+'</span>':'')+'</div>';
 h2+='<div class="d" style="margin:4px 0 8px">'+(l.desc||_lt.effect||'')+'</div>';
-if(!isOrbit&&l.tier!=='space')h2+='<div class="statusbar"><span>Population <b>'+popRank(effPop(l,pl.id))+'</b></span><span>Condition <b>'+((_cd.name)||l.condition||'Intact')+'</b></span><span>Level <b>'+(l.level||1)+'</b></span><span>Sector <b>'+readStatus(f2.s.status)+'</b></span></div>';
+if(!isOrbit&&l.tier!=='space')h2+='<div class="statusbar"><span>Population <b>'+popRank(effPop(l,pl.id))+'</b></span><span>Condition <b>'+((_cd.name)||_lc||'Intact')+'</b></span><span>Level <b>'+(l.level||1)+'</b></span><span>Sector <b>'+readStatus(f2.s.status)+'</b></span></div>';
 if(isOrbit)h2+='<div class="lsec"><h5>Ships in orbit</h5>'+(l.ships&&l.ships.length?l.ships.map(function(o){return '· '+o}).join('<br>'):'<span style="color:var(--dim)">· empty</span>')+'</div>';
 /* DOORS — each clickable to enter */
 if(_dz.length)h2+='<div class="lsec"><h5>Doors — click to enter</h5>'+_dz.map(function(s,di){return s.open?'<div class="lrow" data-door="'+s.kind+'">▸ <b>'+s.name+'</b> <span class="pill">'+s.kind.toUpperCase()+'</span> '+doorTierTip(s.kind,doorTierAt(pl,l,s.kind))+'</div>':'<div class="lrow closed">▸ '+s.name+' <span class="pill">'+s.kind.toUpperCase()+'</span> <span style="color:var(--blh)">— closed</span></div>'}).join('')+'</div>';
@@ -2694,7 +2780,7 @@ var _mb=((S.world.missions||{})[pl.id]||[]).filter(function(m){return m.lid===l.
 if(_mb.length)h2+='<div class="lsec"><h5>Missions — posted here ('+_mb.length+')</h5>'+
  _mb.map(function(m,i){var _sel=_msel[m.iid]||{};
   return '<div class="lrow" data-mission="'+i+'" style="cursor:default"><b>'+annotate(m.n)+'</b>'+namedTargetTag(m)+' · '+
-  m.face.label+' · target '+m.target+' · pays '+m.payout+
+  m.face.label+' · '+missionTargetLabel(m)+' · pays '+m.payout+
   '<div class="d">'+m.flavor+'</div>'+
   '<div style="margin-top:6px;font-size:10.5px;color:var(--dim)">'+annotate('Modifiers')+'</div>'+
   '<div style="margin-top:2px">'+MOD_IDS.map(function(mid){
@@ -2881,9 +2967,19 @@ function concludeThread(t,oc){
    var payout=MISSION.finalPayout(t.mission.payout,mc.valid.length,D);
    S.cur+=payout;
    var we=t.mission.world_effect||{};var msec=sectorOfPlanet(t.mission.pl);
+   // IMPORTANT 1 fix: taint/prosperity were the only world_effect keys ever read — conflict
+   // (bounty/kill_team -2, assassination -3, liberation -4, defend -3) and clear_condition
+   // (Liberation) were both minted onto canon rows and silently ignored. Mirrors the taint
+   // line's floor-at-0 clamp (MINOR FOLD: prosperity now floors at 0 too — desecration's -2
+   // was the first negative drift, and it could push a sector below zero unclamped).
    if(msec&&S.world.stats[msec]){var mst=S.world.stats[msec];
     if(typeof we.taint==='number')mst.taint=Math.max(0,(mst.taint||0)+we.taint);
-    if(typeof we.prosperity==='number')mst.prosperity=(mst.prosperity||0)+we.prosperity;}
+    if(typeof we.prosperity==='number')mst.prosperity=Math.max(0,(mst.prosperity||0)+we.prosperity);
+    if(typeof we.conflict==='number')mst.conflict=Math.max(0,(mst.conflict||0)+we.conflict);}
+   // clear_condition (Liberation): write an 'intact' override into the locConds overlay —
+   // see effCond() for the single reader every condition-consuming call site goes through.
+   if(we.clear_condition&&t.mission.lid){
+    S.world.locConds=S.world.locConds||{};S.world.locConds[t.mission.lid]='intact';}
    S.world.log=S.world.log||[];
    S.world.log.unshift('◈ MISSION COMPLETE — '+t.mission.n+' ('+payout+' paid)'
     +(mc.valid.length?' · '+mc.valid.length+' modifier(s) honored':''));
@@ -3806,6 +3902,7 @@ function init(){
   if(!S.world.unrest)S.world.unrest={};
   if(!S.world.doorTiers)S.world.doorTiers={};                             // T-DOOR-1: older saves
   if(!S.world.doorBuilds)S.world.doorBuilds={};
+  if(!S.world.locConds)S.world.locConds={};                               // T-MSN-1B final fix wave: older saves
   var _wc=WORLD.catchUp(S,D,Date.now());
   for(var _db=0;_db<_wc.ticks;_db++){DOOR.tickBuilds(S).forEach(function(f){
     var _fl=lById(f.loc);

@@ -437,3 +437,120 @@ test('faceOf via rollMission: assassination (faces:{npc:true}, no door) goes NPC
   const inst = MISSION.rollMission(assRow, ctxNpcAndMuster, r, 0, canon);
   assert.deepStrictEqual(inst.face, { kind: 'npc', label: 'The Broker' });
 });
+
+// ── T-MSN-1B final fix wave · CRITICAL 1: Kill-Team (class filter) was unwinnable —
+// genHostiles' generic branch only ever spawned Core, but trackKill's 'class' filter only
+// counts victim.gen.cls === params.cls (Assault). Fixed: genHostiles guarantees >= target
+// matching-class spawns; targetFor clamps against the matching-class count, not total. ──
+
+test('canon: kill_team is a class-filter row targeting Assault', () => {
+  const kt = canon.missions.universal.find(rw => rw.id === 'kill_team');
+  assert.deepStrictEqual(kt.params, { filter: 'class', cls: 'Assault' });
+  assert.strictEqual(kt.needs_hostiles, true);
+});
+
+test('genHostiles: class-filter branch spawns at least `target` matching-class models', () => {
+  const specs = MISSION.genHostiles({ filter: 'class', cls: 'Assault' }, 2, FAC_MODELS, WEP, canon, 4);
+  const assaults = specs.filter(s => s.cls === 'Assault');
+  assert.ok(assaults.length >= 4, 'expected >=4 Assault spawns, got ' + assaults.length);
+  specs.forEach(s => assert.notStrictEqual(s.named, true, 'class-filter spawns are not named bosses'));
+});
+
+test('genHostiles: class-filter pads out to the usual generic headcount with Core when target is small', () => {
+  const specs = MISSION.genHostiles({ filter: 'class', cls: 'Assault' }, 4, FAC_MODELS, WEP, canon, 1);
+  // generic n = max(2,min(4,mineCount=4)) = 4; wantClassed = max(1,1) = 1; total = max(4,1) = 4
+  assert.strictEqual(specs.length, 4);
+  assert.strictEqual(specs.filter(s => s.cls === 'Assault').length, 1);
+  assert.strictEqual(specs.filter(s => s.cls === 'Core').length, 3);
+});
+
+test('genHostiles: class-filter falls back to a reskinned highest-pc model when the roster genuinely lacks the class', () => {
+  const noAssault = [
+    { n: 'Grunt', cls: 'Core', pc: 10, w: 2, sp: 4, sl: 1 },
+    { n: 'Warlord', cls: 'Armament', pc: 60, w: 6, sp: 3, sl: 3 }
+  ];
+  const specs = MISSION.genHostiles({ filter: 'class', cls: 'Assault' }, 2, noAssault, WEP, canon, 2);
+  const assaults = specs.filter(s => s.cls === 'Assault');
+  assert.strictEqual(assaults.length, 2, 'fallback must still tag the reskinned spawns with the wanted class');
+  assaults.forEach(a => assert.strictEqual(a.pc, 60, 'fallback reskins the highest-pc model (Warlord)'));
+});
+
+test('targetFor: class-filter clamps against the MATCHING-CLASS spawn count, not total hostiles', () => {
+  const inst = { kind: 'count_kill', target: 6, params: { filter: 'class', cls: 'Assault' }, family: 'KILL' };
+  assert.strictEqual(MISSION.targetFor(inst, 10, 3), 3, 'clamped to the classed count even though total hostiles is higher');
+  assert.strictEqual(MISSION.targetFor(inst, 10, 99), 6, 'never clamps UP past the roll');
+  assert.strictEqual(MISSION.targetFor(inst, 10), 6, 'no classCount supplied -> falls back to hostileCount, still clamped to the roll');
+});
+
+test('CRITICAL 1: Kill-Team full lifecycle — genHostiles spawns winnable Assault targets, killing them wins the mission', () => {
+  const kt = canon.missions.universal.find(rw => rw.id === 'kill_team');
+  const target = 5;
+  const specs = MISSION.genHostiles(kt.params, 3, FAC_MODELS, WEP, canon, target);
+  const assaults = specs.filter(s => s.cls === 'Assault');
+  assert.ok(assaults.length >= target, 'expected at least ' + target + ' Assault spawns, got ' + assaults.length);
+  const ct = MISSION.targetFor({ kind: 'count_kill', target, params: kt.params }, specs.length, assaults.length);
+  assert.strictEqual(ct, target, 'the live objective target must equal the guaranteed classed spawn count');
+  const combatants = { m1: { w: [4, 4], conds: [], party: 'Mine', armour: null } };
+  specs.forEach(s => { combatants[s.id] = { w: [s.w, s.w], conds: [], party: 'Foe', armour: null, gen: s }; });
+  const t = THREAD.create({
+    id: 'ktlc', type: 'MISSION', n: 'Kill-Team lifecycle', turn: 'you', forces: ['Mine'],
+    seedState: {
+      objective: { kind: 'count_kill', target: ct, progress: 0, params: kt.params, done: false },
+      pools: { Mine: 99, Foe: 99 }, combatants, joined: true
+    }
+  }, canon);
+  assaults.forEach(a => {
+    THREAD.apply(t, t.state, [{ actor: 'm1', cost: 1, effect: { kind: 'slay', to: a.id } }], canon);
+  });
+  assert.strictEqual(t.state.objective.progress, target);
+  assert.strictEqual(THREAD.evalObjective(t.state).won, true);
+  assert.deepStrictEqual(THREAD.outcome(t, t.state), { kind: 'mission_won', victor: 'Mine', defeated: ['Foe'] });
+});
+
+// ── T-MSN-1B final fix wave · CRITICAL 3: Trade Haul's params.granted:true grant mechanic ──
+
+test('canon: trade_haul is a granted collect_item row with a named consignment item', () => {
+  const th = canon.missions.universal.find(rw => rw.id === 'trade_haul');
+  assert.strictEqual(th.kind, 'collect_item');
+  assert.strictEqual(th.params.granted, true);
+  assert.strictEqual(th.params.item_n, 'Consignment Crate');
+});
+
+test('grantItems: returns `target` plain-ITEM crates for a granted row, shaped for the deliver seam', () => {
+  const inst = { target: 4, params: { granted: true, item_n: 'Consignment Crate' } };
+  const items = MISSION.grantItems(inst);
+  assert.strictEqual(items.length, 4);
+  items.forEach(it => {
+    assert.strictEqual(it.cat, 'ITEM');
+    assert.strictEqual(it.n, 'Consignment Crate');
+    assert.strictEqual(it.pc, 1, 'worthless to sell above delivery value - not the player\'s own goods');
+  });
+});
+
+test('grantItems: a non-granted row (e.g. item_request) grants nothing', () => {
+  const inst = { target: 3, params: {} };
+  assert.deepStrictEqual(MISSION.grantItems(inst), []);
+});
+
+test('grantItems: defaults the item name to "Consignment Crate" if a granted row somehow carries no item_n', () => {
+  const inst = { target: 2, params: { granted: true } };
+  const items = MISSION.grantItems(inst);
+  assert.strictEqual(items.length, 2);
+  items.forEach(it => assert.strictEqual(it.n, 'Consignment Crate'));
+});
+
+test('CRITICAL 3: granted crates match the deliver seam\'s named-item filter exactly, and deliver completes the mission', () => {
+  const inst = { target: 3, params: { granted: true, item_n: 'Consignment Crate' } };
+  const granted = MISSION.grantItems(inst);
+  // mirror the engine's _plainDeliverable predicate (index.html): item_n set -> match by exact name
+  const ob = { params: inst.params };
+  const plainDeliverable = it => (ob.params.item_n ? it.n === ob.params.item_n : it.cat === 'ITEM');
+  assert.strictEqual(granted.filter(plainDeliverable).length, 3, 'every granted crate must match the deliver seam\'s own filter');
+  const t = THREAD.create({
+    id: 'thlc', type: 'MISSION', n: 'Trade Haul lifecycle', turn: 'you',
+    seedState: { objective: { kind: 'collect_item', target: inst.target, progress: 0, params: inst.params, done: false } }
+  }, canon);
+  THREAD.apply(t, t.state, [{ actor: 'cmdr', effect: { kind: 'deliver', qty: granted.length } }], canon);
+  assert.strictEqual(t.state.objective.progress, 3);
+  assert.deepStrictEqual(THREAD.outcome(t, t.state), { kind: 'mission_won', victor: null, defeated: [] });
+});

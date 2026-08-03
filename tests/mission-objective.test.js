@@ -223,6 +223,29 @@ test('survive_rounds: progress tracks state.round; wins at target with the playe
   assert.deepStrictEqual(THREAD.outcome(t, t.state), { kind: 'mission_won', victor: 'Mine', defeated: ['Foe'] });
 });
 
+// ── T-MSN-1B final fix wave · CRITICAL 2: npcRespond early-returns with no living foe, so
+// state.round can never reach the round target once the attackers are wiped — Defend must
+// ALSO win on enemy wipe (reuses clear_all's own _enemyAliveCount clause), same as Liberation,
+// as long as the player side still stands. Mirrored in both evalObjective and outcome. ──
+test('CRITICAL 2: survive_rounds wins on enemy wipe even before the round target is reached', () => {
+  const t = THREAD.create(surviveSeed(4), canon);
+  THREAD.tickRound(t.state); THREAD.tickRound(t.state); // round 2 of 4 — nowhere near the target
+  assert.strictEqual(THREAD.evalObjective(t.state).won, false);
+  THREAD.apply(t, t.state, [{ actor: 'm1', cost: 1, effect: { kind: 'slay', to: 'e0' } }], canon);
+  assert.deepStrictEqual(THREAD.evalObjective(t.state), { won: true, progress: 2, target: 4 },
+    'enemy side wiped at round 2 of 4 -> won, independent of the round count');
+  assert.deepStrictEqual(THREAD.outcome(t, t.state), { kind: 'mission_won', victor: 'Mine', defeated: ['Foe'] });
+});
+
+test('CRITICAL 2: enemy wipe does not win if the player side was ALSO wiped in the same exchange', () => {
+  const t = THREAD.create(surviveSeed(4), canon);
+  THREAD.apply(t, t.state, [
+    { actor: 'm1', cost: 1, effect: { kind: 'slay', to: 'e0' } },
+    { actor: 'e0', cost: 1, effect: { kind: 'slay', to: 'm1' } }
+  ], canon);
+  assert.strictEqual(THREAD.evalObjective(t.state).won, false, 'mutual wipe is not a Defend win');
+});
+
 test('survive_rounds: reaching the round target does not win if the player side was wiped', () => {
   const t = THREAD.create(surviveSeed(2), canon);
   THREAD.tickRound(t.state); THREAD.tickRound(t.state);

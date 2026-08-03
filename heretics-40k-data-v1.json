@@ -15288,7 +15288,8 @@
      6
     ],
     "params": {
-     "granted": true
+     "granted": true,
+     "item_n": "Consignment Crate"
     },
     "faces": {
      "door": "shop",
@@ -15309,7 +15310,9 @@
      3,
      5
     ],
-    "params": {},
+    "params": {
+     "min_words": 40
+    },
     "faces": {
      "door": "altar",
      "notice": "Rite of sanctification"
@@ -15332,7 +15335,9 @@
      3,
      5
     ],
-    "params": {},
+    "params": {
+     "min_words": 40
+    },
     "faces": {
      "door": "altar",
      "notice": "Rite of despoilment"
