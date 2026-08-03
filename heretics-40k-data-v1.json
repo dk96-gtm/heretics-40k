@@ -3930,7 +3930,7 @@
            "allegiance": "chaos",
            "faction": "Thousand Sons"
           },
-          "desc": "The sorcerers' seat — a Daemon World of drifting ash and floating spire-libraries, ruled from the Tower of the Cyclops.",
+          "desc": "The sorcerers' seat — drifting ash and floating spire-libraries, warded stack upon stack, ruled from the Tower of the Cyclops.",
           "locations": [
            {
             "id": "prosperineorbit",
@@ -8351,7 +8351,7 @@
     "planet_types": [
      "*"
     ],
-    "effect": "Contested open ground. Grants no doors, by definition."
+    "effect": "Contested open ground. Fighting pits are the only doors war leaves open."
    },
    {
     "id": "plague_garden",
