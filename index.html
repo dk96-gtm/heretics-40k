@@ -2693,10 +2693,11 @@ h2+='<div class="lsec"><h5>Thread history — click for summary</h5>'+(hi.length
 var _mb=((S.world.missions||{})[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted&&!MISSION.gateReason(m,S.player.allegiance)});
 if(_mb.length)h2+='<div class="lsec"><h5>Missions — posted here ('+_mb.length+')</h5>'+
  _mb.map(function(m,i){var _sel=_msel[m.iid]||{};
-  return '<div class="lrow" data-mission="'+i+'" style="cursor:default"><b>'+m.n+'</b>'+namedTargetTag(m)+' · '+
+  return '<div class="lrow" data-mission="'+i+'" style="cursor:default"><b>'+annotate(m.n)+'</b>'+namedTargetTag(m)+' · '+
   m.face.label+' · target '+m.target+' · pays '+m.payout+
   '<div class="d">'+m.flavor+'</div>'+
-  '<div style="margin-top:6px">'+MOD_IDS.map(function(mid){
+  '<div style="margin-top:6px;font-size:10.5px;color:var(--dim)">'+annotate('Modifiers')+'</div>'+
+  '<div style="margin-top:2px">'+MOD_IDS.map(function(mid){
     var reg=(D.rules.missions.modifiers||{})[mid]||{},on=!!_sel[mid];
     return '<span class="chip" data-mission-mod="'+i+'|'+mid+'" title="'+esc(MOD_TIP[mid]||'')+'" '
      +'style="cursor:pointer'+(on?';border-color:var(--brh);color:var(--brh)':'')+'">'+(reg.label||mid)
@@ -2782,7 +2783,7 @@ var mrows=[];Object.keys(S.world.missions||{}).forEach(function(pid){(S.world.mi
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Missions — posted nearby ('+mrows.length+')</h5></div>');
 if(!mrows.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">No missions posted right now.</div>');
 mrows.forEach(function(m){var pp=fPl(m.pl);var lname=(pp&&fLoc(m.pl,m.lid))?fLoc(m.pl,m.lid).name:m.lid;
- var d=E('div','thc','<div><b>'+m.n+'</b>'+namedTargetTag(m)+'<div style="font-size:11px;color:var(--dim);margin-top:2px">'+(pp?pp.p.name:'')+' · '+lname+'</div></div><span class="mono" style="color:var(--faint)">pays '+m.payout+'</span>');
+ var d=E('div','thc','<div><b>'+annotate(m.n)+'</b>'+namedTargetTag(m)+'<div style="font-size:11px;color:var(--dim);margin-top:2px">'+(pp?pp.p.name:'')+' · '+lname+'</div></div><span class="mono" style="color:var(--faint)">pays '+m.payout+'</span>');
  d.onclick=function(){if(pp){MV.pl=m.pl;MV.lc=m.lid;MV.lv='planet';MV.spaceSel=false;go('map')}};dash.appendChild(d)});
 /* conflicts */
 var confs=sectorConflicts();
@@ -4062,7 +4063,9 @@ var GLOSS={
  'Tithe':'Daily currency upkeep per held location — 2 × location level. Unpaid tithes breed Unrest.',
  'Unrest':'Pressure from famine or unpaid tithes. Consequences arrive with the status machinery (T-STAT-1); the counter is live now.',
  'Door Tier':'Doors level I→III. Tier gates what the door offers; upgrades cost currency + resources and take days of construction. Tier III lives on specific standard world types — Shop excepted, which can reach III anywhere.',
- 'Exchange':'Trade currency for Food/Material/Fuel (and back) in lots of 10 at the Shop. Rates are unfavorable and improve with shop tier. Works only on worlds you rule — goods bank into that world\'s stockpile.'};
+ 'Exchange':'Trade currency for Food/Material/Fuel (and back) in lots of 10 at the Shop. Rates are unfavorable and improve with shop tier. Works only on worlds you rule — goods bank into that world\'s stockpile.',
+ 'Modifiers':'Optional hardships chosen at mission accept — each valid at conclusion multiplies the payout ×1.5. Violating one voids its bonus, never the mission.',
+ 'Bounty':'A named target — Bounty Hunt and Assassination missions post a specific enemy boss by name; the board shows who before you accept, and only that model\'s death counts toward the objective.'};
 /* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
 function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
  var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');
