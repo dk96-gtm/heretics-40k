@@ -2838,7 +2838,7 @@
            "allegiance": "imperial",
            "faction": "Adeptus Custodes"
           },
-          "desc": "A ring-fortress world holding the near-Solar approaches — the Ten Thousand's outer bastion.",
+          "desc": "The Ten Thousand's outer vigil — a ring-watch over the near-Solar approaches. Few are stationed here, and nothing passes them.",
           "locations": [
            {
             "id": "custodorbit",
@@ -3680,7 +3680,7 @@
            "allegiance": "chaos",
            "faction": "Death Guard"
           },
-          "desc": "Death Guard staging world under a jaundiced sky.",
+          "desc": "Nurgle's walled garden — blight cultivated like a crop beneath a jaundiced sky, and the Death Guard its patient gardeners.",
           "locations": [
            {
             "id": "nurthorbit",
@@ -4597,7 +4597,7 @@
            "allegiance": "chaos",
            "faction": "Emperor's Children"
           },
-          "desc": "A drowned Daemon World of sinkholes and endless echoing choirs — capital of a corrupted reach.",
+          "desc": "A drowned pleasure-realm of sinkholes and endless echoing choirs — every trade here serves appetite, and the appetite is the capital of a corrupted reach.",
           "locations": [
            {
             "id": "screamorbit",
@@ -5331,7 +5331,7 @@
            "allegiance": "imperial",
            "faction": "Adepta Sororitas"
           },
-          "desc": "The naval and ecclesiastical heart of the segmentum — a shrine-world girdled by orbital dockyards, where the Adepta Sororitas keep the Emperor's peace over Battlefleet Pacificus.",
+          "desc": "Seat of the Order's motherhouse and the naval heart of the segmentum — convent fields and orbital dockyards, where the Adepta Sororitas keep the Emperor's peace over Battlefleet Pacificus.",
           "locations": [
            {
             "id": "hydraphurorbit",
@@ -5547,7 +5547,7 @@
            "allegiance": "imperial",
            "faction": "Adeptus Mechanicus"
           },
-          "desc": "A daughter-forge of Metalica and the ruling holding of the Cog-Marches — its foundries never cool.",
+          "desc": "A daughter-forge turned expedition seat — the Cog-Marches are ruled from its archeotech vaults, and its excavations reach older than the Imperium.",
           "locations": [
            {
             "id": "metalicaorbit",
@@ -6464,7 +6464,7 @@
            "allegiance": "imperial",
            "faction": "Adeptus Astartes"
           },
-          "desc": "The jewel of Ultramar and seat of the sector — a fortress-world of blue-and-gold that has held the eastern marches unbroken.",
+          "desc": "The jewel of Ultramar and seat of the sector — the fortress-monastery of blue-and-gold whose harsh proving grounds have held the eastern marches unbroken.",
           "locations": [
            {
             "id": "macraggeorbit",
