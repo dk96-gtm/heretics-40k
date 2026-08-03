@@ -3320,7 +3320,7 @@
             "id": "carrion",
             "name": "The Carrion Market",
             "type": "city",
-            "condition": "intact",
+            "condition": "besieged",
             "level": 2,
             "door_names": {
              "shop": "The Carrion Market"
@@ -6406,7 +6406,7 @@
             "id": "sumphavenhive",
             "name": "Hive Vorash",
             "type": "hive",
-            "condition": "intact",
+            "condition": "infested",
             "level": 2,
             "tier": "surface",
             "desc": "A crumbling Imperial hive whose lower fifty levels answer to another master."
@@ -6812,7 +6812,7 @@
             "id": "mordathbastion",
             "name": "Iron Beachhead",
             "type": "fortress",
-            "condition": "intact",
+            "condition": "besieged",
             "level": 2,
             "tier": "surface",
             "desc": "A traitor bastion gouged into the Scar's dark rim."
@@ -6947,7 +6947,7 @@
             "id": "solaceshrine",
             "name": "The Shrine of the Fallen",
             "type": "shrine",
-            "condition": "intact",
+            "condition": "besieged",
             "level": 2,
             "tier": "surface",
             "desc": "Altars for the countless dead of the Scar.",
@@ -7370,7 +7370,7 @@
             "id": "cominormanu",
             "name": "The Red Manufactorums",
             "type": "manufactorum",
-            "condition": "intact",
+            "condition": "infested",
             "level": 2,
             "tier": "surface",
             "desc": "Forges turning out arms for a rising nobody sees coming.",

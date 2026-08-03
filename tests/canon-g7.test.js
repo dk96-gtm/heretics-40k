@@ -85,3 +85,15 @@ test('G7 routes: the three authored locations exist with correct tier', () => {
   const ids = planets().flatMap((p) => p.locations.map((l) => l.id));
   assert.strictEqual(ids.length, new Set(ids).size, 'location ids unique galaxy-wide');
 });
+
+test('G7 conditions: 5 seats wake Defend/Liberation weighting (Daak 2026-08-03)', () => {
+  const seat = (pid, ltype) => byId[pid].locations.find((l) => l.type === ltype).condition;
+  assert.strictEqual(seat('vigilus', 'city'), 'besieged');
+  assert.strictEqual(seat('sumphaven', 'hive'), 'infested');
+  assert.strictEqual(seat('solacescar', 'shrine'), 'besieged');
+  assert.strictEqual(seat('mordathscar', 'fortress'), 'besieged');
+  assert.strictEqual(seat('cominor', 'manufactorum'), 'infested');
+  const ids = new Set(D.galaxy.conditions.map((c) => c.id));
+  for (const p of planets()) for (const l of p.locations)
+    assert.ok(ids.has(l.condition), l.id + ' valid condition ' + l.condition);
+});
