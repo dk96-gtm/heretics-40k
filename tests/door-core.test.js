@@ -149,3 +149,29 @@ test('T-GX-G7e tombDormant: crown Tomb Worlds never sleep; others wake at the co
   // non-Tomb types are never dormant regardless of crown/conflict
   assert.strictEqual(DOOR.tombDormant('Hive World', false, 10, D), false);
 });
+
+test('T-MST-1 musterList: ruler roster shelf, class-gated by tier, bulk rate at III', () => {
+  const orks = D.factions.find((f) => f.id === 'orks');
+  const t1 = DOOR.musterList(D, 'orks', 1);
+  assert.ok(t1.length >= 1 && t1.every((r) => r.cls === 'Core'), 'tier I is Core-only');
+  const t2 = DOOR.musterList(D, 'orks', 2);
+  assert.strictEqual(t2.length, orks.models.length, 'tier II opens the whole roster');
+  assert.ok(t2.every((r) => r.price === r.pc), 'tier II pays full pc');
+  const bulk = D.rules.doors_tiering.muster_bulk_discount || 0.85;
+  const t3 = DOOR.musterList(D, 'orks', 3);
+  assert.ok(t3.every((r) => r.price === Math.max(1, Math.round(r.pc * bulk))), 'tier III bulk rate');
+  assert.ok(t3.every((r) => r.faction === 'orks'), 'rows carry the shelf faction');
+  assert.deepStrictEqual(DOOR.musterList(D, null, 3), [], 'no ruler, no shelf');
+});
+
+test('T-MST-1 canRecruit: same-allegiance only, never cross', () => {
+  assert.strictEqual(DOOR.canRecruit(D, 'tau', 'orks').ok, true);
+  assert.strictEqual(DOOR.canRecruit(D, 'militarum', 'astartes').ok, true);
+  assert.strictEqual(DOOR.canRecruit(D, 'death_guard', 'black_legion').ok, true);
+  assert.strictEqual(DOOR.canRecruit(D, 'orks', 'orks').ok, true);
+  const x = DOOR.canRecruit(D, 'aeldari', 'death_guard');
+  assert.strictEqual(x.ok, false);
+  assert.ok(x.why && x.why.length > 0, 'refusal carries a reason');
+  assert.strictEqual(DOOR.canRecruit(D, 'black_legion', 'custodes').ok, false);
+  assert.strictEqual(DOOR.canRecruit(D, 'orks', null).ok, false);
+});

@@ -1608,6 +1608,21 @@ var DOOR=(function(){
   var t=(popIdx>=4)?2:1;
   if(c.t3_homes&&c.t3_homes[kind]===planetType)t=3;   /* home doors open at III — the lived-in galaxy */
   return Math.min(t,tierCap(planetType,kind,canon,tombDormant))}
+ /* T-MST-1: open recruitment (Daak 2026-08-04) — the muster shelf is the RULING
+    faction's roster (geography, like every other door); purchase is gated to the
+    buyer's ALLEGIANCE, never their subfaction. */
+ function facRec(canon,fid){var F=canon.factions||[];for(var i=0;i<F.length;i++)if(F[i].id===fid)return F[i];return null}
+ function musterList(canon,shelfFactionId,tier){var f=facRec(canon,shelfFactionId);if(!f)return [];
+  var bulk=cfg(canon).muster_bulk_discount||0.85,t=tier||1;
+  return (f.models||[]).filter(function(m){return t>=2||m.cls==='Core'})
+   .map(function(m){return {n:m.n,cls:m.cls,pc:m.pc,w:m.w,sp:m.sp,sl:m.sl,faction:f.id,
+     price:t>=3?Math.max(1,Math.round(m.pc*bulk)):m.pc}})}
+ function canRecruit(canon,buyerFactionId,shelfFactionId){
+  var b=facRec(canon,buyerFactionId),s=facRec(canon,shelfFactionId);
+  if(!s)return {ok:false,why:'No muster tradition holds this ground.'};
+  if(!b)return {ok:false,why:'Unknown commander faction.'};
+  if(b.allegiance!==s.allegiance)return {ok:false,why:'The '+s.name+' do not muster for a '+b.allegiance+' banner.'};
+  return {ok:true}}
  /* T-GX-G7e: a phaeron's court is already awake — crown Tomb Worlds never sleep. */
  function tombDormant(planetType,isCrown,conflict,canon){
   return planetType==='Tomb World'&&!isCrown&&!(typeof conflict==='number'&&conflict>=(cfg(canon).tomb_dormant_conflict||40))}
@@ -1643,7 +1658,7 @@ var DOOR=(function(){
   var t=String(tier||1);
   return {lot:ex.lot||10,buy:(ex.buy_per_lot||{})[t]||40,sell:(ex.sell_per_lot||{})[t]||5}}
  return {gearTier:gearTier,castRank:castRank,tierCap:tierCap,seedTier:seedTier,
-         tombDormant:tombDormant,
+         tombDormant:tombDormant,musterList:musterList,canRecruit:canRecruit,
          doorTier:doorTier,upgradeCost:upgradeCost,canUpgrade:canUpgrade,
          startBuild:startBuild,tickBuilds:tickBuilds,key:key,exchangeRates:exchangeRates};
 })();
