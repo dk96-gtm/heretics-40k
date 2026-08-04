@@ -530,3 +530,129 @@ test('modCheck: a combat objective (count_kill/survive_rounds) is unaffected by 
   const state2 = { objective: { kind: 'survive_rounds', target: 5 } };
   assert.deepStrictEqual(THREAD.modCheck(state2, ['ironman'], canon), { valid: ['ironman'], voided: [] });
 });
+
+// ── T-MSN-1C task 2: kill-credit filters — melee, faction, capture (+capture_only named) ──
+function meleeSeed(target) {
+  return {
+    id: 'mm', type: 'MISSION', n: 'Melee test', turn: 'you', forces: ['Mine'],
+    seedState: {
+      objective: { kind: 'count_kill', target: target, progress: 0,
+                   params: { filter: 'melee' }, done: false },
+      pools: { Mine: 20, Foe: 10 },
+      combatants: {
+        m1: { w: [4, 4], conds: [], party: 'Mine', armour: null },
+        e0: { w: [1, 1], conds: [], party: 'Foe', armour: null,
+              gen: { id: 'e0', n: 'Grunt 1', cls: 'Core', pc: 10 } },
+        e1: { w: [1, 1], conds: [], party: 'Foe', armour: null,
+              gen: { id: 'e1', n: 'Grunt 2', cls: 'Core', pc: 10 } }
+      },
+      joined: true
+    }
+  };
+}
+
+test('melee-filter kill: a band:LONG kill does not credit, a band:MELEE kill does', () => {
+  const t = THREAD.create(meleeSeed(1), canon);
+  THREAD.apply(t, t.state,
+    [{ actor: 'm1', cost: 1, effect: { kind: 'damage', to: 'e0', amount: 5, element: 'Physical', band: 'LONG' } }],
+    canon);
+  assert.strictEqual(t.state.objective.progress, 0, 'a long-range kill does not satisfy a melee-only filter');
+  THREAD.apply(t, t.state,
+    [{ actor: 'm1', cost: 1, effect: { kind: 'damage', to: 'e1', amount: 5, element: 'Physical', band: 'MELEE' } }],
+    canon);
+  assert.strictEqual(t.state.objective.progress, 1);
+  assert.strictEqual(THREAD.evalObjective(t.state).won, true);
+});
+
+function factionSeed(target) {
+  return {
+    id: 'mf', type: 'MISSION', n: 'Grudge test', turn: 'you', forces: ['Mine'],
+    seedState: {
+      objective: { kind: 'count_kill', target: target, progress: 0,
+                   params: { filter: 'faction', grudge_faction: 'votann' }, done: false },
+      pools: { Mine: 20, Foe: 10 },
+      combatants: {
+        m1: { w: [4, 4], conds: [], party: 'Mine', armour: null },
+        e0: { w: [1, 1], conds: [], party: 'Foe', armour: null,
+              gen: { id: 'e0', n: 'Grunt', cls: 'Core', pc: 10, faction: 'orks' } },
+        e1: { w: [1, 1], conds: [], party: 'Foe', armour: null,
+              gen: { id: 'e1', n: 'Grudge Target', cls: 'Core', pc: 10, faction: 'votann' } }
+      },
+      joined: true
+    }
+  };
+}
+
+test('faction-filter kill: only victim.gen.faction === params.grudge_faction increments progress', () => {
+  const t = THREAD.create(factionSeed(1), canon);
+  THREAD.apply(t, t.state, [{ actor: 'm1', cost: 1, effect: { kind: 'slay', to: 'e0' } }], canon);
+  assert.strictEqual(t.state.objective.progress, 0, 'a mismatched faction kill does not credit');
+  THREAD.apply(t, t.state, [{ actor: 'm1', cost: 1, effect: { kind: 'slay', to: 'e1' } }], canon);
+  assert.strictEqual(t.state.objective.progress, 1);
+  assert.strictEqual(THREAD.evalObjective(t.state).won, true);
+});
+
+function captureFilterSeed() {
+  return {
+    id: 'mcf', type: 'MISSION', n: 'Slave raid test', turn: 'you', forces: ['Mine'],
+    seedState: {
+      objective: { kind: 'count_kill', target: 1, progress: 0,
+                   params: { filter: 'capture' }, done: false },
+      pools: { Mine: 20, Foe: 10 },
+      combatants: {
+        m1: { w: [4, 4], conds: [], party: 'Mine', armour: null, x: 2, y: 2,
+              model: { n: 'Captor', pc: 10, cls: 'Core',
+                loadout: { slots: [{ type: 'ITEM', it: SHACKLES }, { type: 'ITEM', it: null }] } } },
+        e0: { w: [1, 1], conds: [], party: 'Foe', armour: null, x: 3, y: 2,
+              gen: { id: 'e0', n: 'Slave 1', cls: 'Core', pc: 10 } },
+        e1: { w: [1, 1], conds: [], party: 'Foe', armour: null, x: 5, y: 5,
+              gen: { id: 'e1', n: 'Slave 2', cls: 'Core', pc: 10 } }
+      },
+      joined: true
+    }
+  };
+}
+
+test('capture-filter: a kill never credits; a capture does', () => {
+  const t = THREAD.create(captureFilterSeed(), canon);
+  THREAD.apply(t, t.state, [{ actor: 'm1', cost: 1, effect: { kind: 'slay', to: 'e1' } }], canon);
+  assert.strictEqual(t.state.objective.progress, 0, 'a kill never credits a capture-only objective');
+  THREAD.apply(t, t.state,
+    [{ actor: 'm1', cost: 3, item: SHACKLES, effect: { kind: 'capture', to: 'e0' } }], canon);
+  assert.strictEqual(t.state.objective.progress, 1);
+  assert.strictEqual(THREAD.evalObjective(t.state).won, true);
+});
+
+function namedCaptureOnlySeed() {
+  return {
+    id: 'mgh', type: 'MISSION', n: 'Gene harvest test', turn: 'you', forces: ['Mine'],
+    seedState: {
+      objective: { kind: 'count_kill', target: 1, progress: 0,
+                   params: { filter: 'named', target_name: 'The Patriarch', capture_only: true }, done: false },
+      pools: { Mine: 20, Foe: 10 },
+      combatants: {
+        m1: { w: [4, 4], conds: [], party: 'Mine', armour: null, x: 2, y: 2,
+              model: { n: 'Captor', pc: 10, cls: 'Core',
+                loadout: { slots: [{ type: 'ITEM', it: SHACKLES }, { type: 'ITEM', it: null }] } } },
+        e0: { w: [1, 1], conds: [], party: 'Foe', armour: null, x: 3, y: 2,
+              gen: { id: 'e0', n: 'The Patriarch', cls: 'Assault', pc: 30 } }
+      },
+      joined: true
+    }
+  };
+}
+
+test('capture_only + named: killing the named target does NOT complete the objective', () => {
+  const t = THREAD.create(namedCaptureOnlySeed(), canon);
+  THREAD.apply(t, t.state, [{ actor: 'm1', cost: 1, effect: { kind: 'slay', to: 'e0' } }], canon);
+  assert.strictEqual(t.state.objective.progress, 0, 'a kill never completes a capture_only named objective');
+  assert.strictEqual(THREAD.evalObjective(t.state).won, false);
+});
+
+test('capture_only + named: capturing the named target completes the objective', () => {
+  const t = THREAD.create(namedCaptureOnlySeed(), canon);
+  THREAD.apply(t, t.state,
+    [{ actor: 'm1', cost: 3, item: SHACKLES, effect: { kind: 'capture', to: 'e0' } }], canon);
+  assert.strictEqual(t.state.objective.progress, 1);
+  assert.strictEqual(THREAD.evalObjective(t.state).won, true);
+});

@@ -683,7 +683,7 @@ var THREAD=(function(){
     return {ok:true,reason:''};
   }
   /* ── mission objective tracker (Missions V2 slice A + B) ── */
-  function trackKill(state,victim){
+  function trackKill(state,victim,band,isCapture){
     var ob=state.objective;
     if(!ob||ob.done||ob.kind!=='count_kill')return;
     if(!victim||!victim.gen)return;              // count_kill only ever tracks generated hostiles
@@ -699,6 +699,19 @@ var THREAD=(function(){
     var filt=(ob.params&&ob.params.filter)||'hostile';
     if(filt==='named'&&victim.gen.n!==(ob.params&&ob.params.target_name))return;
     if(filt==='class'&&victim.gen.cls!==(ob.params&&ob.params.cls))return;
+    // T-MSN-1C task 2: 'melee' (we_skulls) narrows to a killing blow whose attack band was
+    // MELEE — band arrives from the damage/slay effect's own e.band (case-insensitive: grid
+    // bands are uppercase, brief examples use lowercase — normalize so either spells credit).
+    if(filt==='melee'&&String(band||'').toUpperCase()!=='MELEE')return;
+    // 'faction' (votann_grudge) narrows to a generated hostile stamped with the grudge faction
+    // id at spawn (seedCombat) matching the mission's seeded params.grudge_faction (Task 5).
+    if(filt==='faction'&&victim.gen.faction!==(ob.params&&ob.params.grudge_faction))return;
+    // 'capture' (drukhari_slave_raid): captures are the ONLY crediting event — a kill of the
+    // same victim must never credit, dead cargo is worthless to a slaver.
+    if(filt==='capture'&&!isCapture)return;
+    // capture_only (gsc_gene_harvest, layered on 'named'): the target must be taken alive —
+    // a kill (even of the exact named target) must not complete the objective.
+    if(ob.params&&ob.params.capture_only&&!isCapture)return;
     victim._counted=true;
     ob.progress+=1;if(ob.progress>=ob.target)ob.done=true;
   }
@@ -777,7 +790,7 @@ var THREAD=(function(){
           var _iron=!!(state.mods&&state.mods.indexOf('ironman')>=0&&!c.gen);  // T-MSN-1B: Ironman permadeaths the player's OWN kills
           stampKill(c,e.element,e.noRevival||_iron,canon);
           if(e.weapon)creditWeaponKill(state,b.actor,e.weapon);   // the killing weapon takes the credit
-          trackKill(state,c);}}
+          trackKill(state,c,e.band);}}
       else if(e.kind==='band'){var w=state.combatants[e.who];if(w)w.band=e.to;}
       else if(e.kind==='move'){var mw=state.combatants[e.who];if(mw&&e.to){mw.x=e.to.x;mw.y=e.to.y;}}
       else if(e.kind==='cond'&&c){
@@ -787,7 +800,7 @@ var THREAD=(function(){
         var RW=(canon.rules&&canon.rules.death&&canon.rules.death.revival_window)||{};
         if(e.noRevival||_iron2){c.revivalWindow=0;c.permaDeath=true;}
         else{var W=RW.windows||{};c.revivalWindow=(e.element&&W[e.element])||W.Physical||3;c.permaDeath=false;}
-        if(!_wasDead)trackKill(state,c);}
+        if(!_wasDead)trackKill(state,c,e.band);}
       else if(e.kind==='capture'&&c){
         if(c.captured||c.dead)return;                  // belt-and-braces: validate should already reject this
         var _cap=state.combatants[b.actor];
@@ -797,7 +810,7 @@ var THREAD=(function(){
           // Slice-B ruling: capture counts dead or alive — the same tracker seam a kill
           // uses (trackKill's own filters already narrow this to a matching count_kill
           // objective, so a plain Purge capture or a named bounty capture both "just work").
-          trackKill(state,c);}}
+          trackKill(state,c,null,true);}}
       else if(e.kind==='free'){
         var _fc=state.combatants[e.corpse],_fv=state.combatants[e.cid];
         if(_fc&&_fv){var _fsl=(_fc.model&&_fc.model.loadout&&_fc.model.loadout.slots)||[];
@@ -2305,6 +2318,10 @@ function seedCombat(t,pid,l,npcId,force,missionParams,missionTarget){
  specs.forEach(function(spec){
   var gen={id:spec.id,n:spec.n,cls:spec.cls,pc:spec.pc,spd:spec.spd,sub:spec.sub,sl:spec.sl};
   if(spec.named)gen.named=true;
+  // T-MSN-1C task 2: stamp the spawning faction id so a 'faction' (votann_grudge) objective
+  // can read victim.gen.faction — genHostiles (pure mission-core) has no faction id to hand
+  // out itself, but fac.id is known right here at the one real spawn call site.
+  if(fac.id)gen.faction=fac.id;
   C[spec.id]={w:[spec.w,spec.w],conds:[],party:host.name,model:gen,gen:gen,armour:null};
   ap+=AP(spec.pc);});
  pools[host.name]=ap;
