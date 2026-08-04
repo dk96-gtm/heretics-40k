@@ -84,3 +84,32 @@ test('canon v1.30: 11 universal missions, modifiers + bounty names', () => {
   assert.strictEqual(M.blitz.post_mult, 0.6);
   assert.ok(canon.rules.missions.bounty_names.length >= 20);
 });
+
+test('T-MSN-1C: 18 signature rows, faction-gated, premium constant', () => {
+  const S = canon.missions.signatures;
+  assert.strictEqual(S.length, 18);
+  assert.strictEqual(canon.rules.missions.signature_premium, 1.5);
+  const byId = Object.fromEntries(S.map((r) => [r.id, r]));
+  const expect = {
+    we_skulls: ['world_eaters', 'count_kill'], votann_grudge: ['votann', 'count_kill'],
+    ec_perfect_kill: ['emperors_children', 'count_kill'], astartes_the_few: ['astartes', 'count_kill'],
+    am_meatgrinder: ['militarum', 'count_kill'], harlequins_flawless: ['harlequins', 'count_kill'],
+    sororitas_martyrdom: ['sororitas', 'count_kill'], tau_auxiliary: ['tau', 'count_kill'],
+    drukhari_slave_raid: ['drukhari', 'count_kill'], gsc_gene_harvest: ['gsc', 'count_kill'],
+    astartes_none_left_behind: ['astartes', 'count_kill'],
+    ts_forbidden_lore: ['thousand_sons', 'collect_item'], aeldari_soul_tithe: ['aeldari', 'collect_item'],
+    mechanicus_tech_reclamation: ['mechanicus', 'collect_item'],
+    bl_long_war: ['black_legion', 'streak'], orks_might_right: ['orks', 'streak'],
+    custodes_blood_games: ['custodes', 'streak'], tyranids_amass_biomass: ['tyranids', 'streak'],
+  };
+  for (const [id, [fac, kind]] of Object.entries(expect)) {
+    assert.ok(byId[id], id + ' exists');
+    assert.strictEqual(byId[id].gates.faction, fac, id + ' faction gate');
+    assert.strictEqual(byId[id].kind, kind, id + ' kind');
+    assert.strictEqual(byId[id].signature, true, id + ' signature flag');
+  }
+  const streakKeys = ['combat_wins', 'duel_wins', 'named_duel_wins', 'annihilations'];
+  const sRows = S.filter((r) => r.kind === 'streak');
+  assert.deepStrictEqual(sRows.map((r) => r.params.streak_key).sort(), streakKeys.sort());
+  assert.ok(sRows.every((r) => r.target_roll[0] === 3 && r.target_roll[1] === 3));
+});

@@ -15401,6 +15401,479 @@
     "flavor": "Every altar serves someone. Teach this one a new name."
    }
   ],
-  "signatures": {}
+  "signatures": [
+   {
+    "id": "we_skulls",
+    "n": "The Skull Count Rises",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     6,
+     10
+    ],
+    "params": {
+     "filter": "melee"
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "Khorne does not count the wounded. Bring skulls, not excuses.",
+    "faces": {
+     "door": "muster",
+     "notice": "THE SKULL COUNT RISES"
+    },
+    "gates": {
+     "faction": "world_eaters"
+    },
+    "signature": true
+   },
+   {
+    "id": "votann_grudge",
+    "n": "Grudge Reckoning",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     5,
+     8
+    ],
+    "params": {
+     "filter": "faction"
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "The grudge-book does not forgive. It is settled, or it is not closed.",
+    "faces": {
+     "door": "muster",
+     "notice": "The book demands settlement"
+    },
+    "gates": {
+     "faction": "votann"
+    },
+    "signature": true
+   },
+   {
+    "id": "ec_perfect_kill",
+    "n": "The Perfect Kill",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "filter": "named",
+     "constraint": "no_ally_deaths"
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "One clean stroke, witnessed, unspoiled by a single lost brother — that is art.",
+    "faces": {
+     "door": "muster",
+     "notice": "A commission for artistry"
+    },
+    "gates": {
+     "faction": "emperors_children"
+    },
+    "signature": true
+   },
+   {
+    "id": "astartes_the_few",
+    "n": "The Few",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "clear_all": true,
+     "constraint": "outnumbered",
+     "ratio": 2
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "Outnumbered is the Adeptus Astartes' natural station. Clear the field regardless.",
+    "faces": {
+     "door": "muster",
+     "notice": "Hold against the odds"
+    },
+    "gates": {
+     "faction": "astartes"
+    },
+    "signature": true
+   },
+   {
+    "id": "am_meatgrinder",
+    "n": "The Meatgrinder",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "clear_all": true,
+     "constraint": "outnumbering",
+     "ratio": 2
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "Overwhelm the line with bodies. The Emperor's Guard has more where these came from.",
+    "faces": {
+     "door": "muster",
+     "notice": "Send the full company"
+    },
+    "gates": {
+     "faction": "militarum"
+    },
+    "signature": true
+   },
+   {
+    "id": "harlequins_flawless",
+    "n": "The Dance Flawless",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "clear_all": true,
+     "constraint": "no_damage_taken"
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "The dance admits no wound. A step missed is a step never taken.",
+    "faces": {
+     "door": "arena",
+     "notice": "The Masque calls for a flawless performance"
+    },
+    "gates": {
+     "faction": "harlequins"
+    },
+    "signature": true
+   },
+   {
+    "id": "sororitas_martyrdom",
+    "n": "Sacrament of Martyrdom",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "clear_all": true,
+     "constraint": "min_wounds_taken",
+     "wounds": 6
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "Faith is proven in the wound, not spared from it. Bleed, and hold the line still.",
+    "faces": {
+     "door": "altar",
+     "notice": "A sacrament awaits the faithful"
+    },
+    "gates": {
+     "faction": "sororitas"
+    },
+    "signature": true
+   },
+   {
+    "id": "tau_auxiliary",
+    "n": "Auxiliary Coordination Trial",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "clear_all": true,
+     "constraint": "min_foreign_models",
+     "count": 2
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "The Greater Good is measured in cooperation. File a report proving the auxiliary integrated.",
+    "faces": {
+     "door": "muster",
+     "notice": "Auxiliary integration review"
+    },
+    "gates": {
+     "faction": "tau"
+    },
+    "signature": true
+   },
+   {
+    "id": "drukhari_slave_raid",
+    "n": "Slave Raid",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     2,
+     3
+    ],
+    "params": {
+     "filter": "capture"
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "Screaming cargo fetches the best price. Take them living.",
+    "faces": {
+     "door": "relay",
+     "notice": "The Kabal wants live cargo"
+    },
+    "gates": {
+     "faction": "drukhari"
+    },
+    "signature": true
+   },
+   {
+    "id": "gsc_gene_harvest",
+    "n": "Gene-Harvest",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "filter": "named",
+     "capture_only": true
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "The Broodmind requires purer stock. Take the marked one whole, for the harvest.",
+    "faces": {
+     "door": "relay",
+     "notice": "The stars are almost right"
+    },
+    "gates": {
+     "faction": "gsc"
+    },
+    "signature": true
+   },
+   {
+    "id": "astartes_none_left_behind",
+    "n": "None Left Behind",
+    "family": "KILL",
+    "kind": "count_kill",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "filter": "named",
+     "rescue": true
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "conflict": -2
+    },
+    "flavor": "A brother taken is a brother owed. Go in, and bring him home.",
+    "faces": {
+     "door": "muster",
+     "notice": "A brother is held captive"
+    },
+    "gates": {
+     "faction": "astartes"
+    },
+    "signature": true
+   },
+   {
+    "id": "ts_forbidden_lore",
+    "n": "Forbidden Lore",
+    "family": "RITUAL",
+    "kind": "collect_item",
+    "target_roll": [
+     1,
+     1
+    ],
+    "params": {
+     "item": "Prohibited Tome"
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "prosperity": 1
+    },
+    "flavor": "Magnus wills it read. Retrieve the tome — and do not read it yourself.",
+    "faces": {
+     "door": "altar",
+     "notice": "A tome awaits translation"
+    },
+    "gates": {
+     "faction": "thousand_sons"
+    },
+    "signature": true
+   },
+   {
+    "id": "aeldari_soul_tithe",
+    "n": "Soul Tithe",
+    "family": "RITUAL",
+    "kind": "collect_item",
+    "target_roll": [
+     3,
+     3
+    ],
+    "params": {
+     "item": "Soulstone"
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "prosperity": 1
+    },
+    "flavor": "Each soulstone spares a soul from She Who Thirsts. The tithe is never optional.",
+    "faces": {
+     "door": "altar",
+     "notice": "The Infinity Circuit hungers"
+    },
+    "gates": {
+     "faction": "aeldari"
+    },
+    "signature": true
+   },
+   {
+    "id": "mechanicus_tech_reclamation",
+    "n": "Tech Reclamation",
+    "family": "RITUAL",
+    "kind": "collect_item",
+    "target_roll": [
+     2,
+     2
+    ],
+    "params": {
+     "loot_gear_tier": 2
+    },
+    "needs_hostiles": true,
+    "world_effect": {
+     "prosperity": 1
+    },
+    "flavor": "The Omnissiah's works were lost, not destroyed. Recover them, and render praise in binary.",
+    "faces": {
+     "door": "altar",
+     "notice": "Sacred pattern-data detected"
+    },
+    "gates": {
+     "faction": "mechanicus"
+    },
+    "signature": true
+   },
+   {
+    "id": "bl_long_war",
+    "n": "The Long War",
+    "family": "KILL",
+    "kind": "streak",
+    "target_roll": [
+     3,
+     3
+    ],
+    "params": {
+     "streak_key": "combat_wins"
+    },
+    "needs_hostiles": false,
+    "world_effect": {},
+    "flavor": "Ten thousand years of hatred does not end in one battle. Prove the war endures in you.",
+    "faces": {
+     "door": "muster",
+     "notice": "The Long War never rests"
+    },
+    "gates": {
+     "faction": "black_legion"
+    },
+    "signature": true
+   },
+   {
+    "id": "orks_might_right",
+    "n": "Might Makes Right",
+    "family": "KILL",
+    "kind": "streak",
+    "target_roll": [
+     3,
+     3
+    ],
+    "params": {
+     "streak_key": "duel_wins"
+    },
+    "needs_hostiles": false,
+    "world_effect": {},
+    "flavor": "Da biggest an' da strongest gets ta boss it. Prove yer da biggest, again an' again.",
+    "faces": {
+     "door": "arena",
+     "notice": "Who's da biggest?"
+    },
+    "gates": {
+     "faction": "orks"
+    },
+    "signature": true
+   },
+   {
+    "id": "custodes_blood_games",
+    "n": "Blood Games",
+    "family": "KILL",
+    "kind": "streak",
+    "target_roll": [
+     3,
+     3
+    ],
+    "params": {
+     "streak_key": "named_duel_wins"
+    },
+    "needs_hostiles": false,
+    "world_effect": {},
+    "flavor": "The Emperor's chosen do not lose duels of note. Uphold the record, champion by champion.",
+    "faces": {
+     "door": "arena",
+     "notice": "A challenger of name approaches"
+    },
+    "gates": {
+     "faction": "custodes"
+    },
+    "signature": true
+   },
+   {
+    "id": "tyranids_amass_biomass",
+    "n": "Amass Biomass",
+    "family": "KILL",
+    "kind": "streak",
+    "target_roll": [
+     3,
+     3
+    ],
+    "params": {
+     "streak_key": "annihilations"
+    },
+    "needs_hostiles": false,
+    "world_effect": {},
+    "flavor": "The Hive Mind counts only total consumption. Leave nothing behind but silence.",
+    "faces": {
+     "door": "muster",
+     "notice": "The Hive Fleet hungers still"
+    },
+    "gates": {
+     "faction": "tyranids"
+    },
+    "signature": true
+   }
+  ]
  }
 }
