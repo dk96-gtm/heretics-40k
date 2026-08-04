@@ -225,8 +225,11 @@ test('constraintCheck outnumbering: own PC just under 2x enemy PC -> fails', () 
 });
 
 // ── min_foreign_models (tau_auxiliary) — boundary exactly-2 ──────────────────────
+// T-MSN-1C fix round 1: Task 5 stamps `fac` on EVERY muster recruit, same-faction included —
+// "foreign" now requires state.locked.playerFac (snapshotted at blind-deploy lock-in,
+// index.html ~3656) as the comparison basis; a bare truthy fac is no longer sufficient.
 test('constraintCheck min_foreign_models: exactly 2 foreign models -> ok (boundary, >=)', () => {
-  const state = { combatants: {
+  const state = { locked: { loadout: true, playerFac: 'tau' }, combatants: {
     m1: mineC(10, 4, 4, { model: { pc: 10, fac: 'kroot' } }),
     m2: mineC(10, 4, 4, { model: { pc: 10, fac: 'vespid' } }),
     m3: mineC(10, 4, 4),   // no fac stamped -> counts as own-faction, per the addendum default
@@ -235,7 +238,7 @@ test('constraintCheck min_foreign_models: exactly 2 foreign models -> ok (bounda
   assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_foreign_models', count: 2 }).ok, true);
 });
 test('constraintCheck min_foreign_models: only 1 foreign model -> fails (just under the boundary)', () => {
-  const state = { combatants: {
+  const state = { locked: { loadout: true, playerFac: 'tau' }, combatants: {
     m1: mineC(10, 4, 4, { model: { pc: 10, fac: 'kroot' } }),
     m2: mineC(10, 4, 4),
     e0: foeC(10),
@@ -243,9 +246,30 @@ test('constraintCheck min_foreign_models: only 1 foreign model -> fails (just un
   assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_foreign_models', count: 2 }).ok, false);
 });
 test('constraintCheck min_foreign_models: a foreign-stamped ENEMY (gen) never counts toward the tally', () => {
-  const state = { combatants: {
+  const state = { locked: { loadout: true, playerFac: 'tau' }, combatants: {
     m1: mineC(10, 4, 4, { model: { pc: 10, fac: 'kroot' } }),
     e0: foeC(10, { model: { pc: 10, fac: 'kroot' }, gen: { pc: 10, fac: 'kroot' } }),
+  } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_foreign_models', count: 2 }).ok, false);
+});
+test('constraintCheck min_foreign_models: a fac-stamped SAME-faction recruit does NOT count '
+  + '(Task 5 stamps every recruit, not just foreign ones — a Tau player recruiting a Tau model '
+  + 'must not satisfy an auxiliary constraint)', () => {
+  const state = { locked: { loadout: true, playerFac: 'tau' }, combatants: {
+    m1: mineC(10, 4, 4, { model: { pc: 10, fac: 'tau' } }),   // same faction as playerFac
+    m2: mineC(10, 4, 4, { model: { pc: 10, fac: 'kroot' } }), // genuinely foreign
+    e0: foeC(10),
+  } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_foreign_models', count: 2 }).ok, false,
+    'only 1 genuinely-foreign model (kroot) — the tau-stamped one matches playerFac and must not count');
+});
+test('constraintCheck min_foreign_models: legacy state with no state.locked/playerFac — '
+  + 'fac-stamped models never count as foreign (no comparison basis; fails toward "not foreign", '
+  + 'never silently easier on an old save)', () => {
+  const state = { combatants: {   // no `locked` at all — pre-fix save
+    m1: mineC(10, 4, 4, { model: { pc: 10, fac: 'kroot' } }),
+    m2: mineC(10, 4, 4, { model: { pc: 10, fac: 'vespid' } }),
+    e0: foeC(10),
   } };
   assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_foreign_models', count: 2 }).ok, false);
 });

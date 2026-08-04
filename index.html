@@ -1959,12 +1959,15 @@ var MISSION=(function(){
      seedCombat: nothing is ever added/removed post-lock, only dead/captured flags flip, so
      summing at any point after lock-in already equals the lock-in totals — no separate
      lockTotals snapshot needed, confirmed by Step-1 survey). min_foreign_models reads
-     `model.fac` (Task 5's recruit stamp, not yet wired) — no `fac` at all means the model is
-     the player's own native roster, per the addendum's explicit default ("models without fac
-     count as own-faction"); since no player-faction value is threaded into this pure 2-arg
-     signature, presence of a truthy `fac` at all is treated as "foreign" outright (Task 5 is
-     expected to only stamp fac on an out-of-allegiance recruit — flagged as a Task-5-time
-     assumption to verify once that stamp actually lands). */
+     `model.fac` (Task 5's recruit stamp — lands on EVERY muster recruit, same-faction
+     included, not just foreign ones) against `state.locked.playerFac` (snapshotted at the
+     blind-deploy lock-in freeze, ~line 3656, alongside `loadout:true`) — a model only counts
+     as foreign when its `fac` is truthy AND differs from that snapshot. Absent-tolerant on
+     both ends: no `fac` at all -> the addendum's explicit default ("models without fac count
+     as own-faction") -> never foreign; `fac` present but no `state.locked`/`playerFac` (an
+     old save from before this fix, or a non-combat/never-locked state) -> no comparison basis
+     exists, so it never counts as foreign either (fails toward "not foreign", i.e. the
+     constraint is harder to satisfy on legacy states rather than silently easier). */
   function constraintCheck(state,params){
     var kind=params&&params.constraint;
     if(!kind)return {ok:true,why:null};
@@ -2001,8 +2004,9 @@ var MISSION=(function(){
       return ok?{ok:true,why:null}:{ok:false,why:'ratio not met'};
     }
     if(kind==='min_foreign_models'){
+      var lk=state&&state.locked,pf=lk&&lk.playerFac;
       var n=ids.filter(function(id){var c=C[id];
-        return c&&!c.gen&&c.model&&c.model.fac;}).length;
+        return c&&!c.gen&&c.model&&c.model.fac&&pf&&c.model.fac!==pf;}).length;
       var wantN=params.count||0;
       return (n>=wantN)?{ok:true,why:null}:{ok:false,why:n+'/'+wantN+' foreign models'};
     }
@@ -3653,7 +3657,11 @@ function bfDeployUI(t,party){
   el.innerHTML='<h3>Battlefield · Deployment · '+party+'</h3><div class="bf-wrap">'+bh+panel+'</div>';
   el.addEventListener('click',function(ev){
     var b=ev.target.closest('[data-dm],[data-dx],[data-lockin]');if(!b)return;
-    if(b.hasAttribute('data-lockin')){st.phase='battle';st.joined=true;st.locked={loadout:true};t._bfd=null;
+    if(b.hasAttribute('data-lockin')){st.phase='battle';st.joined=true;
+      // T-MSN-1C fix round 1: playerFac rides the lock-in freeze — constraintCheck's
+      // min_foreign_models needs a comparison basis (Task 5 stamps model.fac on EVERY
+      // muster recruit, same-faction included, not just foreign ones).
+      st.locked={loadout:true,playerFac:S.player.faction};t._bfd=null;
       T('Lines locked — battle begins. Loadout & roster frozen until it ends.');return openT(t.id);}
     if(b.hasAttribute('data-dm')){ui.sel=(ui.sel===b.getAttribute('data-dm'))?null:b.getAttribute('data-dm');return openT(t.id);}
     if(b.hasAttribute('data-dx')){var x=+b.getAttribute('data-dx'),y=+b.getAttribute('data-dy');
