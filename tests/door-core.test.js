@@ -135,3 +135,17 @@ test('overlay + builds survive a JSON persist round-trip mid-build', () => {
   assert.deepStrictEqual(thawed.world.doorBuilds[DOOR.key('vighive', 'muster')], { to: 2, left: 3 });
   assert.strictEqual(DOOR.doorTier(thawed, 'vigport', 'shop', 1), 3);
 });
+
+test('T-GX-G7e tombDormant: crown Tomb Worlds never sleep; others wake at the conflict threshold', () => {
+  // quiet sector (conflict 10 < 40): a non-crown Tomb World sleeps
+  assert.strictEqual(DOOR.tombDormant('Tomb World', false, 10, D), true);
+  // war (>= tomb_dormant_conflict 40) wakes it
+  assert.strictEqual(DOOR.tombDormant('Tomb World', false, 40, D), false);
+  // a crown Tomb World is never dormant, however quiet the sector
+  assert.strictEqual(DOOR.tombDormant('Tomb World', true, 10, D), false);
+  assert.strictEqual(DOOR.tombDormant('Tomb World', true, null, D), false);
+  // no live scores at all (null conflict): non-crown sleeps
+  assert.strictEqual(DOOR.tombDormant('Tomb World', false, null, D), true);
+  // non-Tomb types are never dormant regardless of crown/conflict
+  assert.strictEqual(DOOR.tombDormant('Hive World', false, 10, D), false);
+});
