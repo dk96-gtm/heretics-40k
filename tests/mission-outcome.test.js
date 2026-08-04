@@ -139,3 +139,168 @@ test('modCheck: low_tech still validates correctly after the fail-closed default
   assert.deepStrictEqual(mc.valid, ['low_tech']);
   assert.deepStrictEqual(mc.voided, []);
 });
+
+/* T-MSN-1C task 3: MISSION.constraintCheck(state, params) — the pure conclude-constraint
+   evaluator for the 6 constraint kinds Task 1 minted onto the signature rows (the Few/
+   Meatgrinder/Flawless/Martyrdom/Auxiliary/ec_perfect_kill). mineC/foeC mirror the real
+   seedCombat shapes: a "mine" combatant carries `model` (roster model, has .pc, optionally
+   .fac for Task 5's not-yet-landed recruit stamp); a "foe" carries `gen` (generated hostile,
+   has .pc) — same shape trackKill/outcome already read elsewhere in this file. */
+function mineC(pc, wCur, wMax, extra) {
+  return Object.assign({ w: [wCur, wMax], conds: [], party: 'Mine', armour: null,
+                          model: { pc: pc } }, extra || {});
+}
+function foeC(pc, extra) {
+  return Object.assign({ w: [1, 1], conds: [], party: 'Foe', armour: null,
+                          gen: { pc: pc } }, extra || {});
+}
+
+test('constraintCheck: no constraint param on the objective -> always ok (untouched missions)', () => {
+  const r = MISSION.constraintCheck({ combatants: {} }, {});
+  assert.deepStrictEqual(r, { ok: true, why: null });
+});
+
+// ── no_ally_deaths (ec_perfect_kill) ──────────────────────────────────────────────
+test('constraintCheck no_ally_deaths: ok when no ally is dead', () => {
+  const state = { combatants: { m1: mineC(10, 4, 4), e0: foeC(10, { dead: true }) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'no_ally_deaths' }).ok, true);
+});
+test('constraintCheck no_ally_deaths: fails when an ally died', () => {
+  const state = { combatants: { m1: mineC(10, 0, 4, { dead: true }), m2: mineC(10, 4, 4), e0: foeC(10) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'no_ally_deaths' }).ok, false);
+});
+test('constraintCheck no_ally_deaths: a dead ENEMY (gen) never trips the gate', () => {
+  const state = { combatants: { m1: mineC(10, 4, 4), e0: foeC(10, { dead: true }) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'no_ally_deaths' }).ok, true);
+});
+
+// ── no_damage_taken (harlequins_flawless) ─────────────────────────────────────────
+test('constraintCheck no_damage_taken: ok at full wounds, no deaths', () => {
+  const state = { combatants: { m1: mineC(10, 4, 4), m2: mineC(8, 3, 3), e0: foeC(10) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'no_damage_taken' }).ok, true);
+});
+test('constraintCheck no_damage_taken: fails on a single wound taken', () => {
+  const state = { combatants: { m1: mineC(10, 3, 4), e0: foeC(10) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'no_damage_taken' }).ok, false);
+});
+
+// ── min_wounds_taken (sororitas_martyrdom) — boundary exactly-6 ──────────────────
+test('constraintCheck min_wounds_taken: exactly 6 wounds taken -> ok (boundary, >=)', () => {
+  // m1 took 6 wounds (10-4), m2 took 0 -> sum 6
+  const state = { combatants: { m1: mineC(10, 4, 10), m2: mineC(10, 8, 8), e0: foeC(10) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_wounds_taken', wounds: 6 }).ok, true);
+});
+test('constraintCheck min_wounds_taken: 5 wounds taken -> fails (just under the boundary)', () => {
+  const state = { combatants: { m1: mineC(10, 5, 10), e0: foeC(10) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_wounds_taken', wounds: 6 }).ok, false);
+});
+test('constraintCheck min_wounds_taken: a dead ally counts its FULL w[1], not w[1]-w[0] '
+  + '(the slay effect path never zeroes w[0], so a stale w[0] must not undercount the tally)', () => {
+  const state = { combatants: { m1: mineC(10, 4, 8, { dead: true }), e0: foeC(10) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_wounds_taken', wounds: 8 }).ok, true);
+});
+
+// ── outnumbered (astartes_the_few) — boundary exactly-2:1 ────────────────────────
+test('constraintCheck outnumbered: enemy PC exactly 2x own PC -> ok (boundary, >=)', () => {
+  const state = { combatants: { m1: mineC(10, 4, 4), e0: foeC(10), e1: foeC(10) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'outnumbered', ratio: 2 }).ok, true);
+});
+test('constraintCheck outnumbered: enemy PC just under 2x own PC -> fails', () => {
+  const state = { combatants: { m1: mineC(10, 4, 4), e0: foeC(10), e1: foeC(9) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'outnumbered', ratio: 2 }).ok, false);
+});
+test('constraintCheck outnumbered: LOCKED-IN totals — a wiped enemy side still counts full PC', () => {
+  const state = { combatants: { m1: mineC(10, 4, 4), e0: foeC(10, { dead: true }), e1: foeC(10, { dead: true }) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'outnumbered', ratio: 2 }).ok, true);
+});
+
+// ── outnumbering (am_meatgrinder) — boundary exactly-2:1 ─────────────────────────
+test('constraintCheck outnumbering: own PC exactly 2x enemy PC -> ok (boundary, >=)', () => {
+  const state = { combatants: { m1: mineC(10, 4, 4), m2: mineC(10, 4, 4), e0: foeC(10) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'outnumbering', ratio: 2 }).ok, true);
+});
+test('constraintCheck outnumbering: own PC just under 2x enemy PC -> fails', () => {
+  const state = { combatants: { m1: mineC(10, 4, 4), m2: mineC(9, 4, 4), e0: foeC(10) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'outnumbering', ratio: 2 }).ok, false);
+});
+
+// ── min_foreign_models (tau_auxiliary) — boundary exactly-2 ──────────────────────
+test('constraintCheck min_foreign_models: exactly 2 foreign models -> ok (boundary, >=)', () => {
+  const state = { combatants: {
+    m1: mineC(10, 4, 4, { model: { pc: 10, fac: 'kroot' } }),
+    m2: mineC(10, 4, 4, { model: { pc: 10, fac: 'vespid' } }),
+    m3: mineC(10, 4, 4),   // no fac stamped -> counts as own-faction, per the addendum default
+    e0: foeC(10),
+  } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_foreign_models', count: 2 }).ok, true);
+});
+test('constraintCheck min_foreign_models: only 1 foreign model -> fails (just under the boundary)', () => {
+  const state = { combatants: {
+    m1: mineC(10, 4, 4, { model: { pc: 10, fac: 'kroot' } }),
+    m2: mineC(10, 4, 4),
+    e0: foeC(10),
+  } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_foreign_models', count: 2 }).ok, false);
+});
+test('constraintCheck min_foreign_models: a foreign-stamped ENEMY (gen) never counts toward the tally', () => {
+  const state = { combatants: {
+    m1: mineC(10, 4, 4, { model: { pc: 10, fac: 'kroot' } }),
+    e0: foeC(10, { model: { pc: 10, fac: 'kroot' }, gen: { pc: 10, fac: 'kroot' } }),
+  } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'min_foreign_models', count: 2 }).ok, false);
+});
+
+// ── unknown constraint id fails closed (mirrors modCheck's fail-closed default) ──
+test('constraintCheck: an unknown constraint id fails closed, never silently passes', () => {
+  const state = { combatants: { m1: mineC(10, 4, 4), e0: foeC(10) } };
+  assert.strictEqual(MISSION.constraintCheck(state, { constraint: 'bogus_constraint' }).ok, false);
+});
+
+/* ── the AND-gate: THREAD.outcome(thread, state, checkConstraint) ─────────────────
+   A mission with a `constraint` param wins ONLY if the base objective is won AND
+   constraintCheck(...).ok. checkConstraint is injected (MISSION.constraintCheck at
+   both real index.html call sites) rather than referenced by bare name, since
+   thread-core is loaded standalone by tests/_load.js with no mission-core in scope. */
+test('outcome: clear_all objective won but outnumbered constraint failed -> mission NOT won '
+  + '(falls through to null, not mission_won — the thread simply runs on)', () => {
+  const t = THREAD.create(
+    seed({ kind: 'count_kill', target: 1, progress: 0,
+           params: { clear_all: true, constraint: 'outnumbered', ratio: 2 }, done: false },
+         { m1: mineC(10, 4, 4), e0: foeC(10, { dead: true }) }, { Mine: 10, Foe: 5 }), canon);
+  const oc = THREAD.outcome(t, t.state, MISSION.constraintCheck);
+  assert.strictEqual(oc, null);
+});
+test('outcome: clear_all objective won AND outnumbered constraint satisfied -> mission_won', () => {
+  const t = THREAD.create(
+    seed({ kind: 'count_kill', target: 1, progress: 0,
+           params: { clear_all: true, constraint: 'outnumbered', ratio: 2 }, done: false },
+         { m1: mineC(10, 4, 4), e0: foeC(10, { dead: true }), e1: foeC(10, { dead: true }) },
+         { Mine: 10, Foe: 5 }), canon);
+  const oc = THREAD.outcome(t, t.state, MISSION.constraintCheck);
+  assert.deepStrictEqual(oc, { kind: 'mission_won', victor: 'Mine', defeated: ['Foe'] });
+});
+test('outcome: named-kill objective done but no_ally_deaths violated -> mission NOT won '
+  + '(non-clear_all base-won path, not just the clear_all branch)', () => {
+  const t = THREAD.create(
+    seed({ kind: 'count_kill', target: 1, progress: 1,
+           params: { filter: 'named', constraint: 'no_ally_deaths' }, done: true },
+         { m1: mineC(10, 0, 4, { dead: true }), m2: mineC(10, 4, 4), e0: foeC(10, { dead: true }) },
+         { Mine: 10, Foe: 5 }), canon);
+  const oc = THREAD.outcome(t, t.state, MISSION.constraintCheck);
+  assert.strictEqual(oc, null);
+});
+test('outcome: a constraint param set but NO checkConstraint injected fails closed '
+  + '(never silently grants a signature win an evaluator never actually ran)', () => {
+  const t = THREAD.create(
+    seed({ kind: 'count_kill', target: 1, progress: 1, params: { constraint: 'no_ally_deaths' }, done: true },
+         { m1: mineC(10, 4, 4), e0: foeC(10, { dead: true }) }, { Mine: 10, Foe: 5 }), canon);
+  const oc = THREAD.outcome(t, t.state);   // no 3rd arg
+  assert.strictEqual(oc, null);
+});
+test('outcome: unconstrained mission is completely unaffected by the new gate (regression guard)', () => {
+  const t = THREAD.create(
+    seed({ kind: 'count_kill', target: 1, progress: 1, params: {}, done: true },
+         { m1: MINE(), e0: HOSTILE() }, { Mine: 10, Foe: 5 }), canon);
+  const oc = THREAD.outcome(t, t.state, MISSION.constraintCheck);
+  assert.deepStrictEqual(oc, { kind: 'mission_won', victor: 'Mine', defeated: ['Foe'] });
+});

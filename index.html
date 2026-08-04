@@ -847,11 +847,28 @@ var THREAD=(function(){
   function arrivalReady(state){
     return !!(state.transit&&state.transit.wordsWritten>=state.transit.wordsReq);
   }
+  /* T-MSN-1C task 3: signature-mission conclude constraints (the Few/Meatgrinder/Flawless/
+     Martyrdom/Auxiliary). The evaluator itself (MISSION.constraintCheck) lives in the
+     mission-core region — thread-core must NOT reference `MISSION` by bare name, since
+     tests/_load.js extracts+evals thread-core standalone (no mission-core in scope, so a
+     bare `MISSION` reference would ReferenceError there even though it resolves fine in
+     production, where both cores share one top-level script scope). Instead `outcome`
+     takes the checker as an optional injected 3rd arg — engine glue (index.html, both real
+     call sites) passes MISSION.constraintCheck; tests pass it explicitly too (both load
+     THREAD and MISSION already). No `ob.params.constraint` at all -> always ok (untouched
+     behavior for every existing mission). `ob.params.constraint` set but no checker injected
+     -> FAILS CLOSED (never silently grants a signature win an evaluator never actually ran). */
+  function _constraintOk(state,ob,checkConstraint){
+    if(!(ob.params&&ob.params.constraint))return true;
+    if(typeof checkConstraint!=='function')return false;
+    var res=checkConstraint(state,ob.params);
+    return !!(res&&res.ok);
+  }
   /* ── resolution (T-TERR-1 slice A) — when does a thread END with a result? ──
      Combat: a side with no living combatant is broken; last side standing wins
      (annihilation), nobody standing = mutual. Never during blind deploy.
      Diplomacy: agreed terms = accord. Travel/Mission resolve elsewhere. */
-  function outcome(thread,state){
+  function outcome(thread,state,checkConstraint){
     if(!state||thread.done)return null;
     if(thread.type==='DIPLOMACY')
       return (state.terms&&state.terms.agreed)?{kind:'accord',victor:null,defeated:[]}:null;
@@ -865,9 +882,13 @@ var THREAD=(function(){
       // so the two never disagree (seam map §1's "two sources of truth" gap does not widen here).
       // T-MSN-1B final fix wave (CRITICAL 2): mirrors evalObjective's enemy-wipe clause —
       // see the comment there.
-      var _won=ob.kind==='count_kill'&&ob.params&&ob.params.clear_all ? _enemyAliveCount(state)===0
+      var _baseWon=ob.kind==='count_kill'&&ob.params&&ob.params.clear_all ? _enemyAliveCount(state)===0
         : ob.kind==='survive_rounds' ? (((state.round||0)>=ob.target||_enemyAliveCount(state)===0)&&_mineAlive(state))
         : ob.progress>=ob.target;
+      // T-MSN-1C task 3: a signature row's constraint param AND-gates the base win — objective
+      // done but the constraint unmet must NOT conclude a win (falls through to the mission_lost
+      // check below, same as any other not-yet-won state; the thread simply runs on).
+      var _won=_baseWon&&_constraintOk(state,ob,checkConstraint);
       if(_won){
         var others=Object.keys(parties).filter(function(p){return p!==myParty;});
         return {kind:'mission_won',victor:myParty,defeated:others};
@@ -1926,6 +1947,67 @@ var MISSION=(function(){
     if(!params.dest_loc)return false;
     return !!(pos&&pos.sp===params.dest_loc&&!inTransit&&!isVoid);
   }
+  /* T-MSN-1C task 3: signature-row conclude constraints (the 6 constraint kinds Task 1 minted
+     onto astartes_the_few/am_meatgrinder/harlequins_flawless/sororitas_martyrdom/tau_auxiliary/
+     ec_perfect_kill). Pure — reads only `state` (thread-core's live state.combatants) and
+     `params` (== state.objective.params, already carrying constraint/ratio/wounds/count).
+     PC reads tolerate both combatant shapes real seedCombat produces: mine combatants carry
+     `model` (the roster model, has .pc); generated hostiles carry `gen` (===`model`, has .pc) —
+     a bare `c.pc` is also honored first for any future/test shape that sets it directly.
+     Ratio constraints sum PC over ALL combatants on a side regardless of `dead`/`captured` —
+     the "locked-in" totals per the addendum ruling (state.combatants is a fixed set from
+     seedCombat: nothing is ever added/removed post-lock, only dead/captured flags flip, so
+     summing at any point after lock-in already equals the lock-in totals — no separate
+     lockTotals snapshot needed, confirmed by Step-1 survey). min_foreign_models reads
+     `model.fac` (Task 5's recruit stamp, not yet wired) — no `fac` at all means the model is
+     the player's own native roster, per the addendum's explicit default ("models without fac
+     count as own-faction"); since no player-faction value is threaded into this pure 2-arg
+     signature, presence of a truthy `fac` at all is treated as "foreign" outright (Task 5 is
+     expected to only stamp fac on an out-of-allegiance recruit — flagged as a Task-5-time
+     assumption to verify once that stamp actually lands). */
+  function constraintCheck(state,params){
+    var kind=params&&params.constraint;
+    if(!kind)return {ok:true,why:null};
+    var C=(state&&state.combatants)||{},ids=Object.keys(C);
+    function pcOf(c){
+      if(c.pc!=null)return c.pc;
+      if(c.model&&c.model.pc!=null)return c.model.pc;
+      if(c.gen&&c.gen.pc!=null)return c.gen.pc;
+      return 0;
+    }
+    function wTakenOf(c){                       // dead models count their full max wounds
+      var w=c.w||[0,0];
+      return c.dead?(w[1]||0):Math.max(0,(w[1]||0)-(w[0]||0));
+    }
+    if(kind==='no_ally_deaths'){
+      var anyDead=ids.some(function(id){var c=C[id];return c&&!c.gen&&c.dead;});
+      return anyDead?{ok:false,why:'an ally fell'}:{ok:true,why:null};
+    }
+    if(kind==='no_damage_taken'||kind==='min_wounds_taken'){
+      var sum=0,dead=false;
+      ids.forEach(function(id){var c=C[id];if(!c||c.gen)return;
+        sum+=wTakenOf(c);if(c.dead)dead=true;});
+      if(kind==='no_damage_taken')
+        return (sum===0&&!dead)?{ok:true,why:null}:{ok:false,why:'took damage'};
+      var need=params.wounds||0;
+      return (sum>=need)?{ok:true,why:null}:{ok:false,why:sum+'/'+need+' wounds taken'};
+    }
+    if(kind==='outnumbered'||kind==='outnumbering'){
+      var mine=0,enemy=0;
+      ids.forEach(function(id){var c=C[id];if(!c)return;
+        if(c.gen)enemy+=pcOf(c);else mine+=pcOf(c);});
+      var ratio=params.ratio||1;
+      var ok=(kind==='outnumbered')?(enemy>=ratio*mine):(mine>=ratio*enemy);
+      return ok?{ok:true,why:null}:{ok:false,why:'ratio not met'};
+    }
+    if(kind==='min_foreign_models'){
+      var n=ids.filter(function(id){var c=C[id];
+        return c&&!c.gen&&c.model&&c.model.fac;}).length;
+      var wantN=params.count||0;
+      return (n>=wantN)?{ok:true,why:null}:{ok:false,why:n+'/'+wantN+' foreign models'};
+    }
+    return {ok:false,why:'unknown constraint'};  // fails closed, mirrors modCheck's fail-closed default
+  }
   function refillBoard(board,ctx,canon,r,day){
     var M=R(canon);
     var keep=board.filter(function(m){
@@ -1978,6 +2060,7 @@ var MISSION=(function(){
   return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,finalPayout:finalPayout,
           rollMission:rollMission,genHostiles:genHostiles,targetFor:targetFor,
           pickForce:pickForce,gateReason:gateReason,grantItems:grantItems,deliverGate:deliverGate,
+          constraintCheck:constraintCheck,
           refillBoard:refillBoard,catchUpBoards:catchUpBoards};
 })();
 /*</mission-core>*/
@@ -3820,7 +3903,7 @@ function threadView(V,t){
     if(t.state.board){t._bf={sel:null,tgt:null,moves:{},acts:[]};   // clear staging; refresh AP for the next turn
       if(t.state.poolsBase&&t.state.poolsBase[party]!=null)t.state.pools[party]=t.state.poolsBase[party];
       npcRespond(t,party);}   // T-NPC-2b: the enemy side answers — it fights back
-    var oc=THREAD.outcome(t,t.state);                // T-TERR-1: does this post END it?
+    var oc=THREAD.outcome(t,t.state,MISSION.constraintCheck);   // T-TERR-1: does this post END it? (T-MSN-1C: constraint-gated)
     var deferred=false,justConcluded=false;
     if(oc&&t.state.phase!=='aftermath'){             // already in aftermath → only END THREAD concludes
       var mineWon=oc.victor&&myForceNames().indexOf(oc.victor)>=0;
@@ -3885,7 +3968,7 @@ function threadView(V,t){
           S.inv.splice(_di,1);removed++;
         }
         THREAD.apply(t,t.state,[{actor:S.active,effect:{kind:'deliver',qty:give}}],D);
-        var doc=THREAD.outcome(t,t.state);            // delivery can complete a non-combat mission outright — this path never runs through the pb.onclick post handler, so it must check outcome itself
+        var doc=THREAD.outcome(t,t.state,MISSION.constraintCheck);   // delivery can complete a non-combat mission outright — this path never runs through the pb.onclick post handler, so it must check outcome itself (T-MSN-1C: constraint-gated)
         if(doc)concludeThread(t,doc);
         persist();openT(t.id);
       };
