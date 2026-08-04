@@ -15527,7 +15527,7 @@
     "world_effect": {
      "conflict": -2
     },
-    "flavor": "Overwhelm the line with bodies. The Emperor's Guard has more where these came from.",
+    "flavor": "Overwhelm the line with bodies. The Hammer of the Emperor has more where these came from.",
     "faces": {
      "door": "muster",
      "notice": "Send the full company"
@@ -15755,7 +15755,7 @@
    {
     "id": "mechanicus_tech_reclamation",
     "n": "Tech Reclamation",
-    "family": "RITUAL",
+    "family": "LOGISTICS",
     "kind": "collect_item",
     "target_roll": [
      2,
@@ -15770,7 +15770,7 @@
     },
     "flavor": "The Omnissiah's works were lost, not destroyed. Recover them, and render praise in binary.",
     "faces": {
-     "door": "altar",
+     "door": "shop",
      "notice": "Sacred pattern-data detected"
     },
     "gates": {
