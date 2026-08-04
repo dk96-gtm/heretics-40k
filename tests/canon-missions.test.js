@@ -56,12 +56,12 @@ test('face_doors values are real door kinds', () => {
     assert.ok(doorKinds.includes(v), v + ' must be a real door kind'));
 });
 
-test('canon is v1.29', () => {
-  assert.strictEqual(canon.meta.version, '1.29');
+test('canon is v1.30', () => {
+  assert.strictEqual(canon.meta.version, '1.30');
 });
 
-test('canon v1.29: 11 universal missions, modifiers + bounty names', () => {
-  assert.strictEqual(canon.meta.version, '1.29');
+test('canon v1.30: 11 universal missions, modifiers + bounty names', () => {
+  assert.strictEqual(canon.meta.version, '1.30');
   const U = canon.missions.universal;
   assert.strictEqual(U.length, 11);
   const ids = U.map((m) => m.id);

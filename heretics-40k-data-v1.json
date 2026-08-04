@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.29",
-  "updated": "2026-08-03",
+  "version": "1.30",
+  "updated": "2026-08-04",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -18,7 +18,8 @@
    "v1.26: Missions Slice B (T-MSN-1B) - 8 universal rows (KILL x4, Defend, Trade Haul, RITUAL x2), modifier registry (x1.5 stacking), bounty name pool.",
    "v1.27: T-MSN-1B task 5 - condition-weighted generation extended to the real condition ids (rebuild prefer_condition fixed from stray 'Ruined' to canon 'ruined'; liberation prefers 'infested', defend prefers 'besieged'). Allegiance gates (consecration/desecration) are player-agnostic at generation; enforced at render (hidden) and accept (refused) only.",
    "v1.28: missions Slice B rulings - trade_haul destinations (needs_destination), combat-only modifiers, capture completes bounties.",
-   "v1.29: T-GX-G7 galaxy re-run - 16 crown-sweep retypes seat all 21 subfaction types (crown-only), 8 resource rows tuned to the crown floor rule, tier-III routes opened (shipyard docks on Konor/Iron Reliquary, arena via warzone+lair, reliquary via shrine, warp gate on Dal'yth Verge), legality ghosts cleaned, 5 besieged/infested condition seats (5th on Cominor)."
+   "v1.29: T-GX-G7 galaxy re-run - 16 crown-sweep retypes seat all 21 subfaction types (crown-only), 8 resource rows tuned to the crown floor rule, tier-III routes opened (shipyard docks on Konor/Iron Reliquary, arena via warzone+lair, reliquary via shrine, warp gate on Dal'yth Verge), legality ghosts cleaned, 5 besieged/infested condition seats (5th on Cominor).",
+   "v1.30: T-MST-1 open recruitment + local forge traditions - rules.market block (ruler shelf / items open / models same-allegiance / forge affinity by local ruler); real Muster door replaces the demo stub."
   ],
   "migration": {
    "done": [
@@ -726,6 +727,13 @@
     "2": 0.8,
     "3": 0.6
    }
+  },
+  "market": {
+   "shelf": "ruler",
+   "items_open": true,
+   "models": "same_allegiance",
+   "forge_affinity_source": "ruler",
+   "note": "Daak rulings 2026-08-04 (T-MST-1): every door stocks the RULING faction's catalog (geography is the shelf; conquest changes the shelves). Gear/casts/armour sell to ANY buyer. Models muster only to a same-allegiance Commander (imperial/chaos/xenos, never cross). The Forge works the LOCAL ruler's affinity tags with no player-faction limiter; unruled ground has no forge tradition."
   }
  },
  "perk_effects": {

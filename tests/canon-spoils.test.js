@@ -42,5 +42,5 @@ test('canon v1.21: minted gear exists', () => {
 test('canon v1.21: forge affinities + version bump', () => {
   assert.ok(D.equipment_alpha.forge_affinities.drukhari.includes('Non-Lethal'));
   assert.ok(D.equipment_alpha.forge_affinities.gsc.includes('Non-Lethal'));
-  assert.strictEqual(D.meta.version, '1.29');
+  assert.strictEqual(D.meta.version, '1.30');
 });

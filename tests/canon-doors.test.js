@@ -7,7 +7,7 @@ const D = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-da
 const PLAYABLE = new Set(['black_legion','death_guard','world_eaters','thousand_sons','emperors_children','daemons','astartes','militarum','mechanicus','sororitas','custodes','tyranids','orks','necrons','aeldari','drukhari','tau','votann','gsc','harlequins']);
 
 test('canon v1.25: 35 planet types, 14 standard / 21 tagged', () => {
-  assert.strictEqual(D.meta.version, '1.29');
+  assert.strictEqual(D.meta.version, '1.30');
   const pts = D.galaxy.planet_types;
   assert.strictEqual(pts.length, 35);
   const tagged = pts.filter((p) => p.faction);
@@ -43,4 +43,14 @@ test('upgrade economy constants match the locked D11×E2 merge', () => {
   assert.deepStrictEqual(c.build_days, { 2: 3, 3: 7 });
   assert.deepStrictEqual(c.tier1_types, ['Death World', 'Dead World']);
   assert.deepStrictEqual(c.t3_anywhere, ['shop']);
+});
+
+test('T-MST-1: rules.market codifies the open-market rulings (Daak 2026-08-04)', () => {
+  const m = D.rules.market;
+  assert.ok(m, 'rules.market exists');
+  assert.strictEqual(m.shelf, 'ruler');
+  assert.strictEqual(m.items_open, true);
+  assert.strictEqual(m.models, 'same_allegiance');
+  assert.strictEqual(m.forge_affinity_source, 'ruler');
+  assert.ok(typeof m.note === 'string' && m.note.length > 40);
 });
