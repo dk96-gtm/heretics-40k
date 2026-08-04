@@ -199,3 +199,29 @@ NPC mission *agency* (Slice 2b) · real-AI mission text (T-AI-1, Stage 3).
   cells (8-model kill-teams no longer stack on one square); mission conflict writes
   initialize an unset sector conflict from the displayed default (10) before applying the
   delta, so canon's −2/−3/−4 are felt as authored.
+
+## Slice-C rulings addendum (Daak walk 2026-08-04)
+
+Full-roster walk with Daak; every §4 row locked concrete:
+
+- **None Left Behind reshaped (no new primitives):** a named JAILER boss spawns with
+  escort (Bounty plumbing); kill OR capture him → the captive brother is freed and the
+  mission completes. The battlefield-rescue/escort mechanic stays future work.
+- **Auxiliary Doctrine:** win with **≥2 non-T'au models** in the locked-in force —
+  feasible via T-MST-1 open recruitment (same-allegiance muster).
+- **Streaks:** length **3**, consecutive, qualifying-loss resets. Keys: BL
+  `combat_wins` (any combat-thread win) · Orks `duel_wins` (win fielding exactly 1
+  model; 1v1 loss resets) · Custodes `named_duel_wins` (1v1 win vs a NAMED champion) ·
+  Tyranids `annihilations` (win by TOTAL wipe; a non-wipe win BREAKS the chain).
+  Tick at concludeThread only; persist via snapshot; `best` recorded.
+- **Constraints:** The Few — enemy **≥2× your PC at lock-in**, win · **Meatgrinder
+  REDEFINED (Daak): outnumber the enemy ≥2:1 in PC at lock-in**, win — the exact
+  mirror of The Few, no accept gate, no magic floor · Flawless — **zero wounds lost**
+  by your side, win · Martyrdom — **≥6 own wounds bled**, win.
+- **Targets:** WE 6–10 melee kills · Votann 5–8 kills of the grudge faction (seeded
+  from the local hostile faction) · Drukhari 2–3 LIVE captures (kills don't count) ·
+  GSC capture the named target alive · TS 1 tome · Aeldari 3 soulstones · Mechanicus
+  loot 2 tier-II+ pieces.
+- **Pay:** every signature row pays **×1.5 signature_premium** (new rules.missions
+  constant, mirrors named_premium).
+- Parked trio unchanged (Daemons/DG/Necrons await their primitives).
