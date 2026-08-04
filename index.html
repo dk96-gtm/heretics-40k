@@ -4596,15 +4596,28 @@ function renderDoor(dr,h){var c=E('div','card');
     rr.appendChild(bt);r.appendChild(rr);c.appendChild(r)})}
  }
  else if(kind==='forge'){renderForge(c,dr,tier)}
- else if(kind==='muster'){c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Recruit rank-and-file into your army. They arrive garrisoned at '+h.name+'.</div>');
-  var bulk=(D.rules.doors_tiering||{}).muster_bulk_discount||0.85;
-  [{n:'Plague Marine',cls:'Core',pc:34,w:'5/5'},{n:'Poxwalker',cls:'Core',pc:4,w:'1/1'},{n:'Foetid Bloat-Drone',cls:'Flying',pc:90,w:'6/6'}]
-   .filter(function(rec){return tier>=2||rec.cls==='Core'})
-   .forEach(function(rec){var price=tier>=3?Math.max(1,Math.round(rec.pc*bulk)):rec.pc;
-   var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+rec.n+'</b> <span class="pill">'+rec.cls+'</span></span><span class="price">'+price+(tier>=3?' <span class="pill" style="font-size:9px">bulk rate</span>':'')+'</span></div>');
-   var bt=E('button','btn gh sm','Recruit');bt.style.marginTop='5px';bt.onclick=function(){if(S.cur<price){T('Not enough '+curName()+'.');return}S.cur-=price;
-    var id='r'+S.roster.length+'_'+Date.now();var nm={id:id,n:rec.n+' '+(S.roster.length),tag:'',cls:rec.cls,rk:1,pc:rec.pc,w:rec.w,st:'GARRISON',loc:fPl(S.pos.pl).p.name+' · '+h.name,fo:'—',sub:rec.n+' - R1 - 2 slots',sl:[{k:'WEAPON',it:null},{k:'ITEM',it:null}]};migrateLoadout(nm,S.player.faction);S.roster.push(nm);
-    enrichRoster();rW();rRos();rShop();T(rec.n+' recruited — garrisoned at '+h.name+'.')};r.appendChild(bt);c.appendChild(r)})}
+ else if(kind==='muster'){
+  /* T-MST-1: real muster — the shelf is the RULING faction's roster (geography, like
+     every door); recruiting is allegiance-gated, never subfaction-gated. */
+  var mFac=doorFactionId();
+  var mShelf=DOOR.musterList(D,mFac,tier),mGate=DOOR.canRecruit(D,S.player.faction,mFac);
+  var mName=(function(){var fr=(D.factions||[]).filter(function(f){return f.id===mFac})[0];return fr?fr.name:null})();
+  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Recruit rank-and-file into your army. They arrive garrisoned at '+h.name+'.'+(mName?(' This muster raises <b>'+mName+'</b> stock.'):'')+'</div>');
+  if(!mShelf.length)c.insertAdjacentHTML('beforeend','<div class="empty">No muster tradition holds this ground.</div>');
+  else{
+   if(!mGate.ok)c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px;color:var(--blh)">'+mGate.why+'</div>');
+   mShelf.forEach(function(rec){
+    var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+rec.n+'</b> <span class="pill">'+rec.cls+'</span></span><span class="price">'+rec.price+(tier>=3?' <span class="pill" style="font-size:9px">bulk rate</span>':'')+'</span></div>');
+    var bt=E('button','btn gh sm','Recruit');bt.style.marginTop='5px';
+    if(!mGate.ok){bt.disabled=true;bt.title=mGate.why;}
+    else bt.onclick=function(){if(S.cur<rec.price){T('Not enough '+curName()+'.');return}S.cur-=rec.price;
+     var id='r'+S.roster.length+'_'+Date.now();
+     var slots=[];for(var si=0;si<(rec.sl||2);si++)slots.push({k:si===0?'WEAPON':'ITEM',it:null});
+     var nm={id:id,n:rec.n+' '+(S.roster.length),tag:'',cls:rec.cls,rk:1,pc:rec.pc,w:rec.w+'/'+rec.w,st:'GARRISON',loc:fPl(S.pos.pl).p.name+' · '+h.name,fo:'—',sub:rec.n+' - R1 - '+(rec.sl||2)+' slots',sl:slots};
+     migrateLoadout(nm,rec.faction);   /* an Ork boy arrives in Ork plate */
+     S.roster.push(nm);
+     enrichRoster();rW();rRos();rShop();T(rec.n+' recruited — garrisoned at '+h.name+'.')};
+    r.appendChild(bt);c.appendChild(r)})}}
  else if(kind==='apothecarion'){var dead=(S.roster||[]).filter(function(m){return m.st==='DEAD'});
   var feeMult=((D.rules.doors_tiering||{}).apoth_fee_mult||{})[String(tier)];if(feeMult==null)feeMult=1;
   c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Revive fallen models within their revival window — any element, at a cost scaled to point cost.</div>');
@@ -4688,19 +4701,24 @@ function renderForge(c,dr,dtier){
   ago.onclick=function(){var p=armPieces[as.value];if(!p)return;var tier=(p.it.upg||0)+1;if(tier>3){T('Already hardened to tier III.');return}if(tier>ft){T('Requires a Tier '+tier+' Forge.');return}var cost=abase*tier;if(S.cur<cost){T('Not enough '+curName()+'.');return}var e=es.value;S.cur-=cost;p.it.def[e]=(p.it.def[e]||0)+1;p.it.upg=tier;rW();rShop();T(p.it.n+' hardened — +1 '+e+' Defense (tier '+['I','II','III'][tier-1]+').')};
   c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Forge a Weapon Tag</h5></div>');
  }
- c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Insert a weapon from your inventory and forge an affinity tag onto it.</div>');
+ c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">Insert a weapon from your inventory and forge an affinity tag onto it. The tradition is the forge\'s, not yours — this forge works the RULING faction\'s affinities.</div>');
  var ws=(S.inv||[]).filter(function(i){return i.cat==='WEAPON'});
  if(!ws.length){c.insertAdjacentHTML('beforeend','<div class="empty">No weapon in your inventory to modify. Buy or unequip one first.</div>');return}
+ /* T-MST-1 (Daak 2026-08-04): affinity list re-keyed from the PLAYER's faction to the
+    LOCAL ruler's — no player-faction limiter; an Aeldari on a conquered Daemon World
+    forges Daemon tags. Unruled ground has no forge tradition (empty list). */
+ var _affFac=doorFactionId();
+ var _aff=(_affFac&&D.equipment_alpha.forge_affinities&&D.equipment_alpha.forge_affinities[_affFac])||[],_affAll=_aff.indexOf('ALL')>=0;
+ if(!_affFac){c.insertAdjacentHTML('beforeend','<div class="empty">No forge tradition holds this ground — no ruler, no affinities.</div>');return}
  c.insertAdjacentHTML('beforeend','<label class="f">Weapon to modify</label>');
  var bs=E('select');bs.style.cssText='width:100%';ws.forEach(function(x,i){bs.add(new Option(x.n+' — '+x.d,i))});c.appendChild(bs);
  c.insertAdjacentHTML('beforeend','<label class="f">Affinity tag</label>');var tw=E('div');c.appendChild(tw);
- var _aff=(D.equipment_alpha.forge_affinities&&D.equipment_alpha.forge_affinities[S.player.faction])||[],_affAll=_aff.indexOf('ALL')>=0;
  /* T-DOOR-1: forge_cost doubles as a gear-tier proxy (same gearTier scale as the Shop) —
     top-grade tags are gated to a higher-tier Forge, on top of the pre-existing affinity gate */
  var tags=((D.tags&&D.tags.weapon)||[]).filter(function(t){return t.forge_cost!=null&&t.forgeable!==false}).map(function(t){
   var open=_affAll||_aff.indexOf(t.tag)>=0,need=DOOR.gearTier(t.forge_cost,D),tierLocked=need>ft;
   return{t:t.tag,c:t.forge_cost,d:t.mechanic,lk:!open||tierLocked,
-   rq:!open?('not your forge affinity — needs an allied '+t.tag+'-forge'):(tierLocked?('Requires a Tier '+need+' Forge.'):'')}});
+   rq:!open?('not in this forge\'s tradition — find a '+t.tag+'-working forge'):(tierLocked?('Requires a Tier '+need+' Forge.'):'')}});
  (D.equipment_alpha.forge_tags_alpha||[]).forEach(function(t){if(!tags.some(function(x){return x.t===t.tag})){
   var affLocked=t.access!=='open'&&!(t.access.indexOf('Drukhari')>=0&&S.dru),need2=DOOR.gearTier(t.cost,D),tierLocked2=need2>ft;
   tags.push({t:t.tag,c:t.cost,d:t.d,lk:affLocked||tierLocked2,rq:affLocked?('requires '+t.access):(tierLocked2?('Requires a Tier '+need2+' Forge.'):'')})}});
