@@ -328,3 +328,109 @@ test('outcome: unconstrained mission is completely unaffected by the new gate (r
   const oc = THREAD.outcome(t, t.state, MISSION.constraintCheck);
   assert.deepStrictEqual(oc, { kind: 'mission_won', victor: 'Mine', defeated: ['Foe'] });
 });
+
+/* ── T-MSN-1C task 4: MISSION.streakTick(streaks, result) classification table ──
+   result = {combat, won, myModels, enemyWiped, enemyNamed, oneVsOne} (glue-derived from the
+   concluded thread). Pure: never mutates its `streaks` input, always returns a new object.
+   LAW (addendum, verbatim):
+     combat_wins: any combat win +1, combat loss resets.
+     duel_wins: only when myModels===1 && oneVsOne — win +1, loss resets; non-duels untouched.
+     named_duel_wins: as duel_wins AND enemyNamed; unnamed duels never touch it.
+     annihilations: combat win+wipe +1; a NON-WIPE WIN RESETS; a loss also resets.
+     every +1 updates best=max(best,count); non-combat conclusions touch nothing. */
+function R(over) {
+  return Object.assign({ combat: true, won: true, myModels: 3, enemyWiped: false,
+                          enemyNamed: false, oneVsOne: false }, over);
+}
+
+test('streakTick: non-combat conclusion touches nothing (empty streaks stays empty)', () => {
+  const streaks = {};
+  const out = MISSION.streakTick(streaks, R({ combat: false, won: true, myModels: 1,
+                                               oneVsOne: true, enemyNamed: true, enemyWiped: true }));
+  assert.deepStrictEqual(out, {});
+  assert.deepStrictEqual(streaks, {}, 'input streaks must not be mutated');
+});
+
+test('streakTick: combat_wins +1 on a combat win, best tracks the new count', () => {
+  const out = MISSION.streakTick({}, R({ won: true }));
+  assert.deepStrictEqual(out.combat_wins, { count: 1, best: 1 });
+});
+
+test('streakTick: combat_wins resets to 0 on a combat loss, best is preserved', () => {
+  const out = MISSION.streakTick({ combat_wins: { count: 2, best: 5 } }, R({ won: false }));
+  assert.deepStrictEqual(out.combat_wins, { count: 0, best: 5 });
+});
+
+test('streakTick: combat_wins best = max(best, count) — a win under the old best does not raise it', () => {
+  const out = MISSION.streakTick({ combat_wins: { count: 0, best: 5 } }, R({ won: true }));
+  assert.deepStrictEqual(out.combat_wins, { count: 1, best: 5 });
+});
+
+test('streakTick: duel_wins +1 on a 1v1 win (myModels===1 && oneVsOne)', () => {
+  const out = MISSION.streakTick({}, R({ won: true, myModels: 1, oneVsOne: true }));
+  assert.deepStrictEqual(out.duel_wins, { count: 1, best: 1 });
+});
+
+test('streakTick: duel_wins resets to 0 on a 1v1 loss', () => {
+  const out = MISSION.streakTick({ duel_wins: { count: 2, best: 4 } },
+    R({ won: false, myModels: 1, oneVsOne: true }));
+  assert.deepStrictEqual(out.duel_wins, { count: 0, best: 4 });
+});
+
+test('streakTick: duel_wins is untouched by a non-duel win (myModels===3)', () => {
+  const out = MISSION.streakTick({}, R({ won: true, myModels: 3, oneVsOne: false }));
+  assert.ok(!('duel_wins' in out), 'a squad brawl must never create/touch duel_wins');
+});
+
+test('streakTick: duel_wins is untouched when myModels===1 but oneVsOne is false (both must hold)', () => {
+  const out = MISSION.streakTick({ duel_wins: { count: 2, best: 4 } },
+    R({ won: false, myModels: 1, oneVsOne: false }));
+  assert.deepStrictEqual(out.duel_wins, { count: 2, best: 4 }, 'non-duel loss must not reset it either');
+});
+
+test('streakTick: named_duel_wins +1 on a named 1v1 win', () => {
+  const out = MISSION.streakTick({}, R({ won: true, myModels: 1, oneVsOne: true, enemyNamed: true }));
+  assert.deepStrictEqual(out.named_duel_wins, { count: 1, best: 1 });
+  assert.deepStrictEqual(out.duel_wins, { count: 1, best: 1 }, 'a named duel is still a duel');
+});
+
+test('streakTick: named_duel_wins resets on a named 1v1 loss', () => {
+  const out = MISSION.streakTick({ named_duel_wins: { count: 3, best: 3 } },
+    R({ won: false, myModels: 1, oneVsOne: true, enemyNamed: true }));
+  assert.deepStrictEqual(out.named_duel_wins, { count: 0, best: 3 });
+});
+
+test('streakTick: an unnamed duel win never touches named_duel_wins', () => {
+  const out = MISSION.streakTick({}, R({ won: true, myModels: 1, oneVsOne: true, enemyNamed: false }));
+  assert.ok(!('named_duel_wins' in out), 'unnamed duels must not create/touch named_duel_wins');
+  assert.deepStrictEqual(out.duel_wins, { count: 1, best: 1 });
+});
+
+test('streakTick: annihilations +1 on a win with the enemy wiped', () => {
+  const out = MISSION.streakTick({ annihilations: { count: 2, best: 2 } },
+    R({ won: true, enemyWiped: true }));
+  assert.deepStrictEqual(out.annihilations, { count: 3, best: 3 });
+});
+
+test('streakTick: annihilations RESETS on a win that does not wipe the enemy (chain broken)', () => {
+  const out = MISSION.streakTick({ annihilations: { count: 2, best: 5 } },
+    R({ won: true, enemyWiped: false }));
+  assert.deepStrictEqual(out.annihilations, { count: 0, best: 5 });
+});
+
+test('streakTick: annihilations resets on a combat loss (even one that reports enemyWiped, which should never happen, but a loss always resets)', () => {
+  const out = MISSION.streakTick({ annihilations: { count: 1, best: 3 } },
+    R({ won: false, enemyWiped: false }));
+  assert.deepStrictEqual(out.annihilations, { count: 0, best: 3 });
+});
+
+test('streakTick: a single named-duel-wipe win touches all four keys correctly at once', () => {
+  const out = MISSION.streakTick({}, R({ won: true, myModels: 1, oneVsOne: true,
+                                          enemyNamed: true, enemyWiped: true }));
+  assert.deepStrictEqual(out, {
+    combat_wins: { count: 1, best: 1 },
+    duel_wins: { count: 1, best: 1 },
+    named_duel_wins: { count: 1, best: 1 },
+    annihilations: { count: 1, best: 1 },
+  });
+});

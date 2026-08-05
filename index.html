@@ -1282,7 +1282,7 @@ var THREAD=(function(){
     });
     return out;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
@@ -2061,11 +2061,41 @@ var MISSION=(function(){
     }
     return res;
   }
+  /* T-MSN-1C task 4: pure streak-classification tick. `result` is glue-derived from the
+     thread concludeThread just closed — {combat,won,myModels,enemyWiped,enemyNamed,oneVsOne}.
+     Returns a NEW streaks object (never mutates its input); a non-combat conclusion
+     (result.combat===false) returns a same-shaped clone untouched — every classification
+     below requires combat, so nothing is created/reset when there was no fight at all.
+     Addendum LAW (verbatim):
+       combat_wins: any combat win +1, combat loss resets.
+       duel_wins: only when myModels===1 && oneVsOne — win +1, loss resets; non-duels
+         (either condition false) never touch it, win or lose.
+       named_duel_wins: as duel_wins AND enemyNamed; unnamed duels never touch it.
+       annihilations: win+wipe +1; a non-wipe WIN resets (breaks the chain); a loss resets too.
+       every +1 updates best=max(best,count). */
+  function streakTick(streaks,result){
+    var out={};
+    for(var k in (streaks||{})){var s=streaks[k]||{};out[k]={count:s.count||0,best:s.best||0};}
+    if(!result||!result.combat)return out;
+    var won=!!result.won;
+    var isDuel=result.myModels===1&&!!result.oneVsOne;
+    var isNamedDuel=isDuel&&!!result.enemyNamed;
+    var isWipeWin=won&&!!result.enemyWiped;
+    function bump(key,hit){
+      var cur=out[key]||{count:0,best:0},nc=hit?cur.count+1:0;
+      out[key]={count:nc,best:hit?Math.max(cur.best,nc):cur.best};
+    }
+    bump('combat_wins',won);                       // any combat conclusion touches this
+    if(isDuel)bump('duel_wins',won);                // only a duel touches this, win or lose
+    if(isNamedDuel)bump('named_duel_wins',won);      // only a NAMED duel touches this
+    bump('annihilations',isWipeWin);                // any combat conclusion touches this
+    return out;
+  }
   return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,finalPayout:finalPayout,
           rollMission:rollMission,genHostiles:genHostiles,targetFor:targetFor,
           pickForce:pickForce,gateReason:gateReason,grantItems:grantItems,deliverGate:deliverGate,
           constraintCheck:constraintCheck,
-          refillBoard:refillBoard,catchUpBoards:catchUpBoards};
+          refillBoard:refillBoard,catchUpBoards:catchUpBoards,streakTick:streakTick};
 })();
 /*</mission-core>*/
 /*<save-core>*/
@@ -3165,6 +3195,27 @@ function concludeThread(t,oc){
   if(c.dead){m.st='DEAD';m.loc=(t.loc||'the field')+' — field'+(c.permaDeath?', no revival':', recoverable');}});
  convertSpoils(t);   // carried CAPTIVE/REMAINS + looted gear -> inventory; TAKEN greying
  var mineWon=!!(oc.victor&&myForceNames().indexOf(oc.victor)>=0);
+ // T-MSN-1C task 4: streak primitive. Classify this conclusion (result.combat gates every
+ // key off — MISSION.streakTick no-ops for accord/travel/social threads with no combatants)
+ // and tick S.progress.streaks BEFORE syncing any accepted streak-kind mission's live
+ // objective.progress, so a qualifying win is visible the next time THAT mission's outcome
+ // is checked (its own next post — or right now, if `t` itself is that streak mission).
+ var _myN=Object.keys(C).filter(function(id){return !C[id].gen;}).length;
+ var _foN=Object.keys(C).filter(function(id){return !!C[id].gen;}).length;
+ var _streakResult={
+  combat:Object.keys(C).length>0, won:mineWon, myModels:_myN,
+  enemyWiped:THREAD.enemyAliveCount(t.state||{})===0,
+  enemyNamed:Object.keys(C).some(function(id){return C[id].gen&&C[id].gen.named;}),
+  oneVsOne:_myN===1&&_foN===1
+ };
+ S.progress=S.progress||{streaks:{}};
+ S.progress.streaks=MISSION.streakTick(S.progress.streaks||{},_streakResult);
+ S.threads.forEach(function(t2){
+  var ob2=t2&&t2.state&&t2.state.objective;
+  if(!ob2||ob2.kind!=='streak'||!ob2.params||!ob2.params.streak_key)return;
+  var row=S.progress.streaks[ob2.params.streak_key];
+  ob2.progress=(row&&row.count)||0;
+ });
  var line=oc.kind==='accord'?'🕊 RESOLUTION — terms struck. The accord stands and this thread is closed.'
   :oc.kind==='mutual'?'⚔ RESOLUTION — mutual annihilation. No one holds the field.'
   :'⚔ RESOLUTION — '+(oc.defeated||[]).join(', ')+' broken to the last model. <b>'+oc.victor+'</b> holds the field.';
@@ -4178,6 +4229,7 @@ function init(){
   if(!S.world.doorTiers)S.world.doorTiers={};                             // T-DOOR-1: older saves
   if(!S.world.doorBuilds)S.world.doorBuilds={};
   if(!S.world.locConds)S.world.locConds={};                               // T-MSN-1B final fix wave: older saves
+  if(!S.progress)S.progress={streaks:{}};                                 // T-MSN-1C task 4: older saves
   var _wc=WORLD.catchUp(S,D,Date.now());
   for(var _db=0;_db<_wc.ticks;_db++){DOOR.tickBuilds(S).forEach(function(f){
     var _fl=lById(f.loc);
@@ -4248,6 +4300,7 @@ function commitFounding(cc){
   forces:[{id:'founding',n:'The Founding',lead:'cmdr',ap:26}],
   succ:[{n:commander.n,fid:'founding'}],
   world:foundingWorld(),threads:[],
+  progress:{streaks:{}},   // T-MSN-1C task 4: founding never gets a reload, so init()'s backfill never fires — seed here too (S.world key seeding gotcha)
   time:{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60,lastTick:Date.now()},
   npcState:{},active:'cmdr',cart:[]
  };
