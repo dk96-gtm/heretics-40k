@@ -225,3 +225,4 @@ Full-roster walk with Daak; every §4 row locked concrete:
 - **Pay:** every signature row pays **×1.5 signature_premium** (new rules.missions
   constant, mirrors named_premium).
 - Parked trio unchanged (Daemons/DG/Necrons await their primitives).
+- **Rulings (final review 2026-08-05):** arena-door duels spawn exactly ONE champion (named bosses unescorted in arena context) — this is what makes duel streaks live. Melee-quota kills via DoT ticks deliberately do NOT credit (the blade claims the skull, not the sickness) — a recorded exception to the T-CMB-1 DoT-credit ruling. Mutual annihilation counts as a non-win for streaks (resets).
