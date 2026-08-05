@@ -507,7 +507,15 @@ function missionCtxOf(pid){var f=fPl(pid);if(!f)return null;var p=f.p;
 var pt=(D.galaxy.planet_types||[]).filter(function(t){return t.name===p.type})[0]||{};
 return {pl:{id:p.id,type:p.type,prod_mult:pt.prod_mult||1},
 locs:(p.locations||[]).map(function(l){
-return {id:l.id,name:l.name,cond:effCond(l)||null,doors:doorKindsOf(l),npc:npcNameAt(p.id,l.id),garrison:!!npcForceAt(p.id,l.name)}})}}
+// T-MSN-1C task 5: votann_grudge's grudge_faction seeding needs the SAME local
+// hostile-faction context seedCombat already derives at accept time (npcForceAt's force
+// row -> npcFactionOf's desc parse -> facByName's id lookup) — mint-time (rollMission)
+// has no other route to a faction id, only this ctx. null when nothing garrisons the loc,
+// or the garrison's desc can't be parsed to a faction — hostile_fac then reads as "unknown",
+// which the row's own eligibility gate (hasHostileFac) already treats as ineligible.
+var _fr=npcForceAt(p.id,l.name),_facN=_fr?npcFactionOf(_fr.desc):null,_fac=_facN?facByName(_facN):null;
+return {id:l.id,name:l.name,cond:effCond(l)||null,doors:doorKindsOf(l),npc:npcNameAt(p.id,l.id),
+garrison:!!_fr,hostile_fac:_fac?_fac.id:null}})}}
 /* pure thread rules: no DOM, no globals; every input is an argument (node-tested) */
 /*<thread-core>*/
 var THREAD=(function(){
@@ -822,10 +830,31 @@ var THREAD=(function(){
         var _lc=state.combatants[e.corpse],_la=state.combatants[b.actor];
         if(_lc&&_la){
           if(e.what==='gear'){state.spoils=state.spoils||[];
-            var _lsl=(_lc.model&&_lc.model.loadout&&_lc.model.loadout.slots)||[];
-            _lsl.forEach(function(s){if(s.it){state.spoils.push(s.it);s.it=null;}});
+            // T-MSN-1C task 5 fix: a generated hostile (`gen`) never gets migrateLoadout'd —
+            // it only ever carries the bare `.sl` array genHostiles/seedCombat build (see
+            // bfWeaponsOf/bfCaptureItemOf/emptySlotOf's own `||c.model.sl` fallback for the
+            // same reason). The pre-existing `.loadout.slots`-only read here found `[]` for
+            // every generated corpse, so gear-loot off an NPC hostile was silent dead weight —
+            // fixed to fall back to `.sl` like every other read site in this file already does.
+            var _lsl=(_lc.model&&((_lc.model.loadout&&_lc.model.loadout.slots)||_lc.model.sl))||[];
+            // T-MSN-1C task 5: collect-item signature hook — the quest-item/tier check runs
+            // on each piece BEFORE it's pushed to spoils (spoils holds bare item objects with
+            // no pointer back to this loot event once pushed). params.item (tome/soulstones)
+            // matches by exact name; params.loot_gear_tier (Mechanicus) matches ANY looted
+            // piece whose pc clears the canon tier threshold — mirrors DOOR.gearTier via the
+            // THREAD core's own already-existing mirror, _gearTierPC (thread-core can't
+            // reference the DOOR region, a separate standalone-extracted core).
+            var _ob3=state.objective;
+            var _lootCollectTick=function(it){
+              if(!it||!_ob3||_ob3.done||_ob3.kind!=='collect_item'||!_ob3.params)return;
+              var _hit=_ob3.params.item?it.n===_ob3.params.item
+                :(_ob3.params.loot_gear_tier&&typeof it.pc==='number'&&_gearTierPC(it.pc,canon)>=_ob3.params.loot_gear_tier);
+              if(!_hit)return;
+              _ob3.progress+=1;if(_ob3.progress>=_ob3.target)_ob3.done=true;
+            };
+            _lsl.forEach(function(s){if(s.it){_lootCollectTick(s.it);state.spoils.push(s.it);s.it=null;}});
             var _lar=_lc.model&&_lc.model.loadout&&_lc.model.loadout.armour;
-            if(_lar&&_lar.it){state.spoils.push(_lar.it);_lar.it=null;}}
+            if(_lar&&_lar.it){_lootCollectTick(_lar.it);state.spoils.push(_lar.it);_lar.it=null;}}
           else if(e.what==='body'){
             if(_lc.looted)return;                       // belt-and-braces: validate should already reject this
             var _lslot=emptySlotOf(_la);
@@ -1718,6 +1747,13 @@ var MISSION=(function(){
     // payoutOf reads inst.params (already carried on every mint-time AND accept-reprice inst
     // object) rather than taking a new argument, so both call sites get the premium for free.
     var premium=(inst.params&&inst.params.filter==='named')?(M.named_premium||1):1;
+    // T-MSN-1C task 5: signature premium stacks multiplicatively with the named premium —
+    // a signature row that is ALSO named (ec_perfect_kill: filter:'named'+signature:true)
+    // pays named_premium x signature_premium, not just the larger of the two. Exactly the
+    // named_premium pattern above, applied to inst.signature (carried onto every minted
+    // instance by rollMission below) instead of inst.params.filter.
+    var sigPremium=inst.signature?(M.signature_premium||1):1;
+    premium*=sigPremium;
     return Math.round(base*size*(prodMult||1)*premium);
   }
   /* T-MSN-1B task 4: pure payout-stacking seam so concludeThread's mission-won branch (and
@@ -1760,6 +1796,12 @@ var MISSION=(function(){
     // honor prefer_condition next, else uniform over the (possibly gated) pool
     var locs=ctx.locs||[];
     if(row.needs_hostiles)locs=locs.filter(function(l){return l.garrison;});
+    // T-MSN-1C task 5: votann_grudge (params.filter==='faction') can only land on a garrisoned
+    // loc whose hostile faction is actually known (ctx's engine glue stamps l.hostile_fac —
+    // missionCtxOf) — mirrors needs_destination's own "narrow locs before the rng draw" shape,
+    // so grudge_faction seeding below never has to fall back to an unknown/undefined faction.
+    if(row.params&&row.params.filter==='faction')
+      locs=locs.filter(function(l){return l.hostile_fac;});
     if(row.needs_destination){
       // an origin only qualifies if SOME other location carries a shop door — otherwise
       // picking it as origin would strand the row with zero valid destinations
@@ -1782,6 +1824,11 @@ var MISSION=(function(){
       var names=(R(canon).bounty_names)||[];
       if(names.length)params.target_name=names[Math.floor(r()*names.length)];
     }
+    // T-MSN-1C task 5: votann_grudge seeds grudge_faction off the SAME loc the draw above
+    // already settled on (no extra rng draw — deterministic given seed+ctx, mirrors dest_loc's
+    // reuse-the-pick shape just below). loc.hostile_fac is only ever present because the locs
+    // filter above already required it for a 'faction'-filtered row.
+    if(params.filter==='faction')params.grudge_faction=loc.hostile_fac||null;
     // Slice-B ruling: trade_haul draws its DESTINATION from the same seeded stream, right
     // after the origin is settled — a different same-planet location with an open shop door.
     if(row.needs_destination){
@@ -1794,6 +1841,9 @@ var MISSION=(function(){
     var inst={iid:ctx.pl.id+'-'+row.id+'-'+day+'-'+Math.floor(r()*1e6),
       mid:row.id,n:row.n,family:row.family,kind:row.kind,
       target:target,params:params,gates:row.gates||{},
+      // T-MSN-1C task 5: carried onto the instance so payoutOf can read inst.signature (the
+      // named_premium precedent — inst.params.filter — already proved this pattern out).
+      signature:!!row.signature,
       face:faceOf(row,loc,canon),world_effect:row.world_effect||null,
       flavor:row.flavor||'',pl:ctx.pl.id,lid:loc.id,day:day,accepted:false};
     inst.payout=payoutOf(inst,ctx.pl.prod_mult,canon);
@@ -1864,6 +1914,31 @@ var MISSION=(function(){
         out.push({id:'e'+i,n:bm.n+' '+(i+1),cls:bm.cls,pc:bm.pc,spd:bm.sp,w:bm.w,
           sub:bm.n+' — hostile',sl:slotOf()});}
     }
+    // T-MSN-1C task 5: collect_item carrier marking (ts_forbidden_lore/aeldari_soul_tithe/
+    // mechanicus_tech_reclamation — "no dead content" ruling). Runs AFTER whichever branch
+    // above built `out`, regardless of filter, so a carrier is always minted onto real spawned
+    // hostiles: params.item (named quest item, e.g. tome x1/soulstones x3) marks the `target`
+    // highest-pc spawns (capped at however many actually spawned — "coverable" per the spec);
+    // params.loot_gear_tier (Mechanicus) instead mints a tier-qualifying salvage item (pc set
+    // to the canon threshold for that tier) on the same top-pc spawns, so looting always CAN
+    // clear the gate rather than depending on whatever cheap NPC sidearm happened to roll.
+    // Both live at spawn time (not mint time) since only here do real hostile specs exist.
+    if(params&&(params.item||params.loot_gear_tier)&&out.length){
+      var order=out.map(function(o,idx){return idx;})
+        .sort(function(a,b){return (out[b].pc||0)-(out[a].pc||0);});
+      var needed=Math.max(1,Math.min(out.length,target||1));
+      var carryIt;
+      if(params.item){
+        carryIt=function(){return {n:params.item,cat:'ITEM',
+          d:'Carried by the fallen — recoverable from the corpse.',pc:1};};
+      } else {
+        var g=(canon&&canon.rules&&canon.rules.doors_tiering&&canon.rules.doors_tiering.gear_tier_pc)||{};
+        var tierPc=params.loot_gear_tier>=3?(g['3']||20):(g['2']||12);
+        carryIt=function(){return {n:'Reclaimed Pattern-Data',cat:'ITEM',
+          d:'Salvaged tech-relic, ripe for reclamation.',pc:tierPc};};
+      }
+      for(var mi=0;mi<needed;mi++){out[order[mi]].sl.push({k:'ITEM',it:carryIt()});}
+    }
     return out;
   }
   /* T-MSN-1B task 3: the live objective.target an accepted combat-kind mission should carry,
@@ -1909,10 +1984,18 @@ var MISSION=(function(){
      it again (defense in depth — a stale client payload must never bypass render-side
      hiding) and refuses in-fiction rather than silently no-op'ing. row/inst are
      interchangeable here since rollMission copies row.gates onto every minted instance. */
-  function gateReason(row,playerAllegiance){
+  // T-MSN-1C task 5: gates.faction (the 18 signature rows) narrows gating one notch tighter
+  // than gates.allegiance — a subfaction's own rite, not just its allegiance's. playerFaction
+  // is an optional 3rd arg (both existing call sites pass only playerAllegiance) so every
+  // pre-signature caller/test is untouched: g.faction is only ever set on a signature row, and
+  // a falsy playerFaction just means "no basis for a faction check" — never wrongly gates an
+  // allegiance-only row.
+  function gateReason(row,playerAllegiance,playerFaction){
     var g=(row&&row.gates)||{};
     if(g.allegiance&&g.allegiance!==playerAllegiance)
       return 'The rite is not yours to perform.';
+    if(g.faction&&g.faction!==playerFaction)
+      return 'This rite belongs to another banner entirely.';
     return null;
   }
   /* T-MSN-1B final fix wave (CRITICAL 3): trade_haul's params.granted:true was read nowhere —
@@ -2018,7 +2101,10 @@ var MISSION=(function(){
       return m.accepted||((day-m.day)<(M.expiry_days||5));});
     var lo=M.board_min||4,hi=M.board_max||6;
     var want=lo+Math.floor(r()*(hi-lo+1));
-    var rows=(canon.missions&&canon.missions.universal)||[];
+    // T-MSN-1C task 5: signature rows mint alongside universal picks — same pool, same seeded
+    // rng stream, player-agnostic (1B pattern: gates.faction narrows at render/accept, never
+    // at generation, exactly like gates.allegiance already does for consecration/desecration).
+    var rows=((canon.missions&&canon.missions.universal)||[]).concat((canon.missions&&canon.missions.signatures)||[]);
     // needs_hostiles rows may ONLY be candidates when ctx actually has a garrisoned
     // loc — filtered here, BEFORE any rng draw, so a garrison-less planet just never
     // rolls that row (no draw-then-discard, rng stays a pure fn of (seed,ctx,board))
@@ -2026,18 +2112,32 @@ var MISSION=(function(){
     // Slice-B ruling: needs_destination rows (trade_haul) are equally ineligible when this
     // planet's location pool can't furnish a distinct shop-door destination anywhere.
     var hasDest=hasDestCapacity(ctx);
-    var elig=rows.filter(function(rw){return (!rw.needs_hostiles||hasGarrison)&&(!rw.needs_destination||hasDest);});
+    // T-MSN-1C task 5: votann_grudge (params.filter==='faction') needs a garrisoned loc whose
+    // hostile faction is actually known — mirrors needs_hostiles/needs_destination's own
+    // "ineligible board-wide, not just per-loc" shape (rollMission's own locs-filter is the
+    // per-draw enforcement; this is the row-level "can this even be drawn at all" gate).
+    var hasHostileFac=(ctx.locs||[]).some(function(l){return l.garrison&&l.hostile_fac;});
+    var elig=rows.filter(function(rw){return (!rw.needs_hostiles||hasGarrison)&&(!rw.needs_destination||hasDest)
+      &&(!(rw.params&&rw.params.filter==='faction')||hasHostileFac);});
     // condition-preferring rows first so ruins actually get their rebuild
     var ordered=elig.slice().sort(function(a,b){
       return (b.prefer_condition?1:0)-(a.prefer_condition?1:0);});
     while(keep.length<want&&elig.length){
+      // T-MSN-1C task 5: at most ONE signature row per board — once one is already sitting on
+      // the board (freshly drawn this loop, or carried over from a prior refill via `keep`),
+      // every further draw this refill excludes the rest of the signature candidates. A normal
+      // slot, not an extra one — this is a pool restriction, not a board-size bump.
+      var sigCap=keep.some(function(k){return k.signature;});
+      var pool=sigCap?elig.filter(function(rw){return !rw.signature;}):elig;
+      if(!pool.length)break;
+      var orderedPool=sigCap?ordered.filter(function(rw){return !rw.signature;}):ordered;
       var row=null;
-      for(var i=0;i<ordered.length&&!row;i++){
-        var cand=ordered[i];
+      for(var i=0;i<orderedPool.length&&!row;i++){
+        var cand=orderedPool[i];
         if(cand.prefer_condition&&(ctx.locs||[]).some(function(l){return l.cond===cand.prefer_condition;})
            &&!keep.some(function(k){return k.mid===cand.id&&!k.accepted;})){row=cand;}
       }
-      if(!row)row=elig[Math.floor(r()*elig.length)];
+      if(!row)row=pool[Math.floor(r()*pool.length)];
       keep.push(rollMission(row,ctx,r,day,canon));
     }
     board.length=0;Array.prototype.push.apply(board,keep);
@@ -2474,6 +2574,17 @@ var MOD_VOID_MSG={understrength:'Understrength voided — the force grew too lar
   low_tech:'Low-Tech voided — high-tier gear was equipped.',
   blitz:'Blitz voided — too slow.'};
 var _msel={};
+/* T-MSN-1C task 5: THREAD.combatKind (count_kill/survive_rounds) doesn't cover the 3
+   collect_item signature rows that STILL need real hostiles (ts_forbidden_lore's tome,
+   aeldari_soul_tithe's soulstones, mechanicus_tech_reclamation's gear-tier loot all sit on
+   a carrier corpse — no fight, no carrier, no way to complete the objective without one).
+   _spawnsHostiles widens the accept-time spawn gate to those rows too (inst.params.item /
+   .loot_gear_tier only ever appear on a needs_hostiles row) without touching combatKind
+   itself, which several other call sites (modifier gating, objective evaluation) still use
+   in its narrower, kill/survive-only sense on purpose. */
+function _spawnsHostiles(inst){
+ return THREAD.combatKind(inst.kind)||!!(inst.params&&(inst.params.item||inst.params.loot_gear_tier));
+}
 /* accept a posted mission instance (Missions V2 slice A) — mirrors startThread's push
    pattern but skips the briefing gate (accepting from the board IS the briefing) and
    seeds the objective AFTER seedCombat, since seedCombat replaces t.seedState wholesale.
@@ -2483,7 +2594,7 @@ function acceptMission(inst,pl,l,mods){
  // already hides gated rows, but a stale client payload or a board minted before the
  // player's allegiance was known must never slip an Imperial rite to a Chaos Commander
  // or vice versa). In-fiction refusal, no silent no-op.
- var _gr=MISSION.gateReason(inst,S.player.allegiance);
+ var _gr=MISSION.gateReason(inst,S.player.allegiance,S.player.faction);
  if(_gr){T(_gr);return;}
  // Slice-B fix round 2 (IMPORTANT — remote-accept bypass): a granted row (trade_haul —
  // the consignment crates are handed over the instant you sign) can only be signed for
@@ -2530,10 +2641,10 @@ function acceptMission(inst,pl,l,mods){
  // T-MSN-1B task 3 fix: the spawn gate used to be count_kill-only — Defend (survive_rounds)
  // is combat-flavored too (THREAD.combatKind) and needs real hostiles + a board, or state.round
  // can never advance.
- if(THREAD.combatKind(inst.kind))seedCombat(t,pl.id,l,null,force,inst.params,inst.target);
+ if(_spawnsHostiles(inst))seedCombat(t,pl.id,l,null,force,inst.params,inst.target);
  t.seedState=t.seedState||{};
  var hn,hCls;
- if(THREAD.combatKind(inst.kind)){
+ if(_spawnsHostiles(inst)){
   var _hostiles=Object.keys(t.seedState.combatants||{}).filter(function(k){return (t.seedState.combatants[k].party)!==force.n;});
   hn=_hostiles.length;
   if(hn===0){T('The notice is stale — no hostile presence remains here.');return;}
@@ -2543,7 +2654,7 @@ function acceptMission(inst,pl,l,mods){
    hCls=_hostiles.filter(function(k){var g=t.seedState.combatants[k].gen;return g&&g.cls===inst.params.cls;}).length;
  }
  t.seedState.objective={kind:inst.kind,target:inst.target,progress:0,params:inst.params,done:false};
- if(THREAD.combatKind(inst.kind)){
+ if(_spawnsHostiles(inst)){
   // MISSION.targetFor: count_kill clamps to what's actually garrisoned (clear_all/Liberation
   // reads honest — target IS the spawned count, not the mint-time roll); class-filter clamps
   // to the matching-class spawn count; survive_rounds/Defend is untouched — its target is a
@@ -3014,7 +3125,7 @@ h2+='<div class="lsec"><h5>Thread history — click for summary</h5>'+(hi.length
 /* T-MSN-1B task 5: boards are minted player-agnostic — an allegiance-gated row (e.g.
    Consecration/Desecration) is hidden here rather than never generated, so the same
    seeded board can serve any allegiance later. */
-var _mb=((S.world.missions||{})[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted&&!MISSION.gateReason(m,S.player.allegiance)});
+var _mb=((S.world.missions||{})[pl.id]||[]).filter(function(m){return m.lid===l.id&&!m.accepted&&!MISSION.gateReason(m,S.player.allegiance,S.player.faction)});
 if(_mb.length)h2+='<div class="lsec"><h5>Missions — posted here ('+_mb.length+')</h5>'+
  _mb.map(function(m,i){var _sel=_msel[m.iid]||{};
   return '<div class="lrow" data-mission="'+i+'" style="cursor:default"><b>'+annotate(m.n)+'</b>'+namedTargetTag(m)+destTag(m)+' · '+
@@ -3105,7 +3216,7 @@ accepted.forEach(function(t){var vis=t.vis||'public',mine=(t.initiator||'').matc
  dash.appendChild(d)});
 /* available — Missions V2 slice A: real boards (S.world.missions), not a history-scrape.
    Flattened across every planet with an unaccepted posting; click jumps the map to that location. */
-var mrows=[];Object.keys(S.world.missions||{}).forEach(function(pid){(S.world.missions[pid]||[]).forEach(function(m){if(!m.accepted&&!MISSION.gateReason(m,S.player.allegiance))mrows.push(m)})});
+var mrows=[];Object.keys(S.world.missions||{}).forEach(function(pid){(S.world.missions[pid]||[]).forEach(function(m){if(!m.accepted&&!MISSION.gateReason(m,S.player.allegiance,S.player.faction))mrows.push(m)})});
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Missions — posted nearby ('+mrows.length+')</h5></div>');
 if(!mrows.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">No missions posted right now.</div>');
 mrows.forEach(function(m){var pp=fPl(m.pl);var lname=(pp&&fLoc(m.pl,m.lid))?fLoc(m.pl,m.lid).name:m.lid;
@@ -3964,6 +4075,21 @@ function threadView(V,t){
       npcRespond(t,party);}   // T-NPC-2b: the enemy side answers — it fights back
     var oc=THREAD.outcome(t,t.state,MISSION.constraintCheck);   // T-TERR-1: does this post END it? (T-MSN-1C: constraint-gated)
     var deferred=false,justConcluded=false;
+    // T-MSN-1C task 5: a collect_item signature mission (tome/soulstones/gear-tier) that needs
+    // hostiles isn't "won" by clearing the field the way count_kill is — THREAD.outcome's
+    // collect_item branch only fires on ob.progress>=ob.target, and progress only moves at the
+    // loot site (apply's 'loot' handler above). Wiping the hostiles with the objective still
+    // open leaves `oc` null forever unless the field opens up for looting — so borrow the SAME
+    // aftermath/loot phase SKIRMISH/INVASION already use (the corpse-loot seam this task wires
+    // is otherwise unreachable for a MISSION thread, which never naturally enters 'aftermath').
+    if(!oc&&t.type==='MISSION'&&t.state.board&&t.state.phase==='battle'
+       &&t.state.objective&&!t.state.objective.done&&t.state.objective.kind==='collect_item'
+       &&t.state.objective.params&&(t.state.objective.params.item||t.state.objective.params.loot_gear_tier)
+       &&THREAD.enemyAliveCount(t.state)===0&&THREAD.mineAlive(t.state)){
+      t.state.phase='aftermath';deferred=true;
+      t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+        body:'☠ THE FIELD IS YOURS — walk the ground and take what you came for. Loot the fallen (1 AP each), then END THREAD once the contract is fulfilled.'});
+    }
     if(oc&&t.state.phase!=='aftermath'){             // already in aftermath → only END THREAD concludes
       var mineWon=oc.victor&&myForceNames().indexOf(oc.victor)>=0;
       if(mineWon&&oc.kind==='annihilation'){
@@ -4037,7 +4163,17 @@ function threadView(V,t){
   }
   if(t.state.phase==='aftermath'){
     var eb=E('button','btn','END THREAD — withdraw with your spoils');eb.style.marginTop='10px';
-    eb.onclick=function(){concludeThread(t,t.state.pendingOutcome);openT(t.id)};V.appendChild(eb);
+    // T-MSN-1C task 5: the SKIRMISH/INVASION annihilation path pre-computes pendingOutcome the
+    // instant aftermath opens (outcome never changes after that — the field's already decided).
+    // A collect_item signature mission opens aftermath with NO decided outcome yet (oc was null
+    // — that's WHY it's here) — progress can still tick from looting during this phase, so
+    // outcome is recomputed fresh at END THREAD time; walking off before the contract is
+    // fulfilled forfeits it (mission_lost) rather than crashing on an undefined outcome.
+    eb.onclick=function(){
+      var doc=t.state.pendingOutcome||THREAD.outcome(t,t.state,MISSION.constraintCheck)||
+        {kind:'mission_lost',victor:null,defeated:(t.forces||[]).slice()};
+      concludeThread(t,doc);openT(t.id)};
+    V.appendChild(eb);
   }
   var xb=E('button','btn gh','Exit thread');xb.style.marginTop='10px';
   xb.onclick=function(){exitThread(t)};V.appendChild(xb);
@@ -4774,7 +4910,10 @@ function renderDoor(dr,h){var c=E('div','card');
     else bt.onclick=function(){if(S.cur<rec.price){T('Not enough '+curName()+'.');return}S.cur-=rec.price;
      var id='r'+S.roster.length+'_'+Date.now();
      var slots=[];for(var si=0;si<(rec.sl||2);si++)slots.push({k:si===0?'WEAPON':'ITEM',it:null});
-     var nm={id:id,n:rec.n+' '+(S.roster.length),tag:'',cls:rec.cls,rk:1,pc:rec.pc,w:rec.w+'/'+rec.w,st:'GARRISON',loc:fPl(S.pos.pl).p.name+' · '+h.name,fo:'—',sub:rec.n+' - R1 - '+(rec.sl||2)+' slots',sl:slots};
+     // T-MSN-1C task 5: fac stamps the muster-shelf faction (the RULING faction here, geography-
+     // gated like every door — T-MST-1) onto every recruit, same-faction included. Task 3's
+     // min_foreign_models constraint reads model.fac against state.locked.playerFac.
+     var nm={id:id,n:rec.n+' '+(S.roster.length),tag:'',cls:rec.cls,rk:1,pc:rec.pc,w:rec.w+'/'+rec.w,st:'GARRISON',loc:fPl(S.pos.pl).p.name+' · '+h.name,fo:'—',sub:rec.n+' - R1 - '+(rec.sl||2)+' slots',sl:slots,fac:rec.faction};
      migrateLoadout(nm,rec.faction);   /* an Ork boy arrives in Ork plate */
      S.roster.push(nm);
      enrichRoster();rW();rRos();rShop();T(rec.n+' recruited — garrisoned at '+h.name+'.')};

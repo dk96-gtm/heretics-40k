@@ -62,7 +62,10 @@ test('refillBoard fills to within [board_min, board_max] and faces every mission
   const board = MISSION.refillBoard([], CTX(), canon, r, 0);
   assert.ok(board.length >= 4 && board.length <= 6, 'got ' + board.length);
   const rowsById = {};
+  // T-MSN-1C task 5: signature rows now mint alongside universal picks (same pool, same
+  // seeded stream) — this lookup must cover both or a signature draw 404s on m.mid.
   canon.missions.universal.forEach(rw => { rowsById[rw.id] = rw; });
+  canon.missions.signatures.forEach(rw => { rowsById[rw.id] = rw; });
   board.forEach(m => {
     assert.ok(['door', 'npc', 'notice'].indexOf(m.face.kind) >= 0);
     assert.ok(m.payout > 0);
@@ -671,4 +674,200 @@ test('deliverGate: fix round 2 (minor) - inTransit or void refuses even standing
   assert.strictEqual(MISSION.deliverGate(params, pos, true, false), false, 'mid-transit must refuse');
   assert.strictEqual(MISSION.deliverGate(params, pos, false, true), false, 'in the void must refuse');
   assert.strictEqual(MISSION.deliverGate(params, pos, false, false), true, 'grounded and present -> accepted');
+});
+
+// ── T-MSN-1C task 5: generator injection + signature premium + acquisition ──
+
+const CTX_HOSTILE_FAC = (facId) => ({
+  pl: { id: 'testp', type: 'Forge World', prod_mult: 2.0 },
+  locs: [
+    { id: 'l1', name: 'The Foundry', cond: null, doors: ['shop', 'muster'], npc: null, garrison: true, hostile_fac: facId },
+    { id: 'l2', name: 'Shattered Row', cond: 'ruined', doors: [], npc: 'Magos Vex', garrison: false, hostile_fac: null }
+  ]
+});
+const SIG_IDS = new Set(canon.missions.signatures.map(rw => rw.id));
+
+test('T-MSN-1C: refillBoard mints signature rows deterministically - same seed+day -> identical boards', () => {
+  const ctx = CTX_HOSTILE_FAC('votann');
+  const b1 = MISSION.refillBoard([], ctx, canon, MISSION.rng(555), 3);
+  const b2 = MISSION.refillBoard([], ctx, canon, MISSION.rng(555), 3);
+  assert.deepStrictEqual(b1, b2);
+});
+
+test('T-MSN-1C: at most one signature row ever sits on a board, across many refills', () => {
+  const ctx = CTX_HOSTILE_FAC('votann');
+  let board = [];
+  let sawSignature = false;
+  for (let day = 0; day < 60; day++) {
+    board = MISSION.refillBoard(board, ctx, canon, MISSION.rng(2024 + day), day);
+    const sigCount = board.filter(m => SIG_IDS.has(m.mid)).length;
+    assert.ok(sigCount <= 1, 'day ' + day + ' board carries ' + sigCount + ' signature rows: ' + JSON.stringify(board.filter(m => SIG_IDS.has(m.mid)).map(m => m.mid)));
+    if (sigCount === 1) sawSignature = true;
+  }
+  assert.ok(sawSignature, 'expected at least one signature mint over 60 days');
+});
+
+test('T-MSN-1C: a minted signature instance carries signature:true and its gates forward', () => {
+  const skulls = canon.missions.signatures.find(rw => rw.id === 'we_skulls');
+  const inst = MISSION.rollMission(skulls, CTX(), MISSION.rng(9), 0, canon);
+  assert.strictEqual(inst.signature, true);
+  assert.deepStrictEqual(inst.gates, { faction: 'world_eaters' });
+});
+
+test('T-MSN-1C: gateReason refuses a faction-gated signature row for the wrong faction, admits the right one', () => {
+  const votannRow = canon.missions.signatures.find(rw => rw.id === 'votann_grudge');
+  assert.strictEqual(votannRow.gates.faction, 'votann');
+  assert.strictEqual(MISSION.gateReason(votannRow, 'xenos', 'orks'), 'This rite belongs to another banner entirely.');
+  assert.strictEqual(MISSION.gateReason(votannRow, 'xenos', 'votann'), null);
+  // right ALLEGIANCE is not enough on its own - votann_grudge gates on faction, not allegiance
+  assert.ok(MISSION.gateReason(votannRow, 'xenos', 'aeldari'));
+});
+
+test('T-MSN-1C: gateReason with no playerFaction arg never wrongly gates a legacy (non-signature) call', () => {
+  const purgeRow = canon.missions.universal.find(rw => rw.id === 'purge');
+  assert.strictEqual(MISSION.gateReason(purgeRow, 'imperial'), null);
+});
+
+test('T-MSN-1C: votann_grudge seeds grudge_faction from ctx.locs.hostile_fac, deterministic for a given seed', () => {
+  const votannRow = canon.missions.signatures.find(rw => rw.id === 'votann_grudge');
+  const ctx = CTX_HOSTILE_FAC('orks');
+  const inst1 = MISSION.rollMission(votannRow, ctx, MISSION.rng(77), 5, canon);
+  assert.strictEqual(inst1.params.grudge_faction, 'orks');
+  const inst2 = MISSION.rollMission(votannRow, ctx, MISSION.rng(77), 5, canon);
+  assert.strictEqual(inst2.params.grudge_faction, inst1.params.grudge_faction);
+});
+
+test('T-MSN-1C: refillBoard never mints votann_grudge on a board with no known hostile-faction location', () => {
+  const ctx = CTX(); // l1 is garrisoned but carries no hostile_fac (pre-T-MSN-1C ctx shape)
+  for (let day = 0; day < 20; day++) {
+    const board = MISSION.refillBoard([], ctx, canon, MISSION.rng(day + 1), day);
+    assert.ok(!board.some(m => m.mid === 'votann_grudge'));
+  }
+});
+
+test('T-MSN-1C: payoutOf stacks signature_premium with named_premium (ec_perfect_kill is both)', () => {
+  const namedMult = canon.rules.missions.named_premium;
+  const sigMult = canon.rules.missions.signature_premium;
+  // KILL base 10, norm 5, target 1 -> raw size 0.2 -> clamped to 0.5. prodMult 1.
+  const stacked = MISSION.payoutOf(
+    { family: 'KILL', target: 1, params: { filter: 'named' }, signature: true }, 1.0, canon);
+  assert.strictEqual(stacked, Math.round(10 * 0.5 * namedMult * sigMult));
+  // signature alone (not named)
+  const sigOnly = MISSION.payoutOf({ family: 'KILL', target: 1, params: {}, signature: true }, 1.0, canon);
+  assert.strictEqual(sigOnly, Math.round(10 * 0.5 * sigMult));
+  // named alone (not signature) - existing T-MSN-1B behavior, unchanged
+  const namedOnly = MISSION.payoutOf({ family: 'KILL', target: 1, params: { filter: 'named' } }, 1.0, canon);
+  assert.strictEqual(namedOnly, Math.round(10 * 0.5 * namedMult));
+});
+
+test('T-MSN-1C: rollMission carries inst.signature through to the minted payout automatically', () => {
+  const eck = canon.missions.signatures.find(rw => rw.id === 'ec_perfect_kill');
+  assert.strictEqual(eck.params.filter, 'named');
+  const ctx = CTX();
+  const inst = MISSION.rollMission(eck, ctx, MISSION.rng(3), 0, canon);
+  assert.strictEqual(inst.signature, true);
+  const expected = MISSION.payoutOf(
+    { family: eck.family, target: inst.target, params: inst.params, signature: true }, ctx.pl.prod_mult, canon);
+  assert.strictEqual(inst.payout, expected);
+});
+
+test('T-MSN-1C: genHostiles marks exactly one carrier (the highest-pc spawn) for a single-item row', () => {
+  const specs = MISSION.genHostiles({ item: 'Prohibited Tome' }, 3, FAC_MODELS, WEP, canon, 1);
+  const carriers = specs.filter(s => s.sl.some(sl => sl.it && sl.it.n === 'Prohibited Tome'));
+  assert.strictEqual(carriers.length, 1);
+  const maxPc = Math.max(...specs.map(s => s.pc));
+  assert.strictEqual(carriers[0].pc, maxPc);
+});
+
+test('T-MSN-1C: genHostiles marks up to `target` carriers for a multi-count item row, capped at spawn count', () => {
+  const specs = MISSION.genHostiles({ item: 'Soulstone' }, 4, FAC_MODELS, WEP, canon, 3);
+  const carriers = specs.filter(s => s.sl.some(sl => sl.it && sl.it.n === 'Soulstone'));
+  assert.strictEqual(carriers.length, Math.min(specs.length, 3));
+  // a small mineCount->spawn coverage never asks for more carriers than actually spawned
+  const specs2 = MISSION.genHostiles({ item: 'Soulstone' }, 1, FAC_MODELS, WEP, canon, 3);
+  const carriers2 = specs2.filter(s => s.sl.some(sl => sl.it && sl.it.n === 'Soulstone'));
+  assert.strictEqual(carriers2.length, Math.min(specs2.length, 3));
+});
+
+test('T-MSN-1C: genHostiles mints a tier-qualifying salvage item for loot_gear_tier rows (no dead content)', () => {
+  const tierPc = canon.rules.doors_tiering.gear_tier_pc['2'] || 12;
+  const specs = MISSION.genHostiles({ loot_gear_tier: 2 }, 3, FAC_MODELS, WEP, canon, 2);
+  const carriers = specs.filter(s => s.sl.some(sl => sl.it && sl.it.n === 'Reclaimed Pattern-Data'));
+  assert.strictEqual(carriers.length, Math.min(specs.length, 2));
+  const item = carriers[0].sl.find(sl => sl.it && sl.it.n === 'Reclaimed Pattern-Data').it;
+  assert.ok(item.pc >= tierPc, 'salvage pc ' + item.pc + ' must clear tier-2 threshold ' + tierPc);
+});
+
+test('T-MSN-1C: genHostiles leaves the generic spawn untouched when params carry neither item nor loot_gear_tier', () => {
+  const specs = MISSION.genHostiles({}, 3, FAC_MODELS, WEP, canon);
+  specs.forEach(s => assert.strictEqual(s.sl.length, 1, 'no extra carried-item slot without a collect-item param'));
+});
+
+// Loot-credit hooks live at the THREAD-core loot site (apply's 'loot'/'gear' handler) -
+// exercised here via THREAD (already loaded above) rather than a full engine accept/aftermath
+// flow, matching spoils-loot.test.js's own fixture style.
+function afterStateCollect(objective, corpseSl) {
+  return {
+    pools: { A: 9 }, fog: {}, phase: 'aftermath', board: { w: 10, h: 10, tiles: null },
+    objective,
+    combatants: {
+      me: { party: 'A', w: [4, 4], x: 4, y: 4, model: { n: 'Winner', pc: 10,
+        loadout: { slots: [{ type: 'ITEM', it: null }] } } },
+      // T-MSN-1C task 5 fix: a generated hostile only ever carries the bare `.sl` array
+      // (genHostiles/seedCombat) - never `.loadout.slots` (migrateLoadout never runs on
+      // `gen`). This fixture deliberately mirrors that real shape, the same one
+      // bfWeaponsOf/bfCaptureItemOf/emptySlotOf already fall back to elsewhere in the file.
+      corpse: { party: 'B', w: [0, 4], x: 5, y: 4, dead: true,
+        model: { n: 'Hostile', pc: 8, sl: corpseSl } }
+    }
+  };
+}
+test('T-MSN-1C: looting a marked carrier (bare .sl, no .loadout) ticks a collect_item objective by exact item name', () => {
+  const s = afterStateCollect(
+    { kind: 'collect_item', target: 1, progress: 0, done: false, params: { item: 'Prohibited Tome' } },
+    [ { k: 'WEAPON', it: { n: 'Claws', cat: 'WEAPON', d: 'Phys 2 - Melee' } },
+      { k: 'ITEM', it: { n: 'Prohibited Tome', cat: 'ITEM', pc: 1 } } ]);
+  const block = [{ actor: 'me', cost: 1, effect: { kind: 'loot', corpse: 'corpse', what: 'gear' } }];
+  assert.ok(THREAD.validate({ type: 'MISSION' }, s, 'A', block, canon).ok);
+  THREAD.apply({ type: 'MISSION' }, s, block, canon);
+  assert.strictEqual(s.objective.progress, 1);
+  assert.strictEqual(s.objective.done, true);
+  assert.ok(s.spoils.some(it => it.n === 'Prohibited Tome'), 'the tome must still land in spoils, not vanish');
+  assert.ok(s.spoils.some(it => it.n === 'Claws'), 'ordinary gear loots exactly as before');
+});
+test('T-MSN-1C: soulstone collect ticks once per stone looted, completes only once target is reached', () => {
+  const s = afterStateCollect(
+    { kind: 'collect_item', target: 3, progress: 2, done: false, params: { item: 'Soulstone' } },
+    [ { k: 'ITEM', it: { n: 'Soulstone', cat: 'ITEM', pc: 1 } } ]);
+  const block = [{ actor: 'me', cost: 1, effect: { kind: 'loot', corpse: 'corpse', what: 'gear' } }];
+  THREAD.apply({ type: 'MISSION' }, s, block, canon);
+  assert.strictEqual(s.objective.progress, 3);
+  assert.strictEqual(s.objective.done, true);
+});
+test('T-MSN-1C: looting gear at/above the required tier ticks a loot_gear_tier objective (Mechanicus); junk gear does not', () => {
+  const tierPc = canon.rules.doors_tiering.gear_tier_pc['2'] || 12;
+  const s = afterStateCollect(
+    { kind: 'collect_item', target: 2, progress: 0, done: false, params: { loot_gear_tier: 2 } },
+    [ { k: 'ITEM', it: { n: 'Reclaimed Pattern-Data', cat: 'ITEM', pc: tierPc } },
+      { k: 'ITEM', it: { n: 'Junk Bolt', cat: 'ITEM', pc: 1 } } ]);
+  const block = [{ actor: 'me', cost: 1, effect: { kind: 'loot', corpse: 'corpse', what: 'gear' } }];
+  THREAD.apply({ type: 'MISSION' }, s, block, canon);
+  assert.strictEqual(s.objective.progress, 1, 'only the tier-qualifying piece ticks, not the junk');
+  assert.strictEqual(s.objective.done, false);
+});
+test('T-MSN-1C: a completed (done) collect_item objective never ticks again from further looting', () => {
+  const s = afterStateCollect(
+    { kind: 'collect_item', target: 1, progress: 1, done: true, params: { item: 'Prohibited Tome' } },
+    [ { k: 'ITEM', it: { n: 'Prohibited Tome', cat: 'ITEM', pc: 1 } } ]);
+  const block = [{ actor: 'me', cost: 1, effect: { kind: 'loot', corpse: 'corpse', what: 'gear' } }];
+  THREAD.apply({ type: 'MISSION' }, s, block, canon);
+  assert.strictEqual(s.objective.progress, 1, 'already-done objective must not accumulate further progress');
+});
+test('T-MSN-1C: a non-collect_item objective (e.g. count_kill) is untouched by the loot-credit hooks', () => {
+  const s = afterStateCollect(
+    { kind: 'count_kill', target: 3, progress: 0, done: false, params: { filter: 'hostile' } },
+    [ { k: 'ITEM', it: { n: 'Prohibited Tome', cat: 'ITEM', pc: 1 } } ]);
+  const block = [{ actor: 'me', cost: 1, effect: { kind: 'loot', corpse: 'corpse', what: 'gear' } }];
+  THREAD.apply({ type: 'MISSION' }, s, block, canon);
+  assert.strictEqual(s.objective.progress, 0);
 });
