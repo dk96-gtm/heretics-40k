@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.30",
-  "updated": "2026-08-04",
+  "version": "1.31",
+  "updated": "2026-08-05",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -19,7 +19,8 @@
    "v1.27: T-MSN-1B task 5 - condition-weighted generation extended to the real condition ids (rebuild prefer_condition fixed from stray 'Ruined' to canon 'ruined'; liberation prefers 'infested', defend prefers 'besieged'). Allegiance gates (consecration/desecration) are player-agnostic at generation; enforced at render (hidden) and accept (refused) only.",
    "v1.28: missions Slice B rulings - trade_haul destinations (needs_destination), combat-only modifiers, capture completes bounties.",
    "v1.29: T-GX-G7 galaxy re-run - 16 crown-sweep retypes seat all 21 subfaction types (crown-only), 8 resource rows tuned to the crown floor rule, tier-III routes opened (shipyard docks on Konor/Iron Reliquary, arena via warzone+lair, reliquary via shrine, warp gate on Dal'yth Verge), legality ghosts cleaned, 5 besieged/infested condition seats (5th on Cominor).",
-   "v1.30: T-MST-1 open recruitment + local forge traditions - rules.market block (ruler shelf / items open / models same-allegiance / forge affinity by local ruler); real Muster door replaces the demo stub."
+   "v1.30: T-MST-1 open recruitment + local forge traditions - rules.market block (ruler shelf / items open / models same-allegiance / forge affinity by local ruler); real Muster door replaces the demo stub.",
+   "v1.31: T-MSN-1C streaks + 18 signature missions - S.progress.streaks (4 keys, conclude tick), faction-gated generation (one signature row per board), kill filters melee/faction/capture, conclude constraints, collect carriers, signature_premium 1.5."
   ],
   "migration": {
    "done": [
