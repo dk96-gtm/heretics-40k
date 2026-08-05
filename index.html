@@ -761,6 +761,25 @@ var THREAD=(function(){
     }
     return {won:ob.progress>=ob.target,progress:ob.progress,target:ob.target};
   }
+  /* T-MSN-1C final review fix (Finding 2): the streak-classification input concludeThread's
+     win path builds (combatant counts, enemy-wipe flag, named flag) is pure state-derivation —
+     belongs in the core so a second glue call site (exitThread's flee path, which was skipping
+     the streak tick entirely — a fled duel or wipe-streak never touched S.progress.streaks)
+     can share the EXACT same math instead of re-deriving it inline and drifting from it.
+     state may be {} (no combatants, e.g. a non-combat thread) — combat:false correctly makes
+     MISSION.streakTick's caller no-op downstream, same as it always has. `won` is the caller's
+     to supply: concludeThread knows mineWon from oc.victor; a flee is always a loss (false). */
+  function streakResultOf(state,won){
+    var C=(state&&state.combatants)||{};
+    var myN=Object.keys(C).filter(function(id){return !C[id].gen;}).length;
+    var foN=Object.keys(C).filter(function(id){return !!C[id].gen;}).length;
+    return {
+      combat:Object.keys(C).length>0, won:!!won, myModels:myN,
+      enemyWiped:_enemyAliveCount(state||{})===0,
+      enemyNamed:Object.keys(C).some(function(id){return C[id].gen&&C[id].gen.named;}),
+      oneVsOne:myN===1&&foN===1
+    };
+  }
   function apply(thread,state,block,canon,party){
     /* T-CMB-1 · Task 3: posting side's conditions tick FIRST (combat threads
        only, incl. a MISSION count_kill combat with live combatants); the
@@ -1311,7 +1330,7 @@ var THREAD=(function(){
     });
     return out;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
@@ -1858,7 +1877,12 @@ var MISSION=(function(){
      params.filter==='class' (kill_team) guarantees at least `target` spawns tagged with the
      wanted class (T-MSN-1B final fix wave, CRITICAL 1) — see the branch below. Anything else
      (hostile/any/no filter) is the original generic Core-class round-robin. `target` (optional,
-     6th arg): the mission's rolled objective.target, only consulted by the class branch. */
+     6th arg): the mission's rolled objective.target, only consulted by the class branch.
+     params.duel (T-MSN-1C final review, Finding 1 — Daak ruling 2026-08-05): an ARENA-door
+     thread spawns exactly ONE hostile. Generic branch spawns that single model instead of the
+     usual 2-4 floor; a named boss in duel context comes WITHOUT its escort (the champion fights
+     alone). This is what makes myModels===1&&oneVsOne (streakTick's duel_wins classification)
+     reachable at all — no other spawn path has ever produced exactly 1 generated combatant. */
   function genHostiles(params,mineCount,facModels,wep,canon,target){
     var models=facModels||[];
     var pool=models.filter(function(m){return m.cls==='Core'});
@@ -1869,6 +1893,7 @@ var MISSION=(function(){
     // bare-minimum default is just enough to never emit an undefined weapon name).
     var slotOf=function(){return [{k:'WEAPON',it:{n:(wep&&wep.n)||'Claws',cat:(wep&&wep.cat)||'WEAPON',d:wep&&wep.d}}]};
     var out=[];
+    var isDuel=!!(params&&params.duel);
     if(params&&params.filter==='named'){
       // fix round: a stale pre-1B board row (or any 'named' instance minted before target_name
       // existed) can reach accept with no target_name at all — fall back deterministically to
@@ -1877,11 +1902,14 @@ var MISSION=(function(){
       var boss=models.slice().sort(function(a,b){return (b.pc||0)-(a.pc||0);})[0]||pool[0];
       out.push({id:'e0',n:tname,cls:boss.cls,pc:Math.round((boss.pc||0)*1.5),
         spd:boss.sp,w:boss.w,sub:boss.n+' — named target',named:true,sl:slotOf()});
-      var n0=Math.max(2,Math.min(4,mineCount));
-      var escN=Math.max(1,Math.floor(n0/2));
-      for(var ei=0;ei<escN;ei++){var em=pool[ei%pool.length];
-        out.push({id:'e'+(ei+1),n:em.n+' '+(ei+1),cls:em.cls,pc:em.pc,spd:em.sp,w:em.w,
-          sub:em.n+' — hostile',sl:slotOf()});}
+      // Finding 1: a duel-context named boss stands alone — no escort at all.
+      if(!isDuel){
+        var n0=Math.max(2,Math.min(4,mineCount));
+        var escN=Math.max(1,Math.floor(n0/2));
+        for(var ei=0;ei<escN;ei++){var em=pool[ei%pool.length];
+          out.push({id:'e'+(ei+1),n:em.n+' '+(ei+1),cls:em.cls,pc:em.pc,spd:em.sp,w:em.w,
+            sub:em.n+' — hostile',sl:slotOf()});}
+      }
     } else if(params&&params.filter==='class'){
       // CRITICAL 1 fix: the generic branch below only ever spawns Core-class models, but
       // trackKill's 'class' filter (kill_team) only counts a kill matching victim.gen.cls
@@ -1909,7 +1937,10 @@ var MISSION=(function(){
         out.push({id:'e'+(wantClassed+ri),n:rm.n+' '+(wantClassed+ri+1),cls:rm.cls,pc:rm.pc,spd:rm.sp,w:rm.w,
           sub:rm.n+' — hostile',sl:slotOf()});}
     } else {
-      var n=Math.max(2,Math.min(4,mineCount));
+      // Finding 1: a duel context always spawns exactly one — no floor, no item-carrier
+      // widening below (a duel is never a collect_item row in practice, but the rule is
+      // unconditional: duel means one, full stop).
+      var n=isDuel?1:Math.max(2,Math.min(4,mineCount));
       // T-MSN-1C fix round 1 (controller ruling, blocking finding): a collect_item row that
       // needs hostiles (params.item/.loot_gear_tier) must spawn enough carriers to actually
       // cover its own target — aeldari_soul_tithe's target is fixed at 3 (target_roll [3,3]),
@@ -1921,7 +1952,7 @@ var MISSION=(function(){
       // board determinism (a separate rng stream entirely, in refillBoard/rollMission) is
       // untouched, and non-item missions are untouched since the guard only fires when
       // params.item/.loot_gear_tier is present.
-      if(params&&(params.item||params.loot_gear_tier))n=Math.max(n,target||0);
+      if(!isDuel&&params&&(params.item||params.loot_gear_tier))n=Math.max(n,target||0);
       for(var i=0;i<n;i++){var bm=pool[i%pool.length];
         out.push({id:'e'+i,n:bm.n+' '+(i+1),cls:bm.cls,pc:bm.pc,spd:bm.sp,w:bm.w,
           sub:bm.n+' — hostile',sl:slotOf()});}
@@ -2203,11 +2234,27 @@ var MISSION=(function(){
     bump('annihilations',isWipeWin);                // any combat conclusion touches this
     return out;
   }
+  /* T-MSN-1C final review fix (Finding 3): a streak-kind objective's live count already
+     exists in S.progress.streaks the instant a mission is accepted — a mission accepted
+     while the streak already sits at/above target used to seed progress:0 and could never
+     complete without an unrelated qualifying combat afterward. streaks is the persisted
+     S.progress.streaks map (or undefined/{} for a fresh commander); ob is any objective-shaped
+     object carrying {kind,params,target} (an inst at accept time, or a live state.objective at
+     render time — same shape either way). Non-streak kinds (or a streak row missing its
+     streak_key) return null so the caller keeps whatever progress it already had — this
+     function only ever speaks for kind:'streak'. Progress clamps to target (display sanity;
+     evalObjective/outcome only ever check progress>=target, so clamping down never hides a win). */
+  function streakLiveProgress(streaks,ob){
+    if(!ob||ob.kind!=='streak'||!ob.params||!ob.params.streak_key)return null;
+    var row=(streaks&&streaks[ob.params.streak_key])||{count:0};
+    return Math.min(row.count||0,ob.target);
+  }
   return {rng:rng,hashStr:hashStr,payoutOf:payoutOf,finalPayout:finalPayout,
           rollMission:rollMission,genHostiles:genHostiles,targetFor:targetFor,
           pickForce:pickForce,gateReason:gateReason,grantItems:grantItems,deliverGate:deliverGate,
           constraintCheck:constraintCheck,
-          refillBoard:refillBoard,catchUpBoards:catchUpBoards,streakTick:streakTick};
+          refillBoard:refillBoard,catchUpBoards:catchUpBoards,streakTick:streakTick,
+          streakLiveProgress:streakLiveProgress};
 })();
 /*</mission-core>*/
 /*<save-core>*/
@@ -2557,14 +2604,19 @@ function seedCombat(t,pid,l,npcId,force,missionParams,missionTarget){
  if(t.forces.indexOf(host.name)<0)t.forces.push(host.name);
  t.seedState={pools:pools,combatants:C,joined:false};
 }
-/* start a thread at a location; a public thread enters the location's history */
-function startThread(pid,l,type,npcId){var loc=fPl(pid).p.name+' · '+l.name;
+/* start a thread at a location; a public thread enters the location's history.
+   opts (T-MSN-1C final review, Finding 1, optional): {duel:true} from the ARENA door's
+   "Post a Duel thread" button — threaded straight into seedCombat's missionParams so
+   genHostiles spawns exactly one hostile (Daak ruling 2026-08-05). Every other caller
+   (the generic thread-type buttons, the NPC-approach Diplomacy opener) passes no opts,
+   so seedCombat gets its original undefined missionParams and behavior is unchanged. */
+function startThread(pid,l,type,npcId,opts){var loc=fPl(pid).p.name+' · '+l.name;
  var am=activeModel(),force=S.forces.filter(function(f){return f.lead===am.id})[0];
  var fname=force?force.n:null;
  if(fname){var other=threadOfForce(fname);if(other){T(fname+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}}
  var id=type.toLowerCase().slice(0,3)+'_'+l.id+'_'+S.threads.length;
  var t={id:id,type:type.toUpperCase(),n:type+' at '+l.name,loc:loc,pl:pid,lid:l.id,turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',about:'You opened a '+type+' at '+l.name+'. '+(threadSummary(type.toUpperCase())),forces:fname?[fname]:[],npc:npcId||null};
- if(t.type==='SKIRMISH'||t.type==='INVASION')seedCombat(t,pid,l,npcId,force);
+ if(t.type==='SKIRMISH'||t.type==='INVASION')seedCombat(t,pid,l,npcId,force,(opts&&opts.duel)?{duel:true}:null);
  S.threads.push(t);
  var key=pid+'/'+l.id;if(!S.world.history[key])S.world.history[key]=[];
  S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
@@ -2666,6 +2718,15 @@ function acceptMission(inst,pl,l,mods){
    hCls=_hostiles.filter(function(k){var g=t.seedState.combatants[k].gen;return g&&g.cls===inst.params.cls;}).length;
  }
  t.seedState.objective={kind:inst.kind,target:inst.target,progress:0,params:inst.params,done:false};
+ // Finding 3 (T-MSN-1C final review): a streak-kind mission's live count already exists in
+ // S.progress.streaks the instant it's accepted — seed real progress (not a blind 0) so a
+ // Commander who already qualifies sees it immediately and completes on their next post
+ // (THREAD.outcome's own default progress>=target check, unchanged — no new completion path).
+ var _liveStreak=MISSION.streakLiveProgress(S.progress&&S.progress.streaks,t.seedState.objective);
+ if(_liveStreak!=null){
+  t.seedState.objective.progress=_liveStreak;
+  t.seedState.objective.done=_liveStreak>=inst.target;
+ }
  if(_spawnsHostiles(inst)){
   // MISSION.targetFor: count_kill clamps to what's actually garrisoned (clear_all/Liberation
   // reads honest — target IS the spawned count, not the mint-time roll); class-filter clamps
@@ -3212,7 +3273,13 @@ var dash=E('div','card');dash.innerHTML='<h3>Thread board</h3><div style="font-s
 /* accepted */
 dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>Your threads — accepted ('+accepted.length+')</h5></div>');
 accepted.forEach(function(t){var vis=t.vis||'public',mine=(t.initiator||'').match(/^You/)||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f})});
- var meter=(t.type==='MISSION'&&t.state&&t.state.objective)?(' · '+t.state.objective.progress+'/'+t.state.objective.target+destTag(t.state.objective)):'';
+ // Finding 3 (T-MSN-1C final review): the Mission-Log/board meter reads S.progress.streaks
+ // LIVE for a streak-kind objective, rather than trusting the stored progress field — a single
+ // source of truth at display time that can't drift even if some future write path forgets to
+ // sync it (the exact class of bug Finding 2 found in exitThread's flee path).
+ var _streakLive=(t.type==='MISSION'&&t.state&&t.state.objective)?MISSION.streakLiveProgress(S.progress&&S.progress.streaks,t.state.objective):null;
+ var _objProg=_streakLive!=null?_streakLive:(t.state&&t.state.objective&&t.state.objective.progress);
+ var meter=(t.type==='MISSION'&&t.state&&t.state.objective)?(' · '+_objProg+'/'+t.state.objective.target+destTag(t.state.objective)):'';
  // T-MSN-1B task 4: Mission Log chips — neutral pills while unconcluded ("valid-unknown until
  // conclude"); once t.modResult exists (set by concludeThread's mission-won branch) valid ids
  // go bright, voided ones dim + struck.
@@ -3263,6 +3330,12 @@ function exitThread(t){
   var deployed=S.roster.filter(function(m){return m.st==='DEPLOYED'&&m.fo!=='—'});
   deployed.forEach(function(m){var p=(m.w||'1/1').split('/'),cur=Math.max(0,(parseInt(p[0],10)||1)-1);m.w=cur+'/'+p[1];if(cur<=0)m.st='DEAD'});
   convertSpoils(t);   // a carrier who exits the field alive walks out with its cargo
+  // Finding 2 (T-MSN-1C final review): fleeing a joined combat is a qualifying loss for the
+  // streak primitive — same tick+sync concludeThread's win/loss path runs, just with won:false.
+  // Must run before t drops off S.threads (mirrors concludeThread's ordering, right after
+  // convertSpoils) so if `t` itself carries a streak objective, its own progress meter still
+  // gets the post-tick read on this very pass.
+  tickStreaksAndSync(t.state,false);
   var curCost=Math.round(S.army*0.05);S.cur=Math.max(0,S.cur-curCost);
   S.threads=S.threads.filter(function(x){return x.id!==t.id});
   var yourSpd=deployed.reduce(function(a,m){return Math.max(a,m.spd||2)},0),enemySpd=3,caught=(enemySpd>=yourSpd);
@@ -3309,6 +3382,23 @@ function statBase(st){
  if(typeof st.prosperity!=='number')st.prosperity=50;
  return st;
 }
+/* T-MSN-1C task 4 / final review Finding 2: glue wrapper around THREAD.streakResultOf +
+   MISSION.streakTick — ticks S.progress.streaks off `state`'s combatants and `won`, then syncs
+   every accepted streak-kind mission's live objective.progress off the fresh streaks object.
+   Shared by concludeThread (a genuine win/loss/mutual conclusion) AND exitThread's flee path
+   (Finding 2 — fleeing a joined combat used to skip this tick entirely, so a fled duel or
+   wipe-streak never touched S.progress.streaks and never broke a qualifying streak). */
+function tickStreaksAndSync(state,won){
+ var result=THREAD.streakResultOf(state||{},won);
+ S.progress=S.progress||{streaks:{}};
+ S.progress.streaks=MISSION.streakTick(S.progress.streaks||{},result);
+ S.threads.forEach(function(t2){
+  var ob2=t2&&t2.state&&t2.state.objective;
+  if(!ob2||ob2.kind!=='streak'||!ob2.params||!ob2.params.streak_key)return;
+  var row=S.progress.streaks[ob2.params.streak_key];
+  ob2.progress=(row&&row.count)||0;
+ });
+}
 function concludeThread(t,oc){
  t.done={kind:oc.kind,victor:oc.victor||null,defeated:oc.defeated||[],at:Date.now()};
  var C=(t.state&&t.state.combatants)||{};
@@ -3323,22 +3413,7 @@ function concludeThread(t,oc){
  // and tick S.progress.streaks BEFORE syncing any accepted streak-kind mission's live
  // objective.progress, so a qualifying win is visible the next time THAT mission's outcome
  // is checked (its own next post — or right now, if `t` itself is that streak mission).
- var _myN=Object.keys(C).filter(function(id){return !C[id].gen;}).length;
- var _foN=Object.keys(C).filter(function(id){return !!C[id].gen;}).length;
- var _streakResult={
-  combat:Object.keys(C).length>0, won:mineWon, myModels:_myN,
-  enemyWiped:THREAD.enemyAliveCount(t.state||{})===0,
-  enemyNamed:Object.keys(C).some(function(id){return C[id].gen&&C[id].gen.named;}),
-  oneVsOne:_myN===1&&_foN===1
- };
- S.progress=S.progress||{streaks:{}};
- S.progress.streaks=MISSION.streakTick(S.progress.streaks||{},_streakResult);
- S.threads.forEach(function(t2){
-  var ob2=t2&&t2.state&&t2.state.objective;
-  if(!ob2||ob2.kind!=='streak'||!ob2.params||!ob2.params.streak_key)return;
-  var row=S.progress.streaks[ob2.params.streak_key];
-  ob2.progress=(row&&row.count)||0;
- });
+ tickStreaksAndSync(t.state,mineWon);
  var line=oc.kind==='accord'?'🕊 RESOLUTION — terms struck. The accord stands and this thread is closed.'
   :oc.kind==='mutual'?'⚔ RESOLUTION — mutual annihilation. No one holds the field.'
   :'⚔ RESOLUTION — '+(oc.defeated||[]).join(', ')+' broken to the last model. <b>'+oc.victor+'</b> holds the field.';
@@ -4981,7 +5056,7 @@ function renderDoor(dr,h){var c=E('div','card');
  else if(kind==='relay'){c.insertAdjacentHTML('beforeend','<div class="d">Establishes an in-character remote-contact channel from '+h.name+' — reach PCs and NPCs off-world.</div>');
   var bt=E('button','btn gh sm','Open Comms channel');bt.style.marginTop='8px';bt.onclick=function(){go('comms')};c.appendChild(bt)}
  else if(kind==='arena'){c.insertAdjacentHTML('beforeend','<div class="d">Host a Duel — a 1v1 Skirmish under the eyes of the mob.</div>');
-  var bt=E('button','btn gh sm','Post a Duel thread');bt.style.marginTop='8px';bt.onclick=function(){startThread(S.pos.pl,h,'Skirmish')};c.appendChild(bt)}
+  var bt=E('button','btn gh sm','Post a Duel thread');bt.style.marginTop='8px';bt.onclick=function(){startThread(S.pos.pl,h,'Skirmish',null,{duel:true})};c.appendChild(bt)}
  else if(kind==='warp_gate'){c.insertAdjacentHTML('beforeend','<div class="d">A tear in reality — passage through a linked Warp Gate is <b>free</b>, skipping the travel ladder entirely. No linked gates are charted in this region of space yet.</div>');
   var bt=E('button','btn gh sm','Attune the gate');bt.style.marginTop='8px';bt.onclick=function(){T('The gate hums, but finds no linked gate to lock onto — none are charted here yet.')};c.appendChild(bt)}
  else if(kind==='throne_room'){var crown=fPl(S.pos.pl).p.crown;

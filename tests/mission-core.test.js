@@ -210,6 +210,59 @@ test('genHostiles: generic (non-named) spawn is unchanged - no named flag anywhe
   specs.forEach(s => assert.notStrictEqual(s.named, true));
 });
 
+// ── T-MSN-1C final review, Finding 1 (Daak ruling 2026-08-05): arena duels spawn exactly
+// ONE hostile — no spawn path ever produced exactly 1 before this, making oneVsOne (and
+// therefore duel_wins/named_duel_wins) mathematically unreachable. params.duel:true threads
+// the arena context through genHostiles.
+test('genHostiles: duel:true spawns exactly one hostile on the generic branch, regardless of mineCount', () => {
+  [1, 2, 3, 4, 8].forEach(mineCount => {
+    const specs = MISSION.genHostiles({ filter: 'hostile', duel: true }, mineCount, FAC_MODELS, WEP);
+    assert.strictEqual(specs.length, 1, 'mineCount=' + mineCount + ' must still spawn exactly 1');
+  });
+});
+
+test('genHostiles: duel:true + no filter at all still spawns exactly one (undefined filter path)', () => {
+  const specs = MISSION.genHostiles({ duel: true }, 4, FAC_MODELS, WEP);
+  assert.strictEqual(specs.length, 1);
+});
+
+test('genHostiles: duel:true named branch spawns the boss ALONE - no escort', () => {
+  const params = { filter: 'named', target_name: 'Varkon the Flayed', duel: true };
+  const specs = MISSION.genHostiles(params, 4, FAC_MODELS, WEP);
+  assert.strictEqual(specs.length, 1, 'named duel = boss only, no escort');
+  assert.strictEqual(specs[0].id, 'e0');
+  assert.strictEqual(specs[0].named, true);
+  assert.strictEqual(specs[0].n, 'Varkon the Flayed');
+});
+
+test('genHostiles: duel:true ignores the item-carrier floor (a duel spawn is never widened)', () => {
+  const specs = MISSION.genHostiles({ item: 'Prohibited Tome', duel: true }, 3, FAC_MODELS, WEP, canon, 3);
+  assert.strictEqual(specs.length, 1, 'duel always exactly 1, even when a caller also carries an item target');
+});
+
+test('genHostiles: duel:false (or absent) leaves every existing branch unchanged - regression', () => {
+  assert.strictEqual(
+    MISSION.genHostiles({ filter: 'hostile' }, 3, FAC_MODELS, WEP).length, 3);
+  assert.strictEqual(
+    MISSION.genHostiles({ filter: 'hostile', duel: false }, 3, FAC_MODELS, WEP).length, 3);
+  const named = MISSION.genHostiles(
+    { filter: 'named', target_name: 'The Rustling Man' }, 4, FAC_MODELS, WEP);
+  assert.strictEqual(named.length, 3, 'boss + 2 escort, unchanged when duel is not set');
+});
+
+// oneVsOne is exactly what streakTick's duel_wins classification requires (myModels===1 &&
+// oneVsOne) — proves the duel spawn is what makes it reachable at all, end to end through
+// THREAD.streakResultOf (the pure helper Finding 2 introduces below in mission-outcome.test.js).
+test('genHostiles: a duel spawn (1 hostile) + 1 mine combatant satisfies oneVsOne end to end', () => {
+  const specs = MISSION.genHostiles({ filter: 'hostile', duel: true }, 1, FAC_MODELS, WEP);
+  assert.strictEqual(specs.length, 1);
+  const combatants = { mine1: { gen: undefined }, [specs[0].id]: { gen: specs[0] } };
+  const myN = Object.keys(combatants).filter(id => !combatants[id].gen).length;
+  const foN = Object.keys(combatants).filter(id => !!combatants[id].gen).length;
+  assert.strictEqual(myN, 1);
+  assert.strictEqual(foN, 1);
+});
+
 test('targetFor: Liberation (clear_all) live target IS the spawned hostile count', () => {
   const libRow = canon.missions.universal.find(rw => rw.id === 'liberation');
   assert.deepStrictEqual(libRow.target_roll, [0, 0], 'liberation always mints a floored 0 target at generation');

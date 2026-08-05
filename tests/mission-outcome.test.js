@@ -434,3 +434,100 @@ test('streakTick: a single named-duel-wipe win touches all four keys correctly a
     annihilations: { count: 1, best: 1 },
   });
 });
+
+/* ── T-MSN-1C final review, Finding 2: THREAD.streakResultOf(state,won) ──
+   Pure state-derivation shared by concludeThread's win/loss path AND exitThread's flee path.
+   Finding 2's actual bug: fleeing a joined combat used to skip the streak tick entirely —
+   nothing built this shape, so MISSION.streakTick was never even called on a flee. Extracting
+   the math into the core is what lets exitThread call the exact same thing concludeThread does. */
+test('streakResultOf: no combatants -> combat:false (non-combat thread, streakTick will no-op)', () => {
+  const out = THREAD.streakResultOf({}, true);
+  assert.strictEqual(out.combat, false);
+});
+
+test('streakResultOf: 1 mine + 1 hostile -> oneVsOne true, myModels 1', () => {
+  const out = THREAD.streakResultOf({ combatants: { m1: MINE(), e0: HOSTILE() } }, true);
+  assert.strictEqual(out.combat, true);
+  assert.strictEqual(out.myModels, 1);
+  assert.strictEqual(out.oneVsOne, true);
+  assert.strictEqual(out.won, true);
+});
+
+test('streakResultOf: won is exactly whatever the caller passes - a flee always passes false', () => {
+  const out = THREAD.streakResultOf({ combatants: { m1: MINE(), e0: HOSTILE() } }, false);
+  assert.strictEqual(out.won, false);
+  assert.strictEqual(out.combat, true, 'a fled combat still counts as a combat conclusion for streakTick');
+});
+
+test('streakResultOf: 3 mine vs 1 hostile -> oneVsOne false (not a duel)', () => {
+  const out = THREAD.streakResultOf(
+    { combatants: { m1: MINE(), m2: MINE(), m3: MINE(), e0: HOSTILE() } }, true);
+  assert.strictEqual(out.myModels, 3);
+  assert.strictEqual(out.oneVsOne, false);
+});
+
+test('streakResultOf: enemyNamed true when any generated combatant carries gen.named', () => {
+  const namedFoe = { w: [1, 1], conds: [], party: 'Foe', armour: null,
+                      gen: { id: 'e0', n: 'Boss', named: true } };
+  const out = THREAD.streakResultOf({ combatants: { m1: MINE(), e0: namedFoe } }, true);
+  assert.strictEqual(out.enemyNamed, true);
+});
+
+test('streakResultOf: enemyWiped true when every generated combatant is dead/captured', () => {
+  const deadFoe = { w: [0, 1], conds: [], party: 'Foe', armour: null, dead: true,
+                     gen: { id: 'e0', n: 'Cultist', pc: 10 } };
+  const out = THREAD.streakResultOf({ combatants: { m1: MINE(), e0: deadFoe } }, true);
+  assert.strictEqual(out.enemyWiped, true);
+});
+
+test('streakResultOf: a duel win end to end through streakTick lands duel_wins (Finding 1 + Finding 2 wired together)', () => {
+  const result = THREAD.streakResultOf({ combatants: { m1: MINE(), e0: HOSTILE() } }, true);
+  const out = MISSION.streakTick({}, result);
+  assert.deepStrictEqual(out.duel_wins, { count: 1, best: 1 });
+});
+
+/* ── T-MSN-1C final review, Finding 3: MISSION.streakLiveProgress(streaks, ob) ──
+   Single source of truth read for a streak-kind objective's live progress — used at BOTH
+   accept-time seeding (acceptMission) and the Mission-Log/board meter render, so neither
+   can show a stale 0 when the player already qualifies for the streak. */
+test('streakLiveProgress: non-streak kind returns null (caller keeps its own seeded progress)', () => {
+  const out = MISSION.streakLiveProgress({ combat_wins: { count: 5, best: 5 } },
+    { kind: 'count_kill', target: 3, params: {} });
+  assert.strictEqual(out, null);
+});
+
+test('streakLiveProgress: a streak row missing streak_key returns null', () => {
+  const out = MISSION.streakLiveProgress({}, { kind: 'streak', target: 3, params: {} });
+  assert.strictEqual(out, null);
+});
+
+test('streakLiveProgress: reads the live count for the row own streak_key', () => {
+  const out = MISSION.streakLiveProgress({ duel_wins: { count: 2, best: 4 } },
+    { kind: 'streak', target: 3, params: { streak_key: 'duel_wins' } });
+  assert.strictEqual(out, 2);
+});
+
+test('streakLiveProgress: an unseeded streaks object (fresh commander) reads as 0, not a crash', () => {
+  const out = MISSION.streakLiveProgress(undefined,
+    { kind: 'streak', target: 3, params: { streak_key: 'duel_wins' } });
+  assert.strictEqual(out, 0);
+});
+
+test('streakLiveProgress: clamps to target - a count already past target displays as exactly target', () => {
+  const out = MISSION.streakLiveProgress({ duel_wins: { count: 7, best: 7 } },
+    { kind: 'streak', target: 3, params: { streak_key: 'duel_wins' } });
+  assert.strictEqual(out, 3);
+});
+
+test('streakLiveProgress: accept at streak count 2 (target 3) seeds progress 2', () => {
+  const out = MISSION.streakLiveProgress({ duel_wins: { count: 2, best: 2 } },
+    { kind: 'streak', target: 3, params: { streak_key: 'duel_wins' } });
+  assert.strictEqual(out, 2);
+});
+
+test('streakLiveProgress: accept at streak count 3 (target 3) is immediately completable', () => {
+  const out = MISSION.streakLiveProgress({ duel_wins: { count: 3, best: 3 } },
+    { kind: 'streak', target: 3, params: { streak_key: 'duel_wins' } });
+  assert.strictEqual(out, 3);
+  assert.ok(out >= 3, 'progress>=target must already hold - THREAD.outcome completes it on the next post, no unrelated thread needed');
+});
