@@ -779,14 +779,45 @@ test('T-MSN-1C: genHostiles marks exactly one carrier (the highest-pc spawn) for
   assert.strictEqual(carriers[0].pc, maxPc);
 });
 
-test('T-MSN-1C: genHostiles marks up to `target` carriers for a multi-count item row, capped at spawn count', () => {
+test('T-MSN-1C: genHostiles marks `target` carriers for a multi-count item row (mineCount already covers it)', () => {
   const specs = MISSION.genHostiles({ item: 'Soulstone' }, 4, FAC_MODELS, WEP, canon, 3);
   const carriers = specs.filter(s => s.sl.some(sl => sl.it && sl.it.n === 'Soulstone'));
-  assert.strictEqual(carriers.length, Math.min(specs.length, 3));
-  // a small mineCount->spawn coverage never asks for more carriers than actually spawned
-  const specs2 = MISSION.genHostiles({ item: 'Soulstone' }, 1, FAC_MODELS, WEP, canon, 3);
-  const carriers2 = specs2.filter(s => s.sl.some(sl => sl.it && sl.it.n === 'Soulstone'));
-  assert.strictEqual(carriers2.length, Math.min(specs2.length, 3));
+  assert.strictEqual(carriers.length, 3);
+});
+// T-MSN-1C fix round 1 (controller-confirmed BLOCKING finding): the generic headcount
+// n=Math.max(2,Math.min(4,mineCount)) ignores the mission's own collect target entirely -
+// aeldari_soul_tithe's target is fixed at [3,3], but a lone-wolf accept (mineCount 1-2) only
+// ever rolled the generic floor of 2 hostiles, so only 2 soulstone carriers could ever exist
+// and the 3rd soulstone was PERMANENTLY unobtainable. The row's own target is design law and
+// is never clamped down to fit the generic headcount - genHostiles now raises its spawn floor
+// to cover it instead (n=Math.max(n,target)). The superseded version of this test (still
+// visible in git history) asserted the broken capped-at-spawn-count result as if it were
+// correct; it's been replaced below with tests that pin the FIXED, winnable behavior.
+test('T-MSN-1C fix round 1: a lone-wolf accept (mineCount 1) still spawns enough carriers to cover a fixed target-3 item row - mission stays winnable', () => {
+  const specs = MISSION.genHostiles({ item: 'Soulstone' }, 1, FAC_MODELS, WEP, canon, 3);
+  assert.ok(specs.length >= 3, 'must spawn at least 3 hostiles to cover a target-3 item row, got ' + specs.length);
+  const carriers = specs.filter(s => s.sl.some(sl => sl.it && sl.it.n === 'Soulstone'));
+  assert.strictEqual(carriers.length, 3, 'all 3 soulstones must be coverable, never capped below the row\'s own target');
+});
+test('T-MSN-1C fix round 1: boundary - target (3) exactly equals the raised spawn floor at mineCount 2', () => {
+  // generic floor alone would be Math.max(2,Math.min(4,2))=2; the item-target floor raises it
+  // to exactly 3 - the boundary the confirmed finding centered on (target 3 == spawns 3).
+  const specs = MISSION.genHostiles({ item: 'Soulstone' }, 2, FAC_MODELS, WEP, canon, 3);
+  assert.strictEqual(specs.length, 3, 'spawn floor raised from the generic 2 up to target 3, exactly');
+  const carriers = specs.filter(s => s.sl.some(sl => sl.it && sl.it.n === 'Soulstone'));
+  assert.strictEqual(carriers.length, 3);
+});
+test('T-MSN-1C fix round 1: the item-target floor never shrinks a generic headcount that already covers it', () => {
+  // mineCount 4 -> generic n already 4, which clears target 3 on its own; the floor must be a
+  // MAX, never overriding a larger natural headcount down to the target.
+  const specs = MISSION.genHostiles({ item: 'Soulstone' }, 4, FAC_MODELS, WEP, canon, 3);
+  assert.strictEqual(specs.length, 4);
+});
+test('T-MSN-1C fix round 1: non-item missions are untouched by the raised floor (no regression)', () => {
+  // the guard is params.item||params.loot_gear_tier only - a plain generic spawn (Purge etc.,
+  // no such params) must keep rolling the ORIGINAL Math.max(2,Math.min(4,mineCount)) headcount.
+  const specs = MISSION.genHostiles({ filter: 'hostile' }, 1, FAC_MODELS, WEP, canon, 3);
+  assert.strictEqual(specs.length, 2, 'no item/loot_gear_tier param -> untouched generic floor of 2');
 });
 
 test('T-MSN-1C: genHostiles mints a tier-qualifying salvage item for loot_gear_tier rows (no dead content)', () => {

@@ -1910,6 +1910,18 @@ var MISSION=(function(){
           sub:rm.n+' — hostile',sl:slotOf()});}
     } else {
       var n=Math.max(2,Math.min(4,mineCount));
+      // T-MSN-1C fix round 1 (controller ruling, blocking finding): a collect_item row that
+      // needs hostiles (params.item/.loot_gear_tier) must spawn enough carriers to actually
+      // cover its own target — aeldari_soul_tithe's target is fixed at 3 (target_roll [3,3]),
+      // but the generic headcount (2-4, driven by mineCount) could roll as low as 2, making
+      // the 3rd soulstone permanently unobtainable. The row's own target is design law and is
+      // NEVER clamped down to fit the generic headcount — raise the floor instead. genHostiles
+      // consumes no rng of its own (pure index-into-pool spawning, no r() calls anywhere in
+      // this function), so widening n here cannot shift any seeded draw order — mint-time
+      // board determinism (a separate rng stream entirely, in refillBoard/rollMission) is
+      // untouched, and non-item missions are untouched since the guard only fires when
+      // params.item/.loot_gear_tier is present.
+      if(params&&(params.item||params.loot_gear_tier))n=Math.max(n,target||0);
       for(var i=0;i<n;i++){var bm=pool[i%pool.length];
         out.push({id:'e'+i,n:bm.n+' '+(i+1),cls:bm.cls,pc:bm.pc,spd:bm.sp,w:bm.w,
           sub:bm.n+' — hostile',sl:slotOf()});}
