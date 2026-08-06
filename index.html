@@ -1239,7 +1239,14 @@ var THREAD=(function(){
       var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;  // ATTACK (AP): best affordable reaching weapon
       weps.forEach(function(w){if(NPC_RANK[w.band]>=NPC_RANK[db]&&(w.ap||0)<=pool){
         if(!pick||(w.damage||0)>(pick.damage||0))pick=w;}});
-      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,nonLethal:!!pick.nonLethal,weapon:pick.name||null,band:db}});pool-=(pick.ap||0);_staged[aid]=(_staged[aid]||0)+1;}
+      if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,nonLethal:!!pick.nonLethal,weapon:pick.name||null,band:db}});pool-=(pick.ap||0);_staged[aid]=(_staged[aid]||0)+1;
+        // T-CMB-2 Task 4: the weapon's hostile tags ride the hit — free fanout entries, same
+        // contract as the player composers. add carries explicit el/nl/nr (no item object in
+        // caps) — applyCond's explicit-fields-win rule stamps them; band feeds the range gate.
+        (pick.conds||[]).forEach(function(ct){
+          block.push({actor:aid,cost:0,fanout:true,effect:{kind:'cond',
+            add:{tag:ct.tag,tier:ct.tier,src:pick.name||null,el:pick.element||null,nl:!!pick.nonLethal,nr:!!pick.noRevival,band:pick.band},to:tgt}});});
+      }
     }
     return block;
   }
@@ -3873,7 +3880,8 @@ function tickReportText(rep,state){var lines=tickReportLines(rep,state);return l
 // weapon capabilities (band/ap/damage/element) — the injected weaponsOf
 function bfWeaponCaps(c){return bfWeaponsOf(c).map(function(it){return {
   name:it.n,band:bfItemBand(it),ap:bfAP(it),damage:damageOf(it),
-  element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),nonLethal:/non-?lethal/i.test(it.d||'')};});}
+  element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),nonLethal:/non-?lethal/i.test(it.d||''),
+  conds:condTagsOf(it).filter(function(ct){return condIsHostile(ct.tag);})};});}
 function bfCaptureItemOf(c){if(!c.model)return null;var sl=(c.model.loadout&&c.model.loadout.slots)||c.model.sl||[];
   for(var i=0;i<sl.length;i++){var s=sl[i];if(s.it&&(s.type||s.k)==='ITEM'&&THREAD.captureTier(s.it))return s.it;}
   return null;}

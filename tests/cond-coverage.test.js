@@ -210,3 +210,57 @@ test('riders: an Agoniser (Suppressing + Non-Lethal) pin costs the victim an act
   THREAD.apply({ type: 'SKIRMISH' }, state, block, canon, 'A');
   assert.strictEqual(THREAD.actionCap(state.combatants.victim, canon), 2, 'Suppressing I: 3 → 2 actions');
 });
+
+/* ── Task 4: NPC rider parity ── */
+
+test('npcTurn: a cond-tagged weapon cap stages a hostile rider behind the attack', () => {
+  const tiles = []; for (let i = 0; i < 8 * 4; i++) tiles.push({ t: 'open' });
+  const board = { w: 8, h: 4, tiles, zones: {} };
+  const WEBBER = { name: 'Webber', band: 'SHORT', ap: 1, damage: 1, element: 'Physical',
+    nonLethal: true, noRevival: false, conds: [{ tag: 'Slowing', tier: 2 }] };
+  const state = { pools: { B: 9 }, combatants: {
+    ork:  { party: 'B', x: 2, y: 0, w: [12, 12], sight: 9, spd: 3, conds: [], weps: [WEBBER] },
+    hero: { party: 'A', x: 0, y: 0, w: [10, 10], sight: 9, spd: 3, conds: [], weps: [] },
+  } };
+  const block = THREAD.npcTurn('B', state, board, c => c.weps || [], canon);
+  const rider = block.find(b => b.effect && b.effect.kind === 'cond');
+  assert.ok(rider, 'rider staged');
+  assert.strictEqual(rider.fanout, true);
+  assert.strictEqual(rider.cost, 0);
+  assert.deepStrictEqual(
+    { tag: rider.effect.add.tag, tier: rider.effect.add.tier, nl: rider.effect.add.nl, band: rider.effect.add.band, to: rider.effect.to },
+    { tag: 'Slowing', tier: 2, nl: true, band: 'SHORT', to: 'hero' });
+  assert.ok(block.indexOf(block.find(b => b.effect.kind === 'damage')) < block.indexOf(rider),
+    'rider follows its attack');
+});
+
+test('npcTurn riders: block passes validate and the victim is Slowed after apply', () => {
+  const tiles = []; for (let i = 0; i < 8 * 4; i++) tiles.push({ t: 'open' });
+  const board = { w: 8, h: 4, tiles, zones: {} };
+  const WEBBER = { name: 'Webber', band: 'SHORT', ap: 1, damage: 1, element: 'Physical',
+    nonLethal: true, conds: [{ tag: 'Slowing', tier: 2 }] };
+  const state = { pools: { B: 9 }, board, fog: {}, combatants: {
+    ork:  { party: 'B', x: 2, y: 0, w: [12, 12], sight: 9, spd: 3, conds: [], weps: [WEBBER] },
+    hero: { party: 'A', x: 0, y: 0, w: [10, 10], sight: 9, spd: 3, conds: [], weps: [] },
+  } };
+  const block = THREAD.npcTurn('B', state, board, c => c.weps || [], canon);
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, state, 'B', block, canon).ok);
+  THREAD.apply({ type: 'SKIRMISH' }, state, block, canon, 'B');
+  const inst = state.combatants.hero.conds.filter(c => c.tag === 'Slowing')[0];
+  assert.ok(inst, 'Slowing landed');
+  assert.strictEqual(inst.nl, true);
+  assert.strictEqual(THREAD.condMods(state.combatants.hero).speed, -2);
+});
+
+test('npcTurn riders: obeys the action cap — riders are free, the attack still counts once', () => {
+  const tiles = []; for (let i = 0; i < 8 * 4; i++) tiles.push({ t: 'open' });
+  const board = { w: 8, h: 4, tiles, zones: {} };
+  const WEBBER = { name: 'Webber', band: 'SHORT', ap: 1, damage: 1, element: 'Physical', conds: [{ tag: 'Slowing', tier: 2 }] };
+  const state = { pools: { B: 9 }, combatants: {
+    ork:  { party: 'B', x: 2, y: 0, w: [1, 12], sight: 9, spd: 3, conds: [], weps: [WEBBER] },   // Critical: cap 1
+    hero: { party: 'A', x: 0, y: 0, w: [10, 10], sight: 9, spd: 3, conds: [], weps: [] },
+  } };
+  const block = THREAD.npcTurn('B', state, board, c => c.weps || [], canon);
+  assert.strictEqual(block.filter(b => b.effect.kind === 'damage').length, 1);
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, state, 'B', block, canon).ok);
+});
