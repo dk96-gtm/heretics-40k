@@ -67,6 +67,12 @@ test('grammar: Immunity segments are exempt from normalization — condTagsOf re
   assert.ok(ii.some(c => c.tag === 'Immunity' && c.of === 'DoT'));
 });
 
+test('grammar: prefix-stripped Immunity ("gain Immunity (DoT)") preserves of via recovery', () => {
+  const synthetic = {n:'X', cat:'item', d:'gain Immunity (DoT)'};
+  const ct = G.condTagsOf(synthetic);
+  assert.deepStrictEqual(ct, [{ tag: 'Immunity', tier: 1, of: 'DoT' }]);
+});
+
 test('grammar: aura/weapon-mod phrasings deliberately stay notes (scope law)', () => {
   assert.strictEqual(G.condTagsOf(gear('items', 'Toxin Sacs')).length, 0);
   assert.strictEqual(G.condTagsOf(gear('items', "Censer Bearer's Kit")).length, 0);

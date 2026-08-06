@@ -4743,7 +4743,7 @@ function parseItem(it){var d=(it.d||''),parts=d.split(/\s*[-·+;]\s*/).map(funct
     var rm=p2.match(/\s+at\s+(melee|short|medium|med|long)\s+range$/i);
     if(rm)p2=p2.replace(/\s+at\s+[a-z]+\s+range$/i,'');
     p2=p2.replace(/\s+for\s+\d+\s+posts?$/i,'').replace(/\s+to\s+an?\b.*$/i,'').replace(/\s*\([^)]*(\))?$/,'').trim();
-    if(p2!==p&&(m=p2.match(TAGRE))){
+    if(p2!==p&&!/^immunity\b/i.test(p2)&&(m=p2.match(TAGRE))){
       if(rm&&!out.range)out.range=/^med/i.test(rm[1])?'Medium':cap(rm[1].toLowerCase());
       var tv2=m[2]||'';var roman2=/^\d+$/.test(tv2)?['','I','II','III','IV','V'][parseInt(tv2,10)]||tv2:tv2.toUpperCase();
       out.tags.push({tag:cap(m[1]),tier:roman2});return}
