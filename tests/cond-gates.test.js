@@ -90,3 +90,93 @@ test('fog: a hostile cond on an unspotted enemy is rejected; a spotted one passe
   assert.strictEqual(v.ok, false);
   assert.match(v.reason, /sight|fog/i);
 });
+
+/* ── Task 8: range gate + all-fanout ≥1 ── */
+
+const dotItem = { n: 'Splinter Pistol', d: 'Corr 1 - Short - 1 AP - DoT I' };
+
+function rangeState(dist) {
+  const board = openBoard(12, 2);
+  return { pools: { A: 9 }, board, fog: {}, combatants: {
+    m: combatant({ x: 0, y: 0, sight: 12, spd: 3, weps: [] }),
+    foe: combatant({ party: 'B', x: dist, y: 0 }),
+  } };
+}
+const hostileCond = () => ({ actor: 'm', cost: 1,
+  effect: { kind: 'cond', add: { tag: 'DoT', tier: 1, src: dotItem.n, item: dotItem }, to: 'foe' } });
+
+test('range: a SHORT-band hostile cond at medium distance rejects; at short range passes (ruling §4)', () => {
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, rangeState(3), 'A', [hostileCond()], canon).ok);
+  const v = THREAD.validate({ type: 'SKIRMISH' }, rangeState(5), 'A', [hostileCond()], canon);
+  assert.strictEqual(v.ok, false);
+  assert.match(v.reason, /out of range/i);
+});
+
+test('range: a band-less cond item defaults to SHORT (ruling §4 default)', () => {
+  const bare = { n: 'Grip', d: 'R2 - Target: Slowing II - 2 AP' };
+  const st = rangeState(5);
+  const v = THREAD.validate({ type: 'SKIRMISH' }, st, 'A',
+    [{ actor: 'm', cost: 1, effect: { kind: 'cond', add: { tag: 'Slowing', tier: 2, item: bare }, to: 'foe' } }], canon);
+  assert.strictEqual(v.ok, false);
+  assert.match(v.reason, /out of range/i);
+});
+
+test('range: move-then-cast validates from the post-move square', () => {
+  const st = rangeState(6);   // SHORT item, target at 6 (MEDIUM) — but we move to x=3 first (dist 3 → SHORT)
+  const block = [
+    { actor: 'm', cost: 0, effect: { kind: 'move', who: 'm', to: { x: 3, y: 0 } } },
+    hostileCond(),
+  ];
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, st, 'A', block, canon).ok);
+});
+
+test('range: buffs are range-free — a Regen on a far ally passes (ruling §4)', () => {
+  const board = openBoard(12, 2);
+  const st = { pools: { A: 9 }, board, fog: {}, combatants: {
+    m: combatant({ x: 0, y: 0, sight: 12, weps: [] }),
+    ally: combatant({ x: 11, y: 1 }),
+  } };
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, st, 'A',
+    [{ actor: 'm', cost: 2, effect: { kind: 'cond', add: { tag: 'Regen', tier: 2 }, to: 'ally' } }], canon).ok);
+});
+
+test('range: a LONG weapon rider at melee distance passes (band is max reach, not exact)', () => {
+  const st = rangeState(1);
+  const v = THREAD.validate({ type: 'SKIRMISH' }, st, 'A',
+    [{ actor: 'm', cost: 1, effect: { kind: 'cond', add: { tag: 'Draining', tier: 1, band: 'LONG' }, to: 'foe' } }], canon);
+  assert.ok(v.ok);
+});
+
+test('all-fanout floor: legit rider and fan-out blocks pass unchanged; the floor holds the counter at ≥1', () => {
+  // HONESTY NOTE (bind the reviewer to this): actionCap floors at 1 ("caps don't stack below
+  // 1", T-CMB-1), so an all-fanout-only actor counting 1 instead of 0 cannot flip any verdict
+  // TODAY — no black-box rejection test exists. The floor is defense-in-depth for the
+  // counter's semantics (deferral's letter: "all-fanout blocks count ≥1 action"): if a future
+  // cond ever drops a cap to 0, or Stage-2 recounts server-side, the fanout exemption can
+  // never again read "acted zero times". What IS assertable: every legitimate flow is
+  // unchanged, at the tightest cap.
+  const mk = () => ({ pools: { A: 99 }, combatants: {
+    m: combatant({ w: [1, 10] }),                 // Critical: cap 1
+    ally: combatant({}), foe: combatant({ party: 'B' }),
+  } });
+  // attack + its weapon riders = ONE action — fits cap 1
+  const riders = [
+    { actor: 'm', cost: 1, effect: { kind: 'damage', to: 'foe', amount: 1, element: 'Physical' } },
+    { actor: 'm', cost: 0, fanout: true, effect: { kind: 'cond', add: { tag: 'DoT', tier: 1 }, to: 'foe' } },
+  ];
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, mk(), 'A', riders, canon).ok);
+  // a lone all-fanout buff group = ONE action (floored, not zero) — fits cap 1
+  const allFan = [
+    { actor: 'm', cost: 2, fanout: true, effect: { kind: 'cond', add: { tag: 'Rally', tier: 1 }, to: 'm' } },
+    { actor: 'm', cost: 0, fanout: true, effect: { kind: 'cond', add: { tag: 'Rally', tier: 1 }, to: 'ally' } },
+  ];
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, mk(), 'A', allFan, canon).ok);
+  // two counted actions still reject at cap 1 (the counter itself is not weakened)
+  const two = [
+    { actor: 'm', cost: 1, effect: { kind: 'damage', to: 'foe', amount: 1, element: 'Physical' } },
+    { actor: 'm', cost: 1, effect: { kind: 'damage', to: 'foe', amount: 1, element: 'Physical' } },
+  ];
+  const v = THREAD.validate({ type: 'SKIRMISH' }, mk(), 'A', two, canon);
+  assert.strictEqual(v.ok, false);
+  assert.match(v.reason, /action/i);
+});

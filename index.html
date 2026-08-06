@@ -618,12 +618,13 @@ var THREAD=(function(){
       if(spent>pool)return {ok:false,
         reason:'Exceeds AP pool ('+spent+'/'+pool+') - '+
                ((canon.rules.combat&&canon.rules.combat.desperation_action)||'desperation')};
-      var _acts={};                                 // T-CMB-1 Task 3: hard action-count gate (costed actions only)
+      var _acts={},_condFan={};                     // T-CMB-1 Task 3 + T-CMB-3 Task 8
       for(var ai=0;ai<block.length;ai++){var ab=block[ai],ae=ab.effect;
         if(ae&&ae.kind==='move')continue;                       // moves are free
-        if(ab.fanout&&ae&&ae.kind==='cond')continue;   // T-CMB-1 Task 5 fix round 2: fanout only exempts cond entries — a hand-built block can't tag damage/capture fanout:true to dodge the action cap (validate is Stage-2's future server-side authority)
+        if(ab.fanout&&ae&&ae.kind==='cond'){_condFan[ab.actor]=1;continue;}   // exempt, but remembered
         if(ab.cost==null&&!ae)continue;
         _acts[ab.actor]=(_acts[ab.actor]||0)+1;}
+      for(var fi in _condFan)if(!_acts[fi])_acts[fi]=1;   // T-CMB-3 Task 8: an all-fanout block is still ONE action, never zero
       for(var aid in _acts){var am=state.combatants[aid];if(!am)continue;
         var cap=actionCap(am,canon);
         if(_acts[aid]>cap)return {ok:false,
@@ -656,6 +657,20 @@ var THREAD=(function(){
         if(condHostile(ytag)){
           if(yt.party===ya.party)return {ok:false,reason:'Condition: '+ytag+' targets your own side'};
         }else if(yt.party!==ya.party)return {ok:false,reason:'Condition: buffs cannot target the enemy'};}
+      if(state.board){   // T-CMB-3 Task 8: hostile cond range — the item's stated band, default
+        // SHORT (ruling §4). Walk the block in order so a staged move re-positions its actor
+        // before later cond entries are measured (same trust model as apply's ordering).
+        var _pos={};for(var pid in state.combatants){var pc=state.combatants[pid];
+          if(pc&&pc.x!=null)_pos[pid]={x:pc.x,y:pc.y};}
+        for(var ri=0;ri<block.length;ri++){var rb=block[ri],re=rb.effect;
+          if(re&&re.kind==='move'&&_pos[re.who||rb.actor])_pos[re.who||rb.actor]=re.to;
+          if(!re||re.kind!=='cond'||!re.add||!condHostile(re.add.tag))continue;
+          var rap=_pos[rb.actor],rtp=_pos[re.to];
+          if(!rap||!rtp)continue;
+          var rneed=condBandOf(re.add);
+          if(NPC_RANK[rneed]<NPC_RANK[bandOf(cheb(rap,rtp))])
+            return {ok:false,reason:'Condition: '+re.add.tag+' is out of range ('+rneed+')'};}
+      }
       var _capSlotsUsed={},_capTargets={},_freedTargets={},_lootedBodies={};  // multi-entry block: track consumption across entries
       for(var ci=0;ci<block.length;ci++){var cb=block[ci],ce=cb.effect;
         if(!ce||(ce.kind!=='capture'&&ce.kind!=='free'&&ce.kind!=='loot'))continue;
