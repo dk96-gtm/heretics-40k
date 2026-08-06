@@ -93,3 +93,54 @@ test('grammar: plain weapon tag segments unchanged (regression guard)', () => {
   assert.strictEqual(p.range, 'Long');
   assert.ok(p.tags.some(t => t.tag === 'DoT' && t.tier === 'II'));
 });
+
+/* ── Task 2: passive cond items stageable ── */
+
+function slotModel(items) {
+  return { model: { n: 'Bearer', loadout: { slots: items.map(it => ({ type: 'ITEM', it })) } } };
+}
+
+test('bfCondItemsOf: passive Immunity/Regen/Rally ITEMs pass the filter (Rebreather, Unholy Vigour, Battle Standard, Markerlight)', () => {
+  const c = slotModel([gear('items', 'Rebreather'), gear('items', 'Unholy Vigour'),
+    gear('items', 'Battle Standard'), gear('items', 'Markerlight')]);
+  assert.deepStrictEqual(G.bfCondItemsOf(c).map(i => i.n).sort(),
+    ['Battle Standard', 'Markerlight', 'Rebreather', 'Unholy Vigour']);
+});
+
+test('bfCondItemsOf: consumable grenades still pass; capture/tagless items still do not', () => {
+  const blight = gear('items', 'Blight Grenade');
+  const c = slotModel([blight, { n: 'Shackle Collar', cat: 'ITEM', d: 'Capture II - 1 AP' },
+    { n: 'Plain Rock', cat: 'ITEM', d: 'A rock' }]);
+  assert.deepStrictEqual(G.bfCondItemsOf(c).map(i => i.n), ['Blight Grenade']);
+});
+
+test('combatCatalog: a non-consumable cond ITEM yields a Use row (core condTaggyItem)', () => {
+  const state = { pools: { A: 9 }, combatants: {
+    m: { party: 'A', w: [10, 10], conds: [],
+      model: { n: 'Bearer', loadout: { slots: [{ type: 'ITEM', it: gear('items', 'Rebreather') }] } } } } };
+  const rows = THREAD.catalog({ type: 'SKIRMISH' }, state, 'A', canon);
+  assert.ok(rows.some(r => r.kind === 'cond' && r.item && r.item.n === 'Rebreather'));
+});
+
+test('inventory pin: the exact post-sweep stageable set across all canon gear (audit the class)', () => {
+  const stageable = [];
+  ['weapons', 'items', 'abilities', 'casts', 'legendaries'].forEach(cat =>
+    (canon[cat] || []).forEach(r => { if (G.condTagsOf(r).length) stageable.push(r.n); }));
+  // Pin the exact set: any canon or grammar drift that silently adds/removes a stageable
+  // item must fail here and be consciously re-pinned.
+  assert.deepStrictEqual(stageable.sort(), [
+    'Agoniser', 'And They Shall Know No Fear', 'Banner of Blood', 'Battle Standard',
+    'Blight Grenade', 'Blood Icon', 'Bring It Down', 'Canticles of the Omnissiah',
+    'Catalyst', 'Chaos Icon', 'Charge', 'Concussion Maul', 'Cult Icon',
+    'Curse of the Leper', 'Cybork Body', 'Deathspitter', 'Doom', 'Dust-Sealed Plate',
+    'Eviscerator', 'Fecund Vigour', 'Fleshborer', 'Gauss Blaster', 'Gauss Cannon',
+    'Gauss Flayer', 'Heavy Rock Drill', 'Ichor Injection', 'Iron Arm', 'Living Metal',
+    'Markerlight', 'Mental Fortitude', 'Mirror of Minds', 'Neuro Disruptor',
+    'Nightmare Toxins', 'Power Claw / Dozer Ram', 'Psychic Scream', 'Rad-Bombs',
+    'Rebreather', 'Regenerative Flesh', 'Rusted Industrial Rig', 'Seismic Cannon',
+    'Shardcarbine', 'Shotgun', 'Shrieker Cannon', 'Splinter Cannon', 'Splinter Pistol',
+    'Splinter Rifle', 'Stikkbombz', 'Symphony of Pain', 'Synapse', 'Target Uplink',
+    'Telekinetic Grip', 'Thunder Hammer', 'Unholy Vigour', 'Venom Cannon',
+    'Void Armour', 'Vox-Caster', 'War Hymn', 'Warp-Spawned', 'Webber',
+  ]);
+});

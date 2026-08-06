@@ -562,6 +562,15 @@ var THREAD=(function(){
   function apMod(it){var s=it.d||'';if(/effortless/i.test(s))return 0;
     var m=s.match(/(\d+)\s*AP/);if(m)return parseInt(m[1],10);
     return it.cat==='CAST'?2:it.cat==='ABILITY'?1:it.cat==='ITEM'?0:1;}
+  // T-CMB-2 Task 2: core-side "might this ITEM stage a condition?" — the core can't call the
+  // glue's parseItem, so it word-tests the description against the CONDS registry keys. False
+  // positives (an item merely MENTIONING a tag, e.g. Toxin Sacs' weapon-mod text) are filtered
+  // at the composer layer by the exact condTagsOf; a false positive here only costs a
+  // catalog row the composer then drops.
+  function condTaggyItem(it){var d=(it&&it.d)||'';
+    if(/consumable|stimm|grenade/i.test(d))return true;
+    for(var tag in CONDS)if(new RegExp('\\b'+tag+'\\b','i').test(d))return true;
+    return false;}
   function combatCatalog(state,party,canon){
     var out=[];
     Object.keys(state.combatants).forEach(function(id){
@@ -574,7 +583,7 @@ var THREAD=(function(){
         else if(k==='ITEM'&&captureTier(it))
           out.push({actor:id,action:'Capture ('+captureTier(it)+')',group:'x',
                     cost:captureAP(canon||{rules:{}},captureTier(it)),kind:'capture',item:it});
-        else if(k==='ITEM'&&/consumable|stimm|grenade/i.test(it.d||''))
+        else if(k==='ITEM'&&condTaggyItem(it))
           out.push({actor:id,action:'Use '+it.n,group:'a',cost:apMod(it),kind:'cond',item:it});
       });
       out.push({actor:id,action:'Move',group:'b',cost:0,kind:'band'});
@@ -1330,7 +1339,7 @@ var THREAD=(function(){
     });
     return out;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive, condTaggyItem:condTaggyItem };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
@@ -3632,6 +3641,16 @@ function condEffectsFor(item,casterId,chosenTarget,state,party){
   });
   return out;
 }
+// T-CMB-1 Task 5 / T-CMB-2 Task 2: equipped ABILITY/CAST/ITEM slots that actually carry a
+// condition tag — the grid battle's ability/cast buttons. T-CMB-2 dropped the consumable-only
+// ITEM filter: passive cond gear (Rebreather's Immunity, Unholy Vigour's Regen, icons' Rally,
+// Markerlight's Marked) is stageable; condTagsOf-empty items still never show.
+function bfCondItemsOf(c){var out=[];if(!c.model)return out;
+  ((c.model.loadout&&c.model.loadout.slots)||c.model.sl||[]).forEach(function(s){if(!s.it)return;
+    var ty=s.type||s.k;
+    if(ty==='ABILITY'||ty==='CAST'||ty==='WARP CAST'||ty==='ITEM')
+      if(condTagsOf(s.it).length)out.push(s.it);});
+  return out;}
 /*</cond-staging-glue>*/
 /*<speech-core>*/
 var SPEECH_PALETTE=['#9fef00','#37d6ff','#ffb347','#c792ea','#ff6b8a','#4ec9b0','#e0e060','#7aa2f7'];
@@ -3660,6 +3679,9 @@ function threadComposer(t,onPost){
 function threadBlockBuilder(t,party){
   var staged=[];
   var acts=THREAD.catalog(t,t.state,party,D);
+  // T-CMB-2 Task 2: drop cond rows whose item stages nothing (condTagsOf is the exact test the
+  // core's word-heuristic can't run) — they could only ever warn "No valid target".
+  acts=acts.filter(function(a){return a.kind!=='cond'||!a.item||condTagsOf(a.item).length;});
   var box=E('div','abld','<div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--br);margin-bottom:7px">Action Block</div>');
   var row=E('div','arow');var aSel=E('select'),tSel=E('select');
   acts.forEach(function(a,i){aSel.add(new Option(a.action+(a.cost?' - '+a.cost+' AP':''),i))});
@@ -3795,14 +3817,6 @@ function bfItemBand(it){var map={Melee:'MELEE',Short:'SHORT',Medium:'MEDIUM',Lon
 function bfAP(it){var m=((it&&it.d)||'').match(/(\d+)\s*AP/);return m?parseInt(m[1],10):1;}
 function bfCellLabel(p){return String.fromCharCode(65+p.x)+(p.y+1);}
 function bfWeaponsOf(c){var out=[];if(!c.model)return out;((c.model.loadout&&c.model.loadout.slots)||c.model.sl||[]).forEach(function(s){if(s.it&&(s.type||s.k)==='WEAPON')out.push(s.it);});return out;}
-// T-CMB-1 Task 5: equipped ABILITY/CAST/consumable-ITEM slots that actually carry a condition tag
-// (Regen, Rally, Cleanse, DoT, Suppressing, …) — these are the grid battle's ability/cast buttons.
-function bfCondItemsOf(c){var out=[];if(!c.model)return out;
-  ((c.model.loadout&&c.model.loadout.slots)||c.model.sl||[]).forEach(function(s){if(!s.it)return;
-    var ty=s.type||s.k;
-    if(ty==='ABILITY'||ty==='CAST'||ty==='WARP CAST'||(ty==='ITEM'&&/consumable|stimm|grenade/i.test(s.it.d||'')))
-      if(condTagsOf(s.it).length)out.push(s.it);});
-  return out;}
 function condLabelShort(ct){return ct.tag+(ct.tier>1?' '+(['','I','II','III','IV','V'][ct.tier]||ct.tier):'');}
 // T-CMB-1 Task 6: display label for a live condition INSTANCE (as opposed to condLabelShort's
 // staging-picker label for a not-yet-applied {tag,tier} pair) — "DoT II · 4p"; left:Infinity
