@@ -1068,15 +1068,15 @@ var THREAD=(function(){
     Charging:function(){return 1},Rally:function(){return 1},
     Marked:function(t){return 2+t},Immunity:function(){return Infinity}};
   var CONDS={
-    DoT:{tick:function(i){return {dw:-i.tier}}},
+    DoT:{hostile:1,tick:function(i){return {dw:-i.tier}}},
     Regen:{tick:function(i){return {dw:+i.tier}}},
-    Slowing:{mods:function(i){return {speed:-i.tier}}},
-    Suppressing:{mods:function(){return {actions:-1}}},          // capped: never more
+    Slowing:{hostile:1,mods:function(i){return {speed:-i.tier}}},
+    Suppressing:{hostile:1,mods:function(){return {actions:-1}}},          // capped: never more
     Charging:{mods:function(i){return {dmgOutMelee:i.tier}}},
     Rally:{mods:function(i){return {dmgOut:i.tier}}},
-    Marked:{mods:function(i){return {dmgIn:i.tier}}},
+    Marked:{hostile:1,mods:function(i){return {dmgIn:i.tier}}},
     Immunity:{},
-    Draining:{instant:function(i,state,c){var p=c&&c.party;if(p!=null)state.pools[p]=Math.max(0,(state.pools[p]||0)-i.tier)}},
+    Draining:{hostile:1,instant:function(i,state,c){var p=c&&c.party;if(p!=null)state.pools[p]=Math.max(0,(state.pools[p]||0)-i.tier)}},
     Cleanse:{instant:function(i,state,c){if(!c||!c.conds)return;var NEG={DoT:1,Slowing:1,Suppressing:1,Marked:1};
       for(var k=c.conds.length-1;k>=0;k--)if(NEG[c.conds[k].tag])c.conds.splice(k,1)}}
   };
@@ -1210,6 +1210,20 @@ var THREAD=(function(){
     c.conds.push(inst);return {applied:true};
   }
   var NPC_RANK={MELEE:0,SHORT:1,MEDIUM:2,LONG:3};
+  // T-CMB-3 Task 6: hostility is a registry fact, not a glue-side list — validate's
+  // allegiance/fog/range gates and the staging glue read the same bit.
+  function condHostile(tag){var e=CONDS[tag];return !!(e&&e.hostile);}
+  // Ruling §4 (2026-07-28): a hostile cond gates by its ITEM's stated range band, default
+  // SHORT. Priority: an explicit staged band (core-built payloads, e.g. npcTurn riders) →
+  // the first range word in the item's own description → SHORT.
+  function condBandOf(add){
+    if(add){
+      if(add.band&&NPC_RANK[String(add.band).toUpperCase()]!=null)return String(add.band).toUpperCase();
+      var d=(add.item&&add.item.d)||'',m=d.match(/\b(melee|short|medium|med|long)\b/i);
+      if(m)return /^med/i.test(m[1])?'MEDIUM':m[1].toUpperCase();
+    }
+    return 'SHORT';
+  }
   function npcReaches(reach,fromPos,tgtPos){return reach>=NPC_RANK[bandOf(cheb(fromPos,tgtPos))];}
   function npcTurn(side,state,board,weaponsOf,canon){
     canon=canon||{rules:{}};                          // T-CMB-1 Task 4: safe default for legacy 4-arg callers
@@ -1346,7 +1360,7 @@ var THREAD=(function(){
     });
     return out;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive, condTaggyItem:condTaggyItem };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive, condTaggyItem:condTaggyItem, condHostile:condHostile, condBandOf:condBandOf };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
@@ -3599,8 +3613,8 @@ function condTagsOf(item){
   }
   return out;
 }
-var HOSTILE_CONDS={DoT:1,Slowing:1,Suppressing:1,Marked:1,Draining:1};
-function condIsHostile(tag){return !!HOSTILE_CONDS[tag];}
+// T-CMB-3 Task 6: hostility now lives on the CONDS registry entries — one source of truth.
+function condIsHostile(tag){return THREAD.condHostile(tag);}
 // fix round 1: "alive" for fan-out purposes is the codebase's established check (!dead && !captured
 // — see the party-alive tallies at apply's outcome/annihilation logic) — a captured model is off
 // the board (x/y nulled at capture) and must never receive a Rally buff or a Cleanse.
