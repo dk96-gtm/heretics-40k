@@ -642,8 +642,20 @@ var THREAD=(function(){
         for(var gi=0;gi<block.length;gi++){var ge=block[gi].effect;
           if(ge&&(ge.kind==='damage'||ge.kind==='capture')&&ge.to&&vis.indexOf(ge.to)<0)
             return {ok:false,reason:ge.kind==='capture'?
-              'Capture: target not in sight - fog of war':'Target not in sight - fog of war'};}
+              'Capture: target not in sight - fog of war':'Target not in sight - fog of war'};
+          if(ge&&ge.kind==='cond'&&ge.add&&condHostile(ge.add.tag)&&ge.to&&vis.indexOf(ge.to)<0)
+            return {ok:false,reason:'Condition: target not in sight - fog of war'};}   // T-CMB-3 Task 7
       }
+      // T-CMB-3 Task 7: allegiance gate — hostile conds land on enemies, buffs on your own
+      // side; unknown tags read as buffs (inert-but-displayed contract) so the legacy string
+      // fallback (self-target) keeps passing. Stage-2: validate is the server authority.
+      for(var yi=0;yi<block.length;yi++){var yb=block[yi],ye=yb.effect;
+        if(!ye||ye.kind!=='cond')continue;
+        var ytag=ye.add&&ye.add.tag,ya=state.combatants[yb.actor],yt=state.combatants[ye.to];
+        if(!ya||!yt)continue;
+        if(condHostile(ytag)){
+          if(yt.party===ya.party)return {ok:false,reason:'Condition: '+ytag+' targets your own side'};
+        }else if(yt.party!==ya.party)return {ok:false,reason:'Condition: buffs cannot target the enemy'};}
       var _capSlotsUsed={},_capTargets={},_freedTargets={},_lootedBodies={};  // multi-entry block: track consumption across entries
       for(var ci=0;ci<block.length;ci++){var cb=block[ci],ce=cb.effect;
         if(!ce||(ce.kind!=='capture'&&ce.kind!=='free'&&ce.kind!=='loot'))continue;
