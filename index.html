@@ -3641,6 +3641,20 @@ function condEffectsFor(item,casterId,chosenTarget,state,party){
   });
   return out;
 }
+/* T-CMB-2 Task 3: hostile rider conds a WEAPON's own tags inflict on the model it hits.
+   The attack stays ONE action — riders stage as cost:0 fanout:true entries behind the damage
+   entry (validate's counter already exempts fanout cond entries). Buff-shaped weapon tags
+   never ride: a weapon cannot buff its victim. add.item threads the weapon itself so
+   applyCond stamps nl/nr (Non-Lethal floor / no_revival permadeath) — the Forge combo path. */
+function weaponCondEffects(item,targetId){
+  if(!item||!targetId)return [];
+  var el=THREAD.elementOf(item),out=[];
+  condTagsOf(item).forEach(function(ct){
+    if(!condIsHostile(ct.tag))return;
+    out.push({kind:'cond',add:{tag:ct.tag,tier:ct.tier,src:item.n,el:el,item:item},to:targetId});
+  });
+  return out;
+}
 // T-CMB-1 Task 5 / T-CMB-2 Task 2: equipped ABILITY/CAST/ITEM slots that actually carry a
 // condition tag — the grid battle's ability/cast buttons. T-CMB-2 dropped the consumable-only
 // ITEM filter: passive cond gear (Rebreather's Immunity, Unholy Vigour's Regen, icons' Rally,
@@ -3738,6 +3752,14 @@ function threadBlockBuilder(t,party){
       if(!effs.length){warn.textContent='No valid target for '+a.action+'.';return;}
       effs.forEach(function(ef,i){staged.push({actor:a.actor,action:a.action,cost:i===0?a.cost:0,
         fanout:i>0,effect:ef,tgtLabel:nameOf(ef.to)});});
+      redraw();return;
+    }
+    if(a.group==='e'){
+      staged.push({actor:a.actor,action:a.action,cost:a.cost,effect:effFor(a,tgt),tgtLabel:tgtLabel});
+      // T-CMB-2 Task 3: the weapon's own hostile tags ride the hit — free fanout entries
+      weaponCondEffects(a.item,tgt).forEach(function(ef){
+        staged.push({actor:a.actor,action:a.item.n+' ('+condLabelShort(ef.add)+')',cost:0,fanout:true,
+          effect:ef,tgtLabel:nameOf(ef.to)});});
       redraw();return;
     }
     staged.push({actor:a.actor,action:a.action,cost:a.cost,effect:effFor(a,tgt),tgtLabel:tgtLabel});redraw();};
@@ -4082,7 +4104,10 @@ function bfCombatUI(t,party){
     if(b.hasAttribute('data-rma')){ui.acts.splice(+b.getAttribute('data-rma'),1);return openT(t.id);}
     if(b.hasAttribute('data-atk')){var it=bfWeaponsOf(C[ui.sel])[+b.getAttribute('data-atk')];
       if(it&&ui.tgt){var d2=THREAD.cheb(posOf(ui.sel),posOf(ui.tgt)),bnd2=THREAD.bandOf(d2);
-        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2])ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),nonLethal:/non-?lethal/i.test(it.d||''),weapon:it.n,band:bnd2}});}   // T-CMB-1 drift item 7: real engagement band, not the weapon's max reach
+        if(BF_RANK[bfItemBand(it)]>=BF_RANK[bnd2]){ui.acts.push({actor:ui.sel,action:'Attack '+it.n+' → '+bfTag(ui.tgt,C[ui.tgt]),cost:bfAP(it),effect:{kind:'damage',to:ui.tgt,amount:damageOf(it),element:THREAD.elementOf(it),noRevival:THREAD.isNoRevival(it,D),nonLethal:/non-?lethal/i.test(it.d||''),weapon:it.n,band:bnd2}});   // T-CMB-1 drift item 7: real engagement band, not the weapon's max reach
+          weaponCondEffects(it,ui.tgt).forEach(function(ef){
+            ui.acts.push({actor:ui.sel,action:it.n+' ('+condLabelShort(ef.add)+') → '+bfTag(ui.tgt,C[ui.tgt]),
+              cost:0,fanout:true,effect:ef});});}}
       return openT(t.id);}
     if(b.hasAttribute('data-cap')){var capIt2=bfCaptureItemOf(C[ui.sel]);
       if(capIt2){var tier2=THREAD.captureTier(capIt2);

@@ -144,3 +144,69 @@ test('inventory pin: the exact post-sweep stageable set across all canon gear (a
     'Void Armour', 'Vox-Caster', 'War Hymn', 'Warp-Spawned', 'Webber',
   ]);
 });
+
+/* ── Task 3: weapon riders ── */
+
+function combatant(over) {
+  const c = { w: [10, 10], party: 'A', conds: [], model: { n: 'Test' } };
+  for (const k in over) c[k] = over[k];
+  return c;
+}
+
+test('weaponCondEffects: hostile weapon tags become rider cond payloads; non-hostile/mechanic tags do not', () => {
+  const th = gear('weapons', 'Thunder Hammer');       // Suppressing I + Unwieldy
+  const effs = G.weaponCondEffects(th, 'victim');
+  assert.strictEqual(effs.length, 1);
+  assert.strictEqual(effs[0].kind, 'cond');
+  assert.deepStrictEqual({ tag: effs[0].add.tag, tier: effs[0].add.tier, to: effs[0].to },
+    { tag: 'Suppressing', tier: 1, to: 'victim' });
+  assert.strictEqual(effs[0].add.item, th, 'threads the source item for nl/nr stamping');
+  assert.strictEqual(G.weaponCondEffects({ n: 'Plain Bolter', cat: 'WEAPON', d: 'Phys 2 - Med - 1 AP' }, 'v').length, 0);
+});
+
+test('weaponCondEffects: no target → no riders (never a self-cond)', () => {
+  assert.strictEqual(G.weaponCondEffects(gear('weapons', 'Eviscerator'), null).length, 0);
+});
+
+test('riders end-to-end: an Eviscerator hit leaves a DoT instance that ticks on the victim\'s post', () => {
+  const ev = gear('weapons', 'Eviscerator');
+  const state = { pools: { A: 9 }, combatants: {
+    atk: combatant({}), victim: combatant({ party: 'B', w: [10, 10] }) } };
+  const block = [
+    { actor: 'atk', cost: 2, effect: { kind: 'damage', to: 'victim', amount: 3, element: 'Physical', weapon: ev.n, band: 'MELEE' } }
+  ].concat(G.weaponCondEffects(ev, 'victim').map(ef => ({ actor: 'atk', cost: 0, fanout: true, effect: ef })));
+  assert.ok(THREAD.validate({ type: 'SKIRMISH' }, state, 'A', block, canon).ok);
+  THREAD.apply({ type: 'SKIRMISH' }, state, block, canon, 'A');
+  const inst = state.combatants.victim.conds.filter(c => c.tag === 'DoT')[0];
+  assert.ok(inst, 'DoT instance landed with the hit');
+  assert.strictEqual(inst.src, 'Eviscerator');
+  assert.strictEqual(inst.by, 'atk');
+  const before = state.combatants.victim.w[0];
+  THREAD.tickConds('B', state, canon);
+  assert.strictEqual(state.combatants.victim.w[0], before - 1, 'DoT I bites 1 on the victim\'s post');
+});
+
+test('riders: the Forge NL+DoT combo is live — a Non-Lethal DoT weapon floors its ticks at 1 wound (ruling 1a)', () => {
+  const slaver = { n: 'Slaver Flail', cat: 'WEAPON', d: 'Phys 2 - Melee - 1 AP - DoT II - Non-Lethal' };
+  const state = { pools: { A: 9 }, combatants: {
+    atk: combatant({}), victim: combatant({ party: 'B', w: [2, 10] }) } };
+  const block = [{ actor: 'atk', cost: 1, effect: { kind: 'damage', to: 'victim', amount: 0, element: 'Physical', nonLethal: true, weapon: slaver.n, band: 'MELEE' } }]
+    .concat(G.weaponCondEffects(slaver, 'victim').map(ef => ({ actor: 'atk', cost: 0, fanout: true, effect: ef })));
+  THREAD.apply({ type: 'SKIRMISH' }, state, block, canon, 'A');
+  const inst = state.combatants.victim.conds.filter(c => c.tag === 'DoT')[0];
+  assert.strictEqual(inst.nl, true, 'nl stamped from the rider\'s add.item');
+  THREAD.tickConds('B', state, canon);
+  THREAD.tickConds('B', state, canon);
+  assert.strictEqual(state.combatants.victim.w[0], 1, 'floored at 1 — captureable, never killed');
+  assert.ok(!state.combatants.victim.dead);
+});
+
+test('riders: an Agoniser (Suppressing + Non-Lethal) pin costs the victim an action next post', () => {
+  const ag = gear('weapons', 'Agoniser');
+  const state = { pools: { A: 9, B: 9 }, combatants: {
+    atk: combatant({}), victim: combatant({ party: 'B' }) } };
+  const block = [{ actor: 'atk', cost: 1, effect: { kind: 'damage', to: 'victim', amount: 2, element: 'Energy', nonLethal: true, weapon: ag.n, band: 'MELEE' } }]
+    .concat(G.weaponCondEffects(ag, 'victim').map(ef => ({ actor: 'atk', cost: 0, fanout: true, effect: ef })));
+  THREAD.apply({ type: 'SKIRMISH' }, state, block, canon, 'A');
+  assert.strictEqual(THREAD.actionCap(state.combatants.victim, canon), 2, 'Suppressing I: 3 → 2 actions');
+});
