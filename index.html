@@ -4722,8 +4722,10 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').re
 function glossText(key,tier){var g=GLOSS[key];return typeof g==='function'?g(tier):g}
 var ELEMS=['Phys','Corr','Heat','Plasma','Energy','Warp'],RANGES=['Melee','Short','Med','Medium','Long'];
 var ELEMFULL={Phys:'Physical',Corr:'Corrosive',Heat:'Heat',Plasma:'Plasma',Energy:'Energy',Warp:'Warp'};
+/* T-CMB-2: the one tag-shape regex, shared by the bare branch and the normalised retry */
+var TAGRE=/^(DoT|Multihit|Rapid|Venting|Regen|Suppressing|Unwieldy|Consumable|Stimm|Slowing|Draining|Leech|Reclaim|Refund|Momentum|Ambush|Grudge|Guided|Reach|First Strike|Free Move|Overcharge|Bypass|Shield|Ward|Decoy|Blink|Immunity|Marked|Rally|Cleanse|Revive|Charging|Injured|Critical)\s*(I{1,3}|IV|V|\d+)?$/i;
 /* parse a terse item string into structured stats */
-function parseItem(it){var d=(it.d||''),parts=d.split(/\s*[-·+]\s*/).map(function(s){return s.trim()}).filter(Boolean),out={cat:it.cat,named:false,element:null,dmg:null,range:null,ap:null,rank:null,tags:[],notes:[]};
+function parseItem(it){var d=(it.d||''),parts=d.split(/\s*[-·+;]\s*/).map(function(s){return s.trim()}).filter(Boolean),out={cat:it.cat,named:false,element:null,dmg:null,range:null,ap:null,rank:null,tags:[],notes:[]};
  parts.forEach(function(p){var m;
   if(/^Named\b/i.test(p)){out.named=true;p=p.replace(/^Named\s+/i,'');}
   if(m=p.match(/^(Phys|Corr|Heat|Plasma|Energy|Warp)\s*(\d+)?$/i)){out.element=ELEMFULL[cap(m[1])]||m[1];if(m[2])out.dmg=m[2];return}
@@ -4731,7 +4733,21 @@ function parseItem(it){var d=(it.d||''),parts=d.split(/\s*[-·+]\s*/).map(functi
   if(m=p.match(/^(\d+)\s*AP$/i)){out.ap=m[1]+' AP';return}
   if(/^effortless$/i.test(p)){out.ap='Effortless (model AP only)';return}
   if(m=p.match(/^R(\d)$/i)){out.rank=m[1];return}
-  if(m=p.match(/^(DoT|Multihit|Rapid|Venting|Regen|Suppressing|Unwieldy|Consumable|Stimm|Slowing|Draining|Leech|Reclaim|Refund|Momentum|Ambush|Grudge|Guided|Reach|First Strike|Free Move|Overcharge|Bypass|Shield|Ward|Decoy|Blink|Immunity|Marked|Rally|Cleanse|Revive|Charging|Injured|Critical)\s*(I{1,3}|IV|V|\d+)?$/i)){var tv=m[2]||'';var roman=/^\d+$/.test(tv)?['','I','II','III','IV','V'][parseInt(tv,10)]||tv:tv.toUpperCase();out.tags.push({tag:cap(m[1]),tier:roman});return}
+  if(m=p.match(TAGRE)){var tv=m[2]||'';var roman=/^\d+$/.test(tv)?['','I','II','III','IV','V'][parseInt(tv,10)]||tv:tv.toUpperCase();out.tags.push({tag:cap(m[1]),tier:roman});return}
+  // T-CMB-2 grammar sweep: canon phrases that are tag-shaped but not bare — "applies DoT II",
+  // "Ally: Regen II for 3 posts", "Apply Marked II to a target", "gain Charging (+1 dmg …)",
+  // "Regen I (Robotic)", "Apply Marked II at Long range" (range recovered). Immunity segments
+  // are exempt: condTagsOf's own recovery reads "Immunity (Tag — note)" whole, incl. the of.
+  if(!/^immunity\b/i.test(p)){
+    var p2=p.replace(/^(?:applies|apply|gains?|ally:|self:|target:)\s+/i,'');
+    var rm=p2.match(/\s+at\s+(melee|short|medium|med|long)\s+range$/i);
+    if(rm)p2=p2.replace(/\s+at\s+[a-z]+\s+range$/i,'');
+    p2=p2.replace(/\s+for\s+\d+\s+posts?$/i,'').replace(/\s+to\s+an?\b.*$/i,'').replace(/\s*\([^)]*(\))?$/,'').trim();
+    if(p2!==p&&(m=p2.match(TAGRE))){
+      if(rm&&!out.range)out.range=/^med/i.test(rm[1])?'Medium':cap(rm[1].toLowerCase());
+      var tv2=m[2]||'';var roman2=/^\d+$/.test(tv2)?['','I','II','III','IV','V'][parseInt(tv2,10)]||tv2:tv2.toUpperCase();
+      out.tags.push({tag:cap(m[1]),tier:roman2});return}
+  }
   out.notes.push(p)});
  return out}
 function cap(s){return s.charAt(0).toUpperCase()+s.slice(1)}
