@@ -4092,8 +4092,13 @@ function bfCombatUI(t,party){
       }
       condItems.forEach(function(it,i){
         var tags=condTagsOf(it),hostile=tags.some(function(ct){return condIsHostile(ct.tag);});
-        var ok=hostile?!!ui.tgt:true;
-        panel+='<button class="btn sm" data-cond="'+i+'"'+(ok?'':' disabled')+' style="margin:5px 5px 0 0">'+it.n+' · '+tags.map(condLabelShort).join(', ')+' · '+bfAP(it)+'AP'+(ok?'':' (target an enemy first)')+'</button>';
+        var ok=true,why='';
+        if(hostile){
+          if(!ui.tgt){ok=false;why=' (target an enemy first)';}
+          else{var cb=THREAD.condBandOf({item:it}),cd=THREAD.cheb(posOf(ui.sel),posOf(ui.tgt));   // T-CMB-3 Task 9: ruling §4 range gate, mirrored from validate
+            if(BF_RANK[cb]<BF_RANK[THREAD.bandOf(cd)]){ok=false;why=' ✗ out of range ('+cb+')';}}
+        }
+        panel+='<button class="btn sm" data-cond="'+i+'"'+(ok?'':' disabled')+' style="margin:5px 5px 0 0">'+it.n+' · '+tags.map(condLabelShort).join(', ')+' · '+bfAP(it)+'AP'+why+'</button>';
       });
       panel+='</div>';
     }
@@ -4139,6 +4144,7 @@ function bfCombatUI(t,party){
       if(cit){var ctags=condTagsOf(cit),hostile=ctags.some(function(ct){return condIsHostile(ct.tag);});
         var chosen=hostile?ui.tgt:(ui.allyTgt||ui.sel);
         if(hostile&&!chosen)return openT(t.id);   // guard — button is disabled for this case anyway
+        if(hostile&&chosen&&BF_RANK[THREAD.condBandOf({item:cit})]<BF_RANK[THREAD.bandOf(THREAD.cheb(posOf(ui.sel),posOf(chosen)))])return openT(t.id);   // T-CMB-3 Task 9: range re-guard
         var effs=condEffectsFor(cit,ui.sel,chosen,st,party),apCost=bfAP(cit);
         effs.forEach(function(ef,i){
           // fix round 1 (controller ruling): one cast = one action — entries beyond the first are
