@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.31",
+  "version": "1.32",
   "updated": "2026-08-05",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -2778,7 +2778,17 @@
           ],
           "resources": 220,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "luna",
@@ -2836,7 +2846,17 @@
            }
           ],
           "resources": 80,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "custodwatch",
@@ -2882,7 +2902,17 @@
            }
           ],
           "resources": 70,
-          "status": null
+          "status": null,
+          "day_profile": [
+           25,
+           25,
+           25,
+           25,
+           30,
+           35,
+           40,
+           35
+          ]
          },
          {
           "id": "solanvil",
@@ -2928,7 +2958,17 @@
            }
           ],
           "resources": 55,
-          "status": null
+          "status": null,
+          "day_profile": [
+           32,
+           38,
+           18,
+           31,
+           24,
+           30,
+           35,
+           32
+          ]
          }
         ]
        },
@@ -3006,7 +3046,17 @@
           ],
           "resources": 95,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           25,
+           20,
+           22,
+           32,
+           27,
+           42,
+           43,
+           29
+          ]
          },
          {
           "id": "regis",
@@ -3052,7 +3102,17 @@
            }
           ],
           "resources": 40,
-          "status": null
+          "status": null,
+          "day_profile": [
+           32,
+           24,
+           21,
+           26,
+           36,
+           38,
+           37,
+           26
+          ]
          },
          {
           "id": "cogtheta",
@@ -3101,7 +3161,17 @@
            }
           ],
           "resources": 110,
-          "status": null
+          "status": null,
+          "day_profile": [
+           35,
+           40,
+           40,
+           40,
+           35,
+           20,
+           15,
+           15
+          ]
          }
         ]
        },
@@ -3179,7 +3249,17 @@
           ],
           "resources": 85,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "thessaly",
@@ -3225,7 +3305,17 @@
            }
           ],
           "resources": 45,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "sanctavigil",
@@ -3274,7 +3364,17 @@
            }
           ],
           "resources": 50,
-          "status": null
+          "status": null,
+          "day_profile": [
+           45,
+           35,
+           30,
+           25,
+           30,
+           25,
+           25,
+           25
+          ]
          }
         ]
        }
@@ -3358,7 +3458,17 @@
            }
           ],
           "resources": 45,
-          "status": null
+          "status": null,
+          "day_profile": [
+           25,
+           33,
+           40,
+           40,
+           40,
+           22,
+           22,
+           18
+          ]
          },
          {
           "id": "sangua",
@@ -3405,7 +3515,17 @@
            }
           ],
           "resources": 70,
-          "status": null
+          "status": null,
+          "day_profile": [
+           29,
+           30,
+           31,
+           27,
+           23,
+           29,
+           46,
+           25
+          ]
          }
         ],
         "space": {
@@ -3502,7 +3622,17 @@
           ],
           "resources": 120,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "tarnhollow",
@@ -3557,7 +3687,17 @@
            }
           ],
           "resources": 55,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "ironreliquary",
@@ -3615,7 +3755,17 @@
            }
           ],
           "resources": 95,
-          "status": null
+          "status": null,
+          "day_profile": [
+           33,
+           32,
+           20,
+           34,
+           18,
+           30,
+           39,
+           34
+          ]
          },
          {
           "id": "maleficreach",
@@ -3664,7 +3814,17 @@
            }
           ],
           "resources": 40,
-          "status": null
+          "status": null,
+          "day_profile": [
+           15,
+           20,
+           20,
+           15,
+           25,
+           45,
+           55,
+           45
+          ]
          }
         ]
        }
@@ -3727,7 +3887,17 @@
           ],
           "resources": 35,
           "status": "Corrupted",
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           27,
+           18,
+           36,
+           31,
+           35,
+           34,
+           31,
+           28
+          ]
          }
         ],
         "space": {
@@ -3814,7 +3984,17 @@
           ],
           "resources": 70,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           36,
+           23,
+           26,
+           30,
+           28,
+           34,
+           24,
+           39
+          ]
          },
          {
           "id": "charnovese",
@@ -3863,7 +4043,17 @@
            }
           ],
           "resources": 35,
-          "status": null
+          "status": null,
+          "day_profile": [
+           20,
+           25,
+           25,
+           20,
+           30,
+           40,
+           45,
+           35
+          ]
          },
          {
           "id": "gorehold",
@@ -3909,7 +4099,17 @@
            }
           ],
           "resources": 30,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          }
         ]
        },
@@ -3989,7 +4189,17 @@
           ],
           "resources": 80,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           17,
+           38,
+           18,
+           27,
+           33,
+           38,
+           31,
+           38
+          ]
          },
          {
           "id": "aetherion",
@@ -4038,7 +4248,17 @@
            }
           ],
           "resources": 50,
-          "status": null
+          "status": null,
+          "day_profile": [
+           15,
+           20,
+           20,
+           15,
+           25,
+           45,
+           55,
+           45
+          ]
          },
          {
           "id": "tizca",
@@ -4087,7 +4307,17 @@
            }
           ],
           "resources": 25,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          }
         ]
        }
@@ -4145,7 +4375,17 @@
            }
           ],
           "resources": 12,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           19,
+           34,
+           28,
+           22,
+           39,
+           38,
+           30
+          ]
          }
         ],
         "space": {
@@ -4245,7 +4485,17 @@
           ],
           "resources": 65,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           17,
+           33,
+           38,
+           20,
+           39,
+           35,
+           40,
+           18
+          ]
          },
          {
           "id": "skarboyz",
@@ -4291,7 +4541,17 @@
            }
           ],
           "resources": 30,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "scrapmoon",
@@ -4340,7 +4600,17 @@
            }
           ],
           "resources": 45,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          }
         ]
        }
@@ -4430,7 +4700,17 @@
           ],
           "resources": 115,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           36,
+           32,
+           34,
+           39,
+           36,
+           27,
+           18,
+           18
+          ]
          },
          {
           "id": "slaaneshmirror",
@@ -4479,7 +4759,17 @@
            }
           ],
           "resources": 55,
-          "status": null
+          "status": null,
+          "day_profile": [
+           15,
+           20,
+           20,
+           15,
+           25,
+           45,
+           55,
+           45
+          ]
          },
          {
           "id": "chemos",
@@ -4528,7 +4818,17 @@
            }
           ],
           "resources": 80,
-          "status": null
+          "status": null,
+          "day_profile": [
+           33,
+           35,
+           31,
+           27,
+           28,
+           28,
+           27,
+           31
+          ]
          },
          {
           "id": "vaunt",
@@ -4577,7 +4877,17 @@
            }
           ],
           "resources": 60,
-          "status": null
+          "status": null,
+          "day_profile": [
+           25,
+           21,
+           41,
+           27,
+           32,
+           26,
+           31,
+           37
+          ]
          }
         ]
        },
@@ -4657,7 +4967,17 @@
           ],
           "resources": 60,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           20,
+           25,
+           25,
+           30,
+           50,
+           40,
+           30,
+           20
+          ]
          },
          {
           "id": "discordia",
@@ -4706,7 +5026,17 @@
            }
           ],
           "resources": 45,
-          "status": null
+          "status": null,
+          "day_profile": [
+           15,
+           20,
+           20,
+           15,
+           25,
+           45,
+           55,
+           45
+          ]
          },
          {
           "id": "raptureedge",
@@ -4755,7 +5085,17 @@
            }
           ],
           "resources": 40,
-          "status": null
+          "status": null,
+          "day_profile": [
+           15,
+           20,
+           20,
+           15,
+           25,
+           45,
+           55,
+           45
+          ]
          }
         ]
        }
@@ -4841,7 +5181,17 @@
           ],
           "resources": 65,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           15,
+           20,
+           20,
+           15,
+           25,
+           45,
+           55,
+           45
+          ]
          },
          {
           "id": "formless",
@@ -4890,7 +5240,17 @@
            }
           ],
           "resources": 40,
-          "status": null
+          "status": null,
+          "day_profile": [
+           15,
+           20,
+           20,
+           15,
+           25,
+           45,
+           55,
+           45
+          ]
          },
          {
           "id": "ghyre",
@@ -4939,7 +5299,17 @@
            }
           ],
           "resources": 35,
-          "status": null
+          "status": null,
+          "day_profile": [
+           15,
+           20,
+           20,
+           15,
+           25,
+           45,
+           55,
+           45
+          ]
          }
         ]
        },
@@ -5022,7 +5392,17 @@
           ],
           "resources": 70,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           34,
+           25,
+           20,
+           30,
+           22,
+           36,
+           35,
+           38
+          ]
          },
          {
           "id": "palewracks",
@@ -5071,7 +5451,17 @@
            }
           ],
           "resources": 45,
-          "status": null
+          "status": null,
+          "day_profile": [
+           33,
+           28,
+           39,
+           26,
+           28,
+           25,
+           29,
+           32
+          ]
          },
          {
           "id": "aelindrach",
@@ -5120,7 +5510,17 @@
            }
           ],
           "resources": 25,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          }
         ]
        },
@@ -5201,7 +5601,17 @@
           ],
           "resources": 50,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "splinterworld",
@@ -5250,7 +5660,17 @@
            }
           ],
           "resources": 15,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "bioreef",
@@ -5299,7 +5719,17 @@
            }
           ],
           "resources": 30,
-          "status": null
+          "status": null,
+          "day_profile": [
+           28,
+           24,
+           37,
+           31,
+           28,
+           35,
+           33,
+           24
+          ]
          }
         ]
        }
@@ -5389,7 +5819,17 @@
           ],
           "resources": 118,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           27,
+           36,
+           33,
+           41,
+           19,
+           39,
+           22,
+           23
+          ]
          },
          {
           "id": "ophelia",
@@ -5435,7 +5875,17 @@
            }
           ],
           "resources": 62,
-          "status": null
+          "status": null,
+          "day_profile": [
+           45,
+           35,
+           30,
+           25,
+           30,
+           25,
+           25,
+           25
+          ]
          },
          {
           "id": "brahmos",
@@ -5481,7 +5931,17 @@
            }
           ],
           "resources": 70,
-          "status": null
+          "status": null,
+          "day_profile": [
+           33,
+           27,
+           21,
+           41,
+           30,
+           20,
+           32,
+           36
+          ]
          },
          {
           "id": "trisandane",
@@ -5527,7 +5987,17 @@
            }
           ],
           "resources": 55,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           40,
+           45,
+           40,
+           35,
+           20,
+           15,
+           15
+          ]
          }
         ]
        },
@@ -5608,7 +6078,17 @@
           ],
           "resources": 120,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "anvilus",
@@ -5657,7 +6137,17 @@
            }
           ],
           "resources": 108,
-          "status": null
+          "status": null,
+          "day_profile": [
+           35,
+           40,
+           40,
+           40,
+           35,
+           20,
+           15,
+           15
+          ]
          },
          {
           "id": "slagreach",
@@ -5703,7 +6193,17 @@
            }
           ],
           "resources": 66,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "ferrousgit",
@@ -5749,7 +6249,17 @@
            }
           ],
           "resources": 84,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           27,
+           33,
+           29,
+           36,
+           36,
+           28,
+           21
+          ]
          }
         ]
        },
@@ -5817,7 +6327,17 @@
           ],
           "resources": 95,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "ashmaiden",
@@ -5863,7 +6383,17 @@
            }
           ],
           "resources": 48,
-          "status": null
+          "status": null,
+          "day_profile": [
+           31,
+           36,
+           24,
+           25,
+           34,
+           27,
+           37,
+           26
+          ]
          },
          {
           "id": "kurnous",
@@ -5909,7 +6439,17 @@
            }
           ],
           "resources": 38,
-          "status": null
+          "status": null,
+          "day_profile": [
+           20,
+           25,
+           25,
+           20,
+           30,
+           40,
+           45,
+           35
+          ]
          }
         ]
        },
@@ -5986,7 +6526,17 @@
           ],
           "resources": 98,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           30,
+           29,
+           29,
+           24,
+           20,
+           31,
+           36,
+           41
+          ]
          },
          {
           "id": "vralla",
@@ -6032,7 +6582,17 @@
            }
           ],
           "resources": 72,
-          "status": null
+          "status": null,
+          "day_profile": [
+           32,
+           21,
+           28,
+           37,
+           26,
+           38,
+           34,
+           24
+          ]
          },
          {
           "id": "dalyth",
@@ -6087,7 +6647,17 @@
            }
           ],
           "resources": 50,
-          "status": null
+          "status": null,
+          "day_profile": [
+           28,
+           30,
+           33,
+           21,
+           21,
+           40,
+           37,
+           30
+          ]
          }
         ]
        },
@@ -6164,7 +6734,17 @@
           ],
           "resources": 104,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "ymir",
@@ -6210,7 +6790,17 @@
            }
           ],
           "resources": 68,
-          "status": null
+          "status": null,
+          "day_profile": [
+           31,
+           34,
+           22,
+           20,
+           34,
+           36,
+           31,
+           32
+          ]
          },
          {
           "id": "borehold",
@@ -6256,7 +6846,17 @@
            }
           ],
           "resources": 44,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          }
         ]
        }
@@ -6339,7 +6939,17 @@
           ],
           "resources": 90,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           20,
+           20,
+           25,
+           20,
+           25,
+           35,
+           40,
+           55
+          ]
          },
          {
           "id": "drayl",
@@ -6385,7 +6995,17 @@
            }
           ],
           "resources": 40,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "sumphaven",
@@ -6432,7 +7052,17 @@
            }
           ],
           "resources": 58,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          }
         ]
        }
@@ -6522,7 +7152,17 @@
           ],
           "resources": 180,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           37,
+           33,
+           42,
+           28,
+           19,
+           26,
+           33,
+           22
+          ]
          },
          {
           "id": "calth",
@@ -6568,7 +7208,17 @@
            }
           ],
           "resources": 95,
-          "status": null
+          "status": null,
+          "day_profile": [
+           29,
+           36,
+           22,
+           27,
+           32,
+           25,
+           36,
+           33
+          ]
          },
          {
           "id": "iax",
@@ -6614,7 +7264,17 @@
            }
           ],
           "resources": 70,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           40,
+           45,
+           40,
+           35,
+           20,
+           15,
+           15
+          ]
          },
          {
           "id": "konor",
@@ -6672,7 +7332,17 @@
            }
           ],
           "resources": 85,
-          "status": null
+          "status": null,
+          "day_profile": [
+           21,
+           24,
+           42,
+           27,
+           37,
+           34,
+           25,
+           30
+          ]
          },
          {
           "id": "prandium",
@@ -6718,7 +7388,17 @@
            }
           ],
           "resources": 10,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          }
         ]
        },
@@ -6783,7 +7463,17 @@
           ],
           "resources": 70,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           21,
+           31,
+           36,
+           35,
+           20,
+           25,
+           33,
+           39
+          ]
          },
          {
           "id": "mordathscar",
@@ -6829,7 +7519,17 @@
            }
           ],
           "resources": 60,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "khorvashscar",
@@ -6878,7 +7578,17 @@
            }
           ],
           "resources": 45,
-          "status": null
+          "status": null,
+          "day_profile": [
+           15,
+           20,
+           20,
+           15,
+           25,
+           45,
+           55,
+           45
+          ]
          },
          {
           "id": "veridscar",
@@ -6927,7 +7637,17 @@
            }
           ],
           "resources": 30,
-          "status": null
+          "status": null,
+          "day_profile": [
+           20,
+           20,
+           25,
+           20,
+           25,
+           35,
+           40,
+           55
+          ]
          },
          {
           "id": "solacescar",
@@ -6976,7 +7696,17 @@
            }
           ],
           "resources": 40,
-          "status": null
+          "status": null,
+          "day_profile": [
+           45,
+           35,
+           30,
+           25,
+           30,
+           25,
+           25,
+           25
+          ]
          }
         ]
        }
@@ -7062,7 +7792,17 @@
           ],
           "resources": 55,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           20,
+           20,
+           25,
+           20,
+           25,
+           35,
+           40,
+           55
+          ]
          },
          {
           "id": "mandragora",
@@ -7111,7 +7851,17 @@
            }
           ],
           "resources": 35,
-          "status": null
+          "status": null,
+          "day_profile": [
+           20,
+           20,
+           25,
+           20,
+           25,
+           35,
+           40,
+           55
+          ]
          },
          {
           "id": "thanatos",
@@ -7160,7 +7910,17 @@
            }
           ],
           "resources": 20,
-          "status": null
+          "status": null,
+          "day_profile": [
+           23,
+           29,
+           32,
+           38,
+           36,
+           35,
+           28,
+           19
+          ]
          },
          {
           "id": "caelum",
@@ -7209,7 +7969,17 @@
            }
           ],
           "resources": 25,
-          "status": null
+          "status": null,
+          "day_profile": [
+           20,
+           20,
+           25,
+           20,
+           25,
+           35,
+           40,
+           55
+          ]
          }
         ]
        },
@@ -7289,7 +8059,17 @@
           ],
           "resources": 90,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           37,
+           25,
+           38,
+           23,
+           39,
+           31,
+           24,
+           23
+          ]
          },
          {
           "id": "brood",
@@ -7338,7 +8118,17 @@
            }
           ],
           "resources": 45,
-          "status": null
+          "status": null,
+          "day_profile": [
+           23,
+           31,
+           29,
+           39,
+           25,
+           43,
+           19,
+           31
+          ]
          },
          {
           "id": "cominor",
@@ -7390,7 +8180,17 @@
            }
           ],
           "resources": 60,
-          "status": null
+          "status": null,
+          "day_profile": [
+           23,
+           29,
+           45,
+           24,
+           22,
+           33,
+           26,
+           38
+          ]
          }
         ]
        }
@@ -7473,7 +8273,17 @@
           ],
           "resources": 100,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "vespid",
@@ -7519,7 +8329,17 @@
            }
           ],
           "resources": 55,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "dolumar",
@@ -7565,7 +8385,17 @@
            }
           ],
           "resources": 40,
-          "status": null
+          "status": null,
+          "day_profile": [
+           36,
+           21,
+           39,
+           38,
+           20,
+           30,
+           18,
+           38
+          ]
          },
          {
           "id": "mubris",
@@ -7614,7 +8444,17 @@
            }
           ],
           "resources": 50,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          }
         ]
        },
@@ -7694,7 +8534,17 @@
           ],
           "resources": 45,
           "status": null,
-          "crown": true
+          "crown": true,
+          "day_profile": [
+           27,
+           24,
+           45,
+           32,
+           31,
+           26,
+           26,
+           29
+          ]
          },
          {
           "id": "harlekin",
@@ -7743,7 +8593,17 @@
            }
           ],
           "resources": 35,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          },
          {
           "id": "sorrow",
@@ -7792,7 +8652,17 @@
            }
           ],
           "resources": 15,
-          "status": null
+          "status": null,
+          "day_profile": [
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30,
+           30
+          ]
          }
         ]
        }
@@ -8609,7 +9479,17 @@
      "food": 0,
      "material": 18,
      "fuel": 2
-    }
+    },
+    "day_profile": [
+     35,
+     40,
+     40,
+     40,
+     35,
+     20,
+     15,
+     15
+    ]
    },
    {
     "name": "Hive World",
@@ -8645,7 +9525,17 @@
      "food": 14,
      "material": 0,
      "fuel": 0
-    }
+    },
+    "day_profile": [
+     30,
+     40,
+     45,
+     40,
+     35,
+     20,
+     15,
+     15
+    ]
    },
    {
     "name": "Mining World",
@@ -8681,7 +9571,17 @@
      "food": 2,
      "material": 2,
      "fuel": 2
-    }
+    },
+    "day_profile": [
+     45,
+     35,
+     30,
+     25,
+     30,
+     25,
+     25,
+     25
+    ]
    },
    {
     "name": "Fortress World",
@@ -8729,7 +9629,17 @@
      "food": 2,
      "material": 0,
      "fuel": 1
-    }
+    },
+    "day_profile": [
+     20,
+     25,
+     25,
+     20,
+     30,
+     40,
+     45,
+     35
+    ]
    },
    {
     "name": "War World",
@@ -8754,7 +9664,17 @@
      "material": 1,
      "fuel": 1
     },
-    "faction": "necrons"
+    "faction": "necrons",
+    "day_profile": [
+     20,
+     20,
+     25,
+     20,
+     25,
+     35,
+     40,
+     55
+    ]
    },
    {
     "name": "Daemon World",
@@ -8767,7 +9687,17 @@
      "material": 3,
      "fuel": 5
     },
-    "faction": "daemons"
+    "faction": "daemons",
+    "day_profile": [
+     15,
+     20,
+     20,
+     15,
+     25,
+     45,
+     55,
+     45
+    ]
    },
    {
     "name": "Xenos World",
@@ -8882,7 +9812,17 @@
      "material": 2,
      "fuel": 2
     },
-    "faction": "emperors_children"
+    "faction": "emperors_children",
+    "day_profile": [
+     20,
+     25,
+     25,
+     30,
+     50,
+     40,
+     30,
+     20
+    ]
    },
    {
     "name": "Anchorage World",
@@ -9025,7 +9965,17 @@
      "material": 2,
      "fuel": 3
     },
-    "faction": "custodes"
+    "faction": "custodes",
+    "day_profile": [
+     25,
+     25,
+     25,
+     25,
+     30,
+     35,
+     40,
+     35
+    ]
    },
    {
     "name": "Infested World",

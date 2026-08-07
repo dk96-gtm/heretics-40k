@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.31', () => {
-  assert.strictEqual(canon.meta.version, '1.31');
+test('canon is v1.32', () => {
+  assert.strictEqual(canon.meta.version, '1.32');
 });
 
 test('every faction has a crown world with a walkable surface start (Founding spawn)', () => {
@@ -133,7 +133,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.31');
+  assert.equal(canon.meta.version, '1.32');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
@@ -579,4 +579,38 @@ test('rules.rift.sides: every faction is seated Sanctus/Nihilus or neutral (8/8/
   const factions = new Set(canon.factions.map((f) => f.name));
   assert.strictEqual(seated.size, 20, 'no dup across seating');
   factions.forEach((f) => assert.ok(seated.has(f), f + ' is seated or neutral'));
+});
+
+/* ── T-TIME-1: per-planet day profiles ── */
+test('T-TIME-1: every planet carries a valid day_profile (8 slots, ≥10 min each, Σ=240)', () => {
+  const all = [];
+  canon.galaxy.segmentums.forEach(g => g.zones.forEach(z => z.sectors.forEach(s =>
+    (s.planets || []).forEach(p => all.push(p)))));
+  assert.strictEqual(all.length, 87);
+  all.forEach(p => {
+    assert.ok(Array.isArray(p.day_profile) && p.day_profile.length === 8, p.id + ' has 8 slots');
+    p.day_profile.forEach(m => assert.ok(Number.isInteger(m) && m >= 10, p.id + ' slot ≥10'));
+    assert.strictEqual(p.day_profile.reduce((a, b) => a + b, 0), 240, p.id + ' sums to 240');
+  });
+});
+test('T-TIME-1: authored types stamp their type profile onto every planet of that type', () => {
+  const AUTH = {
+    'Death World': [20,25,25,20,30,40,45,35], 'Daemon World': [15,20,20,15,25,45,55,45],
+    'Tomb World': [20,20,25,20,25,35,40,55], 'Forge World': [35,40,40,40,35,20,15,15],
+    'Agri World': [30,40,45,40,35,20,15,15], 'Shrine World': [45,35,30,25,30,25,25,25],
+    'Pleasure World': [20,25,25,30,50,40,30,20], 'Vigil World': [25,25,25,25,30,35,40,35] };
+  Object.keys(AUTH).forEach(t => {
+    const pt = canon.galaxy.planet_types.filter(x => x.name === t)[0];
+    assert.deepStrictEqual(pt.day_profile, AUTH[t], t + ' type profile');
+  });
+  canon.galaxy.segmentums.forEach(g => g.zones.forEach(z => z.sectors.forEach(s =>
+    (s.planets || []).forEach(p => { if (AUTH[p.type]) assert.deepStrictEqual(p.day_profile, AUTH[p.type], p.id); }))));
+});
+test('T-TIME-1: approved spot pins — one STD, one VAR (frozen 2026-08-07)', () => {
+  const find = id => { let r; canon.galaxy.segmentums.forEach(g => g.zones.forEach(z =>
+    z.sectors.forEach(s => (s.planets || []).forEach(p => { if (p.id === id) r = p; })))); return r; };
+  assert.deepStrictEqual(find('terra').day_profile, [30,30,30,30,30,30,30,30]);
+  const solsAnvil = canon.galaxy.segmentums.flatMap(g => g.zones).flatMap(z => z.sectors)
+    .flatMap(s => s.planets || []).filter(p => p.name === "Sol's Anvil")[0];
+  assert.deepStrictEqual(solsAnvil.day_profile, [32,38,18,31,24,30,35,32]);
 });
