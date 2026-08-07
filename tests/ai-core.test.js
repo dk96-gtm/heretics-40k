@@ -1,7 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
 const { loadAI } = require('./_load-ai');
 const NPCAI = loadAI();
+const canon = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8'));
 
 test('ai-core: loads and exposes NPCAI', () => {
   assert.ok(NPCAI && typeof NPCAI === 'object');
@@ -117,4 +120,33 @@ test('ai-core: retire flips the mind off', () => {
   NPCAI.retire(st, 9, 'annihilated at Kraith');
   assert.equal(st.retired, true);
   assert.equal(st.longTermMemory[0].summary, 'annihilated at Kraith');
+});
+
+test('T-TIME-1: stampAtProfile with even/null profile matches legacy stampAt exactly', () => {
+  const DM = 240 * 60000;
+  for (let k = 0; k < 24; k++) {
+    const now = 5000 + k * (DM / 16) + 7;                    // sweeps phases + days
+    const a = NPCAI.stampAt(5000, now, 60);
+    const b = NPCAI.stampAtProfile(5000, now, canon, null);
+    assert.deepStrictEqual({ day: b.day, phaseIndex: b.phaseIndex }, { day: a.day, phaseIndex: a.phaseIndex });
+  }
+});
+
+test('T-TIME-1: a night-heavy profile stretches the night phases', () => {
+  const DM = 240 * 60000, daemon = [15,20,20,15,25,45,55,45];
+  const at = min => NPCAI.stampAtProfile(0, min * 60000, canon, daemon);
+  assert.strictEqual(at(0).phaseIndex, 0);
+  assert.strictEqual(at(14).phaseIndex, 0);                  // Early Morning: 0–15
+  assert.strictEqual(at(15).phaseIndex, 1);
+  assert.strictEqual(at(94).phaseIndex, 4);                  // Evening: 70–95
+  assert.strictEqual(at(140).phaseIndex, 6);                 // Midnight: 140–195
+  assert.strictEqual(at(239).phaseIndex, 7);                 // Dead of Night to the wire
+  assert.strictEqual(at(240).day, 2);                        // next day rolls
+  assert.strictEqual(at(240).phaseIndex, 0);
+});
+
+test('T-TIME-1: malformed profiles fall back to even; negative elapsed clamps', () => {
+  assert.strictEqual(NPCAI.stampAtProfile(0, 30 * 60000, canon, [1, 2, 3]).phaseIndex, 1); // short → even
+  const b = NPCAI.stampAtProfile(9999, 0, canon, null);
+  assert.deepStrictEqual({ day: b.day, phaseIndex: b.phaseIndex }, { day: 1, phaseIndex: 0 });
 });

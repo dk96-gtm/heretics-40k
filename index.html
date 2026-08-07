@@ -1463,6 +1463,20 @@ var NPCAI=(function(){
     var pi=tp%8,day=Math.floor(tp/8)+1;
     return {day:day,phase:PHASES[pi],blockIndex:Math.floor(pi/2),phaseIndex:pi};
   }
+  /* T-TIME-1: profile-aware stamp — day length is GLOBAL (canon.tick.day_minutes); the
+     planet's 8-slot day_profile carves the day into per-planet phase lengths. Weights are
+     used proportionally (any Σ is safe); null/short profiles read as the even split, so
+     an unstamped planet behaves exactly like the legacy clock. */
+  function stampAtProfile(epochMs,nowMs,canon,profile){
+    var dm=(((canon||{}).tick&&canon.tick.day_minutes)||240)*60000;
+    var el=nowMs-epochMs;if(el<0)el=0;
+    var day=Math.floor(el/dm),into=el-day*dm;
+    var w=(profile&&profile.length===8)?profile:[1,1,1,1,1,1,1,1];
+    var sum=0,i;for(i=0;i<8;i++)sum+=w[i];
+    var acc=0,pi=7;
+    for(i=0;i<8;i++){acc+=w[i];if(into<dm*acc/sum){pi=i;break;}}
+    return {day:day+1,phase:PHASES[pi],blockIndex:Math.floor(pi/2),phaseIndex:pi};
+  }
   function elapsed(fromMs,toMs,bm){
     var p=Math.max(0,Math.floor((toMs-fromMs)/phaseMs(bm)));
     return {phases:p,blocks:Math.floor(p/2),days:Math.floor(p/8)};
@@ -1555,7 +1569,7 @@ var NPCAI=(function(){
     st.longTermMemory.push({t:t,summary:cause||'slain permanently',tags:['death']});
     return st;
   }
-  return { PHASES:PHASES, stampAt:stampAt, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope, buildBundle:buildBundle, validateReply:validateReply, applyDelta:applyDelta, retire:retire };
+  return { PHASES:PHASES, stampAt:stampAt, stampAtProfile:stampAtProfile, elapsed:elapsed, instantiate:instantiate, driftClamp:driftClamp, worldScope:worldScope, buildBundle:buildBundle, validateReply:validateReply, applyDelta:applyDelta, retire:retire };
 })();
 /*</ai-core>*/
 /*<world-core>*/
