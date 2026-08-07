@@ -2459,12 +2459,16 @@ function threadNPC(t){
     return S.world.met.indexOf(n.id)>=0 && (hay.indexOf(n.name)>=0 || hay.indexOf(n.name.split(' ')[0])>=0);
   })[0]||null;
 }
-function nowStamp(){if(!S.time)return '';var s=NPCAI.stampAt(S.time.epoch,Date.now(),S.time.blockMinutes);return 'Day '+s.day+' · '+s.phase;}
+/* T-TIME-1: the phase you see is the phase where you STAND — the current planet's
+   day_profile carves the global day. Off-planet (no pos) reads the even clock. */
+function curProfile(){var f=(S.pos&&S.pos.pl)?fPl(S.pos.pl):null;return (f&&f.p&&f.p.day_profile)||null;}
+function nowStamp(){if(!S.time)return '';var s=NPCAI.stampAtProfile(S.time.epoch,Date.now(),D,curProfile());return 'Day '+s.day+' · '+s.phase;}
+
 /* ── Capture & Remains (Task 8): shared day/ownership helpers ── */
-function curDay(){return S.time?NPCAI.stampAt(S.time.epoch,Date.now(),S.time.blockMinutes).day:0}
+function curDay(){return S.time?NPCAI.stampAtProfile(S.time.epoch,Date.now(),D,null).day:0}
 function isMine(cid){return !!(cid&&S.roster.some(function(m){return m.id===cid}))}
 function aiPlace(t){
-  var L=fLoc(S.pos.pl,S.pos.sp),lt=L&&L.type?LT(L.type):null,s=S.time?NPCAI.stampAt(S.time.epoch,Date.now(),S.time.blockMinutes):null;
+  var L=fLoc(S.pos.pl,S.pos.sp),lt=L&&L.type?LT(L.type):null,s=S.time?NPCAI.stampAtProfile(S.time.epoch,Date.now(),D,curProfile()):null;
   return {locName:(t&&t.loc)||(L?L.name:''),phase:s?s.phase:'',planetEffect:(lt&&lt.effect)||''};
 }
 function aiReplySchema(){return {type:'object',additionalProperties:false,properties:{
@@ -4553,13 +4557,11 @@ function init(){
  if(hasProfile()){
   hydrate(loadProfile());
   S.active=S.active||'kane';S.cart=S.cart||[];
-  S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
+  S.time=S.time||{epoch:Date.now()};
   // T-TIME-1 migration: pre-fold saves carry lastTick as an ms timestamp (seeded at epoch,
   // advanced in whole-day multiples). Convert once to the int day-index the fold uses.
   if(S.time.lastTick===undefined)S.time.lastTick=0;
   else if(S.time.lastTick>1e10)S.time.lastTick=Math.max(0,Math.floor((S.time.lastTick-(S.time.epoch||S.time.lastTick))/(((D.tick&&D.tick.day_minutes)||240)*60000)));
-  // T-TIME-1: seeded only for the legacy stamp readers; Task 4 retires both
-  if(S.time.blockMinutes===undefined)S.time.blockMinutes=(D.time&&D.time.block_minutes)||60;
   if(!S.world.rulers)S.world.rulers={};                                  // T-TERR-1: older saves
   if(!S.world.holdings)S.world.holdings=[crownOf(S.player.faction)].filter(Boolean);
   if(!S.world.missions)S.world.missions={};                              // Missions V2: older saves
@@ -4642,7 +4644,7 @@ function commitFounding(cc){
   succ:[{n:commander.n,fid:'founding'}],
   world:foundingWorld(),threads:[],
   progress:{streaks:{}},   // T-MSN-1C task 4: founding never gets a reload, so init()'s backfill never fires — seed here too (S.world key seeding gotcha)
-  time:{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60,lastTick:0},
+  time:{epoch:Date.now(),lastTick:0},
   npcState:{},active:'cmdr',cart:[]
  };
  S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
