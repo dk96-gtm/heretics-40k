@@ -4539,11 +4539,13 @@ function init(){
  if(hasProfile()){
   hydrate(loadProfile());
   S.active=S.active||'kane';S.cart=S.cart||[];
-  S.time=S.time||{epoch:Date.now()};
+  S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
   // T-TIME-1 migration: pre-fold saves carry lastTick as an ms timestamp (seeded at epoch,
   // advanced in whole-day multiples). Convert once to the int day-index the fold uses.
   if(S.time.lastTick===undefined)S.time.lastTick=0;
   else if(S.time.lastTick>1e10)S.time.lastTick=Math.max(0,Math.floor((S.time.lastTick-(S.time.epoch||S.time.lastTick))/(((D.tick&&D.tick.day_minutes)||240)*60000)));
+  // T-TIME-1: seeded only for the legacy stamp readers; Task 4 retires both
+  if(S.time.blockMinutes===undefined)S.time.blockMinutes=(D.time&&D.time.block_minutes)||60;
   if(!S.world.rulers)S.world.rulers={};                                  // T-TERR-1: older saves
   if(!S.world.holdings)S.world.holdings=[crownOf(S.player.faction)].filter(Boolean);
   if(!S.world.missions)S.world.missions={};                              // Missions V2: older saves
@@ -4626,7 +4628,7 @@ function commitFounding(cc){
   succ:[{n:commander.n,fid:'founding'}],
   world:foundingWorld(),threads:[],
   progress:{streaks:{}},   // T-MSN-1C task 4: founding never gets a reload, so init()'s backfill never fires — seed here too (S.world key seeding gotcha)
-  time:{epoch:Date.now(),lastTick:0},
+  time:{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60,lastTick:0},
   npcState:{},active:'cmdr',cart:[]
  };
  S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
