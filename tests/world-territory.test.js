@@ -52,7 +52,7 @@ test('produce via catchUp: multi-tick accrues typed yield per day, lastTick full
   const side = W.sideOfFaction('death_guard', canon);
   const y = W.typedYield(f.p, canon, side); // Fuel:1×1.25→1/day, never eaten, well under cap
   assert.strictEqual(s.world.stock.nurth.Fuel, y.Fuel * 3, '3 days of Fuel accrue linearly');
-  assert.strictEqual(s.time.lastTick, DAY * 3);
+  assert.strictEqual(s.time.lastTick, 3);
 });
 
 test('produce: no holdings → flat demo fallback unchanged', () => {

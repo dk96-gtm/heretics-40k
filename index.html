@@ -1563,9 +1563,14 @@ var WORLD=(function(){
   // Pure, DOM-free deterministic world-tick. Canon/state/nowMs arrive as arguments;
   // NO Date.now()/Math.random() inside — replayable. Slice 2a: production + taint drift.
   function dayMs(canon){return ((canon.tick&&canon.tick.day_minutes)||240)*60000;}
+  function dayIndexAt(state,canon,nowMs){
+    var ep=(state.time&&state.time.epoch)||0;
+    var e=Math.floor((nowMs-ep)/dayMs(canon));
+    return e>0?e:0;
+  }
   function ticksElapsed(state,canon,nowMs){
     var last=(state.time&&state.time.lastTick)||0;
-    var e=Math.floor((nowMs-last)/dayMs(canon));
+    var e=dayIndexAt(state,canon,nowMs)-last;
     return e>0?e:0;
   }
   /* ── T-TERR-1 slice C: the FLYWHEEL — production binds to real holdings ── */
@@ -1681,7 +1686,7 @@ var WORLD=(function(){
     var compressed=Math.max(0,elapsed-run);
     if(compressed>0)events.push({kind:'compressed',days:compressed});
     if(!state.time)state.time={};
-    state.time.lastTick=(state.time.lastTick||0)+elapsed*dayMs(canon);
+    state.time.lastTick=(state.time.lastTick||0)+elapsed;
     return {events:events,ticks:run,compressed:compressed};
   }
   function digest(events){
@@ -1721,7 +1726,7 @@ var WORLD=(function(){
       lines.push('🚪 '+e.planet+' — '+e.doorKind.replace('_',' ')+' rebuilt to Tier '+['','I','II','III'][e.to]+'.');});
     return {lines:lines};
   }
-  return { dayMs:dayMs, ticksElapsed:ticksElapsed, stepDay:stepDay,
+  return { dayMs:dayMs, dayIndexAt:dayIndexAt, ticksElapsed:ticksElapsed, stepDay:stepDay,
            catchUp:catchUp, digest:digest,
            findPlanet:findPlanet,
            resOut:resOut, typedYield:typedYield, locShares:locShares,
@@ -4534,8 +4539,11 @@ function init(){
  if(hasProfile()){
   hydrate(loadProfile());
   S.active=S.active||'kane';S.cart=S.cart||[];
-  S.time=S.time||{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60};
-  if(S.time.lastTick===undefined)S.time.lastTick=S.time.epoch||Date.now();
+  S.time=S.time||{epoch:Date.now()};
+  // T-TIME-1 migration: pre-fold saves carry lastTick as an ms timestamp (seeded at epoch,
+  // advanced in whole-day multiples). Convert once to the int day-index the fold uses.
+  if(S.time.lastTick===undefined)S.time.lastTick=0;
+  else if(S.time.lastTick>1e10)S.time.lastTick=Math.max(0,Math.floor((S.time.lastTick-(S.time.epoch||S.time.lastTick))/(((D.tick&&D.tick.day_minutes)||240)*60000)));
   if(!S.world.rulers)S.world.rulers={};                                  // T-TERR-1: older saves
   if(!S.world.holdings)S.world.holdings=[crownOf(S.player.faction)].filter(Boolean);
   if(!S.world.missions)S.world.missions={};                              // Missions V2: older saves
@@ -4618,7 +4626,7 @@ function commitFounding(cc){
   succ:[{n:commander.n,fid:'founding'}],
   world:foundingWorld(),threads:[],
   progress:{streaks:{}},   // T-MSN-1C task 4: founding never gets a reload, so init()'s backfill never fires — seed here too (S.world key seeding gotcha)
-  time:{epoch:Date.now(),blockMinutes:(D.time&&D.time.block_minutes)||60,lastTick:Date.now()},
+  time:{epoch:Date.now(),lastTick:0},
   npcState:{},active:'cmdr',cart:[]
  };
  S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
