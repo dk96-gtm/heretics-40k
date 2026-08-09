@@ -100,3 +100,11 @@ test('T-TIME-1: day-index consistency — WORLD dayIndex + 1 === NPCAI stamp day
       NPCAI.stampAt(1234, now, 60).day);
   });
 });
+
+test('N1: digest renders ult_lapse + cond_heal lines', () => {
+  const d = W.digest([
+    { kind: 'ult_lapse', loc: 'The Bastion', planet: 'Vigilus', outcome: 'sacked', arith: '600 PC vs 625 PC (defender-favored) → p 0.49 · roll 0.40 · margin +0.09 → SACKED' },
+    { kind: 'cond_heal', loc: 'x1', to: 'intact' }]);
+  assert.ok(d.lines.some(l => /Bastion/.test(l) && /SACKED/.test(l)));
+  assert.ok(d.lines.some(l => /mends/.test(l)));
+});

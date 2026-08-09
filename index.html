@@ -1734,6 +1734,11 @@ var WORLD=(function(){
     events.filter(function(e){return e.kind==='taint';}).forEach(function(e){
       taintBy[e.sector]=(taintBy[e.sector]||0)+e.delta;});
     Object.keys(taintBy).forEach(function(s){lines.push('Taint rose '+taintBy[s]+' in '+s+'.');});
+    events.filter(function(e){return e.kind==='ult_lapse';}).forEach(function(e){
+      lines.push('⏳ '+e.loc+' ('+e.planet+') — the clock ran out: '+e.arith);});
+    var healBy={};   // aggregate per loc — last heal step wins (one line, not one per tick)
+    events.filter(function(e){return e.kind==='cond_heal';}).forEach(function(e){healBy[e.loc]=e.to;});
+    Object.keys(healBy).forEach(function(loc){lines.push('🔧 '+loc+' mends — now '+healBy[loc]+'.');});
     var comp=events.filter(function(e){return e.kind==='compressed';})[0];
     if(comp)lines.push('Over ~'+comp.days+' earlier cycles the frontier settled quietly.');
     events.filter(function(e){return e.kind==='door_built';}).forEach(function(e){
@@ -3441,7 +3446,7 @@ function sectorConflicts(){var out=[];D.galaxy.segmentums.forEach(function(g){g.
   var al=/Death Guard|Chaos|Black Legion/.test(fr[1])?'Chaos':/Tyranid|Ork|Necron|Aeldari|Xenos/.test(fr[1])?'Xenos':/Militarum|Astartes|Imperial|Custodes/.test(fr[1])?'Imperial':'—';
   byPlanet[al]=(byPlanet[al]||0)+1})});
  var sides=Object.keys(byPlanet);if(sides.length>=2)out.push({sec:s.name,status:s.status,sides:sides})})})});return out}
-function rTL(){var L=document.getElementById('tl'),V=document.getElementById('tv');
+function rTL(){resolveUltLapses(Date.now());var L=document.getElementById('tl'),V=document.getElementById('tv');
 V.style.display='none';L.style.display='block';L.innerHTML='';
 /* ── thread management dashboard ── */
 var accepted=S.threads.slice();
@@ -3667,6 +3672,42 @@ function pRuler(pl){var ov=S.world&&S.world.rulers&&S.world.rulers[pl.id];return
 function activeUltAt(lid){for(var i=0;i<S.threads.length;i++){var t=S.threads[i];
   if(t.ultimatum&&!t.done&&t.lid===lid)return t;}return null}
 function ultDaysLeft(t){return t.ultimatum.expiresDay-WORLD.dayIndexAt(S,D,Date.now())}
+/* T-NPC-3 N1: lapse = the seeded auto-battle. Deterministic off persisted state —
+   seed uses the clock's own expiresDay (day ⊕ holding ⊕ aggressor), so a 30-day
+   catch-up chunk and a same-day live check tell the identical story. Own conclude
+   path: never concludeThread (no mission payout, no streak ticks). */
+function resolveUltLapses(nowMs){
+ var today=WORLD.dayIndexAt(S,D,nowMs),out=[];
+ S.threads.forEach(function(t){
+  var u=t.ultimatum;if(!u||t.done||u.expiresDay>today)return;
+  var fp=fPl(t.pl),l=fLoc(t.pl,t.lid);if(!fp||!l)return;
+  var att=0;(t.forces||[]).forEach(function(fn){var f=S.forces.filter(function(x){return x.n===fn})[0];if(f)att+=fpc(f);});
+  if(!att)att=1;                                             // an abandoned thread still resolves
+  var def=Math.round(ULT.garrisonPC(l.level,u.prev,0,D)*((D.rules.ultimatum||{}).defender_mult||1.25));
+  var r=ULT.rng(ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,u.aggressor));
+  var res=ULT.resolveLapse(att,def,u.scale,r,D);
+  // condition: besieged lifts; ladder writes down from prev
+  var end=u.prev;
+  if(res.outcome==='repelled_losses'||res.outcome==='sacked')end=ULT.stepDown(u.prev);
+  if(end==='intact'&&!lById(t.lid).condition)delete S.world.locConds[t.lid];
+  else if(end===l.condition)delete S.world.locConds[t.lid];
+  else S.world.locConds[t.lid]=end;
+  if(res.outcome==='sacked'){var loot=ULT.lootOf(l.level,fp.p.prod_mult||1,r,D);
+   S.cur=(S.cur||0)+loot.cur;
+   if(S.world.holdings.length)addStock(S.world.holdings[0],loot.res);
+   res.arith+=' · loot '+loot.cur+'c';}
+  if(res.outcome==='captured')captureOnVictory(t,{kind:'lapse'},true);
+  t.done={kind:'ult_lapse',victor:res.outcome==='sacked'||res.outcome==='captured'?'attacker':'defender',at:Date.now()};
+  if(!t.posts)t.posts=[];                     // a thread that lapses before ever being opened
+  t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+   body:'⏳ THE CLOCK RUNS OUT — '+l.name+'. '+res.arith});
+  S.world.log=S.world.log||[];
+  S.world.log.unshift(nowStamp()+' — ULTIMATUM LAPSED at '+l.name+': '+res.arith);
+  out.push({kind:'ult_lapse',loc:l.name,planet:fp.p.name,outcome:res.outcome,arith:res.arith});
+ });
+ if(out.length)persist();
+ return out;
+}
 /* T-DOOR-1: effective tier of a door at a location — sparse overlay over the derived seed */
 function tombDormant(pl){var f2=fPl(pl.id);var sc=f2&&liveScores(f2.s.id);return DOOR.tombDormant(pl.type,!!pl.crown,sc?sc.conflict:null,D)}
 function popBandIdx(v){var P=D.galaxy.population_ranks;if(!P)return 0;for(var i=P.bands.length-1;i>=0;i--)if(v>=P.bands[i][0])return i;return 0}
@@ -3722,7 +3763,7 @@ function threadHeader(t){var h=E('div','thhdr');
  +(t.about?'<div class="thhdr-about">'+t.about+'</div>':'');
  return h}
 var _openThread=null;
-function openT(id){_openThread=id;var L=document.getElementById('tl'),V=document.getElementById('tv');
+function openT(id){resolveUltLapses(Date.now());_openThread=id;var L=document.getElementById('tl'),V=document.getElementById('tv');
 L.style.display='none';V.style.display='block';V.innerHTML='';
 var bk=E('button','btn gh sm','← All threads');bk.onclick=rTL;V.appendChild(bk);
 var t=S.threads.filter(function(x){return x.id===id})[0];
@@ -4680,7 +4721,12 @@ function init(){
   for(var _db=0;_db<_wc.ticks;_db++){DOOR.tickBuilds(S).forEach(function(f){
     var _fl=lById(f.loc);
     _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});}
-  S._digest=(_wc.ticks>0)?WORLD.digest(_wc.events):null;
+  // T-NPC-3 N1 task 4: a lapse can be due even when no production tick ran this load
+  // (e.g. session opened mid-window last time, expiry crossed since) — resolve it
+  // regardless of _wc.ticks, and widen the digest gate so its ⏳ line still surfaces.
+  var _ultEvents=resolveUltLapses(Date.now());
+  _ultEvents.forEach(function(e){_wc.events.push(e);});
+  S._digest=(_wc.ticks>0||_ultEvents.length>0)?WORLD.digest(_wc.events):null;
   var _mc=MISSION.catchUpBoards(S,D,_wc.ticks,missionPlanets,missionCtxOf);
   if(_mc.added>0&&S._digest)S._digest.lines.push('◈ '+_mc.added+' new missions posted across the sector boards.');
  }
