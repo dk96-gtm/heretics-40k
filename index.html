@@ -3862,7 +3862,8 @@ function counterTribute(t,m){
     +(offer.captive?' + the return of '+(_tribCapName(offer.captive)||'the taken'):'')+'.'});
  } else {
   u.offerState='withdrawn';
-  t.posts.push({who:'THE DEFENDERS',tag:'',stamp:nowStamp(),body:'The defenders withdraw their offer. Steel will answer.'});
+  // review fix round 1, finding 2: RECORD attribution, matching declineTribute's sibling line
+  t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:'The defenders withdraw their offer. Steel will answer.'});
  }
  persist();openT(t.id);
 }
@@ -4635,7 +4636,11 @@ function threadView(V,t){
       } else {concludeThread(t,oc);justConcluded=true;}
     }
     openT(t.id);T(deferred?'The field is yours — loot the fallen, then END THREAD.':justConcluded?('Thread concluded — '+(t.done.victor||'no victor')+'.'):'Posted to '+t.n+'.');};
-  var tribPanel=ultTributePanel(t);   // T-NPC-3 N1 task 6: pending/collapsed tribute offer, above the composer
+  // review fix round 1, finding 1: pre-battle only. acceptTribute never syncs t.state.combatants
+  // wounds/deaths/captures back to S.roster (that's concludeThread's job) — once Lock In starts
+  // the fight, buying peace is off the table; gating the panel out of 'battle'/'aftermath'
+  // structurally removes the desync path instead of adding a parallel sync path.
+  var tribPanel=(!t.state.phase||t.state.phase==='deploy')?ultTributePanel(t):null;
   if(isCombat){
     if(t.state.board)V.appendChild(t.state.phase==='deploy'?bfDeployUI(t,party):bfCombatUI(t,party));  // E: deploy then D3 battle
     var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);if(tribPanel)lf.appendChild(tribPanel);lf.appendChild(comp.el);
