@@ -5,7 +5,7 @@ const path = require('node:path');
 const D = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8'));
 
 test('canon v1.25: every planet type carries resource_output; spec rows exact', () => {
-  assert.strictEqual(D.meta.version, '1.32');
+  assert.strictEqual(D.meta.version, '1.33');
   for (const p of D.galaxy.planet_types)
     assert.ok(p.resource_output && ['food','material','fuel'].every((k) => typeof p.resource_output[k] === 'number'), p.name);
   const by = Object.fromEntries(D.galaxy.planet_types.map((p) => [p.name, p.resource_output]));

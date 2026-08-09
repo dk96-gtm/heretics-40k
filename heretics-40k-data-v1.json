@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.32",
+  "version": "1.33",
   "updated": "2026-08-05",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -735,6 +735,81 @@
    "models": "same_allegiance",
    "forge_affinity_source": "ruler",
    "note": "Daak rulings 2026-08-04 (T-MST-1): every door stocks the RULING faction's catalog (geography is the shelf; conquest changes the shelves). Gear/casts/armour sell to ANY buyer. Models muster only to a same-allegiance Commander (imperial/chaos/xenos, never cross). The Forge works the LOCAL ruler's affinity tags with no player-faction limiter; unruled ground has no forge tradition."
+  },
+  "ultimatum": {
+   "note": "T-NPC-3 N1. Bands/mults/ladder LOCKED (Daak 2026-08-07..09). garrison_pc_per_level, outcome margins, loot, heal pacing, tribute sizing + faction_appetite are DEFAULTS — FLAGGED FOR DAAK REVIEW.",
+   "bands": {
+    "raid": [
+     4,
+     8
+    ],
+    "skirmish": [
+     8,
+     16
+    ],
+    "invasion": [
+     12,
+     24
+    ]
+   },
+   "scale_of": {
+    "SKIRMISH": "raid",
+    "INVASION": "invasion"
+   },
+   "scale_note": "Engine SKIRMISH threads are location-anchored assaults = the raid scale (thread_scales: Skirmish subtypes Duel+Raid). The skirmish band awaits the Duel/field-battle split — remap here, never in engine.",
+   "garrison_pc_per_level": 200,
+   "defender_mult": 1.25,
+   "outcome": {
+    "loss_margin": 0.25,
+    "decisive_margin": 0.25
+   },
+   "loot": {
+    "base": 15,
+    "res_per_level": 2
+   },
+   "heal": {
+    "days_per_step": {
+     "Thriving": 4,
+     "Peace": 6,
+     "Corrupted": 9,
+     "Famine": 0,
+     "Warring": 0
+    }
+   },
+   "tribute": {
+    "offer_base": 20,
+    "res_per_level": 2,
+    "scale_mult": {
+     "raid": 1,
+     "invasion": 3
+    },
+    "counter_options": [
+     1.5,
+     2
+    ],
+    "faction_appetite": {
+     "black_legion": 45,
+     "death_guard": 30,
+     "world_eaters": 10,
+     "thousand_sons": 55,
+     "emperors_children": 40,
+     "daemons": 5,
+     "astartes": 25,
+     "militarum": 60,
+     "mechanicus": 70,
+     "sororitas": 15,
+     "custodes": 5,
+     "tyranids": 0,
+     "orks": 35,
+     "necrons": 20,
+     "aeldari": 50,
+     "drukhari": 65,
+     "tau": 75,
+     "votann": 80,
+     "gsc": 55,
+     "harlequins": 45
+    }
+   }
   }
  },
  "perk_effects": {
@@ -9364,6 +9439,7 @@
     "pop_mult": 1.0,
     "doors_offline": [],
     "tier_delta": 0,
+    "garrison_mult": 1.0,
     "caused_by": "default",
     "effect": "The site works as its type promises."
    },
@@ -9374,6 +9450,7 @@
     "pop_mult": 1.1,
     "doors_offline": [],
     "tier_delta": 0,
+    "garrison_mult": 1.25,
     "caused_by": "Mission (defend)",
     "effect": "Player-built. Holder gains; attacker pays more AP to take it.",
     "asymmetry": "holder only"
@@ -9437,6 +9514,7 @@
      "*"
     ],
     "tier_delta": 0,
+    "garrison_mult": 0.6,
     "caused_by": "Raid thread",
     "resources": -20,
     "effect": "Taken and stripped. Recoverable - machines survive what people don't."
@@ -9450,6 +9528,7 @@
      "*"
     ],
     "tier_delta": 0,
+    "garrison_mult": 0.3,
     "caused_by": "sustained war, Exterminatus",
     "becomes": "ruins",
     "effect": "Structure lost, not merely emptied. Type degrades to Ruins."
@@ -16148,7 +16227,8 @@
     },
     "prefer_condition": "ruined",
     "world_effect": {
-     "prosperity": 4
+     "prosperity": 4,
+     "repair_step": 1
     },
     "flavor": "This place is rubble and memory. Direct the work-gangs; write it back into being.",
     "faces": {
