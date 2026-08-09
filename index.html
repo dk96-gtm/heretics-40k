@@ -2786,6 +2786,19 @@ function startThread(pid,l,type,npcId,opts){var loc=fPl(pid).p.name+' · '+l.nam
     expiresDay:WORLD.dayIndexAt(S,D,Date.now())+opts.ultDays,
     aggressor:S.player.faction,prev:_pv,offer:null,offerState:null};
   S.world.locConds=S.world.locConds||{};S.world.locConds[l.id]='besieged';
+  // T-NPC-3 N1 task 6: the defender's opening TRIBUTE offer, seeded off the same
+  // mission-seed base as every other Ultimatum roll — day-0-of-the-clock + a
+  // distinct tag so it never collides with the lapse/loot seeds (Task 4/5).
+  var _or=ULT.rng(ULT.seedFor(S.world.missionSeedBase,t.ultimatum.expiresDay,l.id,'tribute:'+t.ultimatum.aggressor));
+  var _off=ULT.tributeOffer(l.level,fPl(pid).p.prod_mult||1,_sc,_or,D);
+  var _tk=S.roster.filter(function(m){return m.st==='TAKEN'})[0];
+  t.ultimatum.offer={cur:_off.cur,res:_off.res,captive:_tk?_tk.id:null};
+  t.ultimatum.offerState='open';
+  if(!t.posts)t.posts=[];
+  t.posts.push({who:'THE DEFENDERS',tag:'',stamp:nowStamp(),
+    body:'🕊 TRIBUTE OFFERED — withdraw, and take '+_off.cur+' currency'
+      +((_off.res.Food+_off.res.Material+_off.res.Fuel)>0?' + '+_off.res.Food+'/'+_off.res.Material+'/'+_off.res.Fuel+' (Food/Material/Fuel)':'')
+      +(_tk?' + the return of '+_tk.n.split(',')[0]:'')+'. The offer stands while the clock runs.'});
  }
  S.threads.push(t);
  var key=pid+'/'+l.id;if(!S.world.history[key])S.world.history[key]=[];
@@ -3785,6 +3798,105 @@ function resolveUltLapses(nowMs){
  if(out.length)persist();
  return out;
 }
+/* T-NPC-3 N1 task 6: TRIBUTE — the third answer to a live Ultimatum (fight, ignore/lapse,
+   or pay). Own conclude path on accept, exactly like resolveUltLapses: never concludeThread
+   (no mission payout, no streak ticks — this isn't a fight). Decline leaves the clock armed;
+   resolveUltLapses still fires on schedule. Counter is allowed once, only from 'open'. */
+function _ultRestoreCond(t){        // same sparse-overlay restore resolveUltLapses/concludeThread use
+ if(t.ultimatum&&S.world.locConds&&S.world.locConds[t.lid]==='besieged'){
+  if(t.ultimatum.prev==='intact'&&!(lById(t.lid)||{}).condition)delete S.world.locConds[t.lid];
+  else S.world.locConds[t.lid]=t.ultimatum.prev;
+ }
+}
+function _tribCapName(id){if(!id)return null;var m=S.roster.filter(function(x){return x.id===id})[0];return m?m.n.split(',')[0]:null}
+function _tribResLine(res){return ((res.Food||0)+(res.Material||0)+(res.Fuel||0))>0?' + '+(res.Food||0)+'/'+(res.Material||0)+'/'+(res.Fuel||0)+' (Food/Material/Fuel)':''}
+function acceptTribute(t){
+ var u=t.ultimatum,offer=u&&u.offer;if(!u||!offer||t.done)return;
+ S.cur=(S.cur||0)+offer.cur;
+ if(S.world.holdings&&S.world.holdings.length)addStock(S.world.holdings[0],offer.res);
+ var freed=null;
+ if(offer.captive){
+  var m=S.roster.filter(function(x){return x.id===offer.captive&&x.st==='TAKEN'})[0];
+  if(m){m.st='GARRISON';m.loc=posTxt();freed=m;}
+ }
+ _ultRestoreCond(t);
+ t.done={kind:'tribute',victor:'accord',at:Date.now()};
+ if(!t.posts)t.posts=[];
+ t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+  body:'🕊 TRIBUTE — the defenders buy peace: '+offer.cur+' '+curName()+_tribResLine(offer.res)
+   +(freed?' + '+freed.n.split(',')[0]+' returned to the ranks':'')+'. The siege lifts.'});
+ S.world.log=S.world.log||[];
+ S.world.log.unshift(nowStamp()+' — TRIBUTE accepted at '+((fLoc(t.pl,t.lid)||{}).name||t.loc)+': '+offer.cur+' '+curName()+' + peace.');
+ persist();
+ T('🕊 Tribute accepted — the siege lifts.');
+ rW();rRos();openT(t.id);
+}
+function declineTribute(t){
+ var u=t.ultimatum;if(!u||t.done||u.offerState==='declined'||u.offerState==='withdrawn')return;
+ u.offerState='declined';
+ if(!t.posts)t.posts=[];
+ t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:'The tribute is refused. Steel will answer — the clock keeps running.'});
+ persist();openT(t.id);
+}
+function counterTribute(t,m){
+ var u=t.ultimatum,offer=u&&u.offer;if(!u||!offer||t.done||u.offerState!=='open')return;
+ var loc=fLoc(t.pl,t.lid);
+ var fr=npcForceAt(t.pl,loc?loc.name:null),facN=fr?npcFactionOf(fr.desc):null,fac=facN?facByName(facN):null;
+ var defFacId=fac?fac.id:null;
+ var npc=npcsAt(t.pl,t.lid)[0];
+ var nst=npc&&S.npcState&&S.npcState[npc.id];
+ var rawBeh=nst&&nst.behavior;
+ // NPCAI.instantiate returns {axis:{value,spawn,plasticity,floor,ceiling,drift}} — ULT.evalCounter
+ // wants a plain numeric pragmatism, so unwrap .value; no placed/met NPC → the canon default (50).
+ var beh=(rawBeh&&rawBeh.pragmatism&&rawBeh.pragmatism.value!=null)?{pragmatism:rawBeh.pragmatism.value}:{pragmatism:50};
+ var appetite=defFacId?(((D.rules.ultimatum||{}).tribute||{}).faction_appetite||{})[defFacId]||0:0;
+ var cr=ULT.rng(ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,'counter:'+m));
+ var ok=ULT.evalCounter(m,beh,appetite,cr);
+ if(!t.posts)t.posts=[];
+ if(ok){
+  offer.cur=Math.round(offer.cur*m);
+  ['Food','Material','Fuel'].forEach(function(k){offer.res[k]=Math.round((offer.res[k]||0)*m)});
+  u.offerState='countered';
+  t.posts.push({who:'THE DEFENDERS',tag:'',stamp:nowStamp(),
+   body:'🕊 TRIBUTE RAISED — the defenders meet your ×'+m+' demand: '+offer.cur+' '+curName()+_tribResLine(offer.res)
+    +(offer.captive?' + the return of '+(_tribCapName(offer.captive)||'the taken'):'')+'.'});
+ } else {
+  u.offerState='withdrawn';
+  t.posts.push({who:'THE DEFENDERS',tag:'',stamp:nowStamp(),body:'The defenders withdraw their offer. Steel will answer.'});
+ }
+ persist();openT(t.id);
+}
+/* threadView response panel: a live open/countered offer gets the 3-button block (Accept ·
+   Decline · Counter, mirroring the aftermath END THREAD button's plain-button style); a
+   declined/withdrawn offer collapses to a dim one-liner; anything else (no ultimatum, no
+   offer yet, or already accepted — accepted sets t.done, which read-only-gates threadView
+   before this is ever called) renders nothing. */
+function ultTributePanel(t){
+ var u=t.ultimatum;if(!u||t.done)return null;
+ var st=u.offerState;
+ if(st==='declined'||st==='withdrawn'){
+  var dz=E('div','d',null);dz.style.cssText='margin:8px 0;color:var(--dim);font-size:11.5px';
+  dz.textContent=st==='declined'?'Tribute declined — the offer no longer stands. The clock still runs.':
+    'The defenders withdrew their tribute offer. The clock still runs.';
+  return dz;
+ }
+ if(st!=='open'&&st!=='countered')return null;
+ var offer=u.offer;if(!offer)return null;
+ var panel=E('div','card');panel.style.marginBottom='10px';
+ var capLine=offer.captive?(' + the return of '+(_tribCapName(offer.captive)||'the taken')):'';
+ panel.innerHTML='<h3>🕊 Tribute'+(st==='countered'?' — raised offer':' offered')+'</h3>'
+  +'<div style="font-size:12px;color:var(--dim)">'+offer.cur+' '+curName()+_tribResLine(offer.res)+capLine+' — buy peace while the clock runs.</div>';
+ var row=E('div');row.style.cssText='display:flex;flex-wrap:wrap;gap:7px;margin-top:9px';
+ var ab=E('button','btn','Accept tribute');ab.onclick=function(){acceptTribute(t)};row.appendChild(ab);
+ var db=E('button','btn gh','Decline (fight on)');db.onclick=function(){declineTribute(t)};row.appendChild(db);
+ if(st==='open'){
+  ((((D.rules.ultimatum||{}).tribute||{}).counter_options)||[1.5,2]).forEach(function(m){
+   var cb=E('button','btn gh sm','Counter-demand ×'+m);cb.onclick=function(){counterTribute(t,m)};row.appendChild(cb);
+  });
+ }
+ panel.appendChild(row);
+ return panel;
+}
 /* T-DOOR-1: effective tier of a door at a location — sparse overlay over the derived seed */
 function tombDormant(pl){var f2=fPl(pl.id);var sc=f2&&liveScores(f2.s.id);return DOOR.tombDormant(pl.type,!!pl.crown,sc?sc.conflict:null,D)}
 function popBandIdx(v){var P=D.galaxy.population_ranks;if(!P)return 0;for(var i=P.bands.length-1;i>=0;i--)if(v>=P.bands[i][0])return i;return 0}
@@ -4523,12 +4635,13 @@ function threadView(V,t){
       } else {concludeThread(t,oc);justConcluded=true;}
     }
     openT(t.id);T(deferred?'The field is yours — loot the fallen, then END THREAD.':justConcluded?('Thread concluded — '+(t.done.victor||'no victor')+'.'):'Posted to '+t.n+'.');};
+  var tribPanel=ultTributePanel(t);   // T-NPC-3 N1 task 6: pending/collapsed tribute offer, above the composer
   if(isCombat){
     if(t.state.board)V.appendChild(t.state.phase==='deploy'?bfDeployUI(t,party):bfCombatUI(t,party));  // E: deploy then D3 battle
-    var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);lf.appendChild(comp.el);
+    var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);if(tribPanel)lf.appendChild(tribPanel);lf.appendChild(comp.el);
     wrap.appendChild(lf);wrap.appendChild(threadSidebar(t));V.appendChild(wrap);
   }else{
-    var wrap=E('div','tw solo');wrap.appendChild(scroll);wrap.appendChild(comp.el);V.appendChild(wrap);
+    var wrap=E('div','tw solo');wrap.appendChild(scroll);if(tribPanel)wrap.appendChild(tribPanel);wrap.appendChild(comp.el);V.appendChild(wrap);
   }
   var _npc=threadNPC(t);
   if(_npc && !isCombat){   // combat summon is Plan B
@@ -5073,7 +5186,8 @@ var GLOSS={
  'Modifiers':'Optional hardships chosen at mission accept — each valid at conclusion multiplies the payout ×1.5. Violating one voids its bonus, never the mission.',
  'Bounty':'A named target — Bounty Hunt and Assassination missions post a specific enemy boss by name; the board shows who before you accept, and bringing them down — dead or captured — completes the objective.',
  'Ultimatum':'A respond-by clock set when the thread opens. If it lapses unresolved, the assault resolves by a seeded garrison-favored roll — the defenders\' ground and readiness against the force you committed.',
- 'Besieged':'A clocked location. Gates shut (the forge serves the wall and nobody else) — doors close, output −20%, tier −1.'};
+ 'Besieged':'A clocked location. Gates shut (the forge serves the wall and nobody else) — doors close, output −20%, tier −1.',
+ 'Tribute':'The third answer to an Ultimatum: fight, ignore, or pay. Defenders may buy peace with currency, resources, or the return of the taken; the attacker names the price — or the clock does.'};
 /* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
 function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
  var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');

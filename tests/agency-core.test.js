@@ -74,3 +74,8 @@ test('N1: tribute — offer scales by band, counter eval follows appetite+pragma
   assert.ok(ULT.evalCounter(1.5, { pragmatism: 90 }, 80, () => 0.5), 'greedy pragmatist pays 1.5x');
   assert.ok(!ULT.evalCounter(2, { pragmatism: 20 }, 10, () => 0.5), 'proud zealot refuses 2x');
 });
+test('N1: tribute offer + counter eval are seed-stable', () => {
+  const r1 = ULT.rng(ULT.seedFor(9, 15, 'x1', 'tribute:death_guard'));
+  const r2 = ULT.rng(ULT.seedFor(9, 15, 'x1', 'tribute:death_guard'));
+  assert.deepStrictEqual(ULT.tributeOffer(2, 1, 'raid', r1, canon), ULT.tributeOffer(2, 1, 'raid', r2, canon));
+});
