@@ -7,7 +7,7 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.32', () => {
+test('canon is v1.33', () => {
   assert.strictEqual(canon.meta.version, '1.33');
 });
 

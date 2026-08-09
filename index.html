@@ -3567,6 +3567,11 @@ function exitThread(t){
     T('You abort the passage'+(dn?' to '+dn:'')+' — '+refund+' '+curName()+' refunded.');
     go('threads');rTL();return;
   }
+  // T-NPC-3 N1 final review FIX 1: restore the pre-siege location condition before ANY
+  // splice branch below can drop a clocked thread — hoisted once so the t.done, !joined,
+  // and joined-flee branches all get it. Idempotent: a no-op if the overlay was already
+  // restored (e.g. concludeThread already ran it before t.done was set).
+  _ultRestoreCond(t);
   if(t.done){S.threads=S.threads.filter(function(x){return x.id!==t.id});   // concluded → free exit
     T('You leave the field of "'+t.n+'" — the matter is settled.');
     go('threads');rTL();return;}
@@ -3585,12 +3590,8 @@ function exitThread(t){
   // convertSpoils) so if `t` itself carries a streak objective, its own progress meter still
   // gets the post-tick read on this very pass.
   tickStreaksAndSync(t.state,false);
-  // T-NPC-3 N1 task 5: abandoning a clocked thread lifts the siege too — same restore as
-  // concludeThread's fought-to-conclusion path, right before the thread itself is gone.
-  if(t.ultimatum&&S.world.locConds&&S.world.locConds[t.lid]==='besieged'){
-   if(t.ultimatum.prev==='intact'&&!(lById(t.lid)||{}).condition)delete S.world.locConds[t.lid];
-   else S.world.locConds[t.lid]=t.ultimatum.prev;
-  }
+  // T-NPC-3 N1 final review FIX 1: siege restore now hoisted to the top of exitThread
+  // (runs for every branch, including this one) — see _ultRestoreCond(t) call above.
   var curCost=Math.round(S.army*0.05);S.cur=Math.max(0,S.cur-curCost);
   S.threads=S.threads.filter(function(x){return x.id!==t.id});
   var yourSpd=deployed.reduce(function(a,m){return Math.max(a,m.spd||2)},0),enemySpd=3,caught=(enemySpd>=yourSpd);
@@ -3743,14 +3744,10 @@ function concludeThread(t,oc){
   S.world.missions[t.mission.pl]=mbd.filter(function(m){return m.iid!==t.mission.iid});
  }
  captureOnVictory(t,oc,mineWon);
- // T-NPC-3 N1 task 5: the fight resolved the ground before the Ultimatum clock could
- // lapse — lift the siege overlay back to what it was before the clock started (same
- // sparse-overlay rule every other restore site uses: 'intact' with no canon override
- // just clears the key).
- if(t.ultimatum&&S.world.locConds&&S.world.locConds[t.lid]==='besieged'){
-  if(t.ultimatum.prev==='intact'&&!(lById(t.lid)||{}).condition)delete S.world.locConds[t.lid];
-  else S.world.locConds[t.lid]=t.ultimatum.prev;
- }
+ // T-NPC-3 N1 task 5 / final review FIX 3: the fight resolved the ground before the
+ // Ultimatum clock could lapse — lift the siege overlay back to what it was before the
+ // clock started. Consolidated onto the one shared helper (was an inline duplicate).
+ _ultRestoreCond(t);
  S.world.log=S.world.log||[];
  S.world.log.unshift(nowStamp()+' — '+t.n+' concluded: '+(oc.kind==='accord'?'accord struck':mineWon?'victory':oc.victor?('defeat — '+oc.victor+' holds the field'):'mutual ruin')+'.');
  persist();
@@ -3765,11 +3762,18 @@ function ultDaysLeft(t){return t.ultimatum.expiresDay-WORLD.dayIndexAt(S,D,Date.
 /* T-NPC-3 N1: lapse = the seeded auto-battle. Deterministic off persisted state —
    seed uses the clock's own expiresDay (day ⊕ holding ⊕ aggressor), so a 30-day
    catch-up chunk and a same-day live check tell the identical story. Own conclude
-   path: never concludeThread (no mission payout, no streak ticks). */
-function resolveUltLapses(nowMs){
- var today=WORLD.dayIndexAt(S,D,nowMs),out=[];
+   path: never concludeThread (no mission payout, no streak ticks).
+   final review FIX 2: optional capDay — when given (a number), resolves only threads whose
+   expiresDay < capDay (strictly; chunk-independence: this lets init()'s per-tick loop resolve
+   a mid-chunk lapse BEFORE that day's heal pass runs, so post-expiry days heal identically to
+   N separate daily boots) and skips persist() (the boot path persists later anyway). When
+   capDay is omitted this is the unchanged live-path form: expiresDay <= today, with persist. */
+function resolveUltLapses(nowMs,capDay){
+ var capped=(typeof capDay==='number'),today=WORLD.dayIndexAt(S,D,nowMs),out=[];
  S.threads.forEach(function(t){
-  var u=t.ultimatum;if(!u||t.done||u.expiresDay>today)return;
+  var u=t.ultimatum;if(!u||t.done)return;
+  if(capped){if(!(u.expiresDay<capDay))return;}
+  else{if(u.expiresDay>today)return;}
   var fp=fPl(t.pl),l=fLoc(t.pl,t.lid);if(!fp||!l)return;
   var att=0;(t.forces||[]).forEach(function(fn){var f=S.forces.filter(function(x){return x.n===fn})[0];if(f)att+=fpc(f);});
   if(!att)att=1;                                             // an abandoned thread still resolves
@@ -3795,18 +3799,23 @@ function resolveUltLapses(nowMs){
   S.world.log.unshift(nowStamp()+' — ULTIMATUM LAPSED at '+l.name+': '+res.arith);
   out.push({kind:'ult_lapse',loc:l.name,planet:fp.p.name,outcome:res.outcome,arith:res.arith});
  });
- if(out.length)persist();
+ if(out.length&&!capped)persist();
  return out;
 }
 /* T-NPC-3 N1 task 6: TRIBUTE — the third answer to a live Ultimatum (fight, ignore/lapse,
    or pay). Own conclude path on accept, exactly like resolveUltLapses: never concludeThread
    (no mission payout, no streak ticks — this isn't a fight). Decline leaves the clock armed;
    resolveUltLapses still fires on schedule. Counter is allowed once, only from 'open'. */
-function _ultRestoreCond(t){        // same sparse-overlay restore resolveUltLapses/concludeThread use
- if(t.ultimatum&&S.world.locConds&&S.world.locConds[t.lid]==='besieged'){
-  if(t.ultimatum.prev==='intact'&&!(lById(t.lid)||{}).condition)delete S.world.locConds[t.lid];
-  else S.world.locConds[t.lid]=t.ultimatum.prev;
- }
+function _ultRestoreCond(t){        // the ONE sparse-overlay restore — exitThread/concludeThread/acceptTribute all call this
+ if(!(t.ultimatum&&S.world.locConds&&S.world.locConds[t.lid]==='besieged'))return;
+ // final review FIX 3: sparse rule mirrors resolveUltLapses' own 3-way check — a restore
+ // value equal to the location's canon-authored `condition` (e.g. a clock started on
+ // canon-besieged ground) must also clear the overlay, not just the 'intact'+no-canon case,
+ // or it leaves a permanent redundant overlay row that duplicates canon.
+ var prev=t.ultimatum.prev,l=lById(t.lid)||{};
+ if(prev==='intact'&&!l.condition)delete S.world.locConds[t.lid];
+ else if(prev===l.condition)delete S.world.locConds[t.lid];
+ else S.world.locConds[t.lid]=prev;
 }
 function _tribCapName(id){if(!id)return null;var m=S.roster.filter(function(x){return x.id===id})[0];return m?m.n.split(',')[0]:null}
 function _tribResLine(res){return ((res.Food||0)+(res.Material||0)+(res.Fuel||0))>0?' + '+(res.Food||0)+'/'+(res.Material||0)+'/'+(res.Fuel||0)+' (Food/Material/Fuel)':''}
@@ -4913,7 +4922,14 @@ function init(){
   if(!S.world.condHeal)S.world.condHeal={};                               // T-NPC-3 N1: older saves
   if(!S.progress)S.progress={streaks:{}};                                 // T-MSN-1C task 4: older saves
   var _wc=WORLD.catchUp(S,D,Date.now());
-  for(var _db=0;_db<_wc.ticks;_db++){DOOR.tickBuilds(S).forEach(function(f){
+  // final review FIX 2: chunk-independence — resolve any lapse due THIS tick day BEFORE that
+  // day's heal pass runs (below), so a multi-day catch-up chunk heals post-expiry days exactly
+  // like N separate daily boots would (a lapse dated mid-chunk no longer stalls the heal until
+  // the whole chunk finishes). _startDay is the day-index the chunk starts from.
+  var _startDay=WORLD.dayIndexAt(S,D,Date.now())-_wc.ticks;
+  for(var _db=0;_db<_wc.ticks;_db++){
+    resolveUltLapses(Date.now(),_startDay+_db+1).forEach(function(e){_wc.events.push(e);});
+    DOOR.tickBuilds(S).forEach(function(f){
     var _fl=lById(f.loc);
     _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});
     // T-NPC-3 N1 task 5: condition self-heal, one pass per tick day — sector-paced
