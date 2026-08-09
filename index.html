@@ -2615,7 +2615,7 @@ function foundingWorld(){return {
  stats:{vigilus:{taint:12},sangua:{taint:4},nurth:{taint:20},kraithv:{taint:16}},
  rulers:{},holdings:[],
  stock:{},unrest:{},
- doorTiers:{},doorBuilds:{},locConds:{},
+ doorTiers:{},doorBuilds:{},locConds:{},condHeal:{},
  missions:{},missionSeedBase:(Date.now()%2147483647),missionDay:0,   // Missions V2 slice A: founding never gets a reload, so init()'s backfill never fires — seed here too (S.time.epoch isn't in scope yet: commitFounding assigns `world:` before `time:`, so this mirrors init()'s Date.now()-based epoch as closely as scope allows)
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
@@ -2769,6 +2769,16 @@ function startThread(pid,l,type,npcId,opts){var loc=fPl(pid).p.name+' · '+l.nam
  var id=type.toLowerCase().slice(0,3)+'_'+l.id+'_'+S.threads.length;
  var t={id:id,type:type.toUpperCase(),n:type+' at '+l.name,loc:loc,pl:pid,lid:l.id,turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',about:'You opened a '+type+' at '+l.name+'. '+(threadSummary(type.toUpperCase())),forces:fname?[fname]:[],npc:npcId||null};
  if(t.type==='SKIRMISH'||t.type==='INVASION')seedCombat(t,pid,l,npcId,force,(opts&&opts.duel)?{duel:true}:null);
+ // T-NPC-3 N1 task 3: stamp Ultimatum metadata when the picker supplied a chosen window;
+ // Besieged then renders for free at the existing condition-pill sites via effCond.
+ var _sc=ULT.scaleOf(t.type,D);
+ if(_sc&&opts&&opts.ultDays){
+  var _pv=effCond(l);
+  t.ultimatum={scale:_sc,windowDays:opts.ultDays,
+    expiresDay:WORLD.dayIndexAt(S,D,Date.now())+opts.ultDays,
+    aggressor:S.player.faction,prev:_pv,offer:null,offerState:null};
+  S.world.locConds=S.world.locConds||{};S.world.locConds[l.id]='besieged';
+ }
  S.threads.push(t);
  var key=pid+'/'+l.id;if(!S.world.history[key])S.world.history[key]=[];
  S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
@@ -3396,7 +3406,21 @@ if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){
   if(tm.innerHTML){tm.innerHTML='';return}
   tm.innerHTML='<div class="lsec"><h5>Start which thread?</h5></div>';
   var row=E('div');row.style.cssText='display:flex;flex-wrap:wrap;gap:6px';
-  ['Diplomacy','Mission','Skirmish','Invasion'].forEach(function(ty){var bn=E('button','btn gh sm',ty);bn.onclick=function(){startThread(pl.id,l,ty)};row.appendChild(bn)});
+  ['Diplomacy','Mission','Skirmish','Invasion'].forEach(function(ty){var bn=E('button','btn gh sm',ty);bn.onclick=function(){
+   // T-NPC-3 N1 task 3: SKIRMISH/INVASION carry an Ultimatum scale — offer a window picker
+   // instead of starting immediately; DIPLOMACY/MISSION are untouched (no scale, falls through).
+   var _sc=ULT.scaleOf(ty.toUpperCase(),D);
+   if(_sc){
+    if(activeUltAt(l.id)){tm.innerHTML='<div class="lsec"><h5>Start which thread?</h5></div><div class="d" style="color:var(--dim)">A clock already runs against this ground.</div>';return}
+    var _bd=ULT.bandOf(_sc,D),_mn=_bd[0],_mx=_bd[1],_md=Math.round((_mn+_mx)/2);
+    tm.innerHTML='<div class="lsec"><h5>Choose a window</h5></div>';
+    var wrow=E('div');wrow.style.cssText='display:flex;flex-wrap:wrap;gap:6px';
+    [['Short',_mn],['Standard',_md],['Long',_mx]].forEach(function(w){var wb=E('button','btn gh sm',w[0]+' ('+w[1]+'d)');
+     wb.onclick=function(){startThread(pl.id,l,ty,null,{ultDays:w[1]})};wrow.appendChild(wb)});
+    tm.appendChild(wrow);
+    return;
+   }
+   startThread(pl.id,l,ty)};row.appendChild(bn)});
   tm.appendChild(row)};}
 var r=route(pl.id,l.id);
 if(r&&!inTransit()){var pp=(r.m!=='x')?passagePreview(pl.id,l.id):null;
@@ -3440,7 +3464,8 @@ accepted.forEach(function(t){var vis=t.vis||'public',mine=(t.initiator||'').matc
      valid=mr&&mr.valid.indexOf(mid)>=0,voided=mr&&mr.voided.indexOf(mid)>=0;
    return '<span class="pill'+(valid?' br':'')+'" style="margin-right:3px'+(voided?';opacity:.45;text-decoration:line-through':'')+'">'+lab+'</span>';
  }).join('')+'</div>'):'';
- var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b> <span class="pill '+(vis==='private'?'bl':'')+'">'+(vis==='private'?'🔒 PRIVATE':'PUBLIC')+'</span><div style="font-size:11px;color:var(--dim);margin-top:2px">'+t.loc+'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Objective: '+(OBJ[t.type]||'—')+meter+'</div>'+modChips+'</div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'waiting')+'</span>');
+ var ultChip=(t.ultimatum&&!t.done)?(' <span class="pill mono">⏳ '+Math.max(0,ultDaysLeft(t))+'d</span>'):'';
+ var d=E('div','thc','<div><span class="tp '+t.type+'">'+t.type+'</span><b>'+t.n+'</b> <span class="pill '+(vis==='private'?'bl':'')+'">'+(vis==='private'?'🔒 PRIVATE':'PUBLIC')+'</span>'+ultChip+'<div style="font-size:11px;color:var(--dim);margin-top:2px">'+t.loc+'</div><div style="font-size:11px;color:var(--faint);margin-top:3px">Objective: '+(OBJ[t.type]||'—')+meter+'</div>'+modChips+'</div><span class="mono" style="color:'+(t.turn==='you'?'var(--blh)':'var(--faint)')+'">'+(t.turn==='you'?'YOUR TURN':'waiting')+'</span>');
  d.onclick=function(){openT(t.id)};
  if(mine){var tg=E('button','btn gh sm',vis==='private'?'Make public':'Make private');tg.style.marginTop='6px';
   tg.onclick=function(e){e.stopPropagation();t.vis=vis==='private'?'public':'private';if(t.vis==='public'){t.summary=threadSummary(t.type)+' (auto-summary generated on publish — full AI summary at Stage 3.)'}rTL();T('Thread set '+t.vis+(t.vis==='public'?' — a summary was generated and it now enters the public record.':' — hidden from non-participants.'))};d.appendChild(tg)}
@@ -3638,6 +3663,10 @@ function concludeThread(t,oc){
 /* ── T-TERR-1 slice B: territory. Canon rulers are the baseline map; the save-state
    overlay S.world.rulers records flips, S.world.holdings is what YOU hold. ── */
 function pRuler(pl){var ov=S.world&&S.world.rulers&&S.world.rulers[pl.id];return ov||pl.ruler||null}
+/* T-NPC-3 N1: one active Ultimatum per location (spec pacing guard). */
+function activeUltAt(lid){for(var i=0;i<S.threads.length;i++){var t=S.threads[i];
+  if(t.ultimatum&&!t.done&&t.lid===lid)return t;}return null}
+function ultDaysLeft(t){return t.ultimatum.expiresDay-WORLD.dayIndexAt(S,D,Date.now())}
 /* T-DOOR-1: effective tier of a door at a location — sparse overlay over the derived seed */
 function tombDormant(pl){var f2=fPl(pl.id);var sc=f2&&liveScores(f2.s.id);return DOOR.tombDormant(pl.type,!!pl.crown,sc?sc.conflict:null,D)}
 function popBandIdx(v){var P=D.galaxy.population_ranks;if(!P)return 0;for(var i=P.bands.length-1;i>=0;i--)if(v>=P.bands[i][0])return i;return 0}
@@ -3686,9 +3715,10 @@ function captureOnVictory(t,oc,mineWon){
  T('🏴 '+fp.p.name+' is yours.');
 }
 function threadHeader(t){var h=E('div','thhdr');
+ var ultLine=(t.ultimatum&&!t.done)?('<span>'+annotate('⏳ Ultimatum: '+Math.max(0,ultDaysLeft(t))+' game days — lapse resolves by garrison roll')+'</span>'):'';
  h.innerHTML='<div class="thhdr-top"><span class="tp '+t.type+'">'+t.type+'</span><h3>'+t.n+'</h3></div>'
  +'<div class="thhdr-loc">◉ '+(t.loc||'—')+'</div>'
- +'<div class="thhdr-meta"><span><b>Initiated by</b> '+(t.initiator||'—')+'</span><span><b>Forces in play</b> '+((t.forces&&t.forces.length)?t.forces.join(' · '):'none committed')+'</span></div>'
+ +'<div class="thhdr-meta"><span><b>Initiated by</b> '+(t.initiator||'—')+'</span><span><b>Forces in play</b> '+((t.forces&&t.forces.length)?t.forces.join(' · '):'none committed')+'</span>'+ultLine+'</div>'
  +(t.about?'<div class="thhdr-about">'+t.about+'</div>':'');
  return h}
 var _openThread=null;
@@ -4644,6 +4674,7 @@ function init(){
   if(!S.world.doorTiers)S.world.doorTiers={};                             // T-DOOR-1: older saves
   if(!S.world.doorBuilds)S.world.doorBuilds={};
   if(!S.world.locConds)S.world.locConds={};                               // T-MSN-1B final fix wave: older saves
+  if(!S.world.condHeal)S.world.condHeal={};                               // T-NPC-3 N1: older saves
   if(!S.progress)S.progress={streaks:{}};                                 // T-MSN-1C task 4: older saves
   var _wc=WORLD.catchUp(S,D,Date.now());
   for(var _db=0;_db<_wc.ticks;_db++){DOOR.tickBuilds(S).forEach(function(f){
@@ -4905,7 +4936,9 @@ var GLOSS={
  'Door Tier':'Doors level I→III. Tier gates what the door offers; upgrades cost currency + resources and take days of construction. Tier III lives on specific standard world types — Shop excepted, which can reach III anywhere.',
  'Exchange':'Trade currency for Food/Material/Fuel (and back) in lots of 10 at the Shop. Rates are unfavorable and improve with shop tier. Works only on worlds you rule — goods bank into that world\'s stockpile.',
  'Modifiers':'Optional hardships chosen at mission accept — each valid at conclusion multiplies the payout ×1.5. Violating one voids its bonus, never the mission.',
- 'Bounty':'A named target — Bounty Hunt and Assassination missions post a specific enemy boss by name; the board shows who before you accept, and bringing them down — dead or captured — completes the objective.'};
+ 'Bounty':'A named target — Bounty Hunt and Assassination missions post a specific enemy boss by name; the board shows who before you accept, and bringing them down — dead or captured — completes the objective.',
+ 'Ultimatum':'A respond-by clock set when the thread opens. If it lapses unresolved, the assault resolves by a seeded garrison-favored roll — the defenders\' ground and readiness against the force you committed.',
+ 'Besieged':'A clocked location. Gates shut (the forge serves the wall and nobody else) — doors close, output −20%, tier −1.'};
 /* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
 function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
  var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');
