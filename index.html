@@ -488,7 +488,10 @@ function fSec(id){var r=null;D.galaxy.segmentums.forEach(function(g){g.zones.for
 function fPl(id){var r=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){if(p.id===id)r={g:g,z:z,s:s,p:p}})})})});return r}
 function fLoc(pid,lid){var p=fPl(pid);for(var i=0;i<p.p.locations.length;i++)if(p.p.locations[i].id===lid)return p.p.locations[i]}
 /* T-DOOR-1: location by id alone (planet unknown) — used by the door-build tick glue */
-function lById(id){var r=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){(p.locations||[]).forEach(function(l){if(l.id===id)r=l})})})})});return r}
+/* withPid (T-NPC-3 N1 task 5, optional): also returns the owning planet id, off the SAME
+   walk — {l,pid} instead of the bare location. Default (single-arg) callers are unaffected;
+   this is the one canonical galaxy walker, extended rather than duplicated inline. */
+function lById(id,withPid){var r=null,rp=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){(s.planets||[]).forEach(function(p){(p.locations||[]).forEach(function(l){if(l.id===id){r=l;rp=p.id;}})})})})});return withPid?{l:r,pid:rp}:r}
 /* Missions V2 slice A: planet→sector id, reusing the one existing glue lookup (fPl) — never a third. */
 function sectorOfPlanet(pid){var f=fPl(pid);return f?f.s.id:null}
 function wallets(){return D.allegiances[S.player.allegiance].wallets}
@@ -2923,6 +2926,47 @@ function acceptMission(inst,pl,l,mods){
  delete _msel[inst.iid];
  persist();T('Mission accepted: '+inst.n);openT(id);
 }
+/* T-NPC-3 N1 task 5: manual Rebuild/Liberate — an own holding's damaged ground can be
+   worked without waiting for a board posting to roll it. No payout (S.cur untouched);
+   mints a MISSION thread carrying the same t.mission shape acceptMission builds (~2870
+   above) so it flows through the identical conclude path — the repair_step/clear_condition
+   branches in concludeThread don't need to know this thread came from a board or not.
+   No board row is involved, so there is nothing to remove at conclude: the board-filter
+   at concludeThread's `mbd.filter(...m.iid!==t.mission.iid...)` simply finds no match on
+   a 'man_...' iid and no-ops, same as it would for any stale/absent iid. */
+function manualRestore(pl,l,kind){
+ var isRebuild=(kind==='rebuild');
+ var _isHeld=S.world.holdings&&S.world.holdings.indexOf(pl.id)>=0;
+ if(!_isHeld){T('You do not hold this ground.');return}
+ var _cond=effCond(l);
+ if(isRebuild&&_cond!=='sacked'&&_cond!=='ruined'){T('Nothing here needs rebuilding.');return}
+ if(!isRebuild&&(_cond!=='infested'||!npcForceAt(pl.id,l.name))){T('Nothing here needs liberating.');return}
+ var am=activeModel(),force=S.forces.filter(function(f){return f.lead===am.id})[0];
+ if(!force){T('No Force to send.');return}
+ var other=threadOfForce(force.n);
+ if(other){T(force.n+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}
+ var row=(D.missions.universal||[]).filter(function(r){return r.id===(isRebuild?'rebuild':'liberation');})[0];
+ if(!row){T('Not available.');return}
+ var id='man_'+Date.now();
+ var t={id:id,type:'MISSION',n:(isRebuild?'Rebuild ':'Liberate ')+l.name,loc:pl.name+' · '+l.name,pl:pl.id,lid:l.id,
+  turn:'you',vis:'public',initiator:'You',about:row.flavor,accepted:true,forces:[force.n],mods:[],
+  mission:{iid:id,mid:isRebuild?'rebuild':'liberation',payout:0,
+   world_effect:isRebuild?{repair_step:1}:{conflict:-4,clear_condition:true},pl:pl.id,lid:l.id,
+   n:(isRebuild?'Rebuild ':'Liberate ')+l.name}};
+ t.seedState={};
+ if(isRebuild){
+  t.seedState.objective={kind:'restore',target:(row.target_roll||[3,5])[0],progress:0,params:row.params||{},done:false};
+ }else{
+  seedCombat(t,pl.id,l,null,force,row.params,0);
+  var _hostiles=t.seedState.combatants?Object.keys(t.seedState.combatants).filter(function(k){return t.seedState.combatants[k].party!==force.n;}):[];
+  if(!_hostiles.length){T('No hostile presence remains here.');return}
+  t.seedState.objective={kind:'count_kill',target:_hostiles.length,progress:0,params:row.params||{},done:false};
+ }
+ S.threads.push(t);
+ var key=pl.id+'/'+l.id;if(!S.world.history[key])S.world.history[key]=[];
+ S.world.history[key].unshift('MISSION — '+t.n+' · ACTIVE (you)');
+ persist();T((isRebuild?'Rebuild':'Liberation')+' thread opened at '+l.name+' — '+force.n+' committed.');go('threads');rTL();openT(id);
+}
 function curTravel(){return S.threads.filter(function(t){return t.type==='TRAVEL'})[0]||null;}
 function inTransit(){return !!curTravel();}
 function travelTier(fpl,fsp,tpl,tsp){
@@ -3385,9 +3429,17 @@ if(_mb.length)h2+='<div class="lsec"><h5>Missions — posted here ('+_mb.length+
 /* NPCs — clickable sheets */
 if(np.length)h2+='<div class="lsec"><h5>Known here — click for their sheet</h5>'+np.map(function(n,ni){return '<div class="lrow" data-npc="'+n.id+'">▸ <b>'+n.name+'</b> — '+n.kind+', '+n.faction+'</div>'}).join('')+'</div>';
 var atHere=(S.pos.pl===pl.id&&S.pos.sp===l.id&&!inTransit()&&!S.pos.void),openDoors=_dz.filter(function(x){return x.open});
+// T-NPC-3 N1 task 5: manual Rebuild/Liberate — only ever offered at an OWN holding, gated
+// to the ground actually needing the work (sacked/ruined for Rebuild, infested + an NPC
+// garrison present for Liberate). Both are no-payout instant mission threads.
+var _canRebuild=_held&&(_lc==='sacked'||_lc==='ruined');
+var _canLiberate=_held&&_lc==='infested'&&!!npcForceAt(pl.id,l.name);
 if(atHere){h2+='<div class="locacts">';
  if(openDoors.length)h2+='<button class="btn" id="locreq">Enter Requisition ('+openDoors.length+' door'+(openDoors.length>1?'s':'')+')</button>';
- h2+='<button class="btn gh" id="locthr">Start a thread here</button></div>';
+ h2+='<button class="btn gh" id="locthr">Start a thread here</button>';
+ if(_canRebuild)h2+='<button class="btn gh" id="locrebuild">🔧 Rebuild (no payout)</button>';
+ if(_canLiberate)h2+='<button class="btn gh" id="loclib">⚔ Liberate (no payout)</button>';
+ h2+='</div>';
  h2+='<div id="loctm"></div>';}
 h2+='</div></div>';
 p.innerHTML=h2;
@@ -3407,6 +3459,8 @@ p.querySelectorAll('[data-accept-mission]').forEach(function(b){b.onclick=functi
  var chosen=MOD_IDS.filter(function(mid){return sel[mid];});
  acceptMission(m,pl,l,chosen)};});
 if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){go('shop')};
+ var rb=document.getElementById('locrebuild');if(rb)rb.onclick=function(){manualRestore(pl,l,'rebuild')};
+ var lib=document.getElementById('loclib');if(lib)lib.onclick=function(){manualRestore(pl,l,'liberate')};
  var tb=document.getElementById('locthr');if(tb)tb.onclick=function(){var tm=document.getElementById('loctm');
   if(tm.innerHTML){tm.innerHTML='';return}
   tm.innerHTML='<div class="lsec"><h5>Start which thread?</h5></div>';
@@ -3518,6 +3572,12 @@ function exitThread(t){
   // convertSpoils) so if `t` itself carries a streak objective, its own progress meter still
   // gets the post-tick read on this very pass.
   tickStreaksAndSync(t.state,false);
+  // T-NPC-3 N1 task 5: abandoning a clocked thread lifts the siege too — same restore as
+  // concludeThread's fought-to-conclusion path, right before the thread itself is gone.
+  if(t.ultimatum&&S.world.locConds&&S.world.locConds[t.lid]==='besieged'){
+   if(t.ultimatum.prev==='intact'&&!(lById(t.lid)||{}).condition)delete S.world.locConds[t.lid];
+   else S.world.locConds[t.lid]=t.ultimatum.prev;
+  }
   var curCost=Math.round(S.army*0.05);S.cur=Math.max(0,S.cur-curCost);
   S.threads=S.threads.filter(function(x){return x.id!==t.id});
   var yourSpd=deployed.reduce(function(a,m){return Math.max(a,m.spd||2)},0),enemySpd=3,caught=(enemySpd>=yourSpd);
@@ -3648,6 +3708,15 @@ function concludeThread(t,oc){
    // see effCond() for the single reader every condition-consuming call site goes through.
    if(we.clear_condition&&t.mission.lid){
     S.world.locConds=S.world.locConds||{};S.world.locConds[t.mission.lid]='intact';}
+   // repair_step (Rebuild): the mission actually mends the ground — +1 ladder step.
+   // Covers both an accepted board Rebuild AND a manual Rebuild (manualRestore) — both
+   // mint the same mission.world_effect.repair_step:1 shape, so this one branch serves both.
+   if(we.repair_step&&t.mission.lid){
+    var _rc=effCond(lById(t.mission.lid)||{});var _to=ULT.stepUp(_rc);
+    S.world.locConds=S.world.locConds||{};
+    if(_to==='intact'&&!((lById(t.mission.lid)||{}).condition&&(lById(t.mission.lid)||{}).condition!=='intact'))delete S.world.locConds[t.mission.lid];
+    else S.world.locConds[t.mission.lid]=_to;
+    delete (S.world.condHeal||{})[t.mission.lid];}
    S.world.log=S.world.log||[];
    S.world.log.unshift('◈ MISSION COMPLETE — '+t.mission.n+' ('+payout+' paid)'
     +(mc.valid.length?' · '+mc.valid.length+' modifier(s) honored':''));
@@ -3661,6 +3730,14 @@ function concludeThread(t,oc){
   S.world.missions[t.mission.pl]=mbd.filter(function(m){return m.iid!==t.mission.iid});
  }
  captureOnVictory(t,oc,mineWon);
+ // T-NPC-3 N1 task 5: the fight resolved the ground before the Ultimatum clock could
+ // lapse — lift the siege overlay back to what it was before the clock started (same
+ // sparse-overlay rule every other restore site uses: 'intact' with no canon override
+ // just clears the key).
+ if(t.ultimatum&&S.world.locConds&&S.world.locConds[t.lid]==='besieged'){
+  if(t.ultimatum.prev==='intact'&&!(lById(t.lid)||{}).condition)delete S.world.locConds[t.lid];
+  else S.world.locConds[t.lid]=t.ultimatum.prev;
+ }
  S.world.log=S.world.log||[];
  S.world.log.unshift(nowStamp()+' — '+t.n+' concluded: '+(oc.kind==='accord'?'accord struck':mineWon?'victory':oc.victor?('defeat — '+oc.victor+' holds the field'):'mutual ruin')+'.');
  persist();
@@ -4720,7 +4797,19 @@ function init(){
   var _wc=WORLD.catchUp(S,D,Date.now());
   for(var _db=0;_db<_wc.ticks;_db++){DOOR.tickBuilds(S).forEach(function(f){
     var _fl=lById(f.loc);
-    _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});}
+    _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});
+    // T-NPC-3 N1 task 5: condition self-heal, one pass per tick day — sector-paced
+    // (ULT.healTick reads days_per_step off the sector's status label), siege-paused
+    // (an active Ultimatum on this ground blocks the heal), sacked/ruined only.
+    // Only the sparse overlaid set is ever touched, never all 290 locations.
+    Object.keys(S.world.locConds||{}).forEach(function(lid){
+      var _lp=lById(lid,true);if(!_lp.l||!_lp.pid)return;
+      var _sid=sectorOfPlanet(_lp.pid);
+      var _stt=WORLD.sectorStatus(liveScores(_sid)||{},D);
+      var _ev=ULT.healTick(S,lid,_stt,!!activeUltAt(lid),D);
+      if(_ev){_ev.loc=_lp.l.name;_wc.events.push(_ev);}
+    });
+  }
   // T-NPC-3 N1 task 4: a lapse can be due even when no production tick ran this load
   // (e.g. session opened mid-window last time, expiry crossed since) — resolve it
   // regardless of _wc.ticks, and widen the digest gate so its ⏳ line still surfaces.
