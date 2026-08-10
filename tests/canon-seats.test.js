@@ -16,6 +16,7 @@ test('rules.seats shape', () => {
   assert.strictEqual(s.buyout.premium, 2);
   assert.strictEqual(s.buyout.standing_min, 1);
   assert.strictEqual(s.petition_standing_min, 0);
+  assert.deepStrictEqual(s.commission, { base: 30, days: 7 });
 });
 
 test('base_by_type covers every seat-able location type, and no non-seat-able one', () => {

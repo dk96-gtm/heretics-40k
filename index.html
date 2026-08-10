@@ -427,12 +427,25 @@ function effCond(l){var ov=S.world&&S.world.locConds&&S.world.locConds[l.id];ret
 function doorsAt(l){var t=LT(l.type);if(!t)return [];
 var _ec=effCond(l);
 var c=CD(_ec)||{},off=c.doors_offline||[],seen={};
-return (t.doors||[]).map(function(k){seen[k]=(seen[k]||0)+1;
+var out=(t.doors||[]).map(function(k){seen[k]=(seen[k]||0)+1;
 var shut=off.indexOf('*')>=0||off.indexOf(k)>=0;
 var nm=(l.door_names&&l.door_names[k])||skin(k,S.player.allegiance,S.player.faction);
 if(seen[k]>1)nm=nm+' II';
 return{kind:k,name:nm,open:!shut,tiers:t.forge_tiers,
-reason:shut?(c.name||_ec)+' — '+(c.effect||'stations offline'):null}})}
+reason:shut?(c.name||_ec)+' — '+(c.effect||'stations offline'):null}});
+/* T-TERR-2 task 5: a seat holder's commission can build a door kind this location
+   type doesn't natively grant — DOOR.tickBuilds writes the finished build straight into
+   the S.world.doorTiers overlay (locId:kind keys), so a commissioned door only actually
+   EXISTS if this assembly also surfaces overlay-only kinds, not just t.doors. */
+var _dt=(S&&S.world&&S.world.doorTiers)||{};
+Object.keys(_dt).forEach(function(k){var i=k.lastIndexOf(':');if(i<0)return;
+var lid=k.slice(0,i),kind=k.slice(i+1);
+if(lid!==l.id||seen[kind])return;seen[kind]=1;
+var shut=off.indexOf('*')>=0||off.indexOf(kind)>=0;
+var nm=(l.door_names&&l.door_names[kind])||skin(kind,S.player.allegiance,S.player.faction);
+out.push({kind:kind,name:nm,open:!shut,tiers:3,
+reason:shut?(c.name||_ec)+' — '+(c.effect||'stations offline'):null});});
+return out}
 /* worst_of(planet, sector) — a planet can never be better than its sector */
 var STORD=['Thriving','Peace','Warring','Famine','Corrupted'];
 function statusOf(pid){var f=fPl(pid);if(!f)return null;
@@ -1746,6 +1759,8 @@ var WORLD=(function(){
     if(comp)lines.push('Over ~'+comp.days+' earlier cycles the frontier settled quietly.');
     events.filter(function(e){return e.kind==='door_built';}).forEach(function(e){
       lines.push('🚪 '+e.planet+' — '+e.doorKind.replace('_',' ')+' rebuilt to Tier '+['','I','II','III'][e.to]+'.');});
+    var seatEv=events.filter(function(e){return e.kind==='seat_income';});
+    if(seatEv.length)lines.push('👑 Your seats paid their dues ('+seatEv.length+' payments).');
     return {lines:lines};
   }
   return { dayMs:dayMs, dayIndexAt:dayIndexAt, ticksElapsed:ticksElapsed, stepDay:stepDay,
@@ -3379,12 +3394,30 @@ hd.innerHTML='<h3>'+h.name+' <span class="pill">'+lt.name+'</span></h3>'
 +'Population: '+popRank(effPop(h,S.pos.pl))+' · Condition: '+((CD(effCond(h))||{}).name||effCond(h))
 +' · Level '+(h.level||1)+' · Sector: '+readStatus(st)+'</div>';
 b.appendChild(hd);
-if(!dz.length){b.insertAdjacentHTML('beforeend','<div class="empty"><b>'+h.name+'</b> — no doors stand here.<br><span class="mono" style="font-size:11px">A '+lt.name+' grants none, by definition.</span></div>');return}
+/* T-TERR-2 task 5: a held seat may still commission a door on ground that natively
+   grants none (e.g. ruins) — don't bail before the Commission block gets a chance. */
+if(!dz.length&&!(S.world.seats&&S.world.seats[h.id])){b.insertAdjacentHTML('beforeend','<div class="empty"><b>'+h.name+'</b> — no doors stand here.<br><span class="mono" style="font-size:11px">A '+lt.name+' grants none, by definition.</span></div>');return}
 /* closed doors are SHOWN, greyed, with the cause — you can see what you cannot open */
 dz.filter(function(x){return !x.open}).forEach(function(x){
 b.insertAdjacentHTML('beforeend','<div class="empty" style="opacity:.6;text-align:left"><b>'+x.name+'</b> <span class="pill">'+x.kind.toUpperCase()+'</span> — closed<br><span class="mono" style="font-size:11px;color:var(--blh)">'+x.reason+'</span></div>')});
 var w=E('div','grid g2');
 dz.filter(function(x){return x.open}).forEach(function(dr){w.appendChild(renderDoor(dr,h))});
+/* T-TERR-2: seat holders may commission a door the ground lacks — same build-timer seam
+   as tier upgrades (DOOR.startBuild to tier 1, 'commission:' key prefix distinguishes new-build) */
+if(S.world.seats&&S.world.seats[h.id]){
+ var _have={};dz.forEach(function(d){_have[d.kind]=true});
+ var _missing=D.galaxy.doors.filter(function(d){return !_have[d.kind]&&d.kind!=='throne_room';});
+ if(_missing.length){
+  w.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>'+annotate('Commission a door')+'</h5></div>');
+  _missing.forEach(function(d){
+   var _cc=(D.rules.seats.commission||{}).base||30;                 // flat commission cost, tunable
+   var _cd=(D.rules.seats.commission||{}).days||7;
+   var _cr=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+d.kind.replace(/_/g,' ')+'</b></span><span class="mono" style="font-size:11px">'+_cc+' '+curName()+' · '+_cd+'d build</span></div>');
+   var _cb=E('button','btn gh sm','Commission');_cb.style.marginTop='5px';
+   _cb.onclick=function(){if(S.cur<_cc){T('Not enough '+curName()+'.');return}
+    if(!DOOR.startBuild(S,h.id,d.kind,1,_cd)){T('Construction already underway here.');return}
+    S.cur-=_cc;T('🔨 '+d.kind.replace(/_/g,' ')+' commissioned — '+_cd+' days.');rShop();};
+   _cr.appendChild(_cb);w.appendChild(_cr);});}}
 b.appendChild(w);
 renderCart()}
 /* ---- map ---- */
@@ -3541,8 +3574,12 @@ var atHere=(S.pos.pl===pl.id&&S.pos.sp===l.id&&!inTransit()&&!S.pos.void),openDo
 // T-NPC-3 N1 task 5: manual Rebuild/Liberate — only ever offered at an OWN holding, gated
 // to the ground actually needing the work (sacked/ruined for Rebuild, infested + an NPC
 // garrison present for Liberate). Both are no-payout instant mission threads.
-var _canRebuild=_held&&(_lc==='sacked'||_lc==='ruined');
-var _canLiberate=_held&&_lc==='infested'&&!!npcForceAt(pl.id,l.name);
+// T-TERR-2 task 5: a held SEAT also qualifies for manual Rebuild/Liberate, not just a whole-planet holding.
+var _heldOrSeat=_held||!!(S.world.seats&&S.world.seats[l.id]);
+var _canRebuild=_heldOrSeat&&(_lc==='sacked'||_lc==='ruined');
+var _canLiberate=_heldOrSeat&&_lc==='infested'&&!!npcForceAt(pl.id,l.name);
+var _seat=(S.world.seats||{})[l.id];
+if(_seat)h2+='<div style="margin:5px 0"><span class="pill" style="border-color:var(--acc)">👑 YOUR SEAT</span> <span class="mono" style="font-size:11px;color:var(--dim)">tax '+SEAT.taxOf(l,effCond(l),D)+'/day'+(_seat.stationedForceId?' · garrisoned':'')+'</span></div>';
 if(atHere){h2+='<div class="locacts">';
  if(openDoors.length)h2+='<button class="btn" id="locreq">Enter Requisition ('+openDoors.length+' door'+(openDoors.length>1?'s':'')+')</button>';
  h2+='<button class="btn gh" id="locthr">Start a thread here</button>';
@@ -3867,6 +3904,21 @@ function ultDaysLeft(t){return t.ultimatum.expiresDay-WORLD.dayIndexAt(S,D,Date.
    a mid-chunk lapse BEFORE that day's heal pass runs, so post-expiry days heal identically to
    N separate daily boots) and skips persist() (the boot path persists later anyway). When
    capDay is omitted this is the unchanged live-path form: expiresDay <= today, with persist. */
+/* T-TERR-2: one in-game day of seat revenue — tax always; the location's production
+   share only when the planet is NOT already a holding (holdings accrue whole-planet
+   production in WORLD.catchUp — double-pay guard). */
+function seatTickIncome(){
+ var lines=[];
+ Object.keys(S.world.seats||{}).forEach(function(lid){
+  var lp=lById(lid,true);if(!lp.l||!lp.pid)return;
+  var tax=SEAT.taxOf(lp.l,effCond(lp.l),D);
+  S.cur=(S.cur||0)+tax;
+  var got=tax+'c tax';
+  if((S.world.holdings||[]).indexOf(lp.pid)<0){
+   var pl=fPl(lp.pid).p,sh=WORLD.locShares(pl,D).filter(function(x){return x.id===lid})[0];
+   if(sh){addStock(lp.pid,sh.share);got+=' · +'+sh.share.Food+'F/'+sh.share.Material+'M/'+sh.share.Fuel+'Fu';}}
+  lines.push({kind:'seat_income',loc:lp.l.name,detail:got});});
+ return lines;}
 function resolveUltLapses(nowMs,capDay){
  var capped=(typeof capDay==='number'),today=WORLD.dayIndexAt(S,D,nowMs),out=[];
  S.threads.forEach(function(t){
@@ -5034,6 +5086,7 @@ function init(){
     DOOR.tickBuilds(S).forEach(function(f){
     var _fl=lById(f.loc);
     _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});
+    seatTickIncome().forEach(function(e){_wc.events.push(e);});
     // T-NPC-3 N1 task 5: condition self-heal, one pass per tick day — sector-paced
     // (ULT.healTick reads days_per_step off the sector's status label), siege-paused
     // (an active Ultimatum on this ground blocks the heal), sacked/ruined only.
@@ -5680,7 +5733,27 @@ function renderDoor(dr,h){var c=E('div','card');
   c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">The seat of this world\'s ruler. Initiate planet-scale threads'+(crown?' — and, as a <b>Crown World</b>, sector-scale events.':'.')+'</div>');
   var evs=[{n:'Declare Invasion (planet)',need:0},{n:'Call a Crusade (sector)',need:400,crown:true},{n:'Exterminatus (sector)',need:900,crown:true}];
   evs.forEach(function(ev){if(ev.crown&&!crown)return;var r=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+ev.n+'</b></span><span class="mono" style="font-size:11px;color:var(--dim)">'+(ev.need?ev.need+' Influence':'—')+'</span></div>');
-   var bt=E('button','btn gh sm','Initiate');bt.style.marginTop='5px';bt.onclick=function(){if(S.infl<ev.need){T('Requires '+ev.need+' Influence.');return}T(ev.n+' — thread machinery lands with the thread rebuild.')};r.appendChild(bt);c.appendChild(r)})}
+   var bt=E('button','btn gh sm','Initiate');bt.style.marginTop='5px';bt.onclick=function(){if(S.infl<ev.need){T('Requires '+ev.need+' Influence.');return}T(ev.n+' — thread machinery lands with the thread rebuild.')};r.appendChild(bt);c.appendChild(r)});
+  /* T-TERR-2: seat petition — every seat-able location on THIS planet, gates fail-closed */
+  var _tpl=fPl(S.pos.pl).p,_tr=pRuler(_tpl),_me=FAC(S.player.faction);
+  var _own=!!(_tr&&_tr.faction===_me.name);
+  c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>'+annotate('Petition for a Seat')+'</h5></div>');
+  if(!_own)c.insertAdjacentHTML('beforeend','<div class="d">Only a world ruled by your own kin grants seats.</div>');
+  else (_tpl.locations||[]).forEach(function(_sl){
+   if(!SEAT.seatable(_sl.type,D))return;
+   var _sc=effCond(_sl),_price=SEAT.priceOf(_sl,_sc,D);
+   var _o={loc:_sl,cond:_sc,ruledByOwn:_own,held:!!(S.world.seats&&S.world.seats[_sl.id]),
+     work:(S.world.work||{})[_tpl.id]||0,standing:(S.world.standing||{})[S.player.faction],cur:S.cur};
+   var _why=SEAT.gateReason(_o,D);
+   var _row=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+_sl.name+'</b> <span class="mono" style="font-size:11px;color:var(--dim)">'+((LT(_sl.type)||{}).name||_sl.type)+' · L'+(_sl.level||1)+'</span></span><span class="mono" style="font-size:11px">'+(_o.held?'HELD':_price+' '+curName()+' · WORK '+(D.rules.seats.work_gates[_sl.type]||0))+'</span></div>');
+   var _bt=E('button','btn gh sm',_o.held?'Yours':'Petition');_bt.style.marginTop='5px';_bt.disabled=_o.held;
+   _bt.onclick=function(){_o.cur=S.cur;var w=SEAT.gateReason(_o,D);if(w){T(w);return}   // re-read funds at click, not render
+    S.cur-=_price;S.world.seats=S.world.seats||{};
+    S.world.seats[_sl.id]={pid:_tpl.id,since:WORLD.dayIndexAt(S,D,Date.now())};
+    S.world.log=S.world.log||[];
+    S.world.log.unshift(nowStamp()+' — SEAT GRANTED: '+_sl.name+' on '+_tpl.name+' ('+_price+' paid).');
+    T('👑 '+_sl.name+' is your seat.');rShop();};
+   _row.appendChild(_bt);c.appendChild(_row);})}
  else c.insertAdjacentHTML('beforeend','<div class="d">This door stands open.</div>');
  return c}
 function renderForge(c,dr,dtier){

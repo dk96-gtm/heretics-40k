@@ -1348,6 +1348,10 @@
    "buyout": {
     "premium": 2,
     "standing_min": 1
+   },
+   "commission": {
+    "base": 30,
+    "days": 7
    }
   }
  },
