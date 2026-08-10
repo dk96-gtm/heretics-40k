@@ -1277,7 +1277,10 @@ var THREAD=(function(){
   function doctrineOf(behavior,canon){
     var b=behavior||{},d=(canon&&canon.rules&&canon.rules.doctrine)||{};
     var fer=(b.ferocity!=null?b.ferocity:50),cun=(b.cunning!=null?b.cunning:50),sup=(b.supremacism!=null?b.supremacism:50);
-    var style=(fer>=cun&&fer>=sup)?'onslaught':(cun>=sup)?'culling':'decapitation';   // tie order FER > CUN > SUP
+    // whole-branch review FIX 2: read the canon styles knob (rules.doctrine.styles), falling
+    // back to the same literals if a caller's canon fixture doesn't carry the map.
+    var SM=d.styles||{};
+    var style=(fer>=cun&&fer>=sup)?(SM.ferocity||'onslaught'):(cun>=sup)?(SM.cunning||'culling'):(SM.supremacism||'decapitation');   // tie order FER > CUN > SUP
     var hg=d.honor||{},hi=(hg.high!=null?hg.high:70),lo=(hg.low!=null?hg.low:30);
     var hon=(b.honor!=null?b.honor:50);
     var base=((d.retreat||{}).base!=null)?d.retreat.base:110;
@@ -1292,6 +1295,7 @@ var THREAD=(function(){
     for(id in C){var c=C[id];if(c.party!==side)continue;var pc=(c.model&&c.model.pc)||0;
       tot+=pc;if(!c.dead&&!c.captured)alive+=pc;}
     if(!tot)return false;
+    if(!alive)return false;   // whole-branch review FIX 1: an annihilated side cannot retreat
     return (1-alive/tot)>=doc.retreatAt;
   }
   var BAND_MAX={melee:1,short:3,medium:6,long:1e9};
@@ -4402,6 +4406,10 @@ function npcRespond(t,playerParty){
   var sides={};for(var id in (st.combatants||{})){var p=st.combatants[id].party;if(p)sides[p]=1;}
   var foe=Object.keys(sides).filter(function(s){return s!==playerParty;})[0];
   if(!foe)return;
+  // whole-branch review FIX 1: hoist the alive check ahead of behavior-stamping + retreat —
+  // a post that wipes the foe side must never stamp behavior or trigger a ghost retreat post.
+  var alive=Object.keys(st.combatants).some(function(k){var c=st.combatants[k];return c.party===foe&&!c.dead&&c.x!=null;});
+  if(!alive)return;
   // T-NPC-4: lazily stamp the NPC side's rolled personality (deterministic off thread id
   // → same roll every reload even pre-persist; covers every seed path incl. legacy saves)
   st.behavior=st.behavior||{};
@@ -4436,8 +4444,6 @@ function npcRespond(t,playerParty){
     }
     persist();return;                                             // the attempt consumes the turn
   }
-  var alive=Object.keys(st.combatants).some(function(k){var c=st.combatants[k];return c.party===foe&&!c.dead&&c.x!=null;});
-  if(!alive)return;
   var block=THREAD.npcTurn(foe,st,st.board,bfWeaponCaps,D);
   if(!block.length)return;                         // sees nothing / can't act → holds silently
   if(!THREAD.validate(t,st,foe,block,D).ok)return;

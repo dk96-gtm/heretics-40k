@@ -63,6 +63,23 @@ test('shouldRetreat: fires at the pragmatism threshold, once, never without beha
   assert.strictEqual(THREAD.shouldRetreat('B', noBeh, CANON), false, 'no behavior → never');
 });
 
+test('shouldRetreat: an annihilated side (no living deployed models) never retreats', () => {
+  // whole-branch review FIX 1 defense-in-depth: alive===0 must short-circuit even with
+  // high pragmatism and no prior retreat attempt — a wiped side cannot flee.
+  const allDead = mkSide([[70,true],[30,true]]);   // 100 PC total, 0 alive
+  assert.strictEqual(THREAD.shouldRetreat('B', allDead, CANON), false, 'all dead → false');
+
+  // captured models count as "lost" (not counted alive) same as dead — a side left with
+  // only captured + dead models is equally annihilated for retreat purposes.
+  const C = {
+    b0: { party: 'B', dead: false, captured: true, model: { pc: 70 }, x: 0, y: 0 },
+    b1: { party: 'B', dead: true, model: { pc: 30 }, x: 0, y: 1 },
+    p0: { party: 'A', dead: false, model: { pc: 10 }, x: 5, y: 5 },
+  };
+  const capturedPlusDead = { combatants: C, behavior: { B: { ferocity:50,cunning:50,pragmatism:90,honor:50,supremacism:50 } } };
+  assert.strictEqual(THREAD.shouldRetreat('B', capturedPlusDead, CANON), false, 'captured+dead only → false');
+});
+
 /* ── T-NPC-4 Task 3 · npcTurn style targeting + honor conduct ─────────
    board/weaponsOf fixtures mirror tests/npc-turn.test.js: an all-open
    board (LOS always clear, every tile passable), weaponsOf(c) reading a
