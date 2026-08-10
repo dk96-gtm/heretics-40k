@@ -3757,6 +3757,7 @@ function concludeThread(t,oc){
  tickStreaksAndSync(t.state,mineWon);
  var line=oc.kind==='accord'?'🕊 RESOLUTION — terms struck. The accord stands and this thread is closed.'
   :oc.kind==='mutual'?'⚔ RESOLUTION — mutual annihilation. No one holds the field.'
+  :oc.kind==='withdrawal'?'⚑ RESOLUTION — '+(oc.defeated||[]).join(', ')+' quits the field. <b>'+oc.victor+'</b> holds the ground.'
   :'⚔ RESOLUTION — '+(oc.defeated||[]).join(', ')+' broken to the last model. <b>'+oc.victor+'</b> holds the field.';
  if(!t.posts)t.posts=[];
  t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:line});
@@ -3864,14 +3865,18 @@ function resolveUltLapses(nowMs,capDay){
   if(!att)att=1;                                             // an abandoned thread still resolves
   var def=Math.round(ULT.garrisonPC(l.level,u.prev,0,D)*((D.rules.ultimatum||{}).defender_mult||1.25));
   var r=ULT.rng(ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,u.aggressor));
-  var res=ULT.resolveLapse(att,def,u.scale,r,D);
+  // T-NPC-4: the aggressor's rolled personality colors the seeded lapse outcome + loot
+  // (cunning/ferocity nudge margins, honor tempers loot) — deterministic off the clock's
+  // own ids, same discipline as every other Ultimatum roll.
+  var beh=THREAD.AXES.rollFor(u.aggressor,'agg:'+u.aggressor+':'+t.lid,D);
+  var res=ULT.resolveLapse(att,def,u.scale,r,D,beh);
   // condition: besieged lifts; ladder writes down from prev
   var end=u.prev;
   if(res.outcome==='repelled_losses'||res.outcome==='sacked')end=ULT.stepDown(u.prev);
   if(end==='intact'&&!lById(t.lid).condition)delete S.world.locConds[t.lid];
   else if(end===l.condition)delete S.world.locConds[t.lid];
   else S.world.locConds[t.lid]=end;
-  if(res.outcome==='sacked'){var loot=ULT.lootOf(l.level,fp.p.prod_mult||1,r,D);
+  if(res.outcome==='sacked'){var loot=ULT.lootOf(l.level,fp.p.prod_mult||1,r,D,beh);
    S.cur=(S.cur||0)+loot.cur;
    if(S.world.holdings.length)addStock(S.world.holdings[0],loot.res);
    res.arith+=' · loot '+loot.cur+'c';}
@@ -3941,8 +3946,11 @@ function counterTribute(t,m){
  var nst=npc&&S.npcState&&S.npcState[npc.id];
  var rawBeh=nst&&nst.behavior;
  // NPCAI.instantiate returns {axis:{value,spawn,plasticity,floor,ceiling,drift}} — ULT.evalCounter
- // wants a plain numeric pragmatism, so unwrap .value; no placed/met NPC → the canon default (50).
- var beh=(rawBeh&&rawBeh.pragmatism&&rawBeh.pragmatism.value!=null)?{pragmatism:rawBeh.pragmatism.value}:{pragmatism:50};
+ // wants a plain numeric pragmatism, so unwrap .value; no placed/met NPC → fall back to the
+ // defending faction's own rolled personality (T-NPC-4), then the flat canon default (50).
+ var beh=(rawBeh&&rawBeh.pragmatism&&rawBeh.pragmatism.value!=null)
+   ?{pragmatism:rawBeh.pragmatism.value}
+   :(defFacId?{pragmatism:THREAD.AXES.rollFor(defFacId,'trib:'+t.id,D).pragmatism}:{pragmatism:50});
  var appetite=defFacId?(((D.rules.ultimatum||{}).tribute||{}).faction_appetite||{})[defFacId]||0:0;
  var cr=ULT.rng(ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,'counter:'+m));
  var ok=ULT.evalCounter(m,beh,appetite,cr);
@@ -4380,11 +4388,54 @@ function bfFoeName(st,foe){for(var id in st.combatants){var c=st.combatants[id];
   if(c.party===foe&&!c.dead&&c.model)return c.model.n.split(',')[0];}return 'The enemy';}
 // the non-player side answers the player's combat post (single-player: foe is NPC-run;
 // Stage-2 gates this to NPC-controlled forces — a drop-in at this seam)
+/* T-NPC-4: which faction commands a thread's NPC side — derived from the local NPC force,
+   the same lookup seedCombat/counterTribute already use (mission threads spawn hostiles via
+   that identical location lookup when no npcId is given, so this is the real source of truth
+   — there is no separate faction field stamped on mission-spawned threads). */
+function _npcFacIdOf(t){
+  var loc=fLoc(t.pl,t.lid);
+  var fr=loc?npcForceAt(t.pl,loc.name):null,facN=fr?npcFactionOf(fr.desc):null,fac=facN?facByName(facN):null;
+  return fac?fac.id:null;
+}
 function npcRespond(t,playerParty){
   var st=t.state;if(!st||!st.board||st.phase==='deploy'||st.phase==='aftermath')return;   // aftermath is a solo looting phase — no NPC turns
   var sides={};for(var id in (st.combatants||{})){var p=st.combatants[id].party;if(p)sides[p]=1;}
   var foe=Object.keys(sides).filter(function(s){return s!==playerParty;})[0];
   if(!foe)return;
+  // T-NPC-4: lazily stamp the NPC side's rolled personality (deterministic off thread id
+  // → same roll every reload even pre-persist; covers every seed path incl. legacy saves)
+  st.behavior=st.behavior||{};
+  if(!st.behavior[foe]){
+    var _fid=_npcFacIdOf(t);
+    st.behavior[foe]=THREAD.AXES.rollFor(_fid||'none','doctrine:'+t.id,D);
+    // placed-NPC override: if the sole co-located placed NPC has authored behavior, its
+    // .value axes win (spec §2) — mirror counterTribute's unwrap:
+    var _npc=npcsAt(t.pl,t.lid)[0],_nst=_npc&&S.npcState&&S.npcState[_npc.id];
+    if(_nst&&_nst.behavior){var _b={};THREAD.AXES.AXIS.forEach(function(ax){
+      var v=_nst.behavior[ax]&&_nst.behavior[ax].value;_b[ax]=(v!=null?v:st.behavior[foe][ax]);});
+      st.behavior[foe]=_b;}
+  }
+  // T-NPC-4 §4/§4a: pragmatic withdrawal — SKIRMISH/INVASION only, never duels/missions
+  if((t.type==='SKIRMISH'||t.type==='INVASION')&&!/duel/i.test(t.n||'')&&st.phase==='battle'
+     &&THREAD.shouldRetreat(foe,st,D)){
+    st.retreatTried=1;
+    var _spdMax=function(party){var m=0;for(var id2 in st.combatants){var c2=st.combatants[id2];
+      if(c2.party===party&&!c2.dead&&!c2.captured&&c2.x!=null)m=Math.max(m,c2.spd||0);}return m;};
+    var who2=bfFoeName(st,foe);
+    if(!t.posts)t.posts=[];
+    if(_spdMax(foe)>_spdMax(playerParty)){                       // escaped — strictly faster
+      for(var id3 in st.combatants){var c3=st.combatants[id3];
+        if(c3.party===foe&&!c3.dead&&!c3.captured){c3.fled=1;c3.x=null;c3.y=null;}}
+      st.phase='aftermath';
+      st.pendingOutcome={kind:'withdrawal',victor:playerParty,defeated:[foe]};
+      t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+        body:'⚑ '+esc(who2)+' breaks contact and quits the field — too swift to run down. The ground is yours: loot the fallen (1 AP each), then END THREAD.'});
+    } else {                                                      // caught — cornered, fights on
+      t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+        body:'⚑ '+esc(who2)+' wheels for the perimeter — but you are faster. Cornered, they turn back to the line.'});
+    }
+    persist();return;                                             // the attempt consumes the turn
+  }
   var alive=Object.keys(st.combatants).some(function(k){var c=st.combatants[k];return c.party===foe&&!c.dead&&c.x!=null;});
   if(!alive)return;
   var block=THREAD.npcTurn(foe,st,st.board,bfWeaponCaps,D);
