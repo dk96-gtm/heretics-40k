@@ -75,9 +75,10 @@ function openBoard(w, h) {
 }
 const wep = (c) => c.weps || [];
 const SHORT_W = { name: 'Bolt Pistol', band: 'SHORT', ap: 2, damage: 3, element: 'Physical' };
-// lowercase 'medium' band deliberately exercises BAND_MAX's lowercase keys
-// (the kite step's myMax lookup) — see task-3 report for the case-sensitivity note.
-const MED_LC_W = { name: 'Autocannon', band: 'medium', ap: 1, damage: 2, element: null };
+// production-shaped uppercase band (matches bfItemBand's live output) — BAND_MAX's
+// myMax lookup lowercases before reading the table, so this exercises the kite
+// branch through the same data shape the live engine feeds npcTurn.
+const MEDIUM_W = { name: 'Autocannon', band: 'MEDIUM', ap: 1, damage: 2, element: null };
 const NCANON = { rules: {} };
 const cheb2 = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
@@ -184,7 +185,7 @@ test('npcTurn culling kite: adjacent enemy → steps back, keeps target in band'
   const state = {
     pools: { B: 10 },
     combatants: {
-      b0: { party: 'B', x: 3, y: 3, w: [10, 10], sight: 20, spd: 5, model: { pc: 10 }, weps: [MED_LC_W] },
+      b0: { party: 'B', x: 3, y: 3, w: [10, 10], sight: 20, spd: 5, model: { pc: 10 }, weps: [MEDIUM_W] },
       a0: { party: 'A', x: 3, y: 4, w: [3, 3], sight: 20, spd: 0, model: { pc: 5 } },   // adjacent (cheb 1)
       a1: { party: 'A', x: 3, y: 6, w: [1, 3], sight: 20, spd: 0, model: { pc: 20 } },  // weakest — the culling target
     },

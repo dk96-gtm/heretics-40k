@@ -1334,7 +1334,7 @@ var THREAD=(function(){
       if(!tgt)continue;
       var weps=weaponsOf(me)||[];
       var reach=weps.reduce(function(m,w){var r=NPC_RANK[w.band];return r>m?r:m;},-1);
-      var myMax=weps.reduce(function(m,w){return Math.max(m,BAND_MAX[w.band]||1);},0);
+      var myMax=weps.reduce(function(m,w){return Math.max(m,BAND_MAX[String(w.band).toLowerCase()]||1);},0);
       var mySpd=Math.max(0,(me.spd||0)+condMods(me).speed);
       var occ=[];for(var oid in pos)if(oid!==aid&&C[oid]&&!C[oid].dead)occ.push(pos[oid]);
       var nearest=Infinity;live.forEach(function(eid){var d=cheb(pos[aid],pos[eid]);if(d<nearest)nearest=d;});
