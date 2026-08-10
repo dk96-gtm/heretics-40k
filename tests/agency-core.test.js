@@ -79,3 +79,38 @@ test('N1: tribute offer + counter eval are seed-stable', () => {
   const r2 = ULT.rng(ULT.seedFor(9, 15, 'x1', 'tribute:death_guard'));
   assert.deepStrictEqual(ULT.tributeOffer(2, 1, 'raid', r1, canon), ULT.tributeOffer(2, 1, 'raid', r2, canon));
 });
+
+test('N4: cunning nudges p, capped ±0.05, printed in arith', () => {
+  const mk = x => () => x;
+  const beh = {cunning:100, ferocity:50, honor:50};
+  const base = ULT.resolveLapse(500, 500, 'invasion', mk(0.50), canon);
+  const nudged = ULT.resolveLapse(500, 500, 'invasion', mk(0.50), canon, beh);
+  assert.ok(Math.abs((nudged.p - base.p) - 0.05) < 1e-9, 'cun 100 → p +0.05');
+  assert.match(nudged.arith, /cunning 100 → p \+0\.05/);
+  assert.strictEqual(base.arith.includes('cunning'), false, 'no behavior → no nudge line');
+});
+
+test('N4: ferocity shrinks both margins — decisive both ways', () => {
+  const mk = x => () => x;
+  const beh = {cunning:50, ferocity:100, honor:50};
+  const base = ULT.resolveLapse(600, 400, 'invasion', mk(0.38), canon);      // margin ≈ +0.22 < 0.25 → sacked
+  const nudged = ULT.resolveLapse(600, 400, 'invasion', mk(0.38), canon, beh); // dm 0.20 → captured
+  assert.strictEqual(base.outcome, 'sacked');
+  assert.strictEqual(nudged.outcome, 'captured');
+  assert.match(nudged.arith, /ferocity 100/);
+});
+
+test('N4: honor restrains sack loot, floored at 0.75', () => {
+  const mk = x => () => x;
+  const base = ULT.lootOf(4, 1, mk(0.5), canon);
+  const restrained = ULT.lootOf(4, 1, mk(0.5), canon, {honor:100});
+  assert.strictEqual(restrained.cur, Math.round(base.cur * 0.75));
+  const mid = ULT.lootOf(4, 1, mk(0.5), canon, {honor:50});
+  assert.strictEqual(mid.cur, base.cur, 'honor ≤50 → no restraint');
+});
+
+test('N4: legacy 5-arg resolveLapse calls are byte-identical (no behavior, no lines)', () => {
+  const mk = x => () => x;
+  const a = ULT.resolveLapse(600, 625, 'invasion', mk(0.60), canon);
+  assert.strictEqual(a.outcome, 'repelled_losses');   // the existing N1 pin still holds
+});
