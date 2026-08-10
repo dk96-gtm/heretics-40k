@@ -1761,6 +1761,7 @@ var WORLD=(function(){
       lines.push('🚪 '+e.planet+' — '+e.doorKind.replace('_',' ')+' rebuilt to Tier '+['','I','II','III'][e.to]+'.');});
     var seatEv=events.filter(function(e){return e.kind==='seat_income';});
     if(seatEv.length)lines.push('👑 Your seats paid their dues ('+seatEv.length+' payments).');
+    if(events.some(function(e){return e.kind==='seat_unrest'}))lines.push('⚠ An unpaid garrison let a seat decay.');
     return {lines:lines};
   }
   return { dayMs:dayMs, dayIndexAt:dayIndexAt, ticksElapsed:ticksElapsed, stepDay:stepDay,
@@ -2798,6 +2799,16 @@ window.scrollTo(0,0)}
 function voidName(sid){var n=null;D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(s){if(s.id===sid&&s.space)n=s.space.name})})});return n||'the void'}
 /* a Force may be in only one LIVE thread at a time (concluded threads release it) */
 function threadOfForce(fname){return S.threads.filter(function(t){return !t.done&&(t.forces||[]).indexOf(fname)>=0})[0]}
+/* T-TERR-2 task 6: a stationed Force is locked exactly like a thread-committed one — both
+   gates (mission accept's idle filter, Forces-tab active-in-thread lock) OR this in. */
+function stationedThreadLockOf(fid){
+ var hit=null;Object.keys(S.world.seats||{}).forEach(function(lid){
+  if(S.world.seats[lid].stationedForceId===fid)hit=lid;});return hit;}
+function stationedPCAt(lid){
+ var s=(S.world.seats||{})[lid];if(!s||!s.stationedForceId)return 0;
+ var f=S.forces.filter(function(x){return x.id===s.stationedForceId})[0];if(!f)return 0;
+ return S.roster.filter(function(m){return m.fo===f.n&&m.st!=='DEAD'&&m.st!=='TAKEN'})
+  .reduce(function(sum,m){return sum+(m.pc||0);},0);}
 /* ── T-TERR-1: muster the opposition — a combat thread needs two real sides ── */
 function facByName(name){return (D.factions||[]).filter(function(f){return f.name===name})[0]||null}
 function npcForceAt(pid,lname){var rows=S.world.forces[pid]||[];
@@ -2976,7 +2987,7 @@ function acceptMission(inst,pl,l,mods){
  var cap=(D.rules.missions&&D.rules.missions.accept_cap)||3;
  var live=S.threads.filter(function(t){return t.type==='MISSION'&&t.accepted&&!t.done}).length;
  if(live>=cap){T('Mission cap reached ('+cap+') — finish or abandon one first.');return;}
- var idle=S.forces.filter(function(f){return !threadOfForce(f.n);});
+ var idle=S.forces.filter(function(f){return !threadOfForce(f.n)&&!stationedThreadLockOf(f.id);});
  if(!idle.length){T('All forces are committed — finish or exit a thread before accepting a mission.');return;}
  // T-MSN-1B task 3 fix round: MISSION.pickForce prefers an exactly-1-model idle force when
  // params.alone (assassination) rather than blindly binding the first idle force and then
@@ -3243,7 +3254,9 @@ var fcOpen=false;
 /* you may raise/edit a Force only when its leader is NOT in an active thread —
    i.e. while travelling, in the void, or garrisoned. Comms don't count as active. */
 function idleNow(){return !!(S.pos.void||inTransit())}
-function forceActive(f){if(idleNow())return false;var ld=S.roster.filter(function(m){return m.id===f.lead})[0];return ld&&ld.st==='DEPLOYED'}
+/* T-TERR-2 task 6: a stationed Force is locked unconditionally (even while you personally
+   are travelling/void) — only the pre-existing DEPLOYED check stays gated behind idleNow. */
+function forceActive(f){var _sl=!!stationedThreadLockOf(f.id);if(idleNow())return _sl;var ld=S.roster.filter(function(m){return m.id===f.lead})[0];return _sl||(ld&&ld.st==='DEPLOYED')}
 function eligibleLeaders(){var idle=idleNow();return S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'&&m.st!=='TAKEN'&&m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&!isForceLead(m)&&(idle||m.st!=='DEPLOYED')})}
 function forceAP(fname){var t=0;S.roster.forEach(function(m){if(m.fo===fname&&m.st!=='DEAD'&&m.st!=='TAKEN')t+=AP(m.pc)});return t}
 function makeForce(name,leadId){var ld=S.roster.filter(function(m){return m.id===leadId})[0];if(!ld)return;
@@ -3326,7 +3339,9 @@ if(!fcOpen){var nb=E('button','btn','＋ Raise a new Force');nb.onclick=function
 }
 w.appendChild(top);
 S.forces.forEach(function(f){var pc=fpc(f),fap=forceAP(f.n),ld=S.roster.filter(function(m){return m.id===f.lead})[0],active=forceActive(f);
-var c=E('div','card','<h3>Force'+(active?' <span class="pill bl">ACTIVE — in a thread, locked</span>':'')+'</h3>');var fc=E('div','fcard');
+// T-TERR-2 task 6: distinguish the reason a Force reads locked — thread-committed vs standing garrison.
+var _slid=stationedThreadLockOf(f.id),_slname=_slid?((lById(_slid)||{}).name||_slid):null;
+var c=E('div','card','<h3>Force'+(active?' <span class="pill bl">'+(_slname?'STANDING GARRISON at '+_slname+' — locked':'ACTIVE — in a thread, locked')+'</span>':'')+'</h3>');var fc=E('div','fcard');
 var fh=E('div','fh');var inp=E('input');inp.type='text';inp.value=f.n;inp.disabled=active;
 inp.onchange=function(){var o=f.n;f.n=inp.value.trim()||o;S.roster.forEach(function(m){if(m.fo===o)m.fo=f.n});rF();rRos();T('Force renamed: '+f.n)};
 fh.appendChild(inp);
@@ -3354,7 +3369,12 @@ var s=E('input');s.type='range';s.min=0;s.max=S.dom;s.value=f.ap;s.disabled=acti
 s.oninput=function(){f.ap=+s.value;fc.querySelector('#apv_'+f.id).textContent=f.ap;rW();rSucc()};
 fc.appendChild(s);
 if(!active){var db=E('button','btn gh sm','Disband Force');db.style.marginTop='8px';
-db.onclick=function(){S.roster.forEach(function(m){if(m.fo===f.n)m.fo='—'});S.forces=S.forces.filter(function(z){return z!==f});
+db.onclick=function(){
+ // T-TERR-2 task 6: defensive re-check (mirrors the threadOfForce refusal pattern elsewhere) —
+ // the button is only rendered while !active, but re-check at click time in case state moved.
+ var _sl2=stationedThreadLockOf(f.id);
+ if(_sl2){T(f.n+' is standing garrison at '+((lById(_sl2)||{}).name||_sl2)+'. Recall it first.');return}
+ S.roster.forEach(function(m){if(m.fo===f.n)m.fo='—'});S.forces=S.forces.filter(function(z){return z!==f});
  S.succ.forEach(function(z){if(z.fid===f.id)z.fid=null});
  var ff=document.getElementById('ff');for(var i=ff.options.length-1;i>=0;i--)if(ff.options[i].value===f.n)ff.remove(i);
  fixLeaderTags();rF();rRos();T('Force disbanded: '+f.n)};
@@ -3585,6 +3605,13 @@ if(atHere){h2+='<div class="locacts">';
  h2+='<button class="btn gh" id="locthr">Start a thread here</button>';
  if(_canRebuild)h2+='<button class="btn gh" id="locrebuild">🔧 Rebuild (no payout)</button>';
  if(_canLiberate)h2+='<button class="btn gh" id="loclib">⚔ Liberate (no payout)</button>';
+ // T-TERR-2 task 6: Station/Recall a garrison at your own seat.
+ if(_seat&&S.pos.pl===_seat.pid&&S.pos.sp===l.id){
+  if(!_seat.stationedForceId){
+   var _idle=S.forces.filter(function(f){return !threadOfForce(f.n)&&!stationedThreadLockOf(f.id);});
+   if(_idle.length)h2+='<button class="btn gh" id="locstation">🛡 Station '+_idle[0].n+' here</button>';
+  } else h2+='<button class="btn gh" id="locrecall">↩ Recall the garrison</button>';
+ }
  h2+='</div>';
  h2+='<div id="loctm"></div>';}
 h2+='</div></div>';
@@ -3607,6 +3634,18 @@ p.querySelectorAll('[data-accept-mission]').forEach(function(b){b.onclick=functi
 if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){go('shop')};
  var rb=document.getElementById('locrebuild');if(rb)rb.onclick=function(){manualRestore(pl,l,'rebuild')};
  var lib=document.getElementById('loclib');if(lib)lib.onclick=function(){manualRestore(pl,l,'liberate')};
+ // T-TERR-2 task 6: Station sets the garrison (defensive re-check against a race with
+ // threadOfForce, mirroring the same refusal copy startThread/manualRestore already use);
+ // Recall just deletes the key.
+ var lst=document.getElementById('locstation');if(lst)lst.onclick=function(){
+  var f=S.forces.filter(function(x){return !threadOfForce(x.n)&&!stationedThreadLockOf(x.id);})[0];
+  if(!f){T('No idle Force to station.');return}
+  var other=threadOfForce(f.n);
+  if(other){T(f.n+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}
+  S.world.seats[l.id].stationedForceId=f.id;persist();T('🛡 '+f.n+' stands garrison at '+l.name+'.');rMap();};
+ var lrc=document.getElementById('locrecall');if(lrc)lrc.onclick=function(){
+  var _fid=S.world.seats[l.id].stationedForceId,_fn=(S.forces.filter(function(x){return x.id===_fid})[0]||{}).n||'The garrison';
+  delete S.world.seats[l.id].stationedForceId;persist();T('↩ '+_fn+' recalled from '+l.name+'.');rMap();};
  var tb=document.getElementById('locthr');if(tb)tb.onclick=function(){var tm=document.getElementById('loctm');
   if(tm.innerHTML){tm.innerHTML='';return}
   tm.innerHTML='<div class="lsec"><h5>Start which thread?</h5></div>';
@@ -3928,7 +3967,7 @@ function resolveUltLapses(nowMs,capDay){
   var fp=fPl(t.pl),l=fLoc(t.pl,t.lid);if(!fp||!l)return;
   var att=0;(t.forces||[]).forEach(function(fn){var f=S.forces.filter(function(x){return x.n===fn})[0];if(f)att+=fpc(f);});
   if(!att)att=1;                                             // an abandoned thread still resolves
-  var def=Math.round(ULT.garrisonPC(l.level,u.prev,0,D)*((D.rules.ultimatum||{}).defender_mult||1.25));
+  var def=Math.round(ULT.garrisonPC(l.level,u.prev,stationedPCAt(t.lid),D)*((D.rules.ultimatum||{}).defender_mult||1.25));
   var r=ULT.rng(ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,u.aggressor));
   var res=ULT.resolveLapse(att,def,u.scale,r,D);
   // condition: besieged lifts; ladder writes down from prev
@@ -3942,6 +3981,46 @@ function resolveUltLapses(nowMs,capDay){
    if(S.world.holdings.length)addStock(S.world.holdings[0],loot.res);
    res.arith+=' · loot '+loot.cur+'c';}
   if(res.outcome==='captured')captureOnVictory(t,{kind:'lapse'},true);
+  /* T-TERR-2 table ❸: the stationed force bleeds by outcome — seeded, offscreen, honest.
+     Runs BEFORE the seats-fall delete below so a garrison stationed on the captured
+     location itself still takes its casualties before its seat entry is swept away. */
+  var _sfid=(S.world.seats[t.lid]||{}).stationedForceId;
+  if(_sfid){
+   var _sf=S.forces.filter(function(x){return x.id===_sfid})[0];
+   var _mem=_sf?S.roster.filter(function(m){return m.fo===_sf.n&&m.st!=='DEAD'&&m.st!=='TAKEN'}):[];
+   if(_mem.length){
+    var _cr=ULT.rng(ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,'cas:'+u.aggressor));
+    var _tw=_mem.reduce(function(s,m){return s+parseInt(m.w,10);},0);   // current wounds ("3/5"→3)
+    var _pool=SEAT.poolOf(res.outcome,_tw,D);
+    var _hits=SEAT.distribute(_mem.map(function(m){return {id:m.id,w:parseInt(m.w,10)};}),_pool,_cr);
+    var _downed=[];
+    _hits.forEach(function(h){var m=S.roster.filter(function(x){return x.id===h.id})[0];
+     var mx=m.w.split('/')[1];m.w=h.w+'/'+mx;
+     if(h.down){_downed.push(m);}});
+    var _winDay=u.expiresDay+((D.rules.death.revival_window.windows||{}).Physical||8);
+    function _slay(m,bodyHeld){m.st='DEAD';m.fo='—';
+     m.loc=l.name+' — fell in the defense'+(bodyHeld?'':' (body carried off)');
+     if(bodyHeld)S.inv.push({cat:'REMAINS',n:'Remains of '+m.n,d:'Fell defending '+l.name+'.',
+      ref:{cid:m.id},window:{element:'Physical',expiresDay:_winDay}});}
+    if(res.outcome==='repelled'||res.outcome==='repelled_losses'){
+     _downed.forEach(function(m){_slay(m,true);});}                    // ground held: bodies recoverable
+    else if(res.outcome==='sacked'){
+     var _co=SEAT.carryOff(_downed,_cr,D);
+     _co.taken.forEach(function(m){m.st='TAKEN';m.fo='—';m.loc=l.name+' — taken in the sack';});
+     _co.left.forEach(function(m){_slay(m,true);});}
+    else if(res.outcome==='captured'){
+     var _cs=SEAT.captiveSplit(_downed,_cr);
+     _cs.captive.forEach(function(m){m.st='TAKEN';m.fo='—';m.loc=l.name+' — taken with the planet';});
+     _cs.slain.forEach(function(m){_slay(m,false);});}                 // planet lost: bodies lost with it
+    res.arith+=' · garrison: '+_hits.reduce(function(s,h){return s+h.hit;},0)+' wounds, '+_downed.length+' down';
+   }
+  }
+  /* T-TERR-2 task 6: a captured planet sweeps away every seat on it. */
+  if(res.outcome==='captured'){
+   Object.keys(S.world.seats||{}).forEach(function(lid){
+    if(S.world.seats[lid].pid===t.pl){delete S.world.seats[lid];
+     S.world.log.unshift(nowStamp()+' — SEAT LOST: the fall of the planet swept it away.');}});
+  }
   t.done={kind:'ult_lapse',victor:res.outcome==='sacked'||res.outcome==='captured'?'attacker':'defender',at:Date.now()};
   if(!t.posts)t.posts=[];                     // a thread that lapses before ever being opened
   t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
@@ -5087,6 +5166,16 @@ function init(){
     var _fl=lById(f.loc);
     _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});
     seatTickIncome().forEach(function(e){_wc.events.push(e);});
+    // T-TERR-2: stationed upkeep — the location swallows it; non-payment wounds the GROUND
+    Object.keys(S.world.seats||{}).forEach(function(lid){
+     var up=stationedPCAt(lid);if(!up)return;
+     var due=SEAT.upkeepOf(up,D);
+     if((S.cur||0)>=due){S.cur-=due;return}
+     var lp=lById(lid,true);if(!lp.l)return;
+     S.world.unrest[lp.pid]=(S.world.unrest[lp.pid]||0)+((D.rules.seats.upkeep||{}).unrest_per_miss||1);
+     if(S.world.unrest[lp.pid]%((D.rules.seats.upkeep||{}).unrest_wound_every||3)===0){
+      S.world.locConds[lid]=ULT.stepDown(effCond(lp.l));
+      _wc.events.push({kind:'seat_unrest',loc:lp.l.name});}});
     // T-NPC-3 N1 task 5: condition self-heal, one pass per tick day — sector-paced
     // (ULT.healTick reads days_per_step off the sector's status label), siege-paused
     // (an active Ultimatum on this ground blocks the heal), sacked/ruined only.
