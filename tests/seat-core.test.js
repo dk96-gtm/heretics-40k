@@ -67,3 +67,53 @@ test('upkeepOf = ceil(force PC / 250), minimum 1', () => {
   assert.strictEqual(SEAT.upkeepOf(100, D), 1);
   assert.strictEqual(SEAT.upkeepOf(0, D), 1);
 });
+
+// deterministic rng stand-in for pure-math tests: cycles a fixed tape
+function tape(vals){ let i = 0; return () => vals[i++ % vals.length]; }
+
+test('poolOf: outcome fraction of total wounds, rounded', () => {
+  assert.strictEqual(SEAT.poolOf('repelled', 40, D), 6);          // 15%
+  assert.strictEqual(SEAT.poolOf('repelled_losses', 40, D), 14);  // 35%
+  assert.strictEqual(SEAT.poolOf('sacked', 40, D), 24);           // 60%
+  assert.strictEqual(SEAT.poolOf('captured', 40, D), 40);         // 100%
+  assert.strictEqual(SEAT.poolOf('nonsense', 40, D), 0);          // unknown = 0, fail-closed
+});
+
+test('distribute: pool-exact, round-robin spread, chaff downs first, deterministic', () => {
+  const members = [{ id: 'a', w: 5 }, { id: 'b', w: 2 }, { id: 'c', w: 1 }];
+  const out = SEAT.distribute(members, 4, tape([0.1, 0.5, 0.9]));
+  const dealt = out.reduce((s, m) => s + m.hit, 0);
+  assert.strictEqual(dealt, 4);                                   // pool-exact
+  const c = out.find(m => m.id === 'c');
+  assert.ok(c.hit >= 1 && c.down, '1-wound model downs on the first pass that reaches it');
+  // deterministic: same tape → same result
+  const out2 = SEAT.distribute(members, 4, tape([0.1, 0.5, 0.9]));
+  assert.deepStrictEqual(out, out2);
+});
+
+test('distribute: pool larger than total wounds downs everyone, never negative', () => {
+  const out = SEAT.distribute([{ id: 'a', w: 2 }, { id: 'b', w: 1 }], 99, tape([0.4]));
+  assert.ok(out.every(m => m.w === 0 && m.down));
+  assert.strictEqual(out.reduce((s, m) => s + m.hit, 0), 3);      // stops at total wounds
+});
+
+test('carryOff: attacker takes floor(half), seeded, partition is exact', () => {
+  const downed = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' }];
+  const { taken, left } = SEAT.carryOff(downed, tape([0.3, 0.7, 0.1]), D);
+  assert.strictEqual(taken.length, 2);                            // floor(5×0.5)
+  assert.strictEqual(taken.length + left.length, 5);
+  const ids = taken.concat(left).map(m => m.id).sort();
+  assert.deepStrictEqual(ids, ['a', 'b', 'c', 'd', 'e']);
+});
+
+test('captiveSplit partitions the downed into captive/slain', () => {
+  const downed = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
+  const { captive, slain } = SEAT.captiveSplit(downed, tape([0.2, 0.8, 0.4, 0.6]));
+  assert.strictEqual(captive.length + slain.length, 4);
+  assert.ok(captive.length >= 1 && slain.length >= 1);            // tape guarantees a mix
+});
+
+test('buyoutPrice = sum of unheld prices × premium', () => {
+  assert.strictEqual(SEAT.buyoutPrice([30, 60, 12], D), 204);     // 102×2
+  assert.strictEqual(SEAT.buyoutPrice([], D), 0);
+});

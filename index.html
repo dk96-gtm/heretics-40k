@@ -2465,9 +2465,41 @@ var SEAT=(function(){
   function upkeepOf(forcePC,canon){
     var d=((R(canon).upkeep||{}).pc_divisor)||250;
     return Math.max(1,Math.ceil((forcePC||0)/d));}
+  /* ── stationed casualties (table ❸) ── */
+  function poolOf(outcome,totalWounds,canon){
+    var p=((R(canon).casualties||{}).pools||{})[outcome];
+    if(!p)return 0;
+    return Math.round(totalWounds*p);}
+  function shuffled(list,r){
+    var o=list.slice();
+    for(var i=o.length-1;i>0;i--){var j=Math.floor(r()*(i+1));var t=o[i];o[i]=o[j];o[j]=t;}
+    return o;}
+  function distribute(members,pool,r){
+    var order=shuffled(members,r),hits={},left=pool;
+    function alive(m){return (m.w-(hits[m.id]||0))>0;}
+    while(left>0&&order.some(alive)){
+      for(var k=0;k<order.length&&left>0;k++){var m=order[k];
+        if(!alive(m))continue;hits[m.id]=(hits[m.id]||0)+1;left--;}}
+    return members.map(function(m){var h=hits[m.id]||0;
+      return {id:m.id,hit:h,w:Math.max(0,m.w-h),down:h>0&&(m.w-h)<=0};});}
+  function carryOff(downed,r,canon){
+    var half=(R(canon).casualties||{}).carried_off;if(half==null)half=0.5;
+    var order=shuffled(downed,r),n=Math.floor(downed.length*half);
+    return {taken:order.slice(0,n),left:order.slice(n)};}
+  function captiveSplit(downed,r){
+    var captive=[],slain=[];
+    downed.forEach(function(m){(r()<0.5?captive:slain).push(m);});
+    return {captive:captive,slain:slain};}
+  /* ── buyout ── */
+  function buyoutPrice(unheldPrices,canon){
+    var prem=((R(canon).buyout||{}).premium)||2,s=0;
+    for(var i=0;i<unheldPrices.length;i++)s+=unheldPrices[i];
+    return Math.round(s*prem);}
   return {seedStanding:seedStanding,moveStanding:moveStanding,kinRaid:kinRaid,
           standingName:standingName,condMult:condMult,seatable:seatable,priceOf:priceOf,
-          taxOf:taxOf,gateReason:gateReason,workEarn:workEarn,upkeepOf:upkeepOf};
+          taxOf:taxOf,gateReason:gateReason,workEarn:workEarn,upkeepOf:upkeepOf,
+          poolOf:poolOf,distribute:distribute,carryOff:carryOff,captiveSplit:captiveSplit,
+          buyoutPrice:buyoutPrice};
 })();
 /*</seat-core>*/
 /*<save-core>*/
