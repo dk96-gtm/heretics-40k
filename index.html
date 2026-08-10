@@ -2713,6 +2713,7 @@ function foundingWorld(){return {
  rulers:{},holdings:[],
  stock:{},unrest:{},
  doorTiers:{},doorBuilds:{},locConds:{},condHeal:{},
+ work:{},seats:{},                 // T-TERR-2 (standing seeds in commitFounding — needs the faction)
  missions:{},missionSeedBase:(Date.now()%2147483647),missionDay:0,   // Missions V2 slice A: founding never gets a reload, so init()'s backfill never fires — seed here too (S.time.epoch isn't in scope yet: commitFounding assigns `world:` before `time:`, so this mirrors init()'s Date.now()-based epoch as closely as scope allows)
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
@@ -2893,6 +2894,12 @@ function startThread(pid,l,type,npcId,opts){var loc=fPl(pid).p.name+' · '+l.nam
  var key=pid+'/'+l.id;if(!S.world.history[key])S.world.history[key]=[];
  S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
  T(type+' thread opened at '+l.name+(fname?' — '+fname+' committed':'')+'. Now in the location\'s public record.');
+ // T-TERR-2: raising your hand against a ruled world floors standing with its ruler — kin or not
+ if((t.type==='SKIRMISH'||t.type==='INVASION')){
+  var _rl=pRuler(fPl(S.pos.pl).p);
+  if(_rl&&_rl.faction){var _rf=D.factions.filter(function(x){return x.name===_rl.faction})[0];
+   if(_rf){S.world.standing=S.world.standing||{};SEAT.kinRaid(S.world.standing,_rf.id,D);
+    if(_rf.id===S.player.faction)T('⚑ You have raised your hand against your own kin — standing falls to WAR.');}}}
  go('threads');rTL();}
 /* T-MSN-1B task 4: modifier picker. MOD_IDS is the fixed display order (matches the canon
    registry insertion order); MOD_TIP is the plain-language predicate shown as each chip's
@@ -3823,6 +3830,9 @@ function concludeThread(t,oc){
    S.world.log=S.world.log||[];
    S.world.log.unshift('◈ MISSION COMPLETE — '+t.mission.n+' ('+payout+' paid)'
     +(mc.valid.length?' · '+mc.valid.length+' modifier(s) honored':''));
+   // T-TERR-2: WORK — trust earned by serving the planet (board mission 1 · Rebuild 2 · manual 1)
+   S.world.work=S.world.work||{};
+   S.world.work[t.mission.pl]=(S.world.work[t.mission.pl]||0)+SEAT.workEarn(t.mission,D);
    mc.voided.forEach(function(mid){
     t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:'⚠ '+(MOD_VOID_MSG[mid]||(mid+' voided.'))});});
   } else if(oc.kind==='mission_lost'){
@@ -5009,6 +5019,9 @@ function init(){
   if(!S.world.doorBuilds)S.world.doorBuilds={};
   if(!S.world.locConds)S.world.locConds={};                               // T-MSN-1B final fix wave: older saves
   if(!S.world.condHeal)S.world.condHeal={};                               // T-NPC-3 N1: older saves
+  if(!S.world.standing)S.world.standing=SEAT.seedStanding(S.player.faction,D); // T-TERR-2: older saves
+  if(!S.world.work)S.world.work={};
+  if(!S.world.seats)S.world.seats={};
   if(!S.progress)S.progress={streaks:{}};                                 // T-MSN-1C task 4: older saves
   var _wc=WORLD.catchUp(S,D,Date.now());
   // final review FIX 2: chunk-independence — resolve any lapse due THIS tick day BEFORE that
@@ -5109,6 +5122,7 @@ function commitFounding(cc){
   npcState:{},active:'cmdr',cart:[]
  };
  S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
+ S.world.standing=SEAT.seedStanding(S.player.faction,D);   // T-TERR-2: ledger from the matrix row
  if(!_noPersist)saveProfile(S);
  T(commander.n+' is founded. The saga begins.');
  enterShell(S);
@@ -5297,7 +5311,10 @@ var GLOSS={
  'Bounty':'A named target — Bounty Hunt and Assassination missions post a specific enemy boss by name; the board shows who before you accept, and bringing them down — dead or captured — completes the objective.',
  'Ultimatum':'A respond-by clock set when the thread opens. If it lapses unresolved, the assault resolves by a seeded garrison-favored roll — the defenders\' ground and readiness against the force you committed.',
  'Besieged':'A clocked location. Gates shut (the forge serves the wall and nobody else) — doors close, output −20%, tier −1.',
- 'Tribute':'The third answer to an Ultimatum: fight, ignore, or pay. Defenders may buy peace with currency, resources, or the return of the taken; the attacker names the price — or the clock does.'};
+ 'Tribute':'The third answer to an Ultimatum: fight, ignore, or pay. Defenders may buy peace with currency, resources, or the return of the taken; the attacker names the price — or the clock does.',
+ 'Standing':'Your ledger with each sub-faction, −3 WAR to +2 ALLIED. Seeded by lore, moved by your acts. Raiding a ruled world floors you to WAR with its ruler.',
+ 'WORK':'Per-planet trust, earned by concluding missions there (Rebuild counts double). Gates seat petitions — you earn a seat by service, not by shopping.',
+ 'Seat':'A named location held by a Commander on a world his own kin rules. Pays tax and production share; can be built, garrisoned, and lost with the planet.'};
 /* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
 function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
  var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');
