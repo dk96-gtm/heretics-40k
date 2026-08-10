@@ -149,7 +149,7 @@ On grant: currency spent, `S.world.seats[locId] = {pid, since}`.
 | seat TAX | `3 × level × condition_mult` currency/day on the world tick |
 | production share | the seat location's share of planet production (T-ECN-1 shares) accrues to the player |
 | door tier-upgrades | the existing `DOOR.startBuild` upgrade flow, permission extended to the seat holder at their seat |
-| COMMISSION | build a door the location lacks, via the same build-timer seam (new build kind) |
+| COMMISSION | build a door the location lacks, via the same build-timer seam (new build kind). **Plan amendment 2026-08-10 (tunable): 30 currency flat + 7-day build.** |
 | Rebuild / Liberate | N1's manual no-payout actions, extended to held seats |
 | station ONE force | §4 |
 | ultimatum-able | seats are locations; the N1 clock/Besieged machinery already applies |
@@ -159,6 +159,8 @@ On grant: currency spent, `S.world.seats[locId] = {pid, since}`.
 ### 4.1 Stationing
 
 ONE force may be stationed at a held seat. While stationed it is locked (like thread-active), its PC adds to the ULT garrison defense of that location, and its **upkeep swallows ALL currency first** — the location takes the money; on non-payment, unrest wounds the **LOCATION's condition** (never the force).
+
+**Upkeep amount (plan amendment 2026-08-10, tunable):** `ceil(force PC ÷ 250)` currency per day — rides the existing travel `force_divisor` scale. Each missed day adds +1 unrest to the planet; every 3rd miss steps the seat location's condition down one rung.
 
 ### 4.2 Casualty ladder — keyed to the N1 lapse outcomes
 
