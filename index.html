@@ -2729,7 +2729,7 @@ function foundingWorld(){return {
  rulers:{},holdings:[],
  stock:{},unrest:{},
  doorTiers:{},doorBuilds:{},locConds:{},condHeal:{},
- work:{},seats:{},seatMiss:{},      // T-TERR-2 (standing seeds in commitFounding — needs the faction)
+ work:{},seats:{},seatMiss:{},governor:{},      // T-TERR-2 (standing seeds in commitFounding — needs the faction)
  missions:{},missionSeedBase:(Date.now()%2147483647),missionDay:0,   // Missions V2 slice A: founding never gets a reload, so init()'s backfill never fires — seed here too (S.time.epoch isn't in scope yet: commitFounding assigns `world:` before `time:`, so this mirrors init()'s Date.now()-based epoch as closely as scope allows)
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
@@ -3930,6 +3930,16 @@ function concludeThread(t,oc){
 /* ── T-TERR-1 slice B: territory. Canon rulers are the baseline map; the save-state
    overlay S.world.rulers records flips, S.world.holdings is what YOU hold. ── */
 function pRuler(pl){var ov=S.world&&S.world.rulers&&S.world.rulers[pl.id];return ov||pl.ruler||null}
+/* T-TERR-2: deterministic ruler face — seeded off the planet id, no save bloat */
+function rulerFaceOf(pl){
+ var r=pRuler(pl);if(!r||!r.faction)return null;
+ var rng=ULT.rng(ULT.seedFor(S.world.missionSeedBase||1,0,pl.id,'ruler:'+r.faction));
+ var TITLES={chaos:['Despoiler-Regent','Dark Castellan','Plague Warden','Sorcerer-Regent'],
+  imperial:['Planetary Governor','Lord Castellan','Canoness-Regent','Arch-Magos'],
+  xenos:['Overlord','Warboss-Mek','Autarch-Regent','Ethereal Envoy']};
+ var pool=TITLES[r.allegiance]||TITLES.xenos;
+ var NAMES=['Vhorak','Sette','Maulkin','Dravenna','Oskarr','Threx','Iyanna','Ghazkull-Nadd','Calpernia','Vect-Sar'];
+ return pool[Math.floor(rng()*pool.length)]+' '+NAMES[Math.floor(rng()*NAMES.length)]+' ('+r.faction+')';}
 /* T-NPC-3 N1: one active Ultimatum per location (spec pacing guard). */
 function activeUltAt(lid){for(var i=0;i<S.threads.length;i++){var t=S.threads[i];
   if(t.ultimatum&&!t.done&&t.lid===lid)return t;}return null}
@@ -5154,6 +5164,7 @@ function init(){
   if(!S.world.work)S.world.work={};
   if(!S.world.seats)S.world.seats={};
   if(!S.world.seatMiss)S.world.seatMiss={};                              // T-TERR-2 fix round 1: older saves
+  if(!S.world.governor)S.world.governor={};                              // T-TERR-2 task 7: older saves
   if(!S.progress)S.progress={streaks:{}};                                 // T-MSN-1C task 4: older saves
   var _wc=WORLD.catchUp(S,D,Date.now());
   // final review FIX 2: chunk-independence — resolve any lapse due THIS tick day BEFORE that
@@ -5834,6 +5845,8 @@ function renderDoor(dr,h){var c=E('div','card');
   /* T-TERR-2: seat petition — every seat-able location on THIS planet, gates fail-closed */
   var _tpl=fPl(S.pos.pl).p,_tr=pRuler(_tpl),_me=FAC(S.player.faction);
   var _own=!!(_tr&&_tr.faction===_me.name);
+  /* T-TERR-2: deterministic ruler face */
+  c.insertAdjacentHTML('beforeend','<div class="d" style="margin-bottom:8px">You stand before <b>'+(rulerFaceOf(_tpl)||'an empty throne')+'</b>.</div>');
   c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>'+annotate('Petition for a Seat')+'</h5></div>');
   if(!_own)c.insertAdjacentHTML('beforeend','<div class="d">Only a world ruled by your own kin grants seats.</div>');
   else (_tpl.locations||[]).forEach(function(_sl){
@@ -5850,7 +5863,36 @@ function renderDoor(dr,h){var c=E('div','card');
     S.world.log=S.world.log||[];
     S.world.log.unshift(nowStamp()+' — SEAT GRANTED: '+_sl.name+' on '+_tpl.name+' ('+_price+' paid).');
     T('👑 '+_sl.name+' is your seat.');rShop();};
-   _row.appendChild(_bt);c.appendChild(_row);})}
+   _row.appendChild(_bt);c.appendChild(_row);});
+  /* T-TERR-2: planetary BUYOUT — majority seats + sector work + WARM standing, ×2 premium */
+  if(_tpl.crown){
+   var _sec=fPl(S.pos.pl).s;
+   c.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><h5>Petition for Planetary Rule</h5></div>');
+   (_sec.planets||[]).forEach(function(_bp){
+    var _br=pRuler(_bp);if(!_br||_br.faction!==_me.name)return;                 // own-kin worlds only
+    if((S.world.holdings||[]).indexOf(_bp.id)>=0)return;                        // already yours
+    var _seatable=(_bp.locations||[]).filter(function(x){return SEAT.seatable(x.type,D)});
+    if(!_seatable.length)return;
+    var _held=_seatable.filter(function(x){return S.world.seats&&S.world.seats[x.id]});
+    var _unheld=_seatable.filter(function(x){return !(S.world.seats&&S.world.seats[x.id])});
+    var _bprice=SEAT.buyoutPrice(_unheld.map(function(x){return SEAT.priceOf(x,effCond(x),D)}),D);
+    var _secWork=0;(_sec.planets||[]).forEach(function(p){_secWork+=(S.world.work||{})[p.id]||0});
+    var _sMin=(D.rules.seats.buyout||{}).standing_min||1;
+    var _wMin=(D.rules.seats.buyout||{}).sector_work_min||20;
+    var _why=null;
+    if(_held.length*2<=_seatable.length)_why='Hold the majority of its seats first ('+_held.length+'/'+_seatable.length+').';
+    else if(_secWork<_wMin)_why='The sector demands more service — WORK '+_secWork+'/'+_wMin+' across its worlds.';
+    else if(((S.world.standing||{})[S.player.faction]||0)<_sMin)_why='Only the '+SEAT.standingName(_sMin,D)+' are granted worlds.';
+    else if((S.cur||0)<_bprice)_why='Not enough currency — '+_bprice+' required.';
+    var _row=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+_bp.name+'</b> <span class="mono" style="font-size:11px;color:var(--dim)">seats '+_held.length+'/'+_seatable.length+'</span></span><span class="mono" style="font-size:11px">'+_bprice+' '+curName()+'</span></div>');
+    var _bb=E('button','btn gh sm','Buy out');_bb.style.marginTop='5px';
+    _bb.onclick=function(){if(_why){T(_why);return}
+     S.cur-=_bprice;
+     S.world.holdings.push(_bp.id);
+     S.world.governor=S.world.governor||{};S.world.governor[_bp.id]=true;
+     S.world.log.unshift(nowStamp()+' — BUYOUT: '+_bp.name+' is granted to you. Its tithe now flows to your coffers.');
+     T('👑 '+_bp.name+' is yours by right of coin and service.');rShop();};
+    _row.appendChild(_bb);c.appendChild(_row);});}}
  else c.insertAdjacentHTML('beforeend','<div class="d">This door stands open.</div>');
  return c}
 function renderForge(c,dr,dtier){

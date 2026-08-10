@@ -1347,7 +1347,8 @@
    },
    "buyout": {
     "premium": 2,
-    "standing_min": 1
+    "standing_min": 1,
+    "sector_work_min": 20
    },
    "commission": {
     "base": 30,

@@ -15,6 +15,7 @@ test('rules.seats shape', () => {
   assert.strictEqual(s.casualties.anchor, 'lapse_day');
   assert.strictEqual(s.buyout.premium, 2);
   assert.strictEqual(s.buyout.standing_min, 1);
+  assert.strictEqual(s.buyout.sector_work_min, 20);
   assert.strictEqual(s.petition_standing_min, 0);
   assert.deepStrictEqual(s.commission, { base: 30, days: 7 });
 });
