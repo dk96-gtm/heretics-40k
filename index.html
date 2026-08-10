@@ -2413,6 +2413,63 @@ var ULT=(function(){
           tributeOffer:tributeOffer,evalCounter:evalCounter};
 })();
 /*</agency-core>*/
+/*<seat-core>*/
+/* T-TERR-2 — Seats, Trust & Standing. Pure + DOM-free: canon/state arrive as arguments;
+   NO Date.now()/Math.random(). Casualty math (task 3) rides ULT.rng/seedFor discipline. */
+var SEAT=(function(){
+  function R(canon){return (canon.rules&&canon.rules.seats)||{};}
+  function ST(canon){return (canon.rules&&canon.rules.standing)||{};}
+  /* ── standing ── */
+  function seedStanding(facId,canon){
+    var m=ST(canon).matrix||{},row=m[facId]||{},out={};
+    Object.keys(m).forEach(function(f){
+      out[f]=(f===facId)?(ST(canon).own_seed!=null?ST(canon).own_seed:2)
+                        :(row[f]!=null?row[f]:0);});
+    return out;}
+  function moveStanding(led,facId,delta){
+    led[facId]=Math.min(2,Math.max(-3,(led[facId]||0)+delta));return led[facId];}
+  function kinRaid(led,facId,canon){
+    led[facId]=(ST(canon).kin_raid_floor!=null?ST(canon).kin_raid_floor:-3);return led[facId];}
+  function standingName(v,canon){
+    var l=ST(canon).ladder||[];
+    for(var i=0;i<l.length;i++)if(l[i].value===v)return l[i].name;
+    return String(v);}
+  /* ── seat economics ── */
+  function condMult(cond,canon){ /* same ladder read as ULT.garrisonMult */
+    var rows=(canon.galaxy&&canon.galaxy.conditions)||[];
+    for(var i=0;i<rows.length;i++)if(rows[i].id===cond)return rows[i].garrison_mult!=null?rows[i].garrison_mult:1;
+    return 1;}
+  function seatable(type,canon){return (R(canon).base_by_type||{})[type]!=null;}
+  function priceOf(loc,cond,canon){
+    var b=(R(canon).base_by_type||{})[loc.type];if(b==null)return null;
+    return Math.round(b*(loc.level||1)*condMult(cond,canon));}
+  function taxOf(loc,cond,canon){
+    var t=R(canon).tax||{};
+    return Math.round((t.per_level!=null?t.per_level:3)*(loc.level||1)*condMult(cond,canon));}
+  function gateReason(o,canon){
+    if(!seatable(o.loc.type,canon))return 'This ground cannot be held as a seat.';
+    if(o.held)return 'This seat is already held.';
+    if(!o.ruledByOwn)return 'Only a world ruled by your own kin grants seats.';
+    var wg=(R(canon).work_gates||{})[o.loc.type]||0;
+    if((o.work||0)<wg)return 'The ruler demands more service here — WORK '+(o.work||0)+'/'+wg+'.';
+    var ps=(R(canon).petition_standing_min!=null?R(canon).petition_standing_min:0);
+    if((o.standing!=null?o.standing:0)<ps)return 'Your standing with your kin bars the petition.';
+    var p=priceOf(o.loc,o.cond,canon);
+    if((o.cur||0)<p)return 'Not enough currency — '+p+' required.';
+    return null;}
+  function workEarn(mission,canon){
+    var e=R(canon).work_earn||{},we=(mission&&mission.world_effect)||{};
+    if(we.repair_step)return (mission.payout>0)?(e.rebuild_mission!=null?e.rebuild_mission:2)
+                                               :(e.manual!=null?e.manual:1);
+    return (e.mission!=null?e.mission:1);}
+  function upkeepOf(forcePC,canon){
+    var d=((R(canon).upkeep||{}).pc_divisor)||250;
+    return Math.max(1,Math.ceil((forcePC||0)/d));}
+  return {seedStanding:seedStanding,moveStanding:moveStanding,kinRaid:kinRaid,
+          standingName:standingName,condMult:condMult,seatable:seatable,priceOf:priceOf,
+          taxOf:taxOf,gateReason:gateReason,workEarn:workEarn,upkeepOf:upkeepOf};
+})();
+/*</seat-core>*/
 /*<save-core>*/
 /* Pure, DOM-free save serialization. S/canon arrive as arguments; no globals, no localStorage.
    snapshot() = S -> JSON-safe clone minus circular refs + ephemerals. relink() is the inverse. */
