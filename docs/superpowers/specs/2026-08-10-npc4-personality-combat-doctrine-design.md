@@ -46,34 +46,34 @@ v1.34 lands (version-ladder rule: queued plans sharing canon version by executio
 ### The 20 rows (authored 2026-08-10 — Daak to eyeball; every number a tunable default)
 
 Axes: FER ferocity · CUN cunning · PRAG pragmatism · HON honor · SUP supremacism.
-STYLE = derived, argmax(FER, CUN, SUP) → charger / stalker / hunter (§3).
+STYLE = derived, argmax(FER, CUN, SUP) → onslaught / culling / decapitation (§3).
 Spread defaults to 12 unless noted; plasticity 12; floor/ceiling = base ∓/± 25 clamped
 to [0,100] unless a lore bound is noted.
 
 | faction | FER | CUN | PRAG | HON | SUP | STYLE | lore anchor |
 |---|---|---|---|---|---|---|---|
-| black_legion | 65 | 70 | 60 | 25 | **75** | hunter | Ascendancy through merit and murder — kill the biggest rival |
-| death_guard | **55** | 45 | 35 | 40 | 45 | charger | The implacable advance; endures, all but never retreats |
-| world_eaters | **95** | 25 | 10 | 30 | 40 | charger | Blood for the Blood God; FER floor 80; never runs |
-| thousand_sons | 30 | **90** | 65 | 45 | 70 | stalker | Sorcery at range, patient and precise |
-| emperors_children | 70 | 60 | 30 | 25 | **75** | hunter | The perfect kill — seek the worthiest target, cruelly |
-| daemons | **85** | 40 | 5 | 5 | 50 | charger | The warp given claws; banishment holds no fear |
-| astartes | **65** | 60 | 45 | 70 | 55 | charger | Angels of Death; HON 70 → duels leaders, spares the broken |
-| militarum | 45 | **55** | 75 | 55 | 30 | stalker | Massed lasfire in ranks; pragmatic, professional withdrawals |
-| mechanicus | 35 | **80** | 70 | 30 | 60 | stalker | Calculated fire solutions; flesh is expendable, engines are not |
-| sororitas | **75** | 45 | 15 | 60 | 50 | charger | Faith made manifest; the line does not break |
-| custodes | 70 | 75 | 35 | 80 | **80** | hunter | Ten thousand years sharp; duels the leader, ends the greatest threat |
-| tyranids | **90** | 55 | 0 | 0 | 40 | charger | Biomass in, horror out; no fear, no mercy, no retreat |
-| orks | **90** | 30 | 20 | 45 | 60 | charger | Da biggest an' da best; WAAAGH! straight at 'em |
-| necrons | 40 | **75** | 75 | 50 | 55 | stalker | Phalanx discipline; phases out when the arithmetic sours |
-| aeldari | 45 | **85** | 80 | 55 | 45 | stalker | A dying people — every life preserved, every strike surgical |
-| drukhari | 55 | **90** | 75 | 5 | 45 | stalker | Executes the wounded, harvests the weak, flees a fair fight |
-| tau | 25 | **80** | 70 | 60 | 35 | stalker | Kauyon patience; the Greater Good does not spend lives |
-| gsc | 50 | **75** | 65 | 20 | 30 | stalker | The ambush from below; melts away when exposed |
-| votann | 55 | 65 | 60 | 65 | **70** | hunter | The Kin remember every debt — the grudge names the target |
-| harlequins | 60 | **88** | 55 | 70 | 40 | stalker | The dance; HON 70 → the Solitaire seeks your leader |
+| black_legion | 65 | 70 | 60 | 25 | **75** | decapitation | Ascendancy through merit and murder — kill the biggest rival |
+| death_guard | **55** | 45 | 35 | 40 | 45 | onslaught | The implacable advance; endures, all but never retreats |
+| world_eaters | **95** | 25 | 10 | 30 | 40 | onslaught | Blood for the Blood God; FER floor 80; never runs |
+| thousand_sons | 30 | **90** | 65 | 45 | 70 | culling | Sorcery at range, patient and precise |
+| emperors_children | 70 | 60 | 30 | 25 | **75** | decapitation | The perfect kill — seek the worthiest target, cruelly |
+| daemons | **85** | 40 | 5 | 5 | 50 | onslaught | The warp given claws; banishment holds no fear |
+| astartes | **65** | 60 | 45 | 70 | 55 | onslaught | Angels of Death; HON 70 → duels leaders, spares the broken |
+| militarum | 45 | **55** | 75 | 55 | 30 | culling | Massed lasfire in ranks; pragmatic, professional withdrawals |
+| mechanicus | 35 | **80** | 70 | 30 | 60 | culling | Calculated fire solutions; flesh is expendable, engines are not |
+| sororitas | **75** | 45 | 15 | 60 | 50 | onslaught | Faith made manifest; the line does not break |
+| custodes | 70 | 75 | 35 | 80 | **80** | decapitation | Ten thousand years sharp; duels the leader, ends the greatest threat |
+| tyranids | **90** | 55 | 0 | 0 | 40 | onslaught | Biomass in, horror out; no fear, no mercy, no retreat |
+| orks | **90** | 30 | 20 | 45 | 60 | onslaught | Da biggest an' da best; WAAAGH! straight at 'em |
+| necrons | 40 | **75** | 75 | 50 | 55 | culling | Phalanx discipline; phases out when the arithmetic sours |
+| aeldari | 45 | **85** | 80 | 55 | 45 | culling | A dying people — every life preserved, every strike surgical |
+| drukhari | 55 | **90** | 75 | 5 | 45 | culling | Executes the wounded, harvests the weak, flees a fair fight |
+| tau | 25 | **80** | 70 | 60 | 35 | culling | Kauyon patience; the Greater Good does not spend lives |
+| gsc | 50 | **75** | 65 | 20 | 30 | culling | The ambush from below; melts away when exposed |
+| votann | 55 | 65 | 60 | 65 | **70** | decapitation | The Kin remember every debt — the grudge names the target |
+| harlequins | 60 | **88** | 55 | 70 | 40 | culling | The dance; HON 70 → the Solitaire seeks your leader |
 
-Style census: 7 chargers · 9 stalkers · 4 hunters — all three styles well-represented.
+Style census: 7 onslaught · 9 culling · 4 decapitation — all three styles well-represented.
 
 Note the deliberate echoes of existing canon: PRAG loosely tracks the N1
 `tribute_appetite` ordering (votann/tau high, tyranids/daemons zero) without duplicating it;
@@ -93,7 +93,7 @@ the 5 placed NPCs' authored `behavior_seed` values stay untouched and override a
   combat rolls for generated NPCs do NOT write into S.npcState.
 - **Commander death mid-battle changes nothing** — doctrine is the warband's ingrained
   character, stamped at seed time; a leaderless mob doesn't get smarter.
-- Absent behavior (legacy threads, missing matrix row): flat 50s → charger-ish legacy
+- Absent behavior (legacy threads, missing matrix row): flat 50s → onslaught-ish legacy
   playbook. Back-compat by construction; existing tests keep passing.
 
 ## 3 · The three styles (argmax of FER / CUN / SUP; ties break in that order)
@@ -102,14 +102,14 @@ All styles run inside the existing pure `npcTurn` loop (move free, attack via AP
 riders fan out, action caps, fog-honesty all unchanged). What changes is TARGETING and
 MOVEMENT INTENT:
 
-- **CHARGER (ferocity)** — target: NEAREST spotted enemy. Movement: close to melee band
+- **ONSLAUGHT (ferocity)** — target: NEAREST spotted enemy. Movement: close to melee band
   as fast as possible; prefers the highest-damage weapon that reaches (today's behavior,
   now one style of three).
-- **STALKER (cunning)** — target: the spotted enemy with the FEWEST current wounds
+- **CULLING (cunning)** — target: the spotted enemy with the FEWEST current wounds
   (focus-fire the weakest until it drops; deterministic tiebreak by id). Movement: hold at
   its best weapon's maximum band; if an enemy closes to melee, spend the move stepping
   BACK to range (kite) before firing.
-- **HUNTER (supremacism)** — target: the spotted enemy with the HIGHEST PC. Movement:
+- **DECAPITATION (supremacism)** — target: the spotted enemy with the HIGHEST PC. Movement:
   close to its best weapon's effective band against that one target; ignores closer, weaker
   targets while the big one stands.
 
@@ -140,7 +140,7 @@ Gates in `rules.doctrine.honor` `{high: 70, low: 30}` (tunable defaults):
   are already Critical (the derived cond that exists in CONDS) — the broken are beneath
   their blade.
 - **HON ≤ 30:** the side prioritizes Critical/most-wounded targets FIRST — deliberately
-  finishing the wounded (stacks naturally with Stalker; for Charger/Hunter it reorders
+  finishing the wounded (stacks naturally with Culling; for Onslaught/Decapitation it reorders
   target preference only when a Critical target is spotted).
 - **30 < HON < 70:** no effect.
 - Interaction pin: an HON≥70 side that would have NO legal target because everything
@@ -194,8 +194,8 @@ intel via auspex/Chronicle, that's a NEW ruling — this spec ships nothing.)
 - AXES: deterministic roll (same seed → same values), clamping, placed-seed override.
 - doctrineOf: style argmax + tie order; honor gates; retreat threshold arithmetic
   (PRAG 90/50/10 cases).
-- npcTurn styles: given a fixed board, charger closes on nearest / stalker kites + hits
-  weakest / hunter crosses the board for the biggest PC; HON≥70 commander re-targets
+- npcTurn styles: given a fixed board, onslaught closes on nearest / culling kites + hits
+  weakest / decapitation crosses the board for the biggest PC; HON≥70 commander re-targets
   leader; HON≥70 all-Critical hold-fire pin; HON≤30 finishes wounded.
 - shouldRetreat: fires exactly at threshold; never for PRAG ≤ 10.
 - Lapse: cunning ±cap, ferocity margin shift both ways, honor loot floor; arith strings
