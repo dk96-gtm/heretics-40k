@@ -2729,7 +2729,7 @@ function foundingWorld(){return {
  rulers:{},holdings:[],
  stock:{},unrest:{},
  doorTiers:{},doorBuilds:{},locConds:{},condHeal:{},
- work:{},seats:{},                 // T-TERR-2 (standing seeds in commitFounding — needs the faction)
+ work:{},seats:{},seatMiss:{},      // T-TERR-2 (standing seeds in commitFounding — needs the faction)
  missions:{},missionSeedBase:(Date.now()%2147483647),missionDay:0,   // Missions V2 slice A: founding never gets a reload, so init()'s backfill never fires — seed here too (S.time.epoch isn't in scope yet: commitFounding assigns `world:` before `time:`, so this mirrors init()'s Date.now()-based epoch as closely as scope allows)
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
@@ -3634,14 +3634,14 @@ p.querySelectorAll('[data-accept-mission]').forEach(function(b){b.onclick=functi
 if(atHere){var rq=document.getElementById('locreq');if(rq)rq.onclick=function(){go('shop')};
  var rb=document.getElementById('locrebuild');if(rb)rb.onclick=function(){manualRestore(pl,l,'rebuild')};
  var lib=document.getElementById('loclib');if(lib)lib.onclick=function(){manualRestore(pl,l,'liberate')};
- // T-TERR-2 task 6: Station sets the garrison (defensive re-check against a race with
- // threadOfForce, mirroring the same refusal copy startThread/manualRestore already use);
+ // T-TERR-2 task 6: Station sets the garrison to the same idle Force the render-time filter
+ // already picked (nothing mutates S.threads between render and this synchronous click handler,
+ // so no separate threadOfForce re-check is needed here — unlike startThread/manualRestore,
+ // which re-check because a Force can be raised/edited on a different screen first).
  // Recall just deletes the key.
  var lst=document.getElementById('locstation');if(lst)lst.onclick=function(){
   var f=S.forces.filter(function(x){return !threadOfForce(x.n)&&!stationedThreadLockOf(x.id);})[0];
   if(!f){T('No idle Force to station.');return}
-  var other=threadOfForce(f.n);
-  if(other){T(f.n+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}
   S.world.seats[l.id].stationedForceId=f.id;persist();T('🛡 '+f.n+' stands garrison at '+l.name+'.');rMap();};
  var lrc=document.getElementById('locrecall');if(lrc)lrc.onclick=function(){
   var _fid=S.world.seats[l.id].stationedForceId,_fn=(S.forces.filter(function(x){return x.id===_fid})[0]||{}).n||'The garrison';
@@ -5153,6 +5153,7 @@ function init(){
   if(!S.world.standing)S.world.standing=SEAT.seedStanding(S.player.faction,D); // T-TERR-2: older saves
   if(!S.world.work)S.world.work={};
   if(!S.world.seats)S.world.seats={};
+  if(!S.world.seatMiss)S.world.seatMiss={};                              // T-TERR-2 fix round 1: older saves
   if(!S.progress)S.progress={streaks:{}};                                 // T-MSN-1C task 4: older saves
   var _wc=WORLD.catchUp(S,D,Date.now());
   // final review FIX 2: chunk-independence — resolve any lapse due THIS tick day BEFORE that
@@ -5166,14 +5167,21 @@ function init(){
     var _fl=lById(f.loc);
     _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});
     seatTickIncome().forEach(function(e){_wc.events.push(e);});
-    // T-TERR-2: stationed upkeep — the location swallows it; non-payment wounds the GROUND
+    // T-TERR-2: stationed upkeep — the location swallows it; non-payment wounds the GROUND.
+    // fix round 1: a dedicated S.world.seatMiss[lid] counter, NOT S.world.unrest[pid] — that key
+    // is WORLD.produce's own famine/tithe unrest counter (increments on troubled economic days,
+    // decrements on untroubled ones); sharing it would let an unrelated economic tick both
+    // mis-attribute a condition step to "an unpaid garrison" and swallow real missed-payment
+    // counts. seatMiss is keyed by LOCATION id (the wound lands on the location; a planet could
+    // someday carry two seats), never decremented, so "every 3rd missed payment" stays exact.
+    S.world.seatMiss=S.world.seatMiss||{};
     Object.keys(S.world.seats||{}).forEach(function(lid){
      var up=stationedPCAt(lid);if(!up)return;
      var due=SEAT.upkeepOf(up,D);
      if((S.cur||0)>=due){S.cur-=due;return}
      var lp=lById(lid,true);if(!lp.l)return;
-     S.world.unrest[lp.pid]=(S.world.unrest[lp.pid]||0)+((D.rules.seats.upkeep||{}).unrest_per_miss||1);
-     if(S.world.unrest[lp.pid]%((D.rules.seats.upkeep||{}).unrest_wound_every||3)===0){
+     S.world.seatMiss[lid]=(S.world.seatMiss[lid]||0)+((D.rules.seats.upkeep||{}).unrest_per_miss||1);
+     if(S.world.seatMiss[lid]%((D.rules.seats.upkeep||{}).unrest_wound_every||3)===0){
       S.world.locConds[lid]=ULT.stepDown(effCond(lp.l));
       _wc.events.push({kind:'seat_unrest',loc:lp.l.name});}});
     // T-NPC-3 N1 task 5: condition self-heal, one pass per tick day — sector-paced
