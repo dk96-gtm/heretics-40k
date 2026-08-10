@@ -130,6 +130,24 @@ verified in the E2E pass by fighting one battle per style and reading the report
   Pure helper `THREAD.shouldRetreat(side, state, canon)` decides; the glue calls the
   existing exit machinery. NOTHING new is invented at the thread-rule level.
 
+### 4a · Retreat scope & resolution pins (planning addendum 2026-08-10 — structure, not new rulings)
+
+- Applies to **SKIRMISH and INVASION** threads only. MISSION hostiles fight to the death
+  (count_kill / clear_all objective math must stay winnable); duels cannot be fled
+  (already minted: "a duel cannot be fled").
+- **One attempt per battle** (`state.retreatTried`): a caught side is CORNERED and fights
+  to the end. The attempt consumes the side's turn either way (they broke for the
+  perimeter).
+- The ranked-speed check uses **real model speeds**: max spd among the retreating side's
+  living models vs max spd among the player side's living models; the retreater escapes
+  only if strictly faster. Deterministic, no roll. (The player-exit path keeps its
+  `enemySpd=3` stub; upgrading that is still T-ENG-3.)
+- **Escape resolution:** living NPC models are marked fled (off-board, alive); the thread
+  enters the standard aftermath phase with `state.pendingOutcome = {kind:'withdrawal',
+  victor:<player party>, defeated:[<npc party>]}` — the same loot-then-END-THREAD flow as
+  a cleared field. `concludeThread` gains a 'withdrawal' resolution line; INVASION
+  conquest fires on mineWon exactly as with annihilation (they abandoned the field).
+
 ## 5 · Conduct rule 2 — Honor = leaders and the wounded
 
 Gates in `rules.doctrine.honor` `{high: 70, low: 30}` (tunable defaults):
