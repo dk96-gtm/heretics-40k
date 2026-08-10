@@ -1255,6 +1255,45 @@ var THREAD=(function(){
     return 'SHORT';
   }
   function npcReaches(reach,fromPos,tgtPos){return reach>=NPC_RANK[bandOf(cheb(fromPos,tgtPos))];}
+  /* ── T-NPC-4 · personality axes + doctrine (spec 2026-08-10) ──────────
+     Self-contained (own hash/rng): regions are standalone-extracted for tests
+     and must not lean on mission-core/ULT copies. */
+  var AXES=(function(){
+    function hashStr(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+    function rng(seed){var a=seed>>>0;return function(){a|=0;a=(a+0x6D2B79F5)|0;var t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296;};}
+    var AXIS=['ferocity','cunning','pragmatism','honor','supremacism'];
+    function rollFor(facId,seedStr,canon){
+      var M=(canon&&canon.ai&&canon.ai.behavior_matrix)||{},row=M[facId],out={},r=rng(hashStr('axes:'+facId+':'+seedStr));
+      AXIS.forEach(function(ax){
+        var a=row&&row[ax];
+        if(!a){out[ax]=50;return;}
+        var sp=(a.spread!=null?a.spread:12);
+        var v=Math.round(a.base+(r()*2-1)*sp);
+        var fl=(a.floor!=null?a.floor:0),ce=(a.ceiling!=null?a.ceiling:100);
+        out[ax]=Math.max(fl,Math.min(ce,v));});
+      return out;}
+    return {rollFor:rollFor,AXIS:AXIS};
+  })();
+  function doctrineOf(behavior,canon){
+    var b=behavior||{},d=(canon&&canon.rules&&canon.rules.doctrine)||{};
+    var fer=(b.ferocity!=null?b.ferocity:50),cun=(b.cunning!=null?b.cunning:50),sup=(b.supremacism!=null?b.supremacism:50);
+    var style=(fer>=cun&&fer>=sup)?'onslaught':(cun>=sup)?'culling':'decapitation';   // tie order FER > CUN > SUP
+    var hg=d.honor||{},hi=(hg.high!=null?hg.high:70),lo=(hg.low!=null?hg.low:30);
+    var hon=(b.honor!=null?b.honor:50);
+    var base=((d.retreat||{}).base!=null)?d.retreat.base:110;
+    var prag=(b.pragmatism!=null?b.pragmatism:50);
+    return {style:style,honorMode:(hon>=hi?'high':hon<=lo?'low':'none'),retreatAt:(base-prag)/100};
+  }
+  function shouldRetreat(side,state,canon){
+    var beh=state&&state.behavior&&state.behavior[side];if(!beh)return false;
+    if(state.retreatTried)return false;
+    var doc=doctrineOf(beh,canon);if(doc.retreatAt>=1)return false;
+    var C=state.combatants||{},tot=0,alive=0,id;
+    for(id in C){var c=C[id];if(c.party!==side)continue;var pc=(c.model&&c.model.pc)||0;
+      tot+=pc;if(!c.dead&&!c.captured)alive+=pc;}
+    if(!tot)return false;
+    return (1-alive/tot)>=doc.retreatAt;
+  }
   function npcTurn(side,state,board,weaponsOf,canon){
     canon=canon||{rules:{}};                          // T-CMB-1 Task 4: safe default for legacy 4-arg callers
     var C=state.combatants||{},block=[],id;
@@ -1390,7 +1429,7 @@ var THREAD=(function(){
     });
     return out;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive, condTaggyItem:condTaggyItem, condHostile:condHostile, condBandOf:condBandOf };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, AXES:AXES, doctrineOf:doctrineOf, shouldRetreat:shouldRetreat, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive, condTaggyItem:condTaggyItem, condHostile:condHostile, condBandOf:condBandOf };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
