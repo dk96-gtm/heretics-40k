@@ -1294,38 +1294,69 @@ var THREAD=(function(){
     if(!tot)return false;
     return (1-alive/tot)>=doc.retreatAt;
   }
-  function npcTurn(side,state,board,weaponsOf,canon){
+  var BAND_MAX={melee:1,short:3,medium:6,long:1e9};
+  function npcTurn(side,state,board,weaponsOf,canon,behavior){
     canon=canon||{rules:{}};                          // T-CMB-1 Task 4: safe default for legacy 4-arg callers
     var C=state.combatants||{},block=[],id;
     var pool=(state.pools&&state.pools[side]!=null)?state.pools[side]:0;
     var spotted=board?spottedEnemies(side,state,board):[];
     if(!spotted.length)return block;                 // fog-honest: sees nothing → holds
+    var beh=behavior||(state.behavior&&state.behavior[side])||null;
+    var doc=doctrineOf(beh,canon);
+    var isCrit=function(eid){var e=C[eid];return !!(e&&e.w&&e.w[0]<=1);};   // same predicate as actionCap
+    var live=spotted.filter(function(eid){var e=C[eid];return e&&!e.dead;});
+    // honor conduct reshapes the candidate pool (spec §5)
+    var cands=live;
+    if(doc.honorMode==='high'){cands=live.filter(function(eid){return !isCrit(eid);});}
+    else if(doc.honorMode==='low'&&live.some(isCrit)){cands=live.filter(isCrit);}
+    var holdFire=(doc.honorMode==='high'&&cands.length===0);   // all Critical → mercy holds
+    var pickBy=function(list,metric){var best=null;list.forEach(function(eid){var e=C[eid];if(!e)return;
+      var k=metric(e,eid);if(!best||k<best.k||(k===best.k&&eid<best.id))best={id:eid,k:k};});
+      return best&&best.id;};
+    // side-level style target (culling/decapitation); onslaught stays per-model nearest
+    var sideTgt=null,pool0=cands.length?cands:live;
+    if(doc.style==='culling')sideTgt=pickBy(pool0,function(e){return (e.w&&e.w[0]!=null)?e.w[0]:1e9;});
+    else if(doc.style==='decapitation')sideTgt=pickBy(pool0,function(e){return -((e.model&&e.model.pc)||0);});
+    var leaderTgt=pickBy(pool0,function(e){return -((e.model&&e.model.pc)||0);});   // enemy leader = biggest
+    // commander of MY side = highest-pc living model (honor-high duel seeker)
+    var cmdr=null,cbest=-1;
+    for(id in C){var cc=C[id];if(cc.party!==side||cc.dead||cc.x==null)continue;
+      var cpc=(cc.model&&cc.model.pc)||0;if(cpc>cbest){cbest=cpc;cmdr=id;}}
     var pos={};for(id in C)if(C[id].x!=null)pos[id]={x:C[id].x,y:C[id].y};
-    var _staged={};                                    // T-CMB-1 Task 4: per-model action-cap gate
+    var _staged={};
     for(var aid in C){var me=C[aid];
       if(me.party!==side||me.dead||me.x==null)continue;
-      var tgt=null,td=Infinity;                       // nearest SEEN enemy by working positions
-      spotted.forEach(function(eid){var e=C[eid];if(!e||e.dead)return;
-        var d=cheb(pos[aid],pos[eid]);if(d<td){td=d;tgt=eid;}});
+      var tgt=null;
+      if(doc.honorMode==='high'&&aid===cmdr&&leaderTgt)tgt=leaderTgt;      // the duel
+      else if(sideTgt)tgt=sideTgt;
+      else {var td=Infinity;(cands.length?cands:live).forEach(function(eid){var e=C[eid];if(!e||e.dead)return;
+        var d=cheb(pos[aid],pos[eid]);if(d<td){td=d;tgt=eid;}});}
       if(!tgt)continue;
       var weps=weaponsOf(me)||[];
       var reach=weps.reduce(function(m,w){var r=NPC_RANK[w.band];return r>m?r:m;},-1);
-      var mySpd=Math.max(0,(me.spd||0)+condMods(me).speed);   // Slowed/hasted NPCs move by their real speed
-      if(weps.length&&!npcReaches(reach,pos[aid],pos[tgt])){   // MOVE (free): close the gap
-        var occ=[];for(var oid in pos)if(oid!==aid&&C[oid]&&!C[oid].dead)occ.push(pos[oid]);
-        var reachSet=reachable(pos[aid],mySpd,board,occ),bestCell=null,bestD=cheb(pos[aid],pos[tgt]),k;
-        for(k in reachSet){var xy=k.split(','),cell={x:+xy[0],y:+xy[1]},d2=cheb(cell,pos[tgt]);
-          if(d2<bestD){bestD=d2;bestCell=cell;}}
+      var myMax=weps.reduce(function(m,w){return Math.max(m,BAND_MAX[w.band]||1);},0);
+      var mySpd=Math.max(0,(me.spd||0)+condMods(me).speed);
+      var occ=[];for(var oid in pos)if(oid!==aid&&C[oid]&&!C[oid].dead)occ.push(pos[oid]);
+      var nearest=Infinity;live.forEach(function(eid){var d=cheb(pos[aid],pos[eid]);if(d<nearest)nearest=d;});
+      if(doc.style==='culling'&&weps.length&&nearest<=1&&myMax>1){          // KITE: step back, keep reach
+        var rs=reachable(pos[aid],mySpd,board,occ),bc=null,bs=-1,k;
+        for(k in rs){var xy=k.split(','),cell={x:+xy[0],y:+xy[1]};
+          if(cheb(cell,pos[tgt])>myMax)continue;
+          var md=Infinity;live.forEach(function(eid){var d=cheb(cell,pos[eid]);if(d<md)md=d;});
+          if(md>bs){bs=md;bc=cell;}}
+        if(bc&&bs>nearest){block.push({actor:aid,cost:0,effect:{kind:'move',who:aid,to:bc}});pos[aid]=bc;}
+      } else if(weps.length&&!npcReaches(reach,pos[aid],pos[tgt])){          // close the gap (as today)
+        var reachSet=reachable(pos[aid],mySpd,board,occ),bestCell=null,bestD=cheb(pos[aid],pos[tgt]),k2;
+        for(k2 in reachSet){var xy2=k2.split(','),cell2={x:+xy2[0],y:+xy2[1]},d2=cheb(cell2,pos[tgt]);
+          if(d2<bestD){bestD=d2;bestCell=cell2;}}
         if(bestCell){block.push({actor:aid,cost:0,effect:{kind:'move',who:aid,to:bestCell}});pos[aid]=bestCell;}
       }
-      if((_staged[aid]||0)>=actionCap(me,canon))continue;    // Suppressed/wounded: no action budget left
-      var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;  // ATTACK (AP): best affordable reaching weapon
+      if(holdFire)continue;                                                  // mercy: move only
+      if((_staged[aid]||0)>=actionCap(me,canon))continue;
+      var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;
       weps.forEach(function(w){if(NPC_RANK[w.band]>=NPC_RANK[db]&&(w.ap||0)<=pool){
         if(!pick||(w.damage||0)>(pick.damage||0))pick=w;}});
       if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,nonLethal:!!pick.nonLethal,weapon:pick.name||null,band:db}});pool-=(pick.ap||0);_staged[aid]=(_staged[aid]||0)+1;
-        // T-CMB-2 Task 4: the weapon's hostile tags ride the hit — free fanout entries, same
-        // contract as the player composers. add carries explicit el/nl/nr (no item object in
-        // caps) — applyCond's explicit-fields-win rule stamps them; band feeds the range gate.
         (pick.conds||[]).forEach(function(ct){
           block.push({actor:aid,cost:0,fanout:true,effect:{kind:'cond',
             add:{tag:ct.tag,tier:ct.tier,src:pick.name||null,el:pick.element||null,nl:!!pick.nonLethal,nr:!!pick.noRevival,band:pick.band},to:tgt}});});
