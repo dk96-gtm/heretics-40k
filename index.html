@@ -1703,16 +1703,75 @@ var WORLD=(function(){
       else if(th[i].else)return th[i].else;}
     return 'Peace';
   }
-  function stepDay(state,canon,events){
+  /* ── T-TERR-2 (final review I1): seat tax + garrison upkeep run INSIDE the per-day pass,
+     so they interleave with produce() day by day — 13 daily boots === one 13-day boot for
+     currency, seatMiss and the conditions they wound (the tithe's cur=0 zeroing makes money
+     non-fungible across orderings, so a trailing per-day loop diverged).
+     Purity: the seat rules (SEAT) and the condition-ladder step (ULT.stepDown) arrive via
+     `opts` — never as globals; the location is resolved from canon by the same planet walk
+     locShares uses; the condition reads the sparse overlay first, then canon, then 'intact'. */
+  function findLoc(canon,lid){var r=null;
+    ((canon.galaxy&&canon.galaxy.segmentums)||[]).forEach(function(g){(g.zones||[]).forEach(function(z){(z.sectors||[]).forEach(function(s){(s.planets||[]).forEach(function(p){
+      (p.locations||[]).forEach(function(l){if(l.id===lid&&!r)r={l:l,p:p,pid:p.id,sector:s.id};});})})})});
+    return r;}
+  function condAt(state,lid,loc){
+    var ov=(((state.world||{}).locConds)||{})[lid];
+    return ov||loc.condition||'intact';}
+  function stationedPC(state,seat){          // pure mirror of the engine's stationedPCAt
+    if(!seat||!seat.stationedForceId)return 0;
+    var fs=state.forces||[],f=null,i;
+    for(i=0;i<fs.length;i++)if(fs[i].id===seat.stationedForceId){f=fs[i];break;}
+    if(!f)return 0;
+    return (state.roster||[]).filter(function(m){return m.fo===f.n&&m.st!=='DEAD'&&m.st!=='TAKEN';})
+      .reduce(function(sum,m){return sum+(m.pc||0);},0);}
+  function seatDay(state,canon,events,opts){
+    var SEATR=opts&&opts.seat;if(!SEATR)return;                 // no seat rules injected → no seat pass
+    var seats=(state.world&&state.world.seats)||{},keys=Object.keys(seats);
+    if(!keys.length)return;
+    var hold=(state.world.holdings)||[];
+    var up=(((canon.rules||{}).seats||{}).upkeep)||{};
+    var besieged=(opts&&opts.besieged)||{};
+    keys.forEach(function(lid){
+      var f=findLoc(canon,lid);if(!f)return;
+      var cond=condAt(state,lid,f.l);
+      /* tax always; the location's production share only when the planet is NOT already a
+         holding (holdings accrue whole-planet production in produce() — double-pay guard) */
+      var tax=SEATR.taxOf(f.l,cond,canon);
+      state.cur=(state.cur||0)+tax;
+      var got=tax+'c tax';
+      if(hold.indexOf(f.pid)<0){
+        var sh=locShares(f.p,canon).filter(function(x){return x.id===lid;})[0];
+        if(sh){state.world.stock=state.world.stock||{};
+          var stk=state.world.stock[f.pid]=state.world.stock[f.pid]||{Food:0,Material:0,Fuel:0};
+          stk.Food+=sh.share.Food;stk.Material+=sh.share.Material;stk.Fuel+=sh.share.Fuel;
+          got+=' · +'+sh.share.Food+'F/'+sh.share.Material+'M/'+sh.share.Fuel+'Fu';}}
+      events.push({kind:'seat_income',loc:f.l.name,detail:got});
+      /* stationed upkeep — the location swallows it; non-payment wounds the GROUND.
+         seatMiss is a dedicated per-LOCATION counter (never WORLD.produce's unrest key,
+         never decremented), so "every 3rd missed payment" stays exact. */
+      var pc=stationedPC(state,seats[lid]);if(!pc)return;
+      var due=SEATR.upkeepOf(pc,canon);
+      if((state.cur||0)>=due){state.cur-=due;return;}
+      state.world.seatMiss=state.world.seatMiss||{};
+      state.world.seatMiss[lid]=(state.world.seatMiss[lid]||0)+(up.unrest_per_miss||1);
+      if(state.world.seatMiss[lid]%(up.unrest_wound_every||3)!==0)return;
+      if(besieged[lid])return;      // siege pause (mirrors ULT.healTick): count the miss, skip the wound
+      if(!opts.stepDown)return;
+      state.world.locConds=state.world.locConds||{};
+      state.world.locConds[lid]=opts.stepDown(cond);
+      events.push({kind:'seat_unrest',loc:f.l.name});});
+  }
+  function stepDay(state,canon,events,opts){
     produce(state,canon,events);
+    seatDay(state,canon,events,opts);
     driftScores(state,canon,events);
   }
-  function catchUp(state,canon,nowMs){
+  function catchUp(state,canon,nowMs,opts){
     var events=[];
     var elapsed=ticksElapsed(state,canon,nowMs);
     var cap=(canon.tick&&canon.tick.max_catchup_days)||30;
     var run=Math.min(elapsed,cap);
-    for(var i=0;i<run;i++)stepDay(state,canon,events);
+    for(var i=0;i<run;i++)stepDay(state,canon,events,opts);
     var compressed=Math.max(0,elapsed-run);
     if(compressed>0)events.push({kind:'compressed',days:compressed});
     if(!state.time)state.time={};
@@ -1766,7 +1825,7 @@ var WORLD=(function(){
   }
   return { dayMs:dayMs, dayIndexAt:dayIndexAt, ticksElapsed:ticksElapsed, stepDay:stepDay,
            catchUp:catchUp, digest:digest,
-           findPlanet:findPlanet,
+           findPlanet:findPlanet, findLoc:findLoc, seatDay:seatDay,
            resOut:resOut, typedYield:typedYield, locShares:locShares,
            planetCap:planetCap, foodDemand:foodDemand, upkeepOf:upkeepOf,
            produce:produce,
@@ -2889,7 +2948,11 @@ function seedCombat(t,pid,l,npcId,force,missionParams,missionTarget){
 function startThread(pid,l,type,npcId,opts){var loc=fPl(pid).p.name+' · '+l.name;
  var am=activeModel(),force=S.forces.filter(function(f){return f.lead===am.id})[0];
  var fname=force?force.n:null;
- if(fname){var other=threadOfForce(fname);if(other){T(fname+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}}
+ if(fname){var other=threadOfForce(fname);if(other){T(fname+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}
+  /* final review FIX I2: a stationed Force is committed exactly like a thread-committed one —
+     without this it could fight here AND still count in its seat's lapse garrison defense. */
+  var _slk=stationedThreadLockOf(force.id);
+  if(_slk){T(fname+' is standing garrison at '+((lById(_slk)||{}).name||_slk)+'. Recall it first.');return}}
  var id=type.toLowerCase().slice(0,3)+'_'+l.id+'_'+S.threads.length;
  var t={id:id,type:type.toUpperCase(),n:type+' at '+l.name,loc:loc,pl:pid,lid:l.id,turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',about:'You opened a '+type+' at '+l.name+'. '+(threadSummary(type.toUpperCase())),forces:fname?[fname]:[],npc:npcId||null};
  if(t.type==='SKIRMISH'||t.type==='INVASION')seedCombat(t,pid,l,npcId,force,(opts&&opts.duel)?{duel:true}:null);
@@ -3071,7 +3134,10 @@ function acceptMission(inst,pl,l,mods){
    a 'man_...' iid and no-ops, same as it would for any stale/absent iid. */
 function manualRestore(pl,l,kind){
  var isRebuild=(kind==='rebuild');
- var _isHeld=S.world.holdings&&S.world.holdings.indexOf(pl.id)>=0;
+ /* final review FIX C1: the render side offers Rebuild/Liberate at a held SEAT as well as a
+    held planet (_heldOrSeat, rMap) — the action gate must accept the same two claims, or the
+    seat power is a dead button (a seat normally sits on kin ground you do not hold). */
+ var _isHeld=(S.world.holdings&&S.world.holdings.indexOf(pl.id)>=0)||!!(S.world.seats&&S.world.seats[l.id]);
  if(!_isHeld){T('You do not hold this ground.');return}
  var _cond=effCond(l);
  if(isRebuild&&_cond!=='sacked'&&_cond!=='ruined'){T('Nothing here needs rebuilding.');return}
@@ -3080,6 +3146,8 @@ function manualRestore(pl,l,kind){
  if(!force){T('No Force to send.');return}
  var other=threadOfForce(force.n);
  if(other){T(force.n+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}
+ var _slk=stationedThreadLockOf(force.id);            // final review FIX I2: the 4th commit gate
+ if(_slk){T(force.n+' is standing garrison at '+((lById(_slk)||{}).name||_slk)+'. Recall it first.');return}
  var row=(D.missions.universal||[]).filter(function(r){return r.id===(isRebuild?'rebuild':'liberation');})[0];
  if(!row){T('Not available.');return}
  var id='man_'+Date.now();
@@ -3422,11 +3490,16 @@ dz.filter(function(x){return !x.open}).forEach(function(x){
 b.insertAdjacentHTML('beforeend','<div class="empty" style="opacity:.6;text-align:left"><b>'+x.name+'</b> <span class="pill">'+x.kind.toUpperCase()+'</span> — closed<br><span class="mono" style="font-size:11px;color:var(--blh)">'+x.reason+'</span></div>')});
 var w=E('div','grid g2');
 dz.filter(function(x){return x.open}).forEach(function(dr){w.appendChild(renderDoor(dr,h))});
-/* T-TERR-2: seat holders may commission a door the ground lacks — same build-timer seam
-   as tier upgrades (DOOR.startBuild to tier 1, 'commission:' key prefix distinguishes new-build) */
+/* T-TERR-2: seat holders may commission a door the ground lacks — same build-timer seam as
+   tier upgrades (DOOR.startBuild to tier 1; the build key is DOOR's shared loc/kind format —
+   a new-build is simply a build whose target tier is 1, and doorsAt's seen[kind] is what
+   disambiguates a commissioned door from a native one).
+   final review M6: strategic infrastructure is NOT commissionable — throne_room (planetary
+   rule is won, not bought) and warp_gate (30c would mint a free-travel terminus the moment
+   gates are charted). */
 if(S.world.seats&&S.world.seats[h.id]){
  var _have={};dz.forEach(function(d){_have[d.kind]=true});
- var _missing=D.galaxy.doors.filter(function(d){return !_have[d.kind]&&d.kind!=='throne_room';});
+ var _missing=D.galaxy.doors.filter(function(d){return !_have[d.kind]&&d.kind!=='throne_room'&&d.kind!=='warp_gate';});
  if(_missing.length){
   w.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:12px"><h5>'+annotate('Commission a door')+'</h5></div>');
   _missing.forEach(function(d){
@@ -3953,21 +4026,11 @@ function ultDaysLeft(t){return t.ultimatum.expiresDay-WORLD.dayIndexAt(S,D,Date.
    a mid-chunk lapse BEFORE that day's heal pass runs, so post-expiry days heal identically to
    N separate daily boots) and skips persist() (the boot path persists later anyway). When
    capDay is omitted this is the unchanged live-path form: expiresDay <= today, with persist. */
-/* T-TERR-2: one in-game day of seat revenue — tax always; the location's production
-   share only when the planet is NOT already a holding (holdings accrue whole-planet
-   production in WORLD.catchUp — double-pay guard). */
-function seatTickIncome(){
- var lines=[];
- Object.keys(S.world.seats||{}).forEach(function(lid){
-  var lp=lById(lid,true);if(!lp.l||!lp.pid)return;
-  var tax=SEAT.taxOf(lp.l,effCond(lp.l),D);
-  S.cur=(S.cur||0)+tax;
-  var got=tax+'c tax';
-  if((S.world.holdings||[]).indexOf(lp.pid)<0){
-   var pl=fPl(lp.pid).p,sh=WORLD.locShares(pl,D).filter(function(x){return x.id===lid})[0];
-   if(sh){addStock(lp.pid,sh.share);got+=' · +'+sh.share.Food+'F/'+sh.share.Material+'M/'+sh.share.Fuel+'Fu';}}
-  lines.push({kind:'seat_income',loc:lp.l.name,detail:got});});
- return lines;}
+/* T-TERR-2: one in-game day of seat revenue (tax + the location's production share) and
+   the garrison's upkeep now run inside the PURE per-day pass — WORLD.seatDay, called by
+   WORLD.stepDay right after produce() (final review FIX I1: chunk-independence). The old
+   engine-side seatTickIncome()/upkeep loop is gone; stationedPCAt stays — the lapse
+   defense roll below still reads it. */
 function resolveUltLapses(nowMs,capDay){
  var capped=(typeof capDay==='number'),today=WORLD.dayIndexAt(S,D,nowMs),out=[];
  S.threads.forEach(function(t){
@@ -3990,10 +4053,11 @@ function resolveUltLapses(nowMs,capDay){
    S.cur=(S.cur||0)+loot.cur;
    if(S.world.holdings.length)addStock(S.world.holdings[0],loot.res);
    res.arith+=' · loot '+loot.cur+'c';}
-  if(res.outcome==='captured')captureOnVictory(t,{kind:'lapse'},true);
   /* T-TERR-2 table ❸: the stationed force bleeds by outcome — seeded, offscreen, honest.
-     Runs BEFORE the seats-fall delete below so a garrison stationed on the captured
-     location itself still takes its casualties before its seat entry is swept away. */
+     final review FIX I3 (ORDERING): this block runs BEFORE captureOnVictory, because the
+     seat sweep now lives inside that call and the casualties read
+     S.world.seats[t.lid].stationedForceId — sweeping first would erase the garrison
+     before it ever took its losses. */
   var _sfid=(S.world.seats[t.lid]||{}).stationedForceId;
   if(_sfid){
    var _sf=S.forces.filter(function(x){return x.id===_sfid})[0];
@@ -4025,12 +4089,10 @@ function resolveUltLapses(nowMs,capDay){
     res.arith+=' · garrison: '+_hits.reduce(function(s,h){return s+h.hit;},0)+' wounds, '+_downed.length+' down';
    }
   }
-  /* T-TERR-2 task 6: a captured planet sweeps away every seat on it. */
-  if(res.outcome==='captured'){
-   Object.keys(S.world.seats||{}).forEach(function(lid){
-    if(S.world.seats[lid].pid===t.pl){delete S.world.seats[lid];
-     S.world.log.unshift(nowStamp()+' — SEAT LOST: the fall of the planet swept it away.');}});
-  }
+  /* T-TERR-2 task 6 + final review FIX I3: the seat sweep no longer lives here — it hangs off
+     the RULER CHANGE itself, inside captureOnVictory (spec §3.1), so every capture path
+     (this lapse, a battle victory, anything N2 adds) sweeps identically. */
+  if(res.outcome==='captured')captureOnVictory(t,{kind:'lapse'},true);
   t.done={kind:'ult_lapse',victor:res.outcome==='sacked'||res.outcome==='captured'?'attacker':'defender',at:Date.now()};
   if(!t.posts)t.posts=[];                     // a thread that lapses before ever being opened
   t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
@@ -4178,6 +4240,26 @@ function secOwner(s){ // absolute majority of planet rulers (overlay-aware); unt
   return (al==='imperial'?'Imperial':al==='chaos'?'Chaos':'Xenos')+' - '+f;}
  return 'Contested';
 }
+/* T-TERR-2 final review FIX I3: a seat falls when the planet's RULER CHANGES (spec §3.1).
+   Called from captureOnVictory only, right after the rulers write — so every present and
+   future ruler-change path sweeps, and a lapse that does NOT transfer the planet leaves the
+   seats standing. Residue: the seat's own missed-payment counter dies with it (M3), and a
+   garrison whose every member died or was taken with the planet disbands (spec §4.3.3) —
+   guarded against a force that is somehow still committed to a live thread. */
+function sweepSeatsOn(pid){
+ Object.keys(S.world.seats||{}).forEach(function(lid){
+  if(S.world.seats[lid].pid!==pid)return;
+  var _sfid=S.world.seats[lid].stationedForceId;
+  delete S.world.seats[lid];
+  if(S.world.seatMiss)delete S.world.seatMiss[lid];
+  if(_sfid){
+   var f=S.forces.filter(function(x){return x.id===_sfid})[0];
+   if(f&&!threadOfForce(f.n)){
+    var alive=S.roster.filter(function(m){return m.fo===f.n&&m.st!=='DEAD'&&m.st!=='TAKEN'});
+    if(!alive.length)for(var i=S.forces.length-1;i>=0;i--)if(S.forces[i].id===_sfid)S.forces.splice(i,1);}}
+  S.world.log=S.world.log||[];
+  S.world.log.unshift(nowStamp()+' — SEAT LOST: the fall of the planet swept it away.');});
+}
 function captureOnVictory(t,oc,mineWon){
  var cap=(D.rules.territory&&D.rules.territory.capture)||{thread_type:'INVASION'};
  if(!mineWon||!t.pl||t.type!==cap.thread_type)return;
@@ -4186,8 +4268,10 @@ function captureOnVictory(t,oc,mineWon){
  if(cur&&cur.faction===me.name)return;               // already yours
  S.world.rulers=S.world.rulers||{};
  S.world.rulers[t.pl]={allegiance:me.allegiance,faction:me.name};
+ sweepSeatsOn(t.pl);                                  // the ruler changed — the seats fall with it
  S.world.holdings=S.world.holdings||[];
  if(S.world.holdings.indexOf(t.pl)<0)S.world.holdings.push(t.pl);
+ t.posts=t.posts||[];        // a clock can lapse on a thread that was never opened — no posts array yet
  t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
   body:'🏴 CONQUEST — '+fp.p.name+' falls to '+me.name+'. The planet enters your holdings; its tithe now flows to you.'});
  S.world.log=S.world.log||[];
@@ -5166,7 +5250,12 @@ function init(){
   if(!S.world.seatMiss)S.world.seatMiss={};                              // T-TERR-2 fix round 1: older saves
   if(!S.world.governor)S.world.governor={};                              // T-TERR-2 task 7: older saves
   if(!S.progress)S.progress={streaks:{}};                                 // T-MSN-1C task 4: older saves
-  var _wc=WORLD.catchUp(S,D,Date.now());
+  // final review FIX I1: seat tax + garrison upkeep moved INTO the pure per-day pass
+  // (WORLD.seatDay, run by stepDay right after produce) so currency-coupled seat flows
+  // interleave with production day by day — 13 daily boots === one 13-day boot. The core
+  // stays pure: the seat rules, the ladder step, and the siege-paused set are injected.
+  var _bsg={};S.threads.forEach(function(t){if(t.ultimatum&&!t.done&&t.lid)_bsg[t.lid]=true;});
+  var _wc=WORLD.catchUp(S,D,Date.now(),{seat:SEAT,stepDown:ULT.stepDown,besieged:_bsg});
   // final review FIX 2: chunk-independence — resolve any lapse due THIS tick day BEFORE that
   // day's heal pass runs (below), so a multi-day catch-up chunk heals post-expiry days exactly
   // like N separate daily boots would (a lapse dated mid-chunk no longer stalls the heal until
@@ -5177,24 +5266,8 @@ function init(){
     DOOR.tickBuilds(S).forEach(function(f){
     var _fl=lById(f.loc);
     _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});
-    seatTickIncome().forEach(function(e){_wc.events.push(e);});
-    // T-TERR-2: stationed upkeep — the location swallows it; non-payment wounds the GROUND.
-    // fix round 1: a dedicated S.world.seatMiss[lid] counter, NOT S.world.unrest[pid] — that key
-    // is WORLD.produce's own famine/tithe unrest counter (increments on troubled economic days,
-    // decrements on untroubled ones); sharing it would let an unrelated economic tick both
-    // mis-attribute a condition step to "an unpaid garrison" and swallow real missed-payment
-    // counts. seatMiss is keyed by LOCATION id (the wound lands on the location; a planet could
-    // someday carry two seats), never decremented, so "every 3rd missed payment" stays exact.
-    S.world.seatMiss=S.world.seatMiss||{};
-    Object.keys(S.world.seats||{}).forEach(function(lid){
-     var up=stationedPCAt(lid);if(!up)return;
-     var due=SEAT.upkeepOf(up,D);
-     if((S.cur||0)>=due){S.cur-=due;return}
-     var lp=lById(lid,true);if(!lp.l)return;
-     S.world.seatMiss[lid]=(S.world.seatMiss[lid]||0)+((D.rules.seats.upkeep||{}).unrest_per_miss||1);
-     if(S.world.seatMiss[lid]%((D.rules.seats.upkeep||{}).unrest_wound_every||3)===0){
-      S.world.locConds[lid]=ULT.stepDown(effCond(lp.l));
-      _wc.events.push({kind:'seat_unrest',loc:lp.l.name});}});
+    // (seat tax + garrison upkeep no longer run here — they live in WORLD.seatDay,
+    //  inside the same per-day pass as produce(); see the catchUp call above.)
     // T-NPC-3 N1 task 5: condition self-heal, one pass per tick day — sector-paced
     // (ULT.healTick reads days_per_step off the sector's status label), siege-paused
     // (an active Ultimatum on this ground blocks the heal), sacked/ruined only.
@@ -5873,21 +5946,28 @@ function renderDoor(dr,h){var c=E('div','card');
     if((S.world.holdings||[]).indexOf(_bp.id)>=0)return;                        // already yours
     var _seatable=(_bp.locations||[]).filter(function(x){return SEAT.seatable(x.type,D)});
     if(!_seatable.length)return;
-    var _held=_seatable.filter(function(x){return S.world.seats&&S.world.seats[x.id]});
-    var _unheld=_seatable.filter(function(x){return !(S.world.seats&&S.world.seats[x.id])});
-    var _bprice=SEAT.buyoutPrice(_unheld.map(function(x){return SEAT.priceOf(x,effCond(x),D)}),D);
-    var _secWork=0;(_sec.planets||[]).forEach(function(p){_secWork+=(S.world.work||{})[p.id]||0});
     var _sMin=(D.rules.seats.buyout||{}).standing_min||1;
     var _wMin=(D.rules.seats.buyout||{}).sector_work_min||20;
-    var _why=null;
-    if(_held.length*2<=_seatable.length)_why='Hold the majority of its seats first ('+_held.length+'/'+_seatable.length+').';
-    else if(_secWork<_wMin)_why='The sector demands more service — WORK '+_secWork+'/'+_wMin+' across its worlds.';
-    else if(((S.world.standing||{})[S.player.faction]||0)<_sMin)_why='Only the '+SEAT.standingName(_sMin,D)+' are granted worlds.';
-    else if((S.cur||0)<_bprice)_why='Not enough currency — '+_bprice+' required.';
-    var _row=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+_bp.name+'</b> <span class="mono" style="font-size:11px;color:var(--dim)">seats '+_held.length+'/'+_seatable.length+'</span></span><span class="mono" style="font-size:11px">'+_bprice+' '+curName()+'</span></div>');
+    /* final review M2: the whole gate chain is a FUNCTION of live S, evaluated once for the
+       render and AGAIN at click (its petition sibling above already re-reads funds) — a
+       same-panel spend must never be able to clear a render-time price. */
+    function _bgate(){
+     var held=_seatable.filter(function(x){return S.world.seats&&S.world.seats[x.id]});
+     var unheld=_seatable.filter(function(x){return !(S.world.seats&&S.world.seats[x.id])});
+     var price=SEAT.buyoutPrice(unheld.map(function(x){return SEAT.priceOf(x,effCond(x),D)}),D);
+     var work=0;(_sec.planets||[]).forEach(function(p){work+=(S.world.work||{})[p.id]||0});
+     var why=null;
+     if((S.world.holdings||[]).indexOf(_bp.id)>=0)why='This world is already yours.';
+     else if(held.length*2<=_seatable.length)why='Hold the majority of its seats first ('+held.length+'/'+_seatable.length+').';
+     else if(work<_wMin)why='The sector demands more service — WORK '+work+'/'+_wMin+' across its worlds.';
+     else if(((S.world.standing||{})[S.player.faction]||0)<_sMin)why='Only the '+SEAT.standingName(_sMin,D)+' are granted worlds.';
+     else if((S.cur||0)<price)why='Not enough currency — '+price+' required.';
+     return {why:why,price:price,held:held.length};}
+    var _g0=_bgate(),_bprice=_g0.price;
+    var _row=E('div','shopc','<div style="display:flex;justify-content:space-between;align-items:center"><span><b>'+_bp.name+'</b> <span class="mono" style="font-size:11px;color:var(--dim)">seats '+_g0.held+'/'+_seatable.length+'</span></span><span class="mono" style="font-size:11px">'+_bprice+' '+curName()+'</span></div>');
     var _bb=E('button','btn gh sm','Buy out');_bb.style.marginTop='5px';
-    _bb.onclick=function(){if(_why){T(_why);return}
-     S.cur-=_bprice;
+    _bb.onclick=function(){var g=_bgate();if(g.why){T(g.why);return}
+     S.cur-=g.price;
      S.world.holdings.push(_bp.id);
      S.world.governor=S.world.governor||{};S.world.governor[_bp.id]=true;
      S.world.log.unshift(nowStamp()+' — BUYOUT: '+_bp.name+' is granted to you. Its tithe now flows to your coffers.');

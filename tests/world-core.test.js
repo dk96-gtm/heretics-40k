@@ -108,3 +108,125 @@ test('N1: digest renders ult_lapse + cond_heal lines', () => {
   assert.ok(d.lines.some(l => /Bastion/.test(l) && /SACKED/.test(l)));
   assert.ok(d.lines.some(l => /mends/.test(l)));
 });
+
+/* ── T-TERR-2 final review FIX I1: seat tax + garrison upkeep inside the per-day pass ──
+   The seat rules and the condition-ladder step are INJECTED (opts), never read as globals,
+   so these tests load the sibling pure cores and hand them in exactly as the engine does. */
+const { loadSeat } = require('./_load-seat');
+const { loadAgency } = require('./_load-agency');
+const SEAT = loadSeat();
+const ULT = loadAgency();
+const SEAT_OPTS = { seat: SEAT, stepDown: ULT.stepDown };
+
+function firstSeatLoc() {                       // first seat-able surface location in canon
+  let hit = null;
+  (canon.galaxy.segmentums || []).forEach(g => (g.zones || []).forEach(z => (z.sectors || []).forEach(s =>
+    (s.planets || []).forEach(p => (p.locations || []).forEach(l => {
+      if (!hit && l.tier !== 'orbit' && SEAT.seatable(l.type, canon)) hit = { p, l };
+    })))));
+  if (!hit) throw new Error('canon has no seat-able location');
+  return hit;
+}
+function seatState(over) {
+  const { p, l } = firstSeatLoc();
+  const s = {
+    time: { epoch: 0, lastTick: 0 }, cur: 0,
+    player: { faction: canon.factions[0].id },
+    roster: [], forces: [],
+    world: { stats: {}, holdings: [], stock: {}, unrest: {},
+             seats: { [l.id]: { pid: p.id } }, seatMiss: {}, locConds: {} }
+  };
+  if (over) over(s, p, l);
+  return { s, p, l };
+}
+
+test('T-TERR-2 I1: seat tax accrues once per in-game day, scaled by the location condition', () => {
+  const a = seatState();
+  W.catchUp(a.s, canon, DAY * 3, SEAT_OPTS);
+  const tax = SEAT.taxOf(a.l, a.l.condition || 'intact', canon);
+  assert.ok(tax > 0);
+  assert.strictEqual(a.s.cur, 3 * (canon.tick.production_per_day + tax));   // flat fallback + 3 days of tax
+  // an unheld seat planet also banks the location's production share (double-pay guard: no holdings)
+  const share = W.locShares(a.p, canon).filter(x => x.id === a.l.id)[0];
+  assert.deepStrictEqual(a.s.world.stock[a.p.id], {
+    Food: share.share.Food * 3, Material: share.share.Material * 3, Fuel: share.share.Fuel * 3 });
+
+  const b = seatState((s, p, l) => { s.world.locConds[l.id] = 'sacked'; });
+  W.catchUp(b.s, canon, DAY * 3, SEAT_OPTS);
+  const sackedTax = SEAT.taxOf(b.l, 'sacked', canon);
+  assert.ok(sackedTax < tax, 'sacked ground pays a smaller tax');
+  assert.strictEqual(b.s.cur, 3 * (canon.tick.production_per_day + sackedTax));
+});
+
+test('T-TERR-2 I1: an unpaid garrison counts a miss per day; every 3rd miss steps the condition down', () => {
+  const every = (canon.rules.seats.upkeep || {}).unrest_wound_every || 3;
+  const mk = () => seatState((s, p, l) => {
+    s.world.seats[l.id].stationedForceId = 'f1';
+    s.forces.push({ id: 'f1', n: 'Alpha' });
+    s.roster.push({ id: 'm1', fo: 'Alpha', st: 'GARRISON', pc: 250 * 400 });   // upkeep far beyond income
+  });
+  const a = mk();
+  const r = W.catchUp(a.s, canon, DAY * every, SEAT_OPTS);
+  assert.strictEqual(a.s.world.seatMiss[a.l.id], every);
+  assert.strictEqual(a.s.world.locConds[a.l.id], ULT.stepDown(a.l.condition || 'intact'));
+  assert.strictEqual(r.events.filter(e => e.kind === 'seat_unrest').length, 1);
+  assert.strictEqual(r.events.filter(e => e.kind === 'seat_income').length, every);
+
+  // a paid garrison never misses and never wounds the ground
+  const paid = seatState((s, p, l) => {
+    s.cur = 100000;
+    s.world.seats[l.id].stationedForceId = 'f1';
+    s.forces.push({ id: 'f1', n: 'Alpha' });
+    s.roster.push({ id: 'm1', fo: 'Alpha', st: 'GARRISON', pc: 250 });
+  });
+  W.catchUp(paid.s, canon, DAY * every, SEAT_OPTS);
+  assert.deepStrictEqual(paid.s.world.seatMiss, {});
+  assert.deepStrictEqual(paid.s.world.locConds, {});
+
+  // DEAD/TAKEN members do not draw upkeep — a wiped garrison is no garrison
+  const dead = seatState((s, p, l) => {
+    s.world.seats[l.id].stationedForceId = 'f1';
+    s.forces.push({ id: 'f1', n: 'Alpha' });
+    s.roster.push({ id: 'm1', fo: 'Alpha', st: 'DEAD', pc: 250 * 400 });
+  });
+  W.catchUp(dead.s, canon, DAY * every, SEAT_OPTS);
+  assert.deepStrictEqual(dead.s.world.seatMiss, {});
+});
+
+test('T-TERR-2 I1: the siege pause counts the miss but never steps the condition (mirrors healTick)', () => {
+  const every = (canon.rules.seats.upkeep || {}).unrest_wound_every || 3;
+  const a = seatState((s, p, l) => {
+    s.world.seats[l.id].stationedForceId = 'f1';
+    s.forces.push({ id: 'f1', n: 'Alpha' });
+    s.roster.push({ id: 'm1', fo: 'Alpha', st: 'GARRISON', pc: 250 * 400 });
+  });
+  const r = W.catchUp(a.s, canon, DAY * every,
+    { seat: SEAT, stepDown: ULT.stepDown, besieged: { [a.l.id]: true } });
+  assert.strictEqual(a.s.world.seatMiss[a.l.id], every, 'the miss still counts');
+  assert.strictEqual(a.s.world.locConds[a.l.id], undefined, 'besieged ground is not stepped down again');
+  assert.strictEqual(r.events.filter(e => e.kind === 'seat_unrest').length, 0);
+});
+
+test('T-TERR-2 I1: CHUNK-INDEPENDENCE — 13 daily boots === one 13-day boot (cur, seatMiss, conds, stock)', () => {
+  const fixture = () => seatState((s, p, l) => {
+    s.cur = 30;                                   // thin: tithe/upkeep coupling actually bites
+    s.world.holdings.push(p.id);                  // a holding: produce() zeroes cur on a missed tithe
+    s.world.seats[l.id].stationedForceId = 'f1';
+    s.forces.push({ id: 'f1', n: 'Alpha' });
+    s.roster.push({ id: 'm1', fo: 'Alpha', st: 'GARRISON', pc: 250 * 12 });
+  });
+  const daily = fixture().s, chunk = fixture().s;
+  for (let d = 1; d <= 13; d++) W.catchUp(daily, canon, DAY * d, SEAT_OPTS);   // login every day
+  W.catchUp(chunk, canon, DAY * 13, SEAT_OPTS);                                // login once, 13 days later
+  // the fixture must actually EXERCISE the coupling, or the equivalence is vacuous
+  const lid = Object.keys(daily.world.seats)[0];
+  assert.ok(daily.world.seatMiss[lid] > 0, 'fixture misses upkeep');
+  assert.ok(daily.world.locConds[lid], 'fixture wounds the ground');
+  assert.strictEqual(daily.time.lastTick, 13);
+  assert.strictEqual(chunk.time.lastTick, 13);
+  assert.strictEqual(daily.cur, chunk.cur, 'currency must not depend on login pattern');
+  assert.deepStrictEqual(daily.world.seatMiss, chunk.world.seatMiss);
+  assert.deepStrictEqual(daily.world.locConds, chunk.world.locConds);
+  assert.deepStrictEqual(daily.world.stock, chunk.world.stock);
+  assert.deepStrictEqual(daily.world.unrest, chunk.world.unrest);
+});
