@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.34",
-  "updated": "2026-08-05",
+  "version": "1.35",
+  "updated": "2026-08-12",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -20,7 +20,8 @@
    "v1.28: missions Slice B rulings - trade_haul destinations (needs_destination), combat-only modifiers, capture completes bounties.",
    "v1.29: T-GX-G7 galaxy re-run - 16 crown-sweep retypes seat all 21 subfaction types (crown-only), 8 resource rows tuned to the crown floor rule, tier-III routes opened (shipyard docks on Konor/Iron Reliquary, arena via warzone+lair, reliquary via shrine, warp gate on Dal'yth Verge), legality ghosts cleaned, 5 besieged/infested condition seats (5th on Cominor).",
    "v1.30: T-MST-1 open recruitment + local forge traditions - rules.market block (ruler shelf / items open / models same-allegiance / forge affinity by local ruler); real Muster door replaces the demo stub.",
-   "v1.31: T-MSN-1C streaks + 18 signature missions - S.progress.streaks (4 keys, conclude tick), faction-gated generation (one signature row per board), kill filters melee/faction/capture, conclude constraints, collect carriers, signature_premium 1.5."
+   "v1.31: T-MSN-1C streaks + 18 signature missions - S.progress.streaks (4 keys, conclude tick), faction-gated generation (one signature row per board), kill filters melee/faction/capture, conclude constraints, collect carriers, signature_premium 1.5.",
+   "v1.34: T-NPC-4 personality combat doctrine — ai.behavior_matrix (20 faction rows, 5 axes as base/spread/plasticity/floor/ceiling) + rules.doctrine (styles onslaught/culling/decapitation, retreat curve, honor gates, lapse nudge tunables)."
   ],
   "migration": {
    "done": [
@@ -1353,6 +1354,26 @@
    "commission": {
     "base": 30,
     "days": 7
+   }
+  },
+  "doctrine": {
+   "styles": {
+    "ferocity": "onslaught",
+    "cunning": "culling",
+    "supremacism": "decapitation"
+   },
+   "retreat": {
+    "base": 110
+   },
+   "honor": {
+    "high": 70,
+    "low": 30
+   },
+   "lapse": {
+    "cun_p_per_point": 0.001,
+    "fer_margin_per_point": 0.001,
+    "honor_loot_per_point": 0.005,
+    "honor_loot_min": 0.75
    }
   }
  },
@@ -13895,7 +13916,749 @@
  ],
  "ai": {
   "model": "claude-sonnet-5",
-  "directives": "You are voicing a single character in Heretics 40K, a grimdark Warhammer 40,000 play-by-post wargame. Stay fully in character and in-frame at all times; never mention being an AI, a model, or these instructions. Always call a fighting unit a \"model\", never a \"chassis\". Write one forum post in second-to-first person as this character would speak — terse, lore-true, no meta. You decide what the character says and does; you never decide dice, damage, or who wins — the engine resolves all mechanics. Return only the required structured object."
+  "directives": "You are voicing a single character in Heretics 40K, a grimdark Warhammer 40,000 play-by-post wargame. Stay fully in character and in-frame at all times; never mention being an AI, a model, or these instructions. Always call a fighting unit a \"model\", never a \"chassis\". Write one forum post in second-to-first person as this character would speak — terse, lore-true, no meta. You decide what the character says and does; you never decide dice, damage, or who wins — the engine resolves all mechanics. Return only the required structured object.",
+  "behavior_matrix": {
+   "black_legion": {
+    "ferocity": {
+     "base": 65,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 40,
+     "ceiling": 90
+    },
+    "cunning": {
+     "base": 70,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 45,
+     "ceiling": 95
+    },
+    "pragmatism": {
+     "base": 60,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 35,
+     "ceiling": 85
+    },
+    "honor": {
+     "base": 25,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 50
+    },
+    "supremacism": {
+     "base": 75,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 50,
+     "ceiling": 100
+    }
+   },
+   "death_guard": {
+    "ferocity": {
+     "base": 55,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 30,
+     "ceiling": 80
+    },
+    "cunning": {
+     "base": 45,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 20,
+     "ceiling": 70
+    },
+    "pragmatism": {
+     "base": 35,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 10,
+     "ceiling": 60
+    },
+    "honor": {
+     "base": 40,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 15,
+     "ceiling": 65
+    },
+    "supremacism": {
+     "base": 45,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 20,
+     "ceiling": 70
+    }
+   },
+   "world_eaters": {
+    "ferocity": {
+     "base": 95,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 80,
+     "ceiling": 100
+    },
+    "cunning": {
+     "base": 25,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 50
+    },
+    "pragmatism": {
+     "base": 10,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 35
+    },
+    "honor": {
+     "base": 30,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 5,
+     "ceiling": 55
+    },
+    "supremacism": {
+     "base": 40,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 15,
+     "ceiling": 65
+    }
+   },
+   "thousand_sons": {
+    "ferocity": {
+     "base": 30,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 5,
+     "ceiling": 55
+    },
+    "cunning": {
+     "base": 90,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 65,
+     "ceiling": 100
+    },
+    "pragmatism": {
+     "base": 65,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 40,
+     "ceiling": 90
+    },
+    "honor": {
+     "base": 45,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 20,
+     "ceiling": 70
+    },
+    "supremacism": {
+     "base": 70,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 45,
+     "ceiling": 95
+    }
+   },
+   "emperors_children": {
+    "ferocity": {
+     "base": 70,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 45,
+     "ceiling": 95
+    },
+    "cunning": {
+     "base": 60,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 35,
+     "ceiling": 85
+    },
+    "pragmatism": {
+     "base": 30,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 5,
+     "ceiling": 55
+    },
+    "honor": {
+     "base": 25,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 50
+    },
+    "supremacism": {
+     "base": 75,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 50,
+     "ceiling": 100
+    }
+   },
+   "daemons": {
+    "ferocity": {
+     "base": 85,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 60,
+     "ceiling": 100
+    },
+    "cunning": {
+     "base": 40,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 15,
+     "ceiling": 65
+    },
+    "pragmatism": {
+     "base": 5,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 30
+    },
+    "honor": {
+     "base": 5,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 30
+    },
+    "supremacism": {
+     "base": 50,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 25,
+     "ceiling": 75
+    }
+   },
+   "astartes": {
+    "ferocity": {
+     "base": 65,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 40,
+     "ceiling": 90
+    },
+    "cunning": {
+     "base": 60,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 35,
+     "ceiling": 85
+    },
+    "pragmatism": {
+     "base": 45,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 20,
+     "ceiling": 70
+    },
+    "honor": {
+     "base": 70,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 45,
+     "ceiling": 95
+    },
+    "supremacism": {
+     "base": 55,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 30,
+     "ceiling": 80
+    }
+   },
+   "militarum": {
+    "ferocity": {
+     "base": 45,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 20,
+     "ceiling": 70
+    },
+    "cunning": {
+     "base": 55,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 30,
+     "ceiling": 80
+    },
+    "pragmatism": {
+     "base": 75,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 50,
+     "ceiling": 100
+    },
+    "honor": {
+     "base": 55,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 30,
+     "ceiling": 80
+    },
+    "supremacism": {
+     "base": 30,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 5,
+     "ceiling": 55
+    }
+   },
+   "mechanicus": {
+    "ferocity": {
+     "base": 35,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 10,
+     "ceiling": 60
+    },
+    "cunning": {
+     "base": 80,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 55,
+     "ceiling": 100
+    },
+    "pragmatism": {
+     "base": 70,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 45,
+     "ceiling": 95
+    },
+    "honor": {
+     "base": 30,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 5,
+     "ceiling": 55
+    },
+    "supremacism": {
+     "base": 60,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 35,
+     "ceiling": 85
+    }
+   },
+   "sororitas": {
+    "ferocity": {
+     "base": 75,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 50,
+     "ceiling": 100
+    },
+    "cunning": {
+     "base": 45,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 20,
+     "ceiling": 70
+    },
+    "pragmatism": {
+     "base": 15,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 40
+    },
+    "honor": {
+     "base": 60,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 35,
+     "ceiling": 85
+    },
+    "supremacism": {
+     "base": 50,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 25,
+     "ceiling": 75
+    }
+   },
+   "custodes": {
+    "ferocity": {
+     "base": 70,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 45,
+     "ceiling": 95
+    },
+    "cunning": {
+     "base": 75,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 50,
+     "ceiling": 100
+    },
+    "pragmatism": {
+     "base": 35,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 10,
+     "ceiling": 60
+    },
+    "honor": {
+     "base": 80,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 55,
+     "ceiling": 100
+    },
+    "supremacism": {
+     "base": 80,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 55,
+     "ceiling": 100
+    }
+   },
+   "tyranids": {
+    "ferocity": {
+     "base": 90,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 65,
+     "ceiling": 100
+    },
+    "cunning": {
+     "base": 55,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 30,
+     "ceiling": 80
+    },
+    "pragmatism": {
+     "base": 0,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 25
+    },
+    "honor": {
+     "base": 0,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 25
+    },
+    "supremacism": {
+     "base": 40,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 15,
+     "ceiling": 65
+    }
+   },
+   "orks": {
+    "ferocity": {
+     "base": 90,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 65,
+     "ceiling": 100
+    },
+    "cunning": {
+     "base": 30,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 5,
+     "ceiling": 55
+    },
+    "pragmatism": {
+     "base": 20,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 45
+    },
+    "honor": {
+     "base": 45,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 20,
+     "ceiling": 70
+    },
+    "supremacism": {
+     "base": 60,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 35,
+     "ceiling": 85
+    }
+   },
+   "necrons": {
+    "ferocity": {
+     "base": 40,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 15,
+     "ceiling": 65
+    },
+    "cunning": {
+     "base": 75,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 50,
+     "ceiling": 100
+    },
+    "pragmatism": {
+     "base": 75,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 50,
+     "ceiling": 100
+    },
+    "honor": {
+     "base": 50,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 25,
+     "ceiling": 75
+    },
+    "supremacism": {
+     "base": 55,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 30,
+     "ceiling": 80
+    }
+   },
+   "aeldari": {
+    "ferocity": {
+     "base": 45,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 20,
+     "ceiling": 70
+    },
+    "cunning": {
+     "base": 85,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 60,
+     "ceiling": 100
+    },
+    "pragmatism": {
+     "base": 80,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 55,
+     "ceiling": 100
+    },
+    "honor": {
+     "base": 55,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 30,
+     "ceiling": 80
+    },
+    "supremacism": {
+     "base": 45,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 20,
+     "ceiling": 70
+    }
+   },
+   "drukhari": {
+    "ferocity": {
+     "base": 55,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 30,
+     "ceiling": 80
+    },
+    "cunning": {
+     "base": 90,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 65,
+     "ceiling": 100
+    },
+    "pragmatism": {
+     "base": 75,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 50,
+     "ceiling": 100
+    },
+    "honor": {
+     "base": 5,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 30
+    },
+    "supremacism": {
+     "base": 45,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 20,
+     "ceiling": 70
+    }
+   },
+   "tau": {
+    "ferocity": {
+     "base": 25,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 50
+    },
+    "cunning": {
+     "base": 80,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 55,
+     "ceiling": 100
+    },
+    "pragmatism": {
+     "base": 70,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 45,
+     "ceiling": 95
+    },
+    "honor": {
+     "base": 60,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 35,
+     "ceiling": 85
+    },
+    "supremacism": {
+     "base": 35,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 10,
+     "ceiling": 60
+    }
+   },
+   "gsc": {
+    "ferocity": {
+     "base": 50,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 25,
+     "ceiling": 75
+    },
+    "cunning": {
+     "base": 75,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 50,
+     "ceiling": 100
+    },
+    "pragmatism": {
+     "base": 65,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 40,
+     "ceiling": 90
+    },
+    "honor": {
+     "base": 20,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 0,
+     "ceiling": 45
+    },
+    "supremacism": {
+     "base": 30,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 5,
+     "ceiling": 55
+    }
+   },
+   "votann": {
+    "ferocity": {
+     "base": 55,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 30,
+     "ceiling": 80
+    },
+    "cunning": {
+     "base": 65,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 40,
+     "ceiling": 90
+    },
+    "pragmatism": {
+     "base": 60,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 35,
+     "ceiling": 85
+    },
+    "honor": {
+     "base": 65,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 40,
+     "ceiling": 90
+    },
+    "supremacism": {
+     "base": 70,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 45,
+     "ceiling": 95
+    }
+   },
+   "harlequins": {
+    "ferocity": {
+     "base": 60,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 35,
+     "ceiling": 85
+    },
+    "cunning": {
+     "base": 88,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 63,
+     "ceiling": 100
+    },
+    "pragmatism": {
+     "base": 55,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 30,
+     "ceiling": 80
+    },
+    "honor": {
+     "base": 70,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 45,
+     "ceiling": 95
+    },
+    "supremacism": {
+     "base": 40,
+     "spread": 12,
+     "plasticity": 12,
+     "floor": 15,
+     "ceiling": 65
+    }
+   }
+  }
  },
  "time": {
   "block_minutes": 60,

@@ -7,7 +7,7 @@ const D = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-da
 const PLAYABLE = new Set(['black_legion','death_guard','world_eaters','thousand_sons','emperors_children','daemons','astartes','militarum','mechanicus','sororitas','custodes','tyranids','orks','necrons','aeldari','drukhari','tau','votann','gsc','harlequins']);
 
 test('canon v1.25: 35 planet types, 14 standard / 21 tagged', () => {
-  assert.strictEqual(D.meta.version, '1.34');
+  assert.strictEqual(D.meta.version, '1.35');
   const pts = D.galaxy.planet_types;
   assert.strictEqual(pts.length, 35);
   const tagged = pts.filter((p) => p.faction);

@@ -1268,38 +1268,112 @@ var THREAD=(function(){
     return 'SHORT';
   }
   function npcReaches(reach,fromPos,tgtPos){return reach>=NPC_RANK[bandOf(cheb(fromPos,tgtPos))];}
-  function npcTurn(side,state,board,weaponsOf,canon){
+  /* ── T-NPC-4 · personality axes + doctrine (spec 2026-08-10) ──────────
+     Self-contained (own hash/rng): regions are standalone-extracted for tests
+     and must not lean on mission-core/ULT copies. */
+  var AXES=(function(){
+    function hashStr(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+    function rng(seed){var a=seed>>>0;return function(){a|=0;a=(a+0x6D2B79F5)|0;var t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296;};}
+    var AXIS=['ferocity','cunning','pragmatism','honor','supremacism'];
+    function rollFor(facId,seedStr,canon){
+      var M=(canon&&canon.ai&&canon.ai.behavior_matrix)||{},row=M[facId],out={},r=rng(hashStr('axes:'+facId+':'+seedStr));
+      AXIS.forEach(function(ax){
+        var a=row&&row[ax];
+        if(!a){out[ax]=50;return;}
+        var sp=(a.spread!=null?a.spread:12);
+        var v=Math.round(a.base+(r()*2-1)*sp);
+        var fl=(a.floor!=null?a.floor:0),ce=(a.ceiling!=null?a.ceiling:100);
+        out[ax]=Math.max(fl,Math.min(ce,v));});
+      return out;}
+    return {rollFor:rollFor,AXIS:AXIS};
+  })();
+  function doctrineOf(behavior,canon){
+    var b=behavior||{},d=(canon&&canon.rules&&canon.rules.doctrine)||{};
+    var fer=(b.ferocity!=null?b.ferocity:50),cun=(b.cunning!=null?b.cunning:50),sup=(b.supremacism!=null?b.supremacism:50);
+    // whole-branch review FIX 2: read the canon styles knob (rules.doctrine.styles), falling
+    // back to the same literals if a caller's canon fixture doesn't carry the map.
+    var SM=d.styles||{};
+    var style=(fer>=cun&&fer>=sup)?(SM.ferocity||'onslaught'):(cun>=sup)?(SM.cunning||'culling'):(SM.supremacism||'decapitation');   // tie order FER > CUN > SUP
+    var hg=d.honor||{},hi=(hg.high!=null?hg.high:70),lo=(hg.low!=null?hg.low:30);
+    var hon=(b.honor!=null?b.honor:50);
+    var base=((d.retreat||{}).base!=null)?d.retreat.base:110;
+    var prag=(b.pragmatism!=null?b.pragmatism:50);
+    return {style:style,honorMode:(hon>=hi?'high':hon<=lo?'low':'none'),retreatAt:(base-prag)/100};
+  }
+  function shouldRetreat(side,state,canon){
+    var beh=state&&state.behavior&&state.behavior[side];if(!beh)return false;
+    if(state.retreatTried)return false;
+    var doc=doctrineOf(beh,canon);if(doc.retreatAt>=1)return false;
+    var C=state.combatants||{},tot=0,alive=0,id;
+    for(id in C){var c=C[id];if(c.party!==side)continue;var pc=(c.model&&c.model.pc)||0;
+      tot+=pc;if(!c.dead&&!c.captured)alive+=pc;}
+    if(!tot)return false;
+    if(!alive)return false;   // whole-branch review FIX 1: an annihilated side cannot retreat
+    return (1-alive/tot)>=doc.retreatAt;
+  }
+  var BAND_MAX={melee:1,short:3,medium:6,long:1e9};
+  function npcTurn(side,state,board,weaponsOf,canon,behavior){
     canon=canon||{rules:{}};                          // T-CMB-1 Task 4: safe default for legacy 4-arg callers
     var C=state.combatants||{},block=[],id;
     var pool=(state.pools&&state.pools[side]!=null)?state.pools[side]:0;
     var spotted=board?spottedEnemies(side,state,board):[];
     if(!spotted.length)return block;                 // fog-honest: sees nothing → holds
+    var beh=behavior||(state.behavior&&state.behavior[side])||null;
+    var doc=doctrineOf(beh,canon);
+    var isCrit=function(eid){var e=C[eid];return !!(e&&e.w&&e.w[0]<=1);};   // same predicate as actionCap
+    var live=spotted.filter(function(eid){var e=C[eid];return e&&!e.dead;});
+    // honor conduct reshapes the candidate pool (spec §5)
+    var cands=live;
+    if(doc.honorMode==='high'){cands=live.filter(function(eid){return !isCrit(eid);});}
+    else if(doc.honorMode==='low'&&live.some(isCrit)){cands=live.filter(isCrit);}
+    var holdFire=(doc.honorMode==='high'&&cands.length===0);   // all Critical → mercy holds
+    var pickBy=function(list,metric){var best=null;list.forEach(function(eid){var e=C[eid];if(!e)return;
+      var k=metric(e,eid);if(!best||k<best.k||(k===best.k&&eid<best.id))best={id:eid,k:k};});
+      return best&&best.id;};
+    // side-level style target (culling/decapitation); onslaught stays per-model nearest
+    var sideTgt=null,pool0=cands.length?cands:live;
+    if(doc.style==='culling')sideTgt=pickBy(pool0,function(e){return (e.w&&e.w[0]!=null)?e.w[0]:1e9;});
+    else if(doc.style==='decapitation')sideTgt=pickBy(pool0,function(e){return -((e.model&&e.model.pc)||0);});
+    var leaderTgt=pickBy(pool0,function(e){return -((e.model&&e.model.pc)||0);});   // enemy leader = biggest
+    // commander of MY side = highest-pc living model (honor-high duel seeker)
+    var cmdr=null,cbest=-1;
+    for(id in C){var cc=C[id];if(cc.party!==side||cc.dead||cc.x==null)continue;
+      var cpc=(cc.model&&cc.model.pc)||0;if(cpc>cbest){cbest=cpc;cmdr=id;}}
     var pos={};for(id in C)if(C[id].x!=null)pos[id]={x:C[id].x,y:C[id].y};
-    var _staged={};                                    // T-CMB-1 Task 4: per-model action-cap gate
+    var _staged={};
     for(var aid in C){var me=C[aid];
       if(me.party!==side||me.dead||me.x==null)continue;
-      var tgt=null,td=Infinity;                       // nearest SEEN enemy by working positions
-      spotted.forEach(function(eid){var e=C[eid];if(!e||e.dead)return;
-        var d=cheb(pos[aid],pos[eid]);if(d<td){td=d;tgt=eid;}});
+      var tgt=null;
+      if(doc.honorMode==='high'&&aid===cmdr&&leaderTgt)tgt=leaderTgt;      // the duel
+      else if(sideTgt)tgt=sideTgt;
+      else {var td=Infinity;(cands.length?cands:live).forEach(function(eid){var e=C[eid];if(!e||e.dead)return;
+        var d=cheb(pos[aid],pos[eid]);if(d<td){td=d;tgt=eid;}});}
       if(!tgt)continue;
       var weps=weaponsOf(me)||[];
       var reach=weps.reduce(function(m,w){var r=NPC_RANK[w.band];return r>m?r:m;},-1);
-      var mySpd=Math.max(0,(me.spd||0)+condMods(me).speed);   // Slowed/hasted NPCs move by their real speed
-      if(weps.length&&!npcReaches(reach,pos[aid],pos[tgt])){   // MOVE (free): close the gap
-        var occ=[];for(var oid in pos)if(oid!==aid&&C[oid]&&!C[oid].dead)occ.push(pos[oid]);
-        var reachSet=reachable(pos[aid],mySpd,board,occ),bestCell=null,bestD=cheb(pos[aid],pos[tgt]),k;
-        for(k in reachSet){var xy=k.split(','),cell={x:+xy[0],y:+xy[1]},d2=cheb(cell,pos[tgt]);
-          if(d2<bestD){bestD=d2;bestCell=cell;}}
+      var myMax=weps.reduce(function(m,w){return Math.max(m,BAND_MAX[String(w.band).toLowerCase()]||1);},0);
+      var mySpd=Math.max(0,(me.spd||0)+condMods(me).speed);
+      var occ=[];for(var oid in pos)if(oid!==aid&&C[oid]&&!C[oid].dead)occ.push(pos[oid]);
+      var nearest=Infinity;live.forEach(function(eid){var d=cheb(pos[aid],pos[eid]);if(d<nearest)nearest=d;});
+      if(doc.style==='culling'&&weps.length&&nearest<=1&&myMax>1){          // KITE: step back, keep reach
+        var rs=reachable(pos[aid],mySpd,board,occ),bc=null,bs=-1,k;
+        for(k in rs){var xy=k.split(','),cell={x:+xy[0],y:+xy[1]};
+          if(cheb(cell,pos[tgt])>myMax)continue;
+          var md=Infinity;live.forEach(function(eid){var d=cheb(cell,pos[eid]);if(d<md)md=d;});
+          if(md>bs){bs=md;bc=cell;}}
+        if(bc&&bs>nearest){block.push({actor:aid,cost:0,effect:{kind:'move',who:aid,to:bc}});pos[aid]=bc;}
+      } else if(weps.length&&!npcReaches(reach,pos[aid],pos[tgt])){          // close the gap (as today)
+        var reachSet=reachable(pos[aid],mySpd,board,occ),bestCell=null,bestD=cheb(pos[aid],pos[tgt]),k2;
+        for(k2 in reachSet){var xy2=k2.split(','),cell2={x:+xy2[0],y:+xy2[1]},d2=cheb(cell2,pos[tgt]);
+          if(d2<bestD){bestD=d2;bestCell=cell2;}}
         if(bestCell){block.push({actor:aid,cost:0,effect:{kind:'move',who:aid,to:bestCell}});pos[aid]=bestCell;}
       }
-      if((_staged[aid]||0)>=actionCap(me,canon))continue;    // Suppressed/wounded: no action budget left
-      var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;  // ATTACK (AP): best affordable reaching weapon
+      if(holdFire)continue;                                                  // mercy: move only
+      if((_staged[aid]||0)>=actionCap(me,canon))continue;
+      var db=bandOf(cheb(pos[aid],pos[tgt])),pick=null;
       weps.forEach(function(w){if(NPC_RANK[w.band]>=NPC_RANK[db]&&(w.ap||0)<=pool){
         if(!pick||(w.damage||0)>(pick.damage||0))pick=w;}});
       if(pick){block.push({actor:aid,cost:pick.ap||0,effect:{kind:'damage',to:tgt,amount:pick.damage||0,element:pick.element||null,noRevival:!!pick.noRevival,nonLethal:!!pick.nonLethal,weapon:pick.name||null,band:db}});pool-=(pick.ap||0);_staged[aid]=(_staged[aid]||0)+1;
-        // T-CMB-2 Task 4: the weapon's hostile tags ride the hit — free fanout entries, same
-        // contract as the player composers. add carries explicit el/nl/nr (no item object in
-        // caps) — applyCond's explicit-fields-win rule stamps them; band feeds the range gate.
         (pick.conds||[]).forEach(function(ct){
           block.push({actor:aid,cost:0,fanout:true,effect:{kind:'cond',
             add:{tag:ct.tag,tier:ct.tier,src:pick.name||null,el:pick.element||null,nl:!!pick.nonLethal,nr:!!pick.noRevival,band:pick.band},to:tgt}});});
@@ -1403,7 +1477,7 @@ var THREAD=(function(){
     });
     return out;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive, condTaggyItem:condTaggyItem, condHostile:condHostile, condBandOf:condBandOf };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, AXES:AXES, doctrineOf:doctrineOf, shouldRetreat:shouldRetreat, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive, condTaggyItem:condTaggyItem, condHostile:condHostile, condBandOf:condBandOf };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
@@ -2447,21 +2521,36 @@ var ULT=(function(){
     return Math.round((level||1)*(U(canon).garrison_pc_per_level||200)*garrisonMult(cond,canon))+(stationedPC||0);}
   function seedFor(base,day,locId,aggressorId){
     return ((base>>>0)^(day*2654435761)^hashStr('hold:'+locId)^hashStr('agg:'+aggressorId))>>>0;}
-  function resolveLapse(attackPC,defensePC,scale,r,canon){
+  function _doctLapse(canon){return ((canon.rules&&canon.rules.doctrine&&canon.rules.doctrine.lapse)||{});}
+  function resolveLapse(attackPC,defensePC,scale,r,canon,behavior){
     var o=U(canon).outcome||{},lm=o.loss_margin||0.25,dm=o.decisive_margin||0.25;
-    var p=attackPC/(attackPC+defensePC),roll=r(),m=p-roll,outcome;
+    var p=attackPC/(attackPC+defensePC),lines=[];
+    if(behavior){var L=_doctLapse(canon);
+      var cun=(behavior.cunning!=null?behavior.cunning:50),fer=(behavior.ferocity!=null?behavior.ferocity:50);
+      var dp=(cun-50)*(L.cun_p_per_point!=null?L.cun_p_per_point:0.001);
+      if(dp){p=Math.min(0.99,Math.max(0.01,p+dp));lines.push('cunning '+cun+' → p '+(dp>0?'+':'')+dp.toFixed(2));}
+      var dmg=(fer-50)*(L.fer_margin_per_point!=null?L.fer_margin_per_point:0.001);
+      if(dmg){lm=Math.max(0.05,lm-dmg);dm=Math.max(0.05,dm-dmg);
+        lines.push('ferocity '+fer+' → margins '+(dmg>0?'−':'+')+Math.abs(dmg).toFixed(2));}}
+    var roll=r(),m=p-roll,outcome;
     if(m<-lm)outcome='repelled';
     else if(m<0)outcome='repelled_losses';
     else if(m<dm||scale==='raid')outcome='sacked';
     else outcome='captured';
     var NAMES={repelled:'REPELLED',repelled_losses:'REPELLED WITH LOSSES',sacked:'SACKED',captured:'CAPTURED'};
-    var arith=attackPC+' PC vs '+defensePC+' PC (defender-favored) → p '+p.toFixed(2)+
+    var arith=attackPC+' PC vs '+defensePC+' PC (defender-favored)'+
+      (lines.length?' · '+lines.join(' · '):'')+' → p '+p.toFixed(2)+
       ' · roll '+roll.toFixed(2)+' · margin '+(m>=0?'+':'')+m.toFixed(2)+' → '+NAMES[outcome];
     return {outcome:outcome,p:p,roll:roll,margin:m,arith:arith};}
-  function lootOf(level,prodMult,r,canon){
+  function lootOf(level,prodMult,r,canon,behavior){
     var L=U(canon).loot||{},base=L.base||15,rpl=L.res_per_level||2,lv=level||1;
     var res={};['Food','Material','Fuel'].forEach(function(k){res[k]=Math.round(rpl*lv*r());});
-    return {cur:Math.round(base*lv*(prodMult||1)*(0.75+0.5*r())),res:res};}
+    var cur=Math.round(base*lv*(prodMult||1)*(0.75+0.5*r()));
+    if(behavior&&behavior.honor!=null&&behavior.honor>50){var DL=_doctLapse(canon);
+      var per=(DL.honor_loot_per_point!=null?DL.honor_loot_per_point:0.005);
+      var mn=(DL.honor_loot_min!=null?DL.honor_loot_min:0.75);
+      cur=Math.round(cur*Math.max(mn,1-(behavior.honor-50)*per));}
+    return {cur:cur,res:res};}
   function healTick(state,locId,statusLabel,besieged,canon){
     var lc=state.world&&state.world.locConds;if(!lc)return null;
     var cond=lc[locId];if(cond!=='sacked'&&cond!=='ruined')return null;
@@ -3917,6 +4006,7 @@ function concludeThread(t,oc){
  tickStreaksAndSync(t.state,mineWon);
  var line=oc.kind==='accord'?'🕊 RESOLUTION — terms struck. The accord stands and this thread is closed.'
   :oc.kind==='mutual'?'⚔ RESOLUTION — mutual annihilation. No one holds the field.'
+  :oc.kind==='withdrawal'?'⚑ RESOLUTION — '+(oc.defeated||[]).join(', ')+' quits the field. <b>'+oc.victor+'</b> holds the ground.'
   :'⚔ RESOLUTION — '+(oc.defeated||[]).join(', ')+' broken to the last model. <b>'+oc.victor+'</b> holds the field.';
  if(!t.posts)t.posts=[];
  t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:line});
@@ -4042,14 +4132,18 @@ function resolveUltLapses(nowMs,capDay){
   if(!att)att=1;                                             // an abandoned thread still resolves
   var def=Math.round(ULT.garrisonPC(l.level,u.prev,stationedPCAt(t.lid),D)*((D.rules.ultimatum||{}).defender_mult||1.25));
   var r=ULT.rng(ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,u.aggressor));
-  var res=ULT.resolveLapse(att,def,u.scale,r,D);
+  // T-NPC-4: the aggressor's rolled personality colors the seeded lapse outcome + loot
+  // (cunning/ferocity nudge margins, honor tempers loot) — deterministic off the clock's
+  // own ids, same discipline as every other Ultimatum roll.
+  var beh=THREAD.AXES.rollFor(u.aggressor,'agg:'+u.aggressor+':'+t.lid,D);
+  var res=ULT.resolveLapse(att,def,u.scale,r,D,beh);
   // condition: besieged lifts; ladder writes down from prev
   var end=u.prev;
   if(res.outcome==='repelled_losses'||res.outcome==='sacked')end=ULT.stepDown(u.prev);
   if(end==='intact'&&!lById(t.lid).condition)delete S.world.locConds[t.lid];
   else if(end===l.condition)delete S.world.locConds[t.lid];
   else S.world.locConds[t.lid]=end;
-  if(res.outcome==='sacked'){var loot=ULT.lootOf(l.level,fp.p.prod_mult||1,r,D);
+  if(res.outcome==='sacked'){var loot=ULT.lootOf(l.level,fp.p.prod_mult||1,r,D,beh);
    S.cur=(S.cur||0)+loot.cur;
    if(S.world.holdings.length)addStock(S.world.holdings[0],loot.res);
    res.arith+=' · loot '+loot.cur+'c';}
@@ -4158,8 +4252,11 @@ function counterTribute(t,m){
  var nst=npc&&S.npcState&&S.npcState[npc.id];
  var rawBeh=nst&&nst.behavior;
  // NPCAI.instantiate returns {axis:{value,spawn,plasticity,floor,ceiling,drift}} — ULT.evalCounter
- // wants a plain numeric pragmatism, so unwrap .value; no placed/met NPC → the canon default (50).
- var beh=(rawBeh&&rawBeh.pragmatism&&rawBeh.pragmatism.value!=null)?{pragmatism:rawBeh.pragmatism.value}:{pragmatism:50};
+ // wants a plain numeric pragmatism, so unwrap .value; no placed/met NPC → fall back to the
+ // defending faction's own rolled personality (T-NPC-4), then the flat canon default (50).
+ var beh=(rawBeh&&rawBeh.pragmatism&&rawBeh.pragmatism.value!=null)
+   ?{pragmatism:rawBeh.pragmatism.value}
+   :(defFacId?{pragmatism:THREAD.AXES.rollFor(defFacId,'trib:'+t.id,D).pragmatism}:{pragmatism:50});
  var appetite=defFacId?(((D.rules.ultimatum||{}).tribute||{}).faction_appetite||{})[defFacId]||0:0;
  var cr=ULT.rng(ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,'counter:'+m));
  var ok=ULT.evalCounter(m,beh,appetite,cr);
@@ -4619,13 +4716,58 @@ function bfFoeName(st,foe){for(var id in st.combatants){var c=st.combatants[id];
   if(c.party===foe&&!c.dead&&c.model)return c.model.n.split(',')[0];}return 'The enemy';}
 // the non-player side answers the player's combat post (single-player: foe is NPC-run;
 // Stage-2 gates this to NPC-controlled forces — a drop-in at this seam)
+/* T-NPC-4: which faction commands a thread's NPC side — derived from the local NPC force,
+   the same lookup seedCombat/counterTribute already use (mission threads spawn hostiles via
+   that identical location lookup when no npcId is given, so this is the real source of truth
+   — there is no separate faction field stamped on mission-spawned threads). */
+function _npcFacIdOf(t){
+  var loc=fLoc(t.pl,t.lid);
+  var fr=loc?npcForceAt(t.pl,loc.name):null,facN=fr?npcFactionOf(fr.desc):null,fac=facN?facByName(facN):null;
+  return fac?fac.id:null;
+}
 function npcRespond(t,playerParty){
   var st=t.state;if(!st||!st.board||st.phase==='deploy'||st.phase==='aftermath')return;   // aftermath is a solo looting phase — no NPC turns
   var sides={};for(var id in (st.combatants||{})){var p=st.combatants[id].party;if(p)sides[p]=1;}
   var foe=Object.keys(sides).filter(function(s){return s!==playerParty;})[0];
   if(!foe)return;
+  // whole-branch review FIX 1: hoist the alive check ahead of behavior-stamping + retreat —
+  // a post that wipes the foe side must never stamp behavior or trigger a ghost retreat post.
   var alive=Object.keys(st.combatants).some(function(k){var c=st.combatants[k];return c.party===foe&&!c.dead&&c.x!=null;});
   if(!alive)return;
+  // T-NPC-4: lazily stamp the NPC side's rolled personality (deterministic off thread id
+  // → same roll every reload even pre-persist; covers every seed path incl. legacy saves)
+  st.behavior=st.behavior||{};
+  if(!st.behavior[foe]){
+    var _fid=_npcFacIdOf(t);
+    st.behavior[foe]=THREAD.AXES.rollFor(_fid||'none','doctrine:'+t.id,D);
+    // placed-NPC override: if the sole co-located placed NPC has authored behavior, its
+    // .value axes win (spec §2) — mirror counterTribute's unwrap:
+    var _npc=npcsAt(t.pl,t.lid)[0],_nst=_npc&&S.npcState&&S.npcState[_npc.id];
+    if(_nst&&_nst.behavior){var _b={};THREAD.AXES.AXIS.forEach(function(ax){
+      var v=_nst.behavior[ax]&&_nst.behavior[ax].value;_b[ax]=(v!=null?v:st.behavior[foe][ax]);});
+      st.behavior[foe]=_b;}
+  }
+  // T-NPC-4 §4/§4a: pragmatic withdrawal — SKIRMISH/INVASION only, never duels/missions
+  if((t.type==='SKIRMISH'||t.type==='INVASION')&&!/duel/i.test(t.n||'')&&st.phase==='battle'
+     &&THREAD.shouldRetreat(foe,st,D)){
+    st.retreatTried=1;
+    var _spdMax=function(party){var m=0;for(var id2 in st.combatants){var c2=st.combatants[id2];
+      if(c2.party===party&&!c2.dead&&!c2.captured&&c2.x!=null)m=Math.max(m,c2.spd||0);}return m;};
+    var who2=bfFoeName(st,foe);
+    if(!t.posts)t.posts=[];
+    if(_spdMax(foe)>_spdMax(playerParty)){                       // escaped — strictly faster
+      for(var id3 in st.combatants){var c3=st.combatants[id3];
+        if(c3.party===foe&&!c3.dead&&!c3.captured){c3.fled=1;c3.x=null;c3.y=null;}}
+      st.phase='aftermath';
+      st.pendingOutcome={kind:'withdrawal',victor:playerParty,defeated:[foe]};
+      t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+        body:'⚑ '+esc(who2)+' breaks contact and quits the field — too swift to run down. The ground is yours: loot the fallen (1 AP each), then END THREAD.'});
+    } else {                                                      // caught — cornered, fights on
+      t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+        body:'⚑ '+esc(who2)+' wheels for the perimeter — but you are faster. Cornered, they turn back to the line.'});
+    }
+    persist();return;                                             // the attempt consumes the turn
+  }
   var block=THREAD.npcTurn(foe,st,st.board,bfWeaponCaps,D);
   if(!block.length)return;                         // sees nothing / can't act → holds silently
   if(!THREAD.validate(t,st,foe,block,D).ok)return;
