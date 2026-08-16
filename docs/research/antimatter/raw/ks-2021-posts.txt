@@ -1,0 +1,652 @@
+===== [2021-07-30] Thank you, windows update. =====
+Yes, thank you very much, Microsoft for making me lose the 2 hours it took me to write this update.
+
+It is 0:30 AM now,  so let me wrap up a shorter version of what was lost at the PC restart.
+
+Corporations
+
+Corporations are the fabric of the economical activity of the galaxy, they are responsible for interplanetary trade and other activities.
+
+The universe is now teeming with activity, each character employed by a corporation is now minding his own business, indeed, nothing is spawned out of thin air, there is always a reason for something to exist, and always an AI to drive it (which is both false and true for tesla vehicles).
+
+Corporations have a primary focus and sometimes a secondary one, this defines the commercial strategy, a trader corporation focuses on buying cargo and profit from trades opportunities, a scientist orders civilian ships and conducts deep space exploration, to make money out of discoveries of planets and POI. A manufacturer controls shipyards and sells manufactured ships or gets a cut when another corporation or a character sells a ship located in the space station. A Fighter corporation acts as a mercenary and will scout or "search and destroy" ships hostile to its faction. Financial corporation trades shares of profitable corporations in the hope of dividends.
+
+A corporation also has a legal stance, either Lawful, Shady, or Outlaw (or ones that should be outlawed, such as Microsoft with their forced restarts), this determines the type of activities, for example as an outlaw trader, the corporation will conduct smuggling operations, for an outlaw fighter corporation, it will be a pirate.
+
+A corporation is usually associated with a faction and is a source of taxes for the latter. However such organizations are usually very autonomous in such an anarcho-capitalist model. Corporations exist in an open market, with different ranks of employees and representatives, each having a salary quite proportional to the corporation's wealth. Corporations can be exchanged through shares, however, to prevent exploits and market-making shenanigans that would unbalance the financial aspect of the game, and crash the economy (hum hum.. real-life hum.. hum) I made sure to have a high transaction spread. In other words, you sell at much lower prices and you buy at much higher prices.
+
+[img]
+
+This is all the work I could dissociate from the main development branch. The bulk of the work is indeed aimed toward the game engine, optimizations, AI, and numerous tiny things. Simulating such a huge seamless universe with not an easy task, to the point that floating number inaccuracy managed to mess with the AI itself! Challenges like that pop then get sorted out on a weekly basis.
+
+And there is good news as well, planet surface (the "strategic" top-down view of the whole planet) has been expanded greatly and is now proportional to the size of the planet, without losing precious performances.  For example, a planet such as the earth now has a generated surface of 80 x 40  tiles, this is almost as large as a "normal" map in civilization 5 ! 
+
+What comes next is more work in generating factions, and cities. And adding the final touch to the non-player cities simulation, and also introducing progress on the trade simulation.
+
+Now, please let's all have a prayer to all the victims of the windows update forced restart, this is a harsh and cruel world we are living in.
+
+===== [2021-06-01] May update [Antimatter] =====
+Lots of progress have been made since the last update here on Kickstarter. I have to admit that I have hesitated to publish any update these past weeks, I felt my reports were not as exhaustive as I wanted.
+
+It would be pointless to cover all the work done in the past weeks and my social battery is at 0%, so here is a concise summary of my most notable developments. 
+
+Missions
+
+Missions/Quests are now integrated and allow some complex interactions. For the moment, it is a functional framework and will be used once I reach the point where I will add content. It currently includes some basic mission types and a bounty hunting system, along with an extended set of Lua functions to customize missions and dialogs.
+
+Points of Interest
+
+The galaxy is now populated with tens of thousands of persistent and randomly generated objects type. For the moment a few placeholders are available: abandoned satellite, abandoned cache, cryogenic pod, shipwreck, and a "spore" (it spreads mushrooms type flora to distant planets)
+
+Each of them has specific scripted interactions.
+
+These objects are usually located close to a stellar system but many are located in interstellar space but are very difficult to detect.
+
+[img]
+
+[img]
+
+Shipyard
+
+Added docking procedure.
+
+Added the possibility to buy/sell and customize the equipment and loadout of the ship, and to switch ship.
+
+Shipyards build ships of different types given the faction priority and the faction economic mobilization level. A mobilized economy will produce a greater proportion of military ships.
+
+[img]
+
+[img]
+
+Messaging system
+
+Antimatter now simulates communication between ships and introduces inbounds messages, opening specific dialogs.
+
+Combat, patrols, and navigation
+
+Everything related to space navigation has been greatly improved on the player and AI's side.  Ships can be controlled in both a waypoint mode or directly with the mouse and keyboard.
+
+Small fleets of military ships will now patrol the area.
+
+Tons of UI additions, QOL, interactions
+
+(Seriously... Countless additions.)
+
+Crew and Passenger 
+
+Crew can be hired and add bonuses, Special and generic passengers can be transported. Money can be made by transporting passengers to theirs destination.
+
+[img]
+
+Here a group of 10 passengers are going to Cyrus B and can be embarked.
+
+There is also a single character in this station, in this case, it is the representative of the local corporation (the one owning the space station) and can give missions and information about his organization.
+
+Saving/Loading system
+
+This might sound like an easy task, it is actually an incredibly painful task to serialize a whole galaxy. The task is almost done and necessary to create custom scenarios.
+
+Dozens of Lua functions
+
+Antimatter modability has always been my priority. For those who don't know what lua is, in this context, picture it as a bridge between the inner code of the game and the advanced modder. Lua scripting within antimatter allows immense possibilities to customize the game by allowing modders to program scripts in the game.
+
+What's next?
+
+ Corporations are one of the missing links for a dynamic economy. Corporations will be expanded greatly,  and more interaction with the player will be added. They are used as a mission generator as well.
+
+And next, next?
+
+I'll finally go back to the planetary side.
+
+When the game will be available for pre-alpha?
+
+First of all, I appreciated your patience, no pressure was put on my shoulder. That is well, I can handle that part myself.
+
+You have surely noticed some flexibility in the project's development. The pace is good, even better than I expected.  Yet, I will get past some announced dates, have I became lazy? No.
+
+The roadmap has gradually changed during this year of development, and instead of a modular approach, I have decided to build the game as a whole, as it appears, in practice, to be the most efficient route. In short, the pre-alpha will be available at a later date, but with much, much more content.
+
+Bonus
+
+Something occurred, but I am not sure whether I should call it a feature or a bug.
+
+Suicidal space stations --  I drove a fighter and started to pick on a space station of my own faction by patting him with a few railgun shells. He wasn't so keen of such attention so he fired back and finally destroyed me. But then, the space station looked overwhelmed with guilt as all its turrets proceeded to fire against itself until destruction.
+
+ Indeed, firing at someone of my own faction turned the whole faction to 'enemy' stance against itself, banishing any remaining will to live and self-esteem from anyone in the faction. 
+
+The galaxy wasn't very populated so I wasn't here to witness a galaxy-wide murder and suicide spree as everyone lost their temper against themselves. 
+
+ An in-game suicide hotline should patch it effectively.
+
+===== [2021-05-13] Space exploration =====
+Now that ships, modules, and navigation are polished I have finally all the foundations for space exploration.
+
+Sensors
+
+Most ships can be equipped with a sensor, which has a combined purpose of detecting planets and moons, spotting ships, and survey the planet's surface.  All sensors "ping" every 30 seconds.
+
+Surveying a system
+
+The combined sensor strength of each sensor increases the chance and range of spotting a body (be it a planet, a moon, or an asteroid). the chance of detecting is based on the body's albedo (how reflective its surface is) the radius and the distance to the ship. So spotting a planet can be tricky, especially considering that they gravitate around their star.  Planet in the outer rim of a system can be particularly hard to spot. Gaz giants are obviously easy to spot and are usually a good starting point since some moons are often gravitating around it.
+
+[img]
+Entering an unexplored system. Some planets have already been spotted.
+
+Surveying a planet
+
+If you have found a planet with an interesting classification, you may want to investigate it a little more.
+
+By orbiting the planet, the ship will automatically survey the surface's regions.  Sensor strength plays a role too but also the diversity of sensors will add a bonus, a combination of smaller sensors will increase the chance of surveying a region.
+
+[img]
+Orbiting the planet with an exploration ship
+
+The chance of surveying a region is directly tied to the cloud cover and the radius of the planet. It can take a lot of time for a cloudy planet. 
+
+A surveyed region will display a lot of useful details, but the player can land in an unsurveyed region as well, this will be covered in one of the next updates when surface exploration will be expanded.
+
+[img]
+This planet has a cloud cover of 80% and surveying it takes a lot of time.
+
+Power Distribution
+
+I have added the possibility to redirect power to specific modules of the spaceships.  It can be either directed to thrusters, improving the max speed for FTL and standard propulsion, shields that improve max shield and recharge rate, or sensor's strength.
+
+[img]
+
+there are 3 points in total to be distributed.
+
+  
+level 0  : -50% malus
+
+  
+Level 1 : 0% malus/bonus
+
+  
+Level 2 : 33% bonus
+
+  
+Level 3 : 55% bonus
+
+Obviously, a balanced approach is overall more efficient.
+
+This is an important tactic decision since it takes 5 WHOLE minutes to fully charge the hmmm.... space condensers... . So the full bonus is reached after 5 minutes, but the malus is immediate!
+
+Bonus :
+
+[img]
+I forgot to turn off enemy stance got all the civilian freighters of the system to chase me.
+
+===== [2021-04-04] More ships ! =====
+Most works were done on improving navigation AI and how spaceships maneuver, the addition of dozens of modules,  and among the tons of additions and tweaks was the introduction of a working docking system.
+
+Docking and hangar bays
+
+[img]
+The ship needs to stand in one of the green zones to dock.
+
+Larger ships usually have a few modules capable of docking operations, some are specialized carriers.
+
+[img]
+This destroyer is one of the smallest carrier, with 4 XXS hangar bays, capable of carrying  4 drones
+
+Merchant navy
+
+14 civilians ships have been added, with some very specialized roles. Some super transporters are 400 meters long !
+
+[img]
+
+[img]
+
+Module customization and Overview UI
+
+The Ui to manage the all modules of a ship has been done.
+
+[img]
+
+[img]
+An overview with important data
+
+8 more combat ships.
+
+[img]
+
+The first capital ship.
+
+[img]
+
+This menacing capital ship(XXL size ship) carries 3 main guns and 21 (mostly large) turrets, she is a heavily armored ship with a large hangar bay of 2 entrances, capable of storing up to 4 frigates (or 12 fighters).
+
+She only has 3 M energy shield slots, and the single XL hyperdrive makes her very slow for interstellar travels.  The small amount of fuel storage modules, her weight, and the single XXL thruster make her slow and dependant on a close resupply location.
+
+Next updates will change focus to exploration.
+
+===== [2021-03-28] Combat, Navigation and Spaceships. =====
+For most games, the prosaic, yet intelligible form of progression is done by killing a bunch of lifeforms deemed inferior. Be it ugly monsters, hive-minded Arachnids, or hipsters.
+
+Antimatter will let you the liberty to choose the right side doing the wrong thing. You have probably read through the last update and noticed the confetti-looking galaxy, which is a display of the human race not getting along after the Antimatter Crisis.
+
+Spaceships play a very important role in gameplay as it is the money sink of the game and the end-product of the whole logistical enterprise of the player.
+
+Spaceship demand will be permanently pulled by ships getting blown up for whatever reasons.
+
+One of the whatever reason is WAR :
+
+[img]
+Saruman the multicolour (not in the game)
+
+Spaceships
+
+[img]
+
+In total, there will be around 150 different chassis of ships.
+
+The logic part is done, and to give you an insight into what is coming here is a bunch of fighters and destroyers. These are the finished ships with several modules slots each.
+
+Here is an example :
+
+[img]
+
+Each slot can fit a compatible module, and the module holds the global characteristics of the ship.
+
+Slots can be of different general type : Hyperdrive, thruster, generator (energy, shield), cargo (or passenger/crew quarter), gun mount, turret mount, sensor mount, bridge (or cockpit), hangar bay (wip), fuel storage.
+
+And has size as follow : XS ; S ; M ; L ; XL
+
+Here a fighter equipped with 4 XS Railguns Gretwin I, a slow-firing gun.
+
+[img]
+
+It is planned to make 6 classes of ship sizes:
+
+[img]
+
+Navigation
+
+Navigation is essential on this immense scale. Going to hyperspace is limited by the star's gravity well (which depends on the star's mass). For a star like the Sun, it becomes dangerous to jump to hyperspace within 5 AU (around the distance of Jupiter). If you really need to escape, or if you have forgotten to turn off the gas in your private space station and need to be home asap, you may try hitting the red button anyway and pray. If you haven't prayed enough the RNG god you will end up with a melted hyperdrive and stranded in an almost random gravity well in the galaxy. It could be anywhere, a civilised system, a lifeless one, or a barbaric place where betting on an autochthon child slave in a deadly high-speed race to buy a new hyperdrive is an acceptable practice.
+
+The red area is where hyperspace navigation is dangerous, the red value at the bottom left indicates the current risk given the influence of the star's mass.
+
+[img]
+
+Combat
+
+A lot of work has been made on combat and AI. I am glad to say that I have a working combat AI and had my first dogfight against a bunch of fighters (I lost).
+
+I restrain myself to talk more about it because I feel like doing a proper video with a big battle when all the ships are made.
+
+For now, most fights are taking place in 3 phases, where the first phase tends to be a long-range exchange of missiles (missiles can travel millions of kilometers!), then the flak turrets that occasionally hit, and then close-quarter where railguns have a voice.
+
+[img]
+I lost :'(
+
+===== [2021-03-11] Planets =====
+I have continued to work on generating more detailed planets.
+
+This update will be brief and a bit rushed as I ran out of time today. But few news is better than none :
+
+Regions 
+
+I have expanded the amount of region and greatly improved how to generate the surface. For now, the amount of tiles is limited but could be increased in the future without effort.
+
+This is the visual representation of the region, which gives an approximative overview of what kind of topography to expect.
+
+[img]
+A terran planet with life
+
+[img]
+A snow covered planet.
+
+[img]
+A primitive city that struggled through the Antimatter crisis
+
+[img]
+A desertic planet
+
+[img]
+An EXTREMELY hot barren planet
+
+Civilisations
+
+All colonies became stranded as a consequence of the Antimatter crisis. Many disappeared or descended into barbarism.
+
+This is a RAW view of all the spheres of influence of all factions generated. This view will be hidden from the player. It represents the dominant faction in a system. Of course, a single system may contain several inhabited planets and each planet may be divided into a few cities (each city hosts a whole faction for now). I have worked to make sure the spread of civilisations from the pre-antimatter crisis colonisation surge get correctly generated. Many values related to habitability, distance to the core world and economic desirability make each planet having more chance of being colonised, or formerly colonised. I also simulate the likelihood of a colony falling into barbarism or disappearing, and how. And also how other colonies did recover.
+
+This means that the best planets are usually inhabited by natives (settlers from before the Antimatter crisis). 
+
+[img]
+Overview of the medium sized galaxy, not all stars were colonised
+
+[img]
+Zooming in at the center of this very populated galaxy
+
+[img]
+
+[img]
+
+[img]
+
+[img]
+
+[img]
+
+[img]
+
+[img]
+
+NEXT : Space combat
+
+===== [2021-02-25] Flora =====
+Flora got some love recently, with the creation of no less than 111 species  for the game, with around 10 growth phases for each of them. Thanks to Marie_Pepo, that contributed to the creation of most(95%) of the species and to "Bandus" that volunteered in "modding" the arts assets into readable data for the game (and saved about 8 hours of work).
+
+111 different species of trees, shrubs and plants
+
+[img]
+
+[img]
+
+Flora isn't merely a picture stamped on your screen to look good, the flora is individually simulated, affects biomes and the planet as a whole. 
+
+[img]
+
+Each species have a large array of values to determine its optimal environment to survive or grow, such as the temperature, moisture level, luminosity needed, what type of photosynthesis it uses(3 types), the ideal soil, pollution resistance etc... Flora reacts to the atmosphere, and breaths as we would expect them to do.
+
+[img]
+
+[img]
+
+Last time I have talked about biomes, and how it is tied to a territory you can claim and administrate,  these biomes are generated dynamically depending on the climate and other conditions of the region of the planet. indeed, each "tile" of each planet is now generated separately to reflect the different climates and geologies you can find.
+
+[img]
+
+[img]
+
+Each territory/biome has a production capacity, it represents how much it can be harvested while preserving the ecosystem, it directly depends on each flora species present in the biome, and what they individually produce.
+
+[img]
+
+[img]
+Most planets are barren
+
+This is the tip of the iceberg in terms of content, I won't spoil you everything now, discovering new species will be part of the exploration incentive.
+
+Underground generation
+
+Caves are now generated and kept track as biomes. Some caves can even retain gas during generation and have their own micro atmosphere. So flora can now sometimes grow in underground areas in a seamingly barren planets, this is going to be a rare sight though.
+
+[img]
+
+[img]
+
+Post-Scriptum, answering Philippe's question :
+
+Philippe Malacher asked a question on the last update that deserves to be elaborated here :
+
+***
+
+--"More precisely, are traders always AI controlled? Or can the player own trader ships or even extra corporations? Planetside, can you order specifically a certain material to a given corporation, like a trade deal (say deliver me 50 steel every month), or this is a "series of one shot", you have to ask at regular interval for something and perhaps, one trader will deliver them to you? "
+
+***
+
+Traders are indeed AI controlled, but so far the player can control a spaceship himself by clicking on it. this is sort of a god mode for now, and in the future it will be necessary to be physically in the ship to control it.
+
+The trade model works with an order system under the hood, but the supply/demand and price variation dynamic is a virtual representation by itself. This means that it is totally possible to inflate or deflate the virtual supply/demand and therefore induce or not more orders.
+
+For now, there is no UI implementation to illustrate this but in the future, the player will be able to control manually the buying price and the volume needed and the traders will sort out themselves if it is a good deal, with the current model. I want to avoid micro-management.
+
+Player can indeed control a corporation, they actually own one at the start of the game (each agent having a starship start with a corporation at the beginning of the game)
+
+Corporation simulation is quite barebone for now so I won't talk a lot about it, but you can also exchange shares of any corporation. These are low liquidity shares with high spread to avoid speculation and exploits.
+
+[img]
+
+[img]
+
+===== [2021-02-09] Trading =====
+I finalized binding together the universe and the surface mode. offering the seamless transition from the planet's surface to outer space.
+
+Lots of optimizations were done and this part already reached a stable state. The game can handle 10 000  systems at real-time while simulating galaxy-wide trade activity and while keeping an active planet surface without dropping a sweat.
+
+Today I'll talk about trade, as it will be a very important feature of the game that got a bit of attention.
+
+Buy low, sell high?
+
+You've probably heard that countless times, commercial ventures sound easy enough if it was that simple.
+
+Except that Antimatter trade doesn't exactly work that way.  
+
+One crazy fact in Antimatter is that traders are not just 24/7 worker slaves without any personal expenses. I know... I know,  one of the X in the 4X game I advertise stands for eXploitation. But don't worry, you will have plenty of opportunities to exploit your virtual conspecifics. 
+
+Spaceships have a maintenance cost as well. Corporations pay taxes to the faction where they have established a headquarter. For now , there is no other factor for exceptional expenses.
+
+[img]
+Showing a trade node, with price variations
+
+Trader's AI
+
+So the lone trader ship has his own AI, he will look for a good trading run with enough volume and profit, while counting for the distance and the mentioned fixed costs. He has also a preference for trade nodes close to his corporation headquarter.
+
+He will then do an order to a trade node,  to secure the buying/selling price and volume (with a generous time limit).
+
+[img]
+Interplanetary trade
+
+So far the trader AI looks quite intelligent and is very conservative of time (time is literally money in Antimatter). Yesterday, I followed a lone trader that kinda found its little niche in a back and forth trade with an agricultural world and a mining world, by trading ore and food rations. While selling ore to the agricultural world wasn't a great deal with such a small ship, it made sure to get a little profit while going back buying food. He was quite successful until god's intervention popped 100 more traders.
+
+He is fine though. Lucky him, he hasn't spawned in a version of the game with pirates and spent a happy virtual life in my RAM.
+
+[img]
+Trading between 2 systems
+
+Corporations
+
+The scope of corporations, for now,  is very limited, it basically contains trader ships into single entities.
+
+Corporations pay corporate (duh?) taxes to the owner of the trade node. For now, a corporation has a simple behavior, he will buy a ship after a certain threshold of capital and sell one at a certain debt threshold.
+
+In the future, corporations will be attracted by low taxes and high trade opportunities.
+
+I will soon develop more features related to administration and public services, and many of them will also contribute to the trade attractiveness of the trade node.
+
+Next : Flora.
+
+Antimatter will feature TONS of different plants and trees.
+
+===== [2021-01-30] A spaceshipload of news. =====
+Development of Antimatter continues at a steady pace, and the Christmas holidays were a good opportunity to get a lot of things done.
+
+The planet generator
+
+Each planet is separated into regions, which are represented as the large destructible terrain in side-view. A lot of improvement has been done on this part. 
+
+Antimatter generates a believable topography or a custom one, with soil layer, ore deposits, and terrain features, it generates caves as well, but the underground procedural generation of biomes is still a work in progress. 
+
+Then biomes are generated with plenty of procedural generation variables that make it as diverse as possible with an ecosystem of fully simulated flora.
+
+The weather is more dynamic now :
+
+            
+
+          
+
+New terrain features :
+
+[img]
+
+The generator sometimes comes up with interesting combinations. 
+
+[img]
+
+Data overhaul
+
+The title is as boring as the task itself. This was a very time-consuming work and a real pain in the bottom. I won't go into the technical details but this makes the Antimatter engines extremely moddable and will improve development speed and stability in the very long run. Even allowing the creation of other games out of it. This task was about half of the total work done since the end of the campaign.
+
+Biomes and territory
+
+A biome is considered as a territory. It can be claimed by you or the native civilisations. This is an important functionality in the game as your industry and your population can only exploit controlled territories/biomes. Controlling territories cost administration points.
+
+[img]
+
+[img]
+Up to date UI but with fewer flora types
+
+Ecology 
+
+Ecology plays an important role in Antimatter. For instance, it individually affects the vegetation.  Ruining the fragile ecosystem with overexploitation could lead to disastrous economical and social repercussions in the long run.
+
+Flora 
+
+Flora has been expanded with more types of plants and especially more behaviors associated that affect their growth behavior. Flora growth and health are affected by soil type, luminosity, moisture, temperature, and soil pollution. Vegetation also has a beneficial effect on soil and air pollution.
+
+Of of the most important things is how vegetations affect resource production for the controlling settlement. Each mature flora produces a set of harvestable resources that can be exploited by the neighboring residents or industry. The population naturally exploits the controlled biomes without a single input from the player. 
+
+It is planned to make flora an important part of the economy as it provides different kinds of food that can be transformed into finer food, provides special molecules difficult to synthesize usable for (il)legal drugs, basic materials for construction, or other intermediate resources.
+
+Population needs
+
+Each population  has 3 types of needs :
+
+Vital: Needed to be kept alive. For the only available race so far (human) this is only food.
+
+Basic: Provides happiness. Races and jobs influence such basic needs.
+
+Luxury: Provide happiness * basic needs. Therefore a satisfying luxury needs without fulfilling the basic ones won't have an effect on happiness. Races and jobs influence such needs.
+
+Needs can notably be affected by policies and is entirely dependant on race, jobs (and social class).
+
+Expanding the number of recipes
+
+Antimatter comes with a crafting system, primarily used for industries (but also prototyped for player crafting). If you are familiar with Factorio or Anno, you will understand what is my goal in terms of supply chain complexity.  Civilisations in Antimatter spans over numerous planets with various characteristics. For now, the trade dynamic is shallowly simulated with the possibility to trade with natives cities (if any) and the rest of the galaxy as a unified market.
+
+Currently, Antimatter features 63 types of resources and 53 crafting recipes.
+
+Economy
+
+Civilian occupation is an inefficient but very flexible way to produce goods without a supporting industry. Every unemployed person produces a small amount of GDP that can be used for this. This gives incentive to your population to focus on producing by themself certain categories of goods.
+
+[img]
+
+[img]
+
+I will once again mention the Anno series, and specifically the older titles by noting the similarities of my system with theirs. Population needs come with a variety of goods, influencing health and happiness, however, the crucial benefit of a variety of consumable goods is the opportunity of profiteering with sales taxes. Each consumed item by the population is taxed by the state (you). A diversified economy and trade relation is therefore key to a healthy economy.
+
+[img]
+Since I haven't built any residential building and no business is currently operating, the corporate and property taxes remain to 0
+
+Public expenses play an important role, for the moment, the most influencing one is unemployment benefit. This will pay for any basic and vital needs for the unemployed populations, reducing the chance of being demoted to the lower class that provides a job.
+
+This maintains the consumption level of the population and stabilizes an economy in crisis, however, this policy is very costly, and preventing a population from being demoted has a cost on flexibility, especially if the economical changes are long term.
+
+[img]
+
+[img]
+Our pedantic accountant calculated a balance of 307.0439 $ , no more , no less.
+
+Policies
+
+I did a bit of improvement on policies since and added more effects.
+
+[img]
+
+Policies affect ethics
+
+If the current ethics doesn't fit the population ethics (tradition), this will cause unhappiness.
+
+Current ethics also affect relationships with native cities.
+
+[img]
+
+Simulating the demography
+
+Demography in Antimatter is simulated with a great extent of details and is evolving organically given realistic variables. I will go on with my habit to talk of comparing features with what we see in other games by mentioning "Victoria" which has a very similar feature. In Antimatter, a population type is separated by its race and job, and has a lot of variables that track education,  happiness, needs fulfillment, ethics tradition etc...
+
+The state of the job market, instruction level, and welfare policies dictate how the population gets promoted or demoted.
+
+[img]
+
+[img]
+Only 3 job types are currently represented in this city. However more jobs exists, with their specific needs, instruction requirement and ethics tendancy
+
+Native cities
+
+New sub-culture set
+
+[img]
+
+One of the most important work is the improvement of native cities and how they evolve. I have spent a lot of effort to stimulate the economy and expansion of these cities. For now, the player can only trade with such city or open up a dialog with the leader, which already has consequences. but in the future, such independent cities will play a crucial role in the development of the player's colony.
+
+[img]
+
+[img]
+
+Native cities economy is simulated in a similar manner to playable cities but is simplified into 3 production types : culture, production (prosperity), military.
+
+Culture has an effect of influence over, and from the player and on the technological progression.
+
+Production is the bonus to the GDP and GDP affects the productions of goods.
+
+Military Depends on the amount of military installation and policies and represent the defense capability to player's decisions. It will (WIP) also influence the amount of raids toward the player's city and how well equipped the city is with actual in-game weapons.
+
+Each building is simulated and the decision to build a certain type of building or to chose a specific policy lies on the artificial intelligence's best choice.
+
+[img]
+
+[img]
+Generated names
+
+[img]
+Due to the terrain, this city won't develop any further
+
+[img]
+
+Visual Enhancement
+
+Alongside more graphical assets, I have decided to double the scale of the game, doubling the details as I incidentally noticed that it became very difficult to represent some stuff with such a small resolution. So I have redrawn all player's building.
+
+I also added dynamic and procedural generation of lighting (windows) and smoke (chimneys).
+
+UI
+
+I hate developing UI, it is probably the least difficult thing but very repetitive. However, this is a critical part of the game so I have put quite some effort into it to build the general structure of it (the outlook is still a WIP, I will do a reskin all at once to save productivity). 
+
+[img]
+
+Customizable world
+
+Planet configuration 
+
+[img]
+
+With the new data structures comes the possibility to quickly edit the possibilities of world generation. 
+
+-Season variation is basically the axial tilt of the planet + your latitude, determining the variation in temperature for each season. 
+
+ -There is also a point system when embarking that depends on the chosen parameters, points can be spent to buy starting resources as well.
+
+ Starting conditions
+
+[img]
+
+ -The political status is an interesting one, you will be either independent, a governorate (you just pay taxes), a vassal (you pay taxes and must deliver to some tasks and more obligations) and a subjugated colony where you are under the harsh rule of an overlord that will blockade you from any trade and bombard you (still a WIP, for now, I just spawn some asteroids) from orbit from time to time if he feels that you do not obey to his rule ( if you don't pay the monetary and human tax). Also the less dependent you are, the more happiness malus you get from ethics drift. 
+
+-The distance to the core world is the frequency of orbital trade possibility.  And then, let me introduce to the only endgame possibility so far: You will have a chance to be overthrown (game over) each day if the population happiness is very low. Of course, there is some inertia to it and the population has to be unhappy for a certain time before considering freezing you and storing you into the cryogenic museum of disgraced despots.
+
+ Choosing the starting resources cost more points.
+
+[img]
+
+Future
+
+My current focus now is improving the education simulation and finishing the administration and corruption system.
+
+===== [2020-12-25] News about upcoming news =====
+Hey everyone, 
+
+It has been a while since I posted here, the development of Antimatter is steady and I think it is about time to wrap a special update for Christmas.
+
+Many things I developed went ahead of the initial scope, this is usually a scary thing to hear from a solo dev and a sign of endless development limbo, but it is mostly done now, so I won't shy away from showing the new stuff I made.
+
+The title says it all: just wanted to give some news while being extremely busy ;)
+
+See you soon.
+
