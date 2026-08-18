@@ -2713,6 +2713,45 @@ var CAD=(function(){
           drawTarget:drawTarget,applyPlayerCap:applyPlayerCap,scaleFor:scaleFor,
           seed:seed,hashStr:hashStr};
 })();
+var CHRON=(function(){
+  function cap(canon){return ((canon.rules&&canon.rules.cadence)||{}).chronicle_cap||30;}
+  function record(state,lid,rec,canon){
+    var w=state.world;w.chronicle=w.chronicle||{};
+    var list=w.chronicle[lid]=w.chronicle[lid]||[];
+    list.push(rec);while(list.length>cap(canon))list.shift();
+    return rec;}
+  var TITLES={repelled:'The Defense of ',repelled_losses:'The Bloody Defense of ',
+    sacked:'The Sack of ',captured:'The Fall of ',tribute:'The Ransom of ',drama:'The Battle of '};
+  function titleOf(rec,locName){return (TITLES[rec.outcome]||'The Clash at ')+locName;}
+  var OPEN=['{att} came out of the void without herald or parley, and {loc} answered with every gun it had.',
+    'The first warning {loc} had of {att} was the sky going dark.',
+    '{att} moved on {loc} at dawn, banners black against the smoke.'];
+  var MID_A=['The outer line broke twice and was twice retaken, the dead stacked for barricades.',
+    'For a day and a night the issue hung on a single gate, and neither side would give it.',
+    'The defenders fired until the barrels glowed, and still the tide came on.'];
+  var MID_B=['{def} held the inner ring with everything that could still stand.',
+    '{def} counter-charged into the breach, and for an hour the field belonged to no one.',
+    '{def} fell back street by street, selling each one at cost.'];
+  var CLOSE={repelled:'When it ended, {att} was gone and {loc} still stood, barely marked.',
+    repelled_losses:'{att} withdrew at last — but {loc} buried too many to call it clean.',
+    sacked:'{att} took what could be carried and burned what could not. {loc} smoulders.',
+    captured:'By nightfall the banners over {loc} had changed. It belongs to {att} now.',
+    tribute:'No walls fell. The price was counted out at the gate, and {att} turned away.',
+    drama:'The field fell silent at last over {loc}.'};
+  function fill(t,rec,locName){return t.replace(/\{att\}/g,rec.att).replace(/\{def\}/g,rec.def).replace(/\{loc\}/g,locName);}
+  function account(rec,locName,rngFn){
+    var r=rngFn((rec.seed>>>0)^0x5EED);
+    function pick(arr){return arr[Math.floor(r()*arr.length)];}
+    var out=[{who:rec.att,body:fill(pick(OPEN),rec,locName)},
+      {who:rec.def,body:fill(pick(MID_B),rec,locName)},
+      {who:rec.att,body:fill(pick(MID_A),rec,locName)}];
+    if(r()<0.5)out.push({who:rec.def,body:fill(pick(MID_B),rec,locName)});
+    out.push({who:rec.outcome==='repelled'||rec.outcome==='repelled_losses'?rec.def:rec.att,
+      body:fill(CLOSE[rec.outcome]||CLOSE.drama,rec,locName)});
+    out.push({who:'THE RECORD',body:rec.arith});
+    return out;}
+  return {record:record,titleOf:titleOf,account:account};
+})();
 /*</cadence-core>*/
 /*<save-core>*/
 /* Pure, DOM-free save serialization. S/canon arrive as arguments; no globals, no localStorage.
