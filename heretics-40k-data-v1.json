@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.35",
+  "version": "1.36",
   "updated": "2026-08-12",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -1355,6 +1355,17 @@
     "base": 30,
     "days": 7
    }
+  },
+  "cadence": {
+ "note": "T-NPC-3 N2. Shape LOCKED (Daak 2026-08-16/18); every value is a flagged tunable, not final balance.",
+ "p_divisor": 400, "p_floor": 0.005, "p_cap": 0.25,
+ "ferocity_pivot": 50,
+ "matrix_gate": -2, "war_weight": 3,
+ "weakness_pivot": 200, "rift_mult": 2,
+ "invasion_ratio": 2,
+ "player_clock_cap": 2, "drama_cap": 1,
+ "chronicle_cap": 30,
+ "tribute_valuation": {"own_model_mult": 2}
   },
   "doctrine": {
    "styles": {
