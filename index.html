@@ -1892,6 +1892,10 @@ var WORLD=(function(){
     if(comp)lines.push('Over ~'+comp.days+' earlier cycles the frontier settled quietly.');
     events.filter(function(e){return e.kind==='door_built';}).forEach(function(e){
       lines.push('🚪 '+e.planet+' — '+e.doorKind.replace('_',' ')+' rebuilt to Tier '+['','I','II','III'][e.to]+'.');});
+    // T-NPC-3 N2: far-lane aggression — one aggregate line, not one per battle (captures
+    // already reach the World Log via npcCapture's own unshift, so no digest line needed).
+    var farN=events.filter(function(e){return e.kind==='far_battle';}).length;
+    if(farN)lines.push('⚔ '+farN+' battle'+(farN===1?'':'s')+' scorched the far galaxy.');
     var seatEv=events.filter(function(e){return e.kind==='seat_income';});
     if(seatEv.length)lines.push('👑 Your seats paid their dues ('+seatEv.length+' payments).');
     if(events.some(function(e){return e.kind==='seat_unrest'}))lines.push('⚠ An unpaid garrison let a seat decay.');
@@ -2965,6 +2969,7 @@ function foundingWorld(){return {
  stock:{},unrest:{},
  doorTiers:{},doorBuilds:{},locConds:{},condHeal:{},
  work:{},seats:{},seatMiss:{},governor:{},      // T-TERR-2 (standing seeds in commitFounding — needs the faction)
+ chronicle:{},                                  // T-NPC-3 N2: per-location CHRON.record log
  missions:{},missionSeedBase:(Date.now()%2147483647),missionDay:0,   // Missions V2 slice A: founding never gets a reload, so init()'s backfill never fires — seed here too (S.time.epoch isn't in scope yet: commitFounding assigns `world:` before `time:`, so this mirrors init()'s Date.now()-based epoch as closely as scope allows)
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
@@ -4175,6 +4180,21 @@ function concludeThread(t,oc){
  _ultRestoreCond(t);
  S.world.log=S.world.log||[];
  S.world.log.unshift(nowStamp()+' — '+t.n+' concluded: '+(oc.kind==='accord'?'accord struck':mineWon?'victory':oc.victor?('defeat — '+oc.victor+' holds the field'):'mutual ruin')+'.');
+ // T-NPC-3 N2 step 6: chronicle back-fill for a player-fought combat outcome at a location.
+ // Simplified mapping (a generic thread has no clean pre-assigned attacker/defender role,
+ // unlike an Ultimatum): treat the player's own side as the chronicle "defender" and the
+ // other force as the "attacker" — mineWon -> 'repelled' (the defender held the ground),
+ // otherwise -> 'sacked' (the attacker took it). oc.victor is unset for accord/mutual, so
+ // this only fires for a decisive combat conclusion (withdrawal or annihilation).
+ if(t.pl&&t.lid&&oc.victor){
+  var _cday=WORLD.dayIndexAt(S,D,Date.now());
+  CHRON.record(S,t.lid,{day:_cday,kind:'thread',
+    att:mineWon?((oc.defeated||[]).join(', ')||'the enemy'):oc.victor,
+    def:mineWon?oc.victor:((oc.defeated||[]).join(', ')||'your forces'),
+    outcome:mineWon?'repelled':'sacked',
+    arith:t.n+' ('+t.id+') — '+(mineWon?oc.victor+' held the field':oc.victor+' took the field'),
+    seed:ULT.seedFor(S.world.missionSeedBase,_cday,t.lid,t.id)},D);
+ }
  persist();
 }
 /* ── T-TERR-1 slice B: territory. Canon rulers are the baseline map; the save-state
@@ -4215,6 +4235,7 @@ function resolveUltLapses(nowMs,capDay){
   if(capped){if(!(u.expiresDay<capDay))return;}
   else{if(u.expiresDay>today)return;}
   var fp=fPl(t.pl),l=fLoc(t.pl,t.lid);if(!fp||!l)return;
+  var defFacName=(pRuler(fp.p)||{}).faction||'the garrison';    // N2: read BEFORE any ruler change below
   var att=0;(t.forces||[]).forEach(function(fn){var f=S.forces.filter(function(x){return x.n===fn})[0];if(f)att+=fpc(f);});
   if(!att)att=1;                                             // an abandoned thread still resolves
   var def=Math.round(ULT.garrisonPC(l.level,u.prev,stationedPCAt(t.lid),D)*((D.rules.ultimatum||{}).defender_mult||1.25));
@@ -4270,6 +4291,12 @@ function resolveUltLapses(nowMs,capDay){
     res.arith+=' · garrison: '+_hits.reduce(function(s,h){return s+h.hit;},0)+' wounds, '+_downed.length+' down';
    }
   }
+  // T-NPC-3 N2 step 6: chronicle back-fill — write BEFORE captureOnVictory so defFacName
+  // (captured above, pre-ruler-change) is the actual pre-battle defender.
+  CHRON.record(S,t.lid,{day:u.expiresDay,kind:'lapse',
+    att:(FAC(u.aggressor)||{}).name||u.aggressor,def:defFacName,
+    outcome:res.outcome,arith:res.arith,
+    seed:ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,u.aggressor)},D);
   /* T-TERR-2 task 6 + final review FIX I3: the seat sweep no longer lives here — it hangs off
      the RULER CHANGE itself, inside captureOnVictory (spec §3.1), so every capture path
      (this lapse, a battle victory, anything N2 adds) sweeps identically. */
@@ -4283,6 +4310,73 @@ function resolveUltLapses(nowMs,capDay){
   out.push({kind:'ult_lapse',loc:l.name,planet:fp.p.name,outcome:res.outcome,arith:res.arith});
  });
  if(out.length&&!capped)persist();
+ return out;
+}
+/* T-NPC-3 N2 task 5 (stub for THIS task — task 4 wires the far lane only): the near lane
+   (a real player-facing Ultimatum clock minted by an NPC aggressor) is Task 5's work. For
+   now this never mints — npcAggression below still runs its full counting/candidate logic
+   around the call (so the player-clock cap is correct once this stub is replaced), it just
+   doesn't produce a live thread yet. */
+function mintNpcClock(c,agg,scale,muster,day){return {kind:'near_clock_stub'};}
+/* N2: one seeded raid resolved instantly (no Ultimatum thread, no player-facing clock) —
+   mirrors resolveUltLapses' own condition-ladder + capture + chronicle writes so a far-lane
+   battle and a lapsed near-lane clock read identically in the World Log / chronicle. */
+function resolveFarBattle(c,agg,scale,muster,day){
+ var base=S.world.missionSeedBase||1;
+ var def=Math.round(c.garrisonPC*((D.rules.ultimatum||{}).defender_mult||1.25));
+ var r=ULT.rng(ULT.seedFor(base,day,c.lid,'far:'+agg));
+ var res=ULT.resolveLapse(muster,def,scale==='INVASION'?'invasion':'raid',r,D);
+ var defFacName=(pRuler(c.planet)||{}).faction||'the garrison';
+ // condition ladder, same writes as the lapse site (mirrors resolveUltLapses)
+ var prev=effCond(c.loc),end=prev;
+ if(res.outcome==='repelled_losses'||res.outcome==='sacked')end=ULT.stepDown(prev);
+ if(end!==prev){S.world.locConds=S.world.locConds||{};S.world.locConds[c.lid]=end;}
+ if(res.outcome==='captured')npcCapture(c.pid,agg,'a '+scale.toLowerCase()+' out of the void');
+ var rec=CHRON.record(S,c.lid,{day:day,kind:'far',att:(FAC(agg)||{}).name||agg,
+   def:defFacName,outcome:res.outcome,arith:res.arith,
+   seed:ULT.seedFor(base,day,c.lid,'far:'+agg)},D);
+ S.world.log=S.world.log||[];
+ S.world.log.unshift(nowStamp()+' — WAR: '+CHRON.titleOf(rec,c.loc.name)+' — '+res.arith);
+ return {kind:'far_battle',loc:c.loc.name,outcome:res.outcome,att:rec.att};
+}
+/* T-NPC-3 N2: one cadence pass for ONE absolute day index. Runs inside init()'s per-day loop,
+   interleaved with lapses/heal/seat passes — chunk-independent by construction (every seed
+   below derives from missionSeedBase ⊕ day ⊕ stable ids, never Date.now()). */
+function npcAggression(day){
+ var out=[],base=S.world.missionSeedBase||1;
+ var activePlayerClocks=S.threads.filter(function(t){return t.ultimatum&&!t.done&&t.npcClock;}).length;
+ D.galaxy.segmentums.forEach(function(g){g.zones.forEach(function(z){z.sectors.forEach(function(sec){
+  var sc=liveScores(sec.id),conflict=sc?sc.conflict:10;
+  if(!CAD.rollDay(sec.id,day,base,conflict,ULT.rng,D))return;
+  // factions present: planet rulers in this sector
+  var present={},cands=[];
+  (sec.planets||[]).forEach(function(p){
+   var r=pRuler(p);if(!r||!r.faction)return;
+   var f=facByName(r.faction);if(!f)return;
+   if(!present[f.id])present[f.id]={facId:f.id,
+     ferocity:THREAD.AXES.rollFor(f.id,'cadfer:'+sec.id,D).ferocity};
+   (p.locations||[]).forEach(function(l){
+    if(l.tier==='orbit')return;
+    var mine=(S.world.holdings||[]).indexOf(p.id)>=0||!!(S.world.seats&&S.world.seats[l.id]);
+    cands.push({key:l.id,pid:p.id,lid:l.id,facId:f.id,isPlayer:mine,
+      garrisonPC:ULT.garrisonPC(l.level,effCond(l),stationedPCAt(l.id),D),
+      crossRift:false,isPlanet:true,loc:l,planet:p});});});
+  var pl=Object.keys(present).map(function(k){return present[k];});
+  var agg=CAD.pickAggressor(pl,day,base,sec.id,ULT.rng,D);
+  if(!agg)return;
+  // cross-rift flag now that we know the aggressor's side — via the RIFT core's own
+  // sideOf (keyed on faction NAME, not id), never allegiance guesswork.
+  var aggFac=FAC(agg),aggSide=aggFac?RIFT.sideOf(aggFac.name,D):null;
+  cands.forEach(function(c){c.crossRift=!!(c.planet.rift&&aggSide&&c.planet.rift!==aggSide);});
+  var legal=CAD.legalTargets(agg,cands.filter(function(c){return !activeUltAt(c.lid);}),D);
+  var drawn=CAD.drawTarget(legal,ULT.rng,CAD.seed(base,day,'tgt:'+sec.id));
+  drawn=CAD.applyPlayerCap(legal,drawn,activePlayerClocks,D);
+  if(!drawn)return;
+  var muster=Math.round(drawn.garrisonPC*(0.8+1.6*ULT.rng(CAD.seed(base,day,'mus:'+sec.id+':'+agg))()));
+  var scale=CAD.scaleFor(muster,drawn.garrisonPC,drawn.isPlanet,D);
+  if(drawn.isPlayer){activePlayerClocks++;out.push(mintNpcClock(drawn,agg,scale,muster,day));}
+  else out.push(resolveFarBattle(drawn,agg,scale,muster,day));
+ });});});
  return out;
 }
 /* T-NPC-3 N1 task 6: TRIBUTE — the third answer to a live Ultimatum (fight, ignore/lapse,
@@ -4319,6 +4413,12 @@ function acceptTribute(t){
    +(freed?' + '+freed.n.split(',')[0]+' returned to the ranks':'')+'. The siege lifts.'});
  S.world.log=S.world.log||[];
  S.world.log.unshift(nowStamp()+' — TRIBUTE accepted at '+((fLoc(t.pl,t.lid)||{}).name||t.loc)+': '+offer.cur+' '+curName()+' + peace.');
+ // T-NPC-3 N2 step 6: chronicle back-fill — the tribute payer (aggressor) vs the planet's ruler
+ CHRON.record(S,t.lid,{day:WORLD.dayIndexAt(S,D,Date.now()),kind:'tribute',
+   att:(FAC(u.aggressor)||{}).name||u.aggressor,
+   def:((pRuler((fPl(t.pl)||{}).p))||{}).faction||'the defenders',
+   outcome:'tribute',arith:offer.cur+' '+curName()+_tribResLine(offer.res)+' paid — the siege lifts.',
+   seed:ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,'tribute:'+u.aggressor)},D);
  persist();
  T('🕊 Tribute accepted — the siege lifts.');
  rW();rRos();openT(t.id);
@@ -4444,6 +4544,27 @@ function sweepSeatsOn(pid){
   S.world.log=S.world.log||[];
   S.world.log.unshift(nowStamp()+' — SEAT LOST: the fall of the planet swept it away.');});
 }
+/* T-NPC-3 N2: ruler transfer for ANY victor (captureOnVictory stays the player-facing
+   wrapper below — paired with it, never call both on the same event: npcCapture REMOVES
+   pid from S.world.holdings/governor (the player is LOSING the planet), captureOnVictory
+   ADDS it (the player is TAKING the planet). Writes the overlay, fires the seat sweep
+   (T-TERR-2), logs. */
+function npcCapture(pid,facId,viaText){
+ var fp=fPl(pid);if(!fp)return;
+ var f=FAC(facId);if(!f)return;
+ var cur=pRuler(fp.p);if(cur&&cur.faction===f.name)return;
+ S.world.rulers=S.world.rulers||{};
+ S.world.rulers[pid]={allegiance:f.allegiance,faction:f.name};
+ // losing the planet costs the PLAYER its holding/governor row if it was theirs
+ var ix=(S.world.holdings||[]).indexOf(pid);
+ if(ix>=0){S.world.holdings.splice(ix,1);delete (S.world.governor||{})[pid];}
+ sweepSeatsOn(pid);
+ S.world.log=S.world.log||[];
+ S.world.log.unshift(nowStamp()+' — CONQUEST: '+fp.p.name+' falls to '+f.name+(viaText?(' — '+viaText):'')+'.');
+}
+/* T-NPC-3 N2: paired with npcCapture above — this is the player-facing capture (ADDS pid
+   to holdings), npcCapture is the NPC-facing capture (REMOVES pid from holdings). Never
+   call both for the same event. */
 function captureOnVictory(t,oc,mineWon){
  var cap=(D.rules.territory&&D.rules.territory.capture)||{thread_type:'INVASION'};
  if(!mineWon||!t.pl||t.type!==cap.thread_type)return;
@@ -5478,6 +5599,7 @@ function init(){
   if(!S.world.seats)S.world.seats={};
   if(!S.world.seatMiss)S.world.seatMiss={};                              // T-TERR-2 fix round 1: older saves
   if(!S.world.governor)S.world.governor={};                              // T-TERR-2 task 7: older saves
+ if(!S.world.chronicle)S.world.chronicle={};                            // T-NPC-3 N2: older saves
   if(!S.progress)S.progress={streaks:{}};                                 // T-MSN-1C task 4: older saves
   // final review FIX I1: seat tax + garrison upkeep moved INTO the pure per-day pass
   // (WORLD.seatDay, run by stepDay right after produce) so currency-coupled seat flows
@@ -5492,6 +5614,10 @@ function init(){
   var _startDay=WORLD.dayIndexAt(S,D,Date.now())-_wc.ticks;
   for(var _db=0;_db<_wc.ticks;_db++){
     resolveUltLapses(Date.now(),_startDay+_db+1).forEach(function(e){_wc.events.push(e);});
+    // T-NPC-3 N2 task 4: far-lane aggression — one seeded cadence pass per absolute day
+    // index, interleaved right after that day's lapse resolution (same discipline: a
+    // 30-day catch-up chunk and 30 separate daily boots must tell the identical story).
+    npcAggression(_startDay+_db+1).forEach(function(e){_wc.events.push(e);});
     DOOR.tickBuilds(S).forEach(function(f){
     var _fl=lById(f.loc);
     _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});
