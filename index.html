@@ -2666,6 +2666,54 @@ var SEAT=(function(){
           buyoutPrice:buyoutPrice};
 })();
 /*</seat-core>*/
+/*<cadence-core>*/
+/* T-NPC-3 N2 — aggression cadence. Pure + DOM-free; rng arrives as an argument
+   (glue passes ULT.rng); seeds ride absolute day indices — chunk-independent. */
+var CAD=(function(){
+  function C(canon){return (canon.rules&&canon.rules.cadence)||{};}
+  function hashStr(s){var h=2166136261;for(var i=0;i<s.length;i++){
+    h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+  function seed(base,day,tag){return ((base>>>0)^(day*2654435761)^hashStr(tag))>>>0;}
+  function pOf(conflict,canon){var c=C(canon);
+    return Math.min(c.p_cap||0.25,Math.max(c.p_floor||0.005,(conflict||0)/(c.p_divisor||400)));}
+  function rollDay(sectorId,day,seedBase,conflict,rngFn,canon){
+    return rngFn(seed(seedBase,day,'cad:'+sectorId))()<pOf(conflict,canon);}
+  function pickAggressor(present,day,seedBase,sectorId,rngFn,canon){
+    if(!present||!present.length)return null;
+    var piv=C(canon).ferocity_pivot||50,tot=0,ws=present.map(function(p){
+      var w=Math.min(2,Math.max(0.2,(p.ferocity!=null?p.ferocity:50)/piv));tot+=w;return w;});
+    var r=rngFn(seed(seedBase,day,'agg:'+sectorId))()*tot;
+    for(var i=0;i<present.length;i++){r-=ws[i];if(r<=0)return present[i].facId;}
+    return present[present.length-1].facId;}
+  function legalTargets(aggFacId,candidates,canon){
+    var m=(canon.rules&&canon.rules.standing&&canon.rules.standing.matrix)||{};
+    var row=m[aggFacId]||{},c=C(canon),out=[];
+    (candidates||[]).forEach(function(t){
+      if(t.facId===aggFacId)return;
+      var st=row[t.facId];if(st==null||st>(c.matrix_gate!=null?c.matrix_gate:-2))return;
+      var w=(st<=-3?(c.war_weight||3):1);
+      w*=1/Math.max(1,(t.garrisonPC||0)/(c.weakness_pivot||200));
+      if(t.crossRift)w*=(c.rift_mult||2);
+      var o={};for(var k in t)o[k]=t[k];o.w=w;out.push(o);});
+    return out;}
+  function drawTarget(list,rngFn,sd){
+    if(!list||!list.length)return null;
+    var tot=0;list.forEach(function(t){tot+=t.w;});
+    var r=rngFn(sd)()*tot;
+    for(var i=0;i<list.length;i++){r-=list[i].w;if(r<=0)return list[i];}
+    return list[list.length-1];}
+  function applyPlayerCap(list,drawn,activePlayerClocks,canon){
+    if(!drawn)return null;
+    if(!drawn.isPlayer||activePlayerClocks<(C(canon).player_clock_cap||2))return drawn;
+    var best=null;list.forEach(function(t){if(!t.isPlayer&&(!best||t.w>best.w))best=t;});
+    return best;}
+  function scaleFor(musterPC,garrisonPC,isPlanet,canon){
+    return (isPlanet&&musterPC>=(C(canon).invasion_ratio||2)*garrisonPC)?'INVASION':'SKIRMISH';}
+  return {pOf:pOf,rollDay:rollDay,pickAggressor:pickAggressor,legalTargets:legalTargets,
+          drawTarget:drawTarget,applyPlayerCap:applyPlayerCap,scaleFor:scaleFor,
+          seed:seed,hashStr:hashStr};
+})();
+/*</cadence-core>*/
 /*<save-core>*/
 /* Pure, DOM-free save serialization. S/canon arrive as arguments; no globals, no localStorage.
    snapshot() = S -> JSON-safe clone minus circular refs + ephemerals. relink() is the inverse. */
