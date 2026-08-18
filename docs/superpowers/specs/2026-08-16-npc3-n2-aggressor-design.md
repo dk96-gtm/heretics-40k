@@ -51,6 +51,22 @@ Weighted draw over candidate holdings in the firing sector:
 
 **FAR — NPC↔NPC:** resolves INSTANTLY on the tick day it fires (no clock object): attacker muster PC vs `ULT.garrisonPC`, defender ×1.25, N1 outcome ladder, seeded (`day ⊕ holding ⊕ aggressor`). Outcomes write location conditions, sacked loot evaporates into the world (no player credit), and **captures transfer rulers** via a new `npcCapture(pid, faction)` — a generalization of `captureOnVictory` that writes the rulers overlay for ANY victor and fires `sweepSeatsOn` (the dormant sweep goes live: a player's seat on an NPC-lost world falls, with the T-TERR-2 casualty rules if a force was stationed). Digest/World Log carry every resolution with its arithmetic shown.
 
+## 3b. The Chronicle — places remember their wars (Daak ruling 2026-08-18)
+
+**Store the record, render the story.** Every resolution path — near lapse, far NPC↔NPC battle, capture, tribute settlement, drama conclusion — appends a compact record to `S.world.chronicle[locId]`:
+
+```
+{day, kind, att, def, outcome, arith, seed}
+```
+
+**Read:** the location panel's History section lists the location's records newest-first (one line each: name of the clash, day, sides, outcome). Opening a record renders a **full thread-styled war account** — posts from both sides tracing the tide of the fight, the RECORD arithmetic at the bottom — generated deterministically from `record + seed` through templated battle narration. It reads like a concluded public thread but is never stored; the same record always tells the same story, and Stage 3 can re-dress the same records with real AI prose without touching data.
+
+**Remember:** NPCs at a location get its recent chronicle records injected into their context (approach-in-person and comms lines) via the existing NPCAI tiered-memory seam — what happened at a place is a fact its people speak from.
+
+**Cap:** `chronicle_cap` (default 30) records per location, oldest evicted — the T-LORE-1 "memory fades" design later replaces blunt eviction with eclipse/rumor mechanics over this same ledger. Dramas remain real threads while live; their conclusion writes a chronicle record like every other resolution.
+
+New save-state: `S.world.chronicle` (seeded in BOTH `foundingWorld()` and `init()`).
+
 ## 4. Player-side tribute (full palette)
 
 When defending a clocked holding, the player assembles an offer from four sources:
@@ -76,13 +92,14 @@ When a FAR event lands on a **crown or story-flagged location** and no drama is 
 
 **Canon `rules.cadence`:** `p_divisor: 400`, `p_floor: 0.005`, `p_cap: 0.25`, `ferocity_pivot: 50`, `matrix_gate: -2`, `war_weight: 3`, `weakness_pivot: 200`, `rift_mult: 2`, `invasion_ratio: 2`, `player_clock_cap: 2`, `drama_cap: 1` + `tribute_valuation` (sell-rate source, pc-derived items, captive `own_model_mult: 2`). ALL flagged tunables.
 
-**Save-state:** `S.world.drama` (nullable pointer, seeded in BOTH `foundingWorld()` and `init()`). No other new keys — far churn is stateless (seeded per day), player-facing clocks are threads.
+**Save-state:** `S.world.drama` (nullable pointer) + `S.world.chronicle` (per-location record lists, §3b) — both seeded in BOTH `foundingWorld()` and `init()`. Far churn itself is stateless (seeded per day); player-facing clocks are threads. Canon gains `rules.cadence.chronicle_cap: 30`.
 
 ## 8. Tests
 
 - Pure `/*<cadence-core>*/` (CAD): `roll(sector, day, seedBase, canon)`, `pickAggressor`, `pickTarget`, `scaleOf`, `npcMusterPC` — seeded, chunk-independent (13 daily === one 13-day), node-tested.
 - Guards: imperial↔imperial never fires (property test over the matrix); throttle invariants (never >2 player clocks, never >1 drama); weakness monotonicity (more stationed PC → lower weight).
 - `npcCapture` + `sweepSeatsOn` integration; player-side tribute valuation math; drama driver on fixtures (auto-deploy → npcTurn exchanges → outcome feeds resolution).
+- Chronicle: every resolution path writes a record (property test over all kinds); cap eviction; account rendering is deterministic (same record+seed → identical text) and DOM-free in the pure core.
 - Browser E2E per engine task, 0 console errors.
 
 ## 9. Seams & out of scope
