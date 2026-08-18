@@ -1365,7 +1365,7 @@
  "invasion_ratio": 2,
  "player_clock_cap": 2, "drama_cap": 1,
  "chronicle_cap": 30,
- "tribute_valuation": {"own_model_mult": 2}
+ "tribute_valuation": {"own_model_mult": 2, "demand_mult": 1.2}
   },
   "doctrine": {
    "styles": {

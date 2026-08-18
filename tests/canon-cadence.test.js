@@ -18,6 +18,7 @@ test('rules.cadence exists with the locked N2 shape', () => {
   assert.strictEqual(c.drama_cap, 1);
   assert.strictEqual(c.chronicle_cap, 30);
   assert.strictEqual(c.tribute_valuation.own_model_mult, 2);
+  assert.strictEqual(c.tribute_valuation.demand_mult, 1.2);
 });
 
 test('meta.version is 1.36', () => {

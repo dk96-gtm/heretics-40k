@@ -2581,10 +2581,28 @@ var ULT=(function(){
     var prag=(behavior&&behavior.pragmatism!=null)?behavior.pragmatism:50;
     var will=0.6*(appetite||0)+0.4*prag;
     return (will/100)*(0.9+0.2*r())>=(mult-0.5)/2;}
+  /* T-NPC-3 N2 task 6: PLAYER-SIDE tribute eval — the mirrored direction of evalCounter above.
+     There the NPC decides whether to MEET the player's counter-multiplier; here the NPC decides
+     whether to ACCEPT the player's offer outright, counter it upward once, or refuse it flat.
+     Pure + seeded, same discipline as every other ULT function: offerValue/demandValue arrive
+     pre-totaled (currency + resources + gear, all valued by the glue layer — this core has no
+     opinion on sell rates or pc lookups). Mirrors evalCounter's own will formula (0.6*appetite +
+     0.4*pragmatism) to PICK a multiplier from rules.ultimatum.tribute.counter_options rather than
+     to evaluate one: a lenient/pragmatic aggressor settles for the smaller multiplier (first in
+     the list), a stingy one holds out for the larger (last in the list). */
+  function evalPlayerTribute(offerValue,demandValue,behavior,appetite,r,canon){
+    if(offerValue>=demandValue)return {result:'accept'};
+    if(offerValue<demandValue/1.5)return {result:'refuse'};
+    var opts=((U(canon).tribute||{}).counter_options)||[1.5,2];
+    var prag=(behavior&&behavior.pragmatism!=null)?behavior.pragmatism:50;
+    var will=0.6*(appetite||0)+0.4*prag;
+    var lenient=((will/100)*(0.9+0.2*r()))>=0.5;
+    var mult=lenient?opts[0]:opts[opts.length-1];
+    return {result:'counter',mult:mult,counterDemand:Math.round(demandValue*mult)};}
   return {rng:rng,hashStr:hashStr,scaleOf:scaleOf,bandOf:bandOf,pickWindow:pickWindow,
           stepDown:stepDown,stepUp:stepUp,garrisonMult:garrisonMult,garrisonPC:garrisonPC,
           seedFor:seedFor,resolveLapse:resolveLapse,lootOf:lootOf,healTick:healTick,
-          tributeOffer:tributeOffer,evalCounter:evalCounter};
+          tributeOffer:tributeOffer,evalCounter:evalCounter,evalPlayerTribute:evalPlayerTribute};
 })();
 /*</agency-core>*/
 /*<seat-core>*/
@@ -4630,6 +4648,228 @@ function ultTributePanel(t){
  panel.appendChild(row);
  return panel;
 }
+/* T-NPC-3 N2 task 6: PLAYER-SIDE tribute palette — the mirrored direction of the tribute block
+   above. There: the player attacks, seedCombat's t.ultimatum.offer is a seeded pre-set the NPC
+   DEFENDERS put on the table (acceptTribute/declineTribute/counterTribute/ultTributePanel).
+   Here: an NPC-initiated npcClock (mintNpcClock) besieges a PLAYER holding — t.ultimatum.offer
+   stays null on that shape by design (see the comment at mintNpcClock), because this direction's
+   offer is the player's own to BUILD, not read. A draft lives at t._ptrib (mirrors t._bf/t._bfd's
+   own transient-scratch-on-the-thread convention) — {cur, res:{Food,Material,Fuel}, items:{idx:true}}
+   keyed by raw S.inv index (stable across a render pass; no concurrent S.inv mutation happens
+   while this panel is open).
+   Valuation (design spec §4 table): currency 1:1; planet stock at the tier-1 Exchange sell rate
+   (a stated, deliberately conservative choice — a live door tier needs doorTierAt's full
+   population/type lookup, and the number is only ever a fog-hint to the player anyway, never
+   shown outright); gear items at their own pc (the SAME pc doorCatalog's sell-price fallback
+   derives at ~6296 — not the 0.6 shop-sell discount: a tribute is a bribe, not a store
+   transaction); CAPTIVE/REMAINS at pc × own_model_mult when the held model's own faction
+   (it.ref.faction — genHostCombatants stamps this as the faction ID, matching u.aggressor's own
+   shape one-for-one, no name lookup needed) is the aggressor's own kin. */
+function _pTribSellPerUnit(){
+ var r=DOOR.exchangeRates(1,D);            // tier-1 rates — stated choice, see block comment above
+ return r.lot?(r.sell/r.lot):0;
+}
+function _pTribValCanon(){return (D.rules.cadence&&D.rules.cadence.tribute_valuation)||{};}
+function _pTribItemValue(it,aggFacId){
+ if(it.cat==='CAPTIVE'||it.cat==='REMAINS'){
+  var pc=(it.ref&&it.ref.pc)||6;
+  var own=!!(it.ref&&it.ref.faction&&it.ref.faction===aggFacId);
+  var mult=own?(_pTribValCanon().own_model_mult||2):1;
+  return Math.round(pc*mult);
+ }
+ var pc=it.pc||0;if(!pc){var c=doorCatalog('shop').concat(doorCatalog('altar')).filter(function(x){return x.n===it.n})[0];pc=c?c.pc:6}
+ return pc;
+}
+/* Demand = ULT.tributeOffer's own seeded sizing (same shape the N1 direction uses), totalized
+   (cur + res valued at the same per-unit sell rate as the offer builder) × demand_mult — the
+   aggressor asks MORE than a defender would ever offer. Seed tag 'pdem:' keeps this roll
+   distinct from every other Ultimatum stream keyed off this clock (tribute:/counter:/win:/wl:). */
+function _pTribDemand(t){
+ var u=t.ultimatum;if(!u)return 0;
+ var pl=fPl(t.pl).p,l=lById(t.lid);
+ var base=S.world.missionSeedBase||1;
+ var r=ULT.rng(ULT.seedFor(base,u.expiresDay,t.lid,'pdem:'+u.aggressor));
+ var off=ULT.tributeOffer(l?l.level:1,pl.prod_mult||1,u.scale,r,D);
+ var perUnit=_pTribSellPerUnit();
+ var resVal=((off.res.Food||0)+(off.res.Material||0)+(off.res.Fuel||0))*perUnit;
+ var dm=_pTribValCanon().demand_mult||1.2;
+ return Math.round((off.cur+resVal)*dm);
+}
+/* the value of a live draft {cur,res,items} — same per-unit/pc math as the demand side, so
+   offerValue and demandValue are apples-to-apples. */
+function _pTribOfferValue(draft,aggFacId){
+ var perUnit=_pTribSellPerUnit();
+ var v=draft.cur||0;
+ ['Food','Material','Fuel'].forEach(function(k){v+=(draft.res[k]||0)*perUnit;});
+ Object.keys(draft.items||{}).forEach(function(idx){
+  if(!draft.items[idx])return;var it=S.inv[+idx];if(!it)return;
+  v+=_pTribItemValue(it,aggFacId);
+ });
+ return Math.round(v);
+}
+/* atomic transfer: verify affordability against LIVE state first (defense in depth — the UI
+   already bounds every input, but S.cur/stock/S.inv can drift between render and click), then
+   apply in one pass. Returns false (nothing moved) on any shortfall. */
+function _pTribTransfer(t,final){
+ var stock=stockOf(t.pl);
+ if((final.cur||0)>(S.cur||0))return false;
+ var resOk=['Food','Material','Fuel'].every(function(k){return (final.res&&final.res[k]||0)<=(stock[k]||0);});
+ if(!resOk)return false;
+ var idxs=Object.keys(final.items||{}).filter(function(k){return final.items[k];}).map(Number);
+ if(idxs.some(function(i){return !S.inv[i];}))return false;
+ S.cur=(S.cur||0)-(final.cur||0);
+ var spend={};['Food','Material','Fuel'].forEach(function(k){spend[k]=(final.res&&final.res[k])||0;});
+ spendStock(t.pl,spend);
+ idxs.sort(function(a,b){return b-a;}).forEach(function(i){S.inv.splice(i,1);});   // high→low so earlier indices stay valid mid-splice
+ return true;
+}
+function _pTribConclude(t,final){
+ var u=t.ultimatum;
+ _ultRestoreCond(t);
+ t.done={kind:'tribute',victor:'accord',at:Date.now()};
+ var itemNames=Object.keys(final.items||{}).filter(function(k){return final.items[k];})
+   .map(function(k){var it=S.inv[+k];return it?it.n:null;}).filter(Boolean);
+ var resLine=_tribResLine(final.res||{});
+ var itemsLine=itemNames.length?(' + '+itemNames.join(', ')):'';
+ if(!t.posts)t.posts=[];
+ t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+  body:'🕊 TRIBUTE PAID — '+(final.cur||0)+' '+curName()+resLine+itemsLine+'. The siege lifts.'});
+ S.world.log=S.world.log||[];
+ S.world.log.unshift(nowStamp()+' — TRIBUTE paid at '+((fLoc(t.pl,t.lid)||{}).name||t.loc)+': '+(final.cur||0)+' '+curName()+resLine+itemsLine+'.');
+ CHRON.record(S,t.lid,{day:WORLD.dayIndexAt(S,D,Date.now()),kind:'tribute',
+   att:(FAC(u.aggressor)||{}).name||u.aggressor,
+   def:(pRuler((fPl(t.pl)||{}).p)||{}).faction||'the defenders',
+   outcome:'tribute',arith:(final.cur||0)+' '+curName()+resLine+itemsLine+' paid — the siege lifts.',
+   seed:ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,'ptrib:'+u.aggressor)},D);
+ persist();
+ T('🕊 Tribute accepted — the siege lifts.');
+ rW();rRos();openT(t.id);
+}
+function _pTribAccept(t,final){
+ if(!_pTribTransfer(t,final)){
+  if(!t.posts)t.posts=[];
+  t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:'The offer could not be honored — funds or stock had already moved. Nothing was taken.'});
+  persist();openT(t.id);return;
+ }
+ _pTribConclude(t,final);
+}
+function playerTributeSubmit(t){
+ var u=t.ultimatum;if(!u||t.done||!t.npcClock||u.pOfferState==='countered')return;
+ var draft=t._ptrib=t._ptrib||{cur:0,res:{Food:0,Material:0,Fuel:0},items:{}};
+ var stock=stockOf(t.pl);
+ var cur=Math.max(0,Math.min(draft.cur||0,S.cur||0));
+ var res={};['Food','Material','Fuel'].forEach(function(k){res[k]=Math.max(0,Math.min(draft.res[k]||0,stock[k]||0));});
+ var items={};Object.keys(draft.items||{}).forEach(function(k){if(draft.items[k]&&S.inv[+k])items[k]=true;});
+ var offerValue=_pTribOfferValue({cur:cur,res:res,items:items},u.aggressor);
+ var demand=_pTribDemand(t);
+ var base=S.world.missionSeedBase||1;
+ var beh=THREAD.AXES.rollFor(u.aggressor,'ptrib:'+u.aggressor+':'+t.lid,D);
+ var appetite=(((D.rules.ultimatum||{}).tribute||{}).faction_appetite||{})[u.aggressor]||0;
+ var er=ULT.rng(ULT.seedFor(base,u.expiresDay,t.lid,'peval:'+u.aggressor));
+ var ev=ULT.evalPlayerTribute(offerValue,demand,beh,appetite,er,D);
+ if(!t.posts)t.posts=[];
+ var aggName=(FAC(u.aggressor)||{}).name||'the aggressor';
+ if(ev.result==='accept'){
+  _pTribAccept(t,{cur:cur,res:res,items:items});
+  return;
+ }
+ if(ev.result==='counter'&&!u.pCountered){
+  u.pCountered=true;u.pOfferState='countered';
+  var perUnit=_pTribSellPerUnit(),resValue=0;
+  ['Food','Material','Fuel'].forEach(function(k){resValue+=(res[k]||0)*perUnit;});
+  var itemsValue=0;Object.keys(items).forEach(function(k){itemsValue+=_pTribItemValue(S.inv[+k],u.aggressor);});
+  u.pCounter={mult:ev.mult,demand:ev.counterDemand,cur:cur,res:res,items:items,
+    resValue:Math.round(resValue),itemsValue:Math.round(itemsValue)};
+  t.posts.push({who:aggName,tag:'',stamp:nowStamp(),
+   body:'⚔ TRIBUTE REJECTED — that offer falls short. '+aggName+' will settle for nothing less than ×'+ev.mult+' the price. Meet their counter, or the clock runs on.'});
+ } else {
+  t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:'The offer is refused — it was never going to be enough. The clock runs on.'});
+ }
+ persist();openT(t.id);
+}
+function acceptCounterTribute(t){
+ var u=t.ultimatum;if(!u||t.done||u.pOfferState!=='countered'||!u.pCounter)return;
+ var c=u.pCounter;
+ var needCur=Math.max(c.cur,Math.round(c.demand-c.resValue-c.itemsValue));
+ if(needCur>(S.cur||0)){T('Not enough '+curName()+' to meet the counter.');return;}
+ _pTribAccept(t,{cur:needCur,res:c.res,items:c.items});
+}
+/* the OFFER TRIBUTE panel — mirrors ultTributePanel's card styling. Fog: the player only ever
+   sees a qualitative "patience" hint (thirds of offerValue/demand), never the demand number
+   itself. Called both from threadView's pre-Lock-In slot (a Force already committed, still in
+   'deploy') and from openT's pre-commit nbox (no Force committed yet — PAY is a real third
+   answer alongside FIGHT/IGNORE, not gated behind joining the fight). */
+function playerTributePanel(t){
+ if(!t.npcClock)return null;
+ var u=t.ultimatum;if(!u||t.done)return null;
+ var panel=E('div','card');panel.style.marginBottom='10px';
+ if(u.pOfferState==='countered'&&u.pCounter){
+  var c=u.pCounter,aggName=(FAC(u.aggressor)||{}).name||'They';
+  var needCur=Math.max(c.cur,Math.round(c.demand-c.resValue-c.itemsValue));
+  var afford=needCur<=(S.cur||0);
+  var itemCt=Object.keys(c.items||{}).filter(function(k){return c.items[k];}).length;
+  panel.innerHTML='<h3>⚔ Counter-demand</h3><div style="font-size:12px;color:var(--dim)">'
+    +aggName+' will settle for nothing less — meet it, or the clock runs on.</div>'
+    +'<div class="d mono" style="margin-top:6px">Requires '+needCur+' '+curName()+_tribResLine(c.res)
+    +(itemCt?' + the goods already offered':'')+'</div>';
+  var row=E('div');row.style.cssText='display:flex;gap:7px;margin-top:9px';
+  var ab=E('button','btn'+(afford?'':' gh'),afford?'Accept counter':'Cannot afford counter');
+  if(!afford)ab.disabled=true;
+  ab.onclick=function(){acceptCounterTribute(t)};row.appendChild(ab);
+  panel.appendChild(row);
+  return panel;
+ }
+ var draft=t._ptrib=t._ptrib||{cur:0,res:{Food:0,Material:0,Fuel:0},items:{}};
+ var stock=stockOf(t.pl);
+ var offerValue=_pTribOfferValue(draft,u.aggressor);
+ var demand=_pTribDemand(t);
+ var hint=offerValue>=demand?'they are all but sold':(offerValue>=demand/1.5?'they are listening':'they will not be bought cheaply');
+ var aggName=(FAC(u.aggressor)||{}).name||'the aggressor';
+ panel.innerHTML='<h3>🕊 Offer tribute</h3><div style="font-size:12px;color:var(--dim)">Buy off '+aggName+' while the clock runs — '+hint+'.</div>';
+ var curRow=E('div');curRow.style.cssText='margin-top:8px';
+ curRow.innerHTML='<label style="font-size:11.5px;color:var(--dim)">Currency (have '+(S.cur||0)+')</label>';
+ // type=text (not number) — matches the armq search-box precedent this oninput pattern is
+ // copied from; a real type=number input throws InvalidStateError on setSelectionRange in
+ // Chromium (caught live in E2E), so text + a digit-only parse is the safe choice here.
+ var curIn=document.createElement('input');curIn.type='text';curIn.inputMode='numeric';
+ curIn.value=String(draft.cur||0);curIn.id='ptrib_cur';curIn.className='mono';curIn.style.cssText='width:100%;margin-top:3px';
+ curIn.oninput=function(){draft.cur=Math.max(0,Math.min(S.cur||0,parseInt(curIn.value,10)||0));
+  var pos=curIn.selectionStart;persist();openT(t.id);
+  var n=document.getElementById('ptrib_cur');if(n){n.focus();n.setSelectionRange(pos,pos)}};
+ curRow.appendChild(curIn);panel.appendChild(curRow);
+ ['Food','Material','Fuel'].forEach(function(k){
+  var have=stock[k]||0;
+  var rRow=E('div');rRow.style.cssText='margin-top:8px';
+  rRow.innerHTML='<label style="font-size:11.5px;color:var(--dim)">'+k+' (have '+have+')</label>';
+  var stepWrap=E('div');stepWrap.style.cssText='display:flex;align-items:center;gap:8px;margin-top:3px';
+  var minus=E('button','btn gh sm','−');var val=E('span','mono',String(draft.res[k]||0));var plus=E('button','btn gh sm','+');
+  minus.onclick=function(){draft.res[k]=Math.max(0,(draft.res[k]||0)-1);persist();openT(t.id);};
+  plus.onclick=function(){draft.res[k]=Math.min(have,(draft.res[k]||0)+1);persist();openT(t.id);};
+  stepWrap.appendChild(minus);stepWrap.appendChild(val);stepWrap.appendChild(plus);
+  rRow.appendChild(stepWrap);panel.appendChild(rRow);
+ });
+ var invRow=E('div');invRow.style.cssText='margin-top:8px';
+ invRow.innerHTML='<label style="font-size:11.5px;color:var(--dim)">Gear / captives / remains</label>';
+ var list=E('div');list.style.cssText='max-height:160px;overflow-y:auto;margin-top:4px';
+ (S.inv||[]).forEach(function(it,idx){
+  var val=_pTribItemValue(it,u.aggressor);
+  var row=E('label');row.style.cssText='display:flex;align-items:center;gap:6px;font-size:11.5px;padding:2px 0';
+  var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!draft.items[idx];
+  cb.onchange=function(){if(cb.checked)draft.items[idx]=true;else delete draft.items[idx];persist();openT(t.id);};
+  row.appendChild(cb);
+  var tag=(it.cat==='CAPTIVE'||it.cat==='REMAINS')?(' <span class="pill">'+it.cat+'</span>'):'';
+  row.appendChild(E('span',null,esc(it.n)+' <span class="mono" style="color:var(--dim)">('+val+')</span>'+tag));
+  list.appendChild(row);
+ });
+ if(!(S.inv||[]).length)list.innerHTML='<div class="d" style="color:var(--dim)">Nothing held.</div>';
+ invRow.appendChild(list);panel.appendChild(invRow);
+ var sumRow=E('div');sumRow.style.cssText='margin-top:9px;font-size:12px';
+ sumRow.innerHTML='Offer total: <b class="mono">'+offerValue+'</b>';
+ panel.appendChild(sumRow);
+ var sb=E('button','btn','Offer tribute');sb.style.cssText='width:100%;margin-top:8px';
+ sb.onclick=function(){playerTributeSubmit(t)};panel.appendChild(sb);
+ return panel;
+}
 /* T-DOOR-1: effective tier of a door at a location — sparse overlay over the derived seed */
 function tombDormant(pl){var f2=fPl(pl.id);var sc=f2&&liveScores(f2.s.id);return DOOR.tombDormant(pl.type,!!pl.crown,sc?sc.conflict:null,D)}
 function popBandIdx(v){var P=D.galaxy.population_ranks;if(!P)return 0;for(var i=P.bands.length-1;i>=0;i--)if(v>=P.bands[i][0])return i;return 0}
@@ -4759,6 +4999,9 @@ if(t){
     nbox.appendChild(cb);});
   }
   V.appendChild(nbox);
+  // T-NPC-3 N2 task 6: PAY is a real third answer (FIGHT/PAY/IGNORE, design spec §3) — reachable
+  // here too, before any Force is ever committed, not gated behind joining the fight.
+  var _tp=playerTributePanel(t);if(_tp)V.appendChild(_tp);
   var xb1=E('button','btn gh','Leave it to the clock');xb1.style.marginTop='10px';
   xb1.onclick=function(){go('threads');rTL()};V.appendChild(xb1);
  } else threadView(V,t);
@@ -5500,7 +5743,7 @@ function threadView(V,t){
   // wounds/deaths/captures back to S.roster (that's concludeThread's job) — once Lock In starts
   // the fight, buying peace is off the table; gating the panel out of 'battle'/'aftermath'
   // structurally removes the desync path instead of adding a parallel sync path.
-  var tribPanel=(!t.state.phase||t.state.phase==='deploy')?ultTributePanel(t):null;
+  var tribPanel=(!t.state.phase||t.state.phase==='deploy')?(ultTributePanel(t)||playerTributePanel(t)):null;
   if(isCombat){
     if(t.state.board)V.appendChild(t.state.phase==='deploy'?bfDeployUI(t,party):bfCombatUI(t,party));  // E: deploy then D3 battle
     var wrap=E('div','tw');var lf=E('div');lf.appendChild(scroll);if(tribPanel)lf.appendChild(tribPanel);lf.appendChild(comp.el);
