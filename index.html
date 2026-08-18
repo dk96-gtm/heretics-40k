@@ -1896,6 +1896,12 @@ var WORLD=(function(){
     // already reach the World Log via npcCapture's own unshift, so no digest line needed).
     var farN=events.filter(function(e){return e.kind==='far_battle';}).length;
     if(farN)lines.push('⚔ '+farN+' battle'+(farN===1?'':'s')+' scorched the far galaxy.');
+    // T-NPC-3 N2 task 5: near-lane clocks — one line per mint (unlike far_battle's aggregate,
+    // each event names its own faction/location/window, and a real Ultimatum thread now exists
+    // per event, so it is worth surfacing individually rather than folding into one count).
+    events.filter(function(e){return e.kind==='near_clock';}).forEach(function(e){
+      lines.push('⏳ '+e.faction+' has clocked '+e.loc+' — '+e.days+' days.');
+    });
     var seatEv=events.filter(function(e){return e.kind==='seat_income';});
     if(seatEv.length)lines.push('👑 Your seats paid their dues ('+seatEv.length+' payments).');
     if(events.some(function(e){return e.kind==='seat_unrest'}))lines.push('⚠ An unpaid garrison let a seat decay.');
@@ -3090,6 +3096,24 @@ function missionTargetLabel(m){
    missionTarget (optional, T-MSN-1B final fix wave): the accepted instance's rolled
    objective.target — only genHostiles' class-filter branch (kill_team) reads it, to know
    how many matching-class hostiles it must guarantee. */
+/* T-NPC-3 N2 task 5: the host-side spawn logic seedCombat used to build inline, extracted so
+   mintNpcClock can seed an NPC side onto a thread with no player force committed yet (the
+   player joins later via the normal join path — joinNpcClock, below). Byte-identical behavior
+   for seedCombat's own call site (same genHostiles/npcWeaponFor calls, same combatant shape). */
+function genHostCombatants(fac,hostName,mineCount,missionParams,missionTarget){
+ var wep=npcWeaponFor(fac.id),ap=0,C={};
+ var specs=MISSION.genHostiles(missionParams||{},mineCount,fac.models||[],wep,D,missionTarget);
+ specs.forEach(function(spec){
+  var gen={id:spec.id,n:spec.n,cls:spec.cls,pc:spec.pc,spd:spec.spd,sub:spec.sub,sl:spec.sl};
+  if(spec.named)gen.named=true;
+  // T-MSN-1C task 2: stamp the spawning faction id so a 'faction' (votann_grudge) objective
+  // can read victim.gen.faction — genHostiles (pure mission-core) has no faction id to hand
+  // out itself, but fac.id is known right here at the one real spawn call site.
+  if(fac.id)gen.faction=fac.id;
+  C[spec.id]={w:[spec.w,spec.w],conds:[],party:hostName,model:gen,gen:gen,armour:null};
+  ap+=AP(spec.pc);});
+ return {C:C,ap:ap,specs:specs};
+}
 function seedCombat(t,pid,l,npcId,force,missionParams,missionTarget){
  if(!force)return;
  var mine=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'&&m.st!=='TAKEN'});
@@ -3104,21 +3128,21 @@ function seedCombat(t,pid,l,npcId,force,missionParams,missionTarget){
  if(!host){var fr=npcForceAt(pid,l.name);if(fr)host={name:fr.name,faction:npcFactionOf(fr.desc)};}
  var fac=host&&host.faction?facByName(host.faction):null;
  if(!fac)return;                                     // nobody garrisons this ground → social thread
- var wep=npcWeaponFor(fac.id),ap=0;
- var specs=MISSION.genHostiles(missionParams||{},mine.length,fac.models||[],wep,D,missionTarget);
- if(!specs.length)return;
- specs.forEach(function(spec){
-  var gen={id:spec.id,n:spec.n,cls:spec.cls,pc:spec.pc,spd:spec.spd,sub:spec.sub,sl:spec.sl};
-  if(spec.named)gen.named=true;
-  // T-MSN-1C task 2: stamp the spawning faction id so a 'faction' (votann_grudge) objective
-  // can read victim.gen.faction — genHostiles (pure mission-core) has no faction id to hand
-  // out itself, but fac.id is known right here at the one real spawn call site.
-  if(fac.id)gen.faction=fac.id;
-  C[spec.id]={w:[spec.w,spec.w],conds:[],party:host.name,model:gen,gen:gen,armour:null};
-  ap+=AP(spec.pc);});
- pools[host.name]=ap;
+ var g=genHostCombatants(fac,host.name,mine.length,missionParams,missionTarget);
+ if(!g.specs.length)return;
+ for(var k in g.C)C[k]=g.C[k];
+ pools[host.name]=g.ap;
  if(t.forces.indexOf(host.name)<0)t.forces.push(host.name);
  t.seedState={pools:pools,combatants:C,joined:false};
+}
+/* T-NPC-3 N2 task 5: the faction of whichever host seedCombat actually seeded onto a thread —
+   used by startThread's kin-raid floor to target the real opponent fought (a Tyranid squatter
+   at a location on an own-kin-ruled world floors Tyranids, not the kin ruler). null when
+   seedCombat never seeded a host (a social thread) — no floor in that case. */
+function hostFactionOf(t){
+ var C=(t.seedState&&t.seedState.combatants)||{};
+ for(var id in C){var g=C[id].gen;if(g&&g.faction)return g.faction;}
+ return null;
 }
 /* start a thread at a location; a public thread enters the location's history.
    opts (T-MSN-1C final review, Finding 1, optional): {duel:true} from the ARENA door's
@@ -3164,12 +3188,17 @@ function startThread(pid,l,type,npcId,opts){var loc=fPl(pid).p.name+' · '+l.nam
  var key=pid+'/'+l.id;if(!S.world.history[key])S.world.history[key]=[];
  S.world.history[key].unshift(type.toUpperCase()+' — '+type+' at '+l.name+' · ACTIVE (you)');
  T(type+' thread opened at '+l.name+(fname?' — '+fname+' committed':'')+'. Now in the location\'s public record.');
- // T-TERR-2: raising your hand against a ruled world floors standing with its ruler — kin or not
+ // T-NPC-3 N2 task 5: raising your hand against WHOEVER seedCombat actually seeded floors
+ // standing with THAT faction — not necessarily the planet's ruler (T-TERR-2's original block
+ // read pRuler(planet), which is wrong for a Tyranid-squatter location on an own-kin-ruled
+ // world: you're fighting Tyranids there, not your own kin, so Tyranids should floor, not kin).
+ // hostFactionOf reads t.seedState.combatants' gen.faction, stamped by genHostCombatants at the
+ // one real spawn call site inside seedCombat, just called above. No NPC side seeded (a social
+ // thread) → hostFactionOf returns null → no floor.
  if((t.type==='SKIRMISH'||t.type==='INVASION')){
-  var _rl=pRuler(fPl(S.pos.pl).p);
-  if(_rl&&_rl.faction){var _rf=D.factions.filter(function(x){return x.name===_rl.faction})[0];
-   if(_rf){S.world.standing=S.world.standing||{};SEAT.kinRaid(S.world.standing,_rf.id,D);
-    if(_rf.id===S.player.faction)T('⚑ You have raised your hand against your own kin — standing falls to WAR.');}}}
+  var _hf=hostFactionOf(t);
+  if(_hf){S.world.standing=S.world.standing||{};SEAT.kinRaid(S.world.standing,_hf,D);
+   if(_hf===S.player.faction)T('⚑ You have raised your hand against your own kin — standing falls to WAR.');}}
  go('threads');rTL();}
 /* T-MSN-1B task 4: modifier picker. MOD_IDS is the fixed display order (matches the canon
    registry insertion order); MOD_TIP is the plain-language predicate shown as each chip's
@@ -4312,12 +4341,68 @@ function resolveUltLapses(nowMs,capDay){
  if(out.length&&!capped)persist();
  return out;
 }
-/* T-NPC-3 N2 task 5 (stub for THIS task — task 4 wires the far lane only): the near lane
-   (a real player-facing Ultimatum clock minted by an NPC aggressor) is Task 5's work. For
-   now this never mints — npcAggression below still runs its full counting/candidate logic
-   around the call (so the player-clock cap is correct once this stub is replaced), it just
-   doesn't produce a live thread yet. */
-function mintNpcClock(c,agg,scale,muster,day){return {kind:'near_clock_stub'};}
+/* T-NPC-3 N2 task 5: the near lane — a real player-facing Ultimatum thread minted by an NPC
+   aggressor against one of the player's own holdings. t.ultimatum mirrors startThread's own
+   stamp field-for-field (grep t.ultimatum= at ~3145): {scale,windowDays,expiresDay,aggressor,
+   prev,offer,offerState}. offer/offerState stay null — TRIBUTE in this direction (the PLAYER
+   paying the NPC aggressor to lift the siege) is not wired; acceptTribute/ultTributePanel both
+   no-op safely on a null offer, so this is an inert-but-shape-complete field, not a bug.
+   Deterministic off (day,c,agg) only — no Date.now() in any decision, so a clock minted mid-
+   chunk replays identically whether the catch-up runs as one chunk or as separate daily boots. */
+function mintNpcClock(c,agg,scale,muster,day){
+ var fac=FAC(agg);if(!fac)return {kind:'near_clock_stub'};
+ var base=S.world.missionSeedBase||1,lid=c.lid,l=c.loc,pid=c.pid;
+ // seeded warlord identity — same rng/seed discipline as rulerFaceOf, distinct 'wl:' tag so it
+ // never collides with the ruler-face stream even for the same faction+location.
+ var _wr=ULT.rng(ULT.seedFor(base,day,lid,'wl:'+agg));
+ var TITLES={chaos:['Despoiler-Warlord','Blood-Reaver','Iron Marshal','Sorcerer-Raider'],
+   imperial:['Rogue Inquisitor','Warmaster','Excommunicate Lord','Rebel Colonel'],
+   xenos:['Warboss','Kill-Broker','Reaver Prince','Hive Vanguard']};
+ var _tp=TITLES[fac.allegiance]||TITLES.xenos;
+ var NAMES=['Vhorak','Sette','Maulkin','Dravenna','Oskarr','Threx','Iyanna','Ghazkull-Nadd','Calpernia','Vect-Sar'];
+ var warlord=_tp[Math.floor(_wr()*_tp.length)]+' '+NAMES[Math.floor(_wr()*NAMES.length)];
+ var hostName=warlord+"'s host";
+ var loc=c.planet.name+' · '+l.name;
+ var id='ult_'+lid+'_'+S.threads.length;
+ var t={id:id,type:scale,n:scale+' — '+fac.name+' at '+l.name,loc:loc,pl:pid,lid:lid,turn:'them',
+   vis:'public',initiator:warlord+' ('+fac.name+')',
+   about:fac.name+' has issued terms at '+l.name+': submit, pay, or burn.',
+   forces:[],npc:null,npcClock:true};
+ // size the NPC detachment off the muster PC — genHostCombatants/genHostiles' own 2-4 headcount
+ // clamp still applies (no player force exists yet to size mineCount against normally), but a
+ // bigger muster (relative to the faction's average Core model cost) nudges the roll toward the
+ // top of that clamp instead of the bottom.
+ var _corePool=(fac.models||[]).filter(function(m){return m.cls==='Core';});
+ if(!_corePool.length)_corePool=fac.models||[];
+ var avgPc=_corePool.length?(_corePool.reduce(function(s,m){return s+(m.pc||1);},0)/_corePool.length):40;
+ var mineCount=Math.max(2,Math.min(4,Math.round(muster/Math.max(1,avgPc))));
+ var g=genHostCombatants(fac,hostName,mineCount,null,null);
+ if(!g.specs.length)return {kind:'near_clock_stub'};   // faction has no rosters to spawn from — dead code against real canon
+ t.forces.push(hostName);
+ var pools={};pools[hostName]=g.ap;
+ t.seedState={pools:pools,combatants:g.C,joined:false};
+ // Ultimatum stamp — mirror startThread's shape field-for-field. windowDays is picked via
+ // ULT.pickWindow over the AGGRESSOR's own rolled axes (no player picker here — the NPC decides
+ // its own patience, same discipline resolveUltLapses/resolveFarBattle already use elsewhere).
+ var _sc=ULT.scaleOf(scale,D)||'raid';
+ var _band=ULT.bandOf(_sc,D);
+ var _axes=THREAD.AXES.rollFor(agg,'clock:'+lid+':'+day,D);
+ var _wRng=ULT.rng(ULT.seedFor(base,day,lid,'win:'+agg));
+ var _windowDays=ULT.pickWindow(_band,_axes,_wRng);
+ var _prev=effCond(l);                                 // read BEFORE the besieged overlay below
+ t.ultimatum={scale:_sc,windowDays:_windowDays,expiresDay:day+_windowDays,
+   aggressor:agg,prev:_prev,offer:null,offerState:null};
+ S.world.locConds=S.world.locConds||{};S.world.locConds[lid]='besieged';
+ if(!t.posts)t.posts=[];
+ t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+  body:'⏳ ULTIMATUM — '+warlord+' of the '+fac.name+' has clocked '+l.name+'. Submit, pay, or burn — '+_windowDays+' days on the clock.'});
+ S.threads.push(t);
+ var key=pid+'/'+lid;if(!S.world.history[key])S.world.history[key]=[];
+ S.world.history[key].unshift(scale+' — '+fac.name+' has clocked '+l.name+' · ACTIVE ('+fac.name+')');
+ S.world.log=S.world.log||[];
+ S.world.log.unshift(nowStamp()+' — ⏳ '+fac.name+' has clocked '+l.name+' — '+_windowDays+' days.');
+ return {kind:'near_clock',loc:l.name,faction:fac.name,days:_windowDays};
+}
 /* N2: one seeded raid resolved instantly (no Ultimatum thread, no player-facing clock) —
    mirrors resolveUltLapses' own condition-ladder + capture + chronicle writes so a far-lane
    battle and a lapsed near-lane clock read identically in the World Log / chronicle. */
@@ -4617,9 +4702,49 @@ if(t){
   var acc=E('button','btn','Accept mission');acc.style.cssText='width:100%;margin-top:10px';acc.onclick=function(){t.accepted=true;t.turn='you';T('Mission accepted: '+t.n+' — you can post now.');openT(t.id)};
   box.appendChild(acc);V.appendChild(box);
   var xb0=E('button','btn gh','Decline / leave');xb0.style.marginTop='10px';xb0.onclick=function(){exitThread(t)};V.appendChild(xb0);
+ } else if(t.npcClock&&!(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f});})){
+  // T-NPC-3 N2 task 5: mintNpcClock seeds only the NPC side — no player force exists in
+  // t.state.combatants yet. Gate threadView (and its bfSetup call) out entirely until the
+  // player commits: bfSetup assigns deployment zones off whichever parties are present in
+  // t.state.combatants the FIRST time it runs, so calling it before the player joins would
+  // lock in a board with only the NPC side positioned, with no zone ever set for the player.
+  var nbox=E('div','card');nbox.innerHTML='<h3>⏳ '+t.n+'</h3><div class="d" style="margin-bottom:10px">'+(t.about||'')+'</div><div style="font-size:11.5px;color:var(--dim)">Commit a Force to answer this ultimatum in the field — or leave it running; the clock resolves on its own by garrison roll if it expires.</div>';
+  var _idle=S.forces.filter(function(f){return !threadOfForce(f.n)&&!stationedThreadLockOf(f.id);});
+  if(!_idle.length){
+   nbox.insertAdjacentHTML('beforeend','<div class="d" style="margin-top:8px;color:var(--dim)">No idle Force available to commit.</div>');
+  } else {
+   _idle.forEach(function(fc){var cb=E('button','btn','Commit '+fc.n);cb.style.cssText='width:100%;margin-top:6px';
+    cb.onclick=(function(force){return function(){joinNpcClock(t,force)};})(fc);
+    nbox.appendChild(cb);});
+  }
+  V.appendChild(nbox);
+  var xb1=E('button','btn gh','Leave it to the clock');xb1.style.marginTop='10px';
+  xb1.onclick=function(){go('threads');rTL()};V.appendChild(xb1);
  } else threadView(V,t);
 }
 else V.insertAdjacentHTML('beforeend','<div class="empty">Thread not found.</div>');}
+/* T-NPC-3 N2 task 5: the normal join path for an NPC-initiated ultimatum thread — mintNpcClock
+   seeds only the NPC side (no player force exists at mint time); the player commits here,
+   picking an idle Force whose combatants merge into the same t.state.combatants shape seedCombat
+   itself builds, so the board (bfSetup, first called from threadView right after this) sees both
+   sides at once and assigns two real deployment zones. Must run BEFORE the thread is ever handed
+   to threadView — see the openT gate above. */
+function joinNpcClock(t,force){
+ if(threadOfForce(force.n)){T(force.n+' is already committed to another thread.');return}
+ var _slk=stationedThreadLockOf(force.id);
+ if(_slk){T(force.n+' is standing garrison at '+((lById(_slk)||{}).name||_slk)+'. Recall it first.');return}
+ var mine=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'&&m.st!=='TAKEN'});
+ if(!mine.length){T('No living models in '+force.n+'.');return}
+ var st=t.state;st.combatants=st.combatants||{};st.pools=st.pools||{};
+ mine.forEach(function(m){var p=(m.w||'1/1').split('/');
+  st.combatants[m.id]={w:[parseInt(p[0],10)||1,parseInt(p[1],10)||1],conds:[],party:force.n,model:m,
+   armour:(m.loadout&&m.loadout.armour&&m.loadout.armour.it)?m.loadout.armour.it.def:null};});
+ st.pools[force.n]=force.ap;
+ if(t.forces.indexOf(force.n)<0)t.forces.push(force.n);
+ persist();
+ T(force.n+' commits to answer the ultimatum at '+t.loc+'.');
+ openT(t.id);
+}
 /* unified thread spine — header (already appended by openT) + posts + composer, for generic/mission/combat threads */
 function damageOf(item){var m=((item&&item.d)||'').match(/^\s*[A-Za-z]+\s+(\d+)/);return m?parseInt(m[1],10):1;}
 function partyOf(t){
