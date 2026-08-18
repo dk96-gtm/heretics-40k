@@ -4265,8 +4265,14 @@ function resolveUltLapses(nowMs,capDay){
   else{if(u.expiresDay>today)return;}
   var fp=fPl(t.pl),l=fLoc(t.pl,t.lid);if(!fp||!l)return;
   var defFacName=(pRuler(fp.p)||{}).faction||'the garrison';    // N2: read BEFORE any ruler change below
-  var att=0;(t.forces||[]).forEach(function(fn){var f=S.forces.filter(function(x){return x.n===fn})[0];if(f)att+=fpc(f);});
-  if(!att)att=1;                                             // an abandoned thread still resolves
+  // fix round 1 (coordinator, post-Step-4 review): an npcClock stamps its real muster onto
+  // u.attPC at mint time (mintNpcClock) — prefer it when present. Player-initiated clocks never
+  // set attPC, so they fall through to the original t.forces→S.forces sum unchanged, "abandoned
+  // thread" fallback included.
+  var att;
+  if(u.attPC!=null){att=u.attPC;}
+  else{att=0;(t.forces||[]).forEach(function(fn){var f=S.forces.filter(function(x){return x.n===fn})[0];if(f)att+=fpc(f);});
+   if(!att)att=1;}                                            // an abandoned thread still resolves
   var def=Math.round(ULT.garrisonPC(l.level,u.prev,stationedPCAt(t.lid),D)*((D.rules.ultimatum||{}).defender_mult||1.25));
   var r=ULT.rng(ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,u.aggressor));
   // T-NPC-4: the aggressor's rolled personality colors the seeded lapse outcome + loot
@@ -4281,9 +4287,26 @@ function resolveUltLapses(nowMs,capDay){
   else if(end===l.condition)delete S.world.locConds[t.lid];
   else S.world.locConds[t.lid]=end;
   if(res.outcome==='sacked'){var loot=ULT.lootOf(l.level,fp.p.prod_mult||1,r,D,beh);
-   S.cur=(S.cur||0)+loot.cur;
-   if(S.world.holdings.length)addStock(S.world.holdings[0],loot.res);
-   res.arith+=' · loot '+loot.cur+'c';}
+   // fix round 1 (coordinator, post-Step-4 review): u.attPC present ⇒ the NPC is the attacker
+   // and the PLAYER is the defender (an npcClock sacking the player's OWN holding) — the
+   // original unconditional credit-to-S.cur/holdings-stock branch was written back when every
+   // ultimatum was player-initiated (the player as attacker, sacking someone else's ground) and
+   // is backwards here: the player LOSES stores to the raiders, never gains. No NPC-side wallet
+   // exists to receive the loot (mirrors resolveFarBattle, which never pays anyone on a far-lane
+   // capture either — only logs the outcome), so the carried-off amount simply leaves play.
+   if(u.attPC!=null){
+    var _curBefore=S.cur||0;S.cur=Math.max(0,_curBefore-loot.cur);var _curLost=_curBefore-S.cur;
+    var _resLost={Food:0,Material:0,Fuel:0};
+    if(t.pl){var _stk=stockOf(t.pl);
+     ['Food','Material','Fuel'].forEach(function(k){_resLost[k]=Math.min(_stk[k]||0,loot.res[k]||0);});
+     if(_resLost.Food||_resLost.Material||_resLost.Fuel)spendStock(t.pl,_resLost);}
+    res.arith+=' · the raiders carry off '+_curLost+'c'
+     +((_resLost.Food+_resLost.Material+_resLost.Fuel)>0?' + '+_resLost.Food+'F/'+_resLost.Material+'M/'+_resLost.Fuel+'Fu':'');
+   } else {
+    S.cur=(S.cur||0)+loot.cur;
+    if(S.world.holdings.length)addStock(S.world.holdings[0],loot.res);
+    res.arith+=' · loot '+loot.cur+'c';
+   }}
   /* T-TERR-2 table ❸: the stationed force bleeds by outcome — seeded, offscreen, honest.
      final review FIX I3 (ORDERING): this block runs BEFORE captureOnVictory, because the
      seat sweep now lives inside that call and the casualties read
@@ -4328,8 +4351,20 @@ function resolveUltLapses(nowMs,capDay){
     seed:ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,u.aggressor)},D);
   /* T-TERR-2 task 6 + final review FIX I3: the seat sweep no longer lives here — it hangs off
      the RULER CHANGE itself, inside captureOnVictory (spec §3.1), so every capture path
-     (this lapse, a battle victory, anything N2 adds) sweeps identically. */
-  if(res.outcome==='captured')captureOnVictory(t,{kind:'lapse'},true);
+     (this lapse, a battle victory, anything N2 adds) sweeps identically.
+     fix round 1 (coordinator, post-Step-4 review — found while auditing the sacked branch for
+     the same class of bug): captureOnVictory(t,{...},true) hardcodes mineWon=true, i.e. "the
+     PLAYER's side just won" — correct for every player-initiated Ultimatum (the player was
+     always the attacker taking someone else's ground) but backwards for an npcClock capture:
+     the NPC aggressor takes the PLAYER's OWN planet, so the ruler must transfer AWAY from the
+     player. Before this fix, u.attPC!=null still routed through captureOnVictory(...,true),
+     which early-returns the instant cur.faction===me.name (the player already rules it) — a
+     'captured' outcome on an npcClock thread silently transferred nothing at all. Mirrors
+     resolveFarBattle's own capture handling (npcCapture(c.pid,agg,...)) for the near lane. */
+  if(res.outcome==='captured'){
+   if(u.attPC!=null)npcCapture(t.pl,u.aggressor,"the ultimatum's lapse");
+   else captureOnVictory(t,{kind:'lapse'},true);
+  }
   t.done={kind:'ult_lapse',victor:res.outcome==='sacked'||res.outcome==='captured'?'attacker':'defender',at:Date.now()};
   if(!t.posts)t.posts=[];                     // a thread that lapses before ever being opened
   t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
@@ -4390,8 +4425,14 @@ function mintNpcClock(c,agg,scale,muster,day){
  var _wRng=ULT.rng(ULT.seedFor(base,day,lid,'win:'+agg));
  var _windowDays=ULT.pickWindow(_band,_axes,_wRng);
  var _prev=effCond(l);                                 // read BEFORE the besieged overlay below
+ // fix round 1 (coordinator, post-Step-4 review): stamp the real muster PC onto the clock —
+ // resolveUltLapses' own att/def math has no other way to know an NPC-attacker's strength
+ // (t.forces never carries a real S.forces entry for the host side, so its fallback attacker-
+ // PC math would otherwise always read the muster as if it were 1). attPC is ABSENT on every
+ // player-minted clock (startThread never sets it) — resolveUltLapses treats its presence as
+ // the npcClock/player-clock discriminator, not a separate t.npcClock re-check.
  t.ultimatum={scale:_sc,windowDays:_windowDays,expiresDay:day+_windowDays,
-   aggressor:agg,prev:_prev,offer:null,offerState:null};
+   aggressor:agg,prev:_prev,offer:null,offerState:null,attPC:muster};
  S.world.locConds=S.world.locConds||{};S.world.locConds[lid]='besieged';
  if(!t.posts)t.posts=[];
  t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
