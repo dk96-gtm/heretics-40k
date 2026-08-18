@@ -4330,7 +4330,18 @@ function resolveFarBattle(c,agg,scale,muster,day){
  // condition ladder, same writes as the lapse site (mirrors resolveUltLapses)
  var prev=effCond(c.loc),end=prev;
  if(res.outcome==='repelled_losses'||res.outcome==='sacked')end=ULT.stepDown(prev);
- if(end!==prev){S.world.locConds=S.world.locConds||{};S.world.locConds[c.lid]=end;}
+ if(end!==prev){
+  S.world.locConds=S.world.locConds||{};
+  // fix round 1: mirror resolveUltLapses' own 3-way overlay semantics — collapse back to
+  // the canon baseline instead of writing a redundant overlay. Load-bearing: a canon-
+  // authored 'ruined' location with NO overlay entry is invisible to ULT.healTick's
+  // Object.keys(locConds) sweep (permanent ruin by design, e.g. vigilus/voxbastion).
+  // Writing an overlay equal to that same 'ruined' value would wrongly make it
+  // heal-eligible, silently un-ruining a canonically-permanent ruin over time.
+  if(end==='intact'&&!c.loc.condition)delete S.world.locConds[c.lid];
+  else if(end===c.loc.condition)delete S.world.locConds[c.lid];
+  else S.world.locConds[c.lid]=end;
+ }
  if(res.outcome==='captured')npcCapture(c.pid,agg,'a '+scale.toLowerCase()+' out of the void');
  var rec=CHRON.record(S,c.lid,{day:day,kind:'far',att:(FAC(agg)||{}).name||agg,
    def:defFacName,outcome:res.outcome,arith:res.arith,
