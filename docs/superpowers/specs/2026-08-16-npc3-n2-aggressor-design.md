@@ -86,7 +86,7 @@ The T-TERR-2 `startThread` hook moves: the standing floor is applied to the **fa
 
 ## 6. The drama (cap 1)
 
-When a FAR event lands on a **crown or story-flagged location** and no drama is live: instead of instant statistical resolution, spawn a real PUBLIC thread — both sides auto-deploy on the generated grid (seeded positions), auto-Lock-In, and `npcTurn` plays **one exchange per tick day** until the thread reaches an outcome, which then feeds the exact same resolution machinery (conditions/capture/log). The player can open the thread and read the war as it happens. `S.world.drama = {tid}` is the only new save-state (pointer; cleared on conclusion).
+When a FAR event lands on a **crown or story-flagged location** and no drama is live: instead of instant statistical resolution, spawn a real PUBLIC thread — both sides auto-deploy on the generated grid (seeded positions), auto-Lock-In, and `npcTurn` plays **one exchange per tick day** until the thread reaches an outcome, which then feeds the exact same resolution machinery (conditions/capture/log). The player can open the thread and read the war as it happens. `S.world.drama = {tid}` is a nullable pointer (cleared on conclusion); see §7 for the full new-key list.
 
 ## 7. Canon & save-state (v1.36)
 
