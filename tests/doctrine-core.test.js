@@ -219,3 +219,21 @@ test('npcTurn culling kite: adjacent enemy → steps back, keeps target in band'
   assert.ok(minDistAfter > nearestBefore, 'the move increases min-distance to all spotted enemies');
   assert.ok(cheb2(to, { x: 3, y: 6 }) <= 6, 'target (a1, medium band max 6) stays within reach of the new cell');
 });
+
+/* ── N2 final fix wave (M1): retreatTried is per-PARTY on a drama (both sides are NPC) and
+   thread-global everywhere else. shouldRetreat must read whichever shape it is handed. ── */
+test('shouldRetreat: a per-party retreatTried object only blocks the party that used it', () => {
+  const st = mkSide([[70, false], [30, true]]);          // B: prag 90 → L 0.30 ≥ 0.20 → wants out
+  st.behavior.A = { ferocity:50, cunning:50, pragmatism:90, honor:50, supremacism:50 };
+  // give A the same shape of loss so both sides genuinely want to withdraw
+  st.combatants['a1'] = { party:'A', dead:true, model:{pc:30}, x:6, y:6 };
+  assert.strictEqual(THREAD.shouldRetreat('B', st, CANON), true);
+  assert.strictEqual(THREAD.shouldRetreat('A', st, CANON), true);
+  st.retreatTried = { B: 1 };                             // B has spent its one attempt
+  assert.strictEqual(THREAD.shouldRetreat('B', st, CANON), false, "B's attempt is consumed");
+  assert.strictEqual(THREAD.shouldRetreat('A', st, CANON), true,
+    "A must not lose its withdrawal to B's attempt");
+  st.retreatTried = 1;                                    // legacy scalar still blocks everyone
+  assert.strictEqual(THREAD.shouldRetreat('A', st, CANON), false);
+  assert.strictEqual(THREAD.shouldRetreat('B', st, CANON), false);
+});

@@ -114,3 +114,43 @@ test('N4: legacy 5-arg resolveLapse calls are byte-identical (no behavior, no li
   const a = ULT.resolveLapse(600, 625, 'invasion', mk(0.60), canon);
   assert.strictEqual(a.outcome, 'repelled_losses');   // the existing N1 pin still holds
 });
+
+/* ── N2 final fix wave (M5): ULT.evalPlayerTribute — the player-side tribute palette's own
+   verdict function, previously shipped with no unit pin (spec §8 named it). Real canon only. ── */
+test('N2/M5: evalPlayerTribute — accept at or above the demand', () => {
+  assert.deepStrictEqual(ULT.evalPlayerTribute(100, 100, {pragmatism:50}, 50, () => 0.5, canon),
+    {result:'accept'});
+  assert.strictEqual(ULT.evalPlayerTribute(250, 100, {pragmatism:0}, 0, () => 0.99, canon).result,
+    'accept', 'a generous offer is accepted regardless of appetite/pragmatism');
+});
+
+test('N2/M5: evalPlayerTribute — refuse below demand/1.5, counter in between', () => {
+  // demand 150 → refuse floor is 100 (150/1.5): strictly below refuses, at/above counters.
+  assert.strictEqual(ULT.evalPlayerTribute(99, 150, {pragmatism:50}, 50, () => 0.5, canon).result,
+    'refuse');
+  assert.strictEqual(ULT.evalPlayerTribute(100, 150, {pragmatism:50}, 50, () => 0.5, canon).result,
+    'counter', 'exactly at the floor is a counter, not a refusal');
+  assert.strictEqual(ULT.evalPlayerTribute(149, 150, {pragmatism:50}, 50, () => 0.5, canon).result,
+    'counter');
+});
+
+test('N2/M5: evalPlayerTribute — counter mult comes from canon, leniency tracks appetite+pragmatism', () => {
+  const opts = canon.rules.ultimatum.tribute.counter_options;
+  const app = canon.rules.ultimatum.tribute.faction_appetite;
+  // will = 0.6*appetite + 0.4*pragmatism; lenient when (will/100)*(0.9+0.2r) >= 0.5
+  const greedy = ULT.evalPlayerTribute(100, 150, {pragmatism:0}, app.tyranids, () => 0.5, canon);
+  const venal  = ULT.evalPlayerTribute(100, 150, {pragmatism:100}, app.votann, () => 0.5, canon);
+  assert.strictEqual(greedy.mult, opts[opts.length - 1], 'no appetite, no pragmatism → the hard multiplier');
+  assert.strictEqual(venal.mult, opts[0], 'a venal, pragmatic aggressor asks the softer multiplier');
+  assert.strictEqual(venal.counterDemand, Math.round(150 * opts[0]));
+  assert.strictEqual(greedy.counterDemand, Math.round(150 * opts[opts.length - 1]));
+});
+
+test('N2/M5: evalPlayerTribute is deterministic for a fixed rng draw', () => {
+  const a = ULT.evalPlayerTribute(120, 150, {pragmatism:50}, 50, ULT.rng(4242), canon);
+  const b = ULT.evalPlayerTribute(120, 150, {pragmatism:50}, 50, ULT.rng(4242), canon);
+  assert.deepStrictEqual(a, b);
+  // counter-once is enforced by the engine's persisted u.pCountered flag, not by the core:
+  // the core's own contract is that the SAME inputs always return the SAME counter.
+  assert.strictEqual(a.result, 'counter');
+});

@@ -69,3 +69,26 @@ test('scaleFor: invasion needs 2× muster AND a planet target', () => {
   assert.strictEqual(CAD.scaleFor(700, 400, true, D), 'SKIRMISH');
   assert.strictEqual(CAD.scaleFor(900, 400, false, D), 'SKIRMISH');
 });
+
+/* ── N2 final fix wave (M5): the imperial↔imperial invariant as a full-matrix property sweep,
+   not the single sampled pair the shipped tests covered. Every ordered pair of imperial
+   factions must be un-targetable: canon's standing matrix never puts two imperial factions at
+   or below the cadence gate, so the Imperium never raids itself on the far lane. ── */
+test('legalTargets: NO imperial↔imperial pair is ever a legal target (full matrix)', () => {
+  const imperial = D.factions.filter(f => f.allegiance === 'imperial').map(f => f.id);
+  assert.ok(imperial.length >= 5, 'canon should carry the 5 imperial factions, got ' + imperial.length);
+  imperial.forEach(agg => {
+    imperial.forEach(tgt => {
+      const cands = [{ key: tgt, facId: tgt, isPlayer: false, garrisonPC: 200, crossRift: false }];
+      const legal = CAD.legalTargets(agg, cands, D);
+      assert.strictEqual(legal.length, 0,
+        'imperial pair became legal: ' + agg + ' → ' + tgt);
+    });
+  });
+});
+
+test('legalTargets: the sweep is a real gate, not a vacuous pass (a cross-allegiance pair IS legal)', () => {
+  const legal = CAD.legalTargets('militarum',
+    [{ key: 'x', facId: 'black_legion', isPlayer: false, garrisonPC: 200, crossRift: false }], D);
+  assert.strictEqual(legal.length, 1, 'militarum must still be able to raid the Black Legion');
+});

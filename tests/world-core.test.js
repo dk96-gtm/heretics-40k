@@ -230,3 +230,51 @@ test('T-TERR-2 I1: CHUNK-INDEPENDENCE — 13 daily boots === one 13-day boot (cu
   assert.deepStrictEqual(daily.world.stock, chunk.world.stock);
   assert.deepStrictEqual(daily.world.unrest, chunk.world.unrest);
 });
+
+/* ── N2 final fix wave (I2): catchUp's per-day hook. The boot glue's day pass (lapses, the NPC
+   cadence roll, the drama driver, the heal pass) used to run AFTER the whole chunk had already
+   stepped, so anything reading a drifting sector score read the END-of-chunk value on every
+   day. The hook now fires inside the day loop, right after that day's stepDay, carrying that
+   day's ABSOLUTE index — which is what makes "13 daily boots === one 13-day boot" true for the
+   cadence roll (CAD.rollDay's probability is conflict/400). ── */
+function confState(lastTick) {
+  return { time: { epoch: 0, lastTick }, cur: 0,
+           world: { stats: { vigilus: { taint: 0, conflict: 100, prosperity: 50 } } } };
+}
+
+test('catchUp onDay: fires once per stepped day with the absolute day index', () => {
+  const s = confState(0);
+  const days = [];
+  const r = W.catchUp(s, canon, DAY * 5, { onDay: (d) => days.push(d) });
+  assert.strictEqual(r.ticks, 5);
+  assert.deepStrictEqual(days, [1, 2, 3, 4, 5]);
+});
+
+test('catchUp onDay: the hook observes each day\'s own drifted scores (chunk === daily boots)', () => {
+  const drift = canon.galaxy.scores.tick.conflict;
+  assert.strictEqual(typeof drift, 'number');
+
+  const chunk = confState(0), seenChunk = [];
+  W.catchUp(chunk, canon, DAY * 13, { onDay: (d, evs) => seenChunk.push(chunk.world.stats.vigilus.conflict) });
+
+  const daily = confState(0), seenDaily = [];
+  for (let d = 1; d <= 13; d++)
+    W.catchUp(daily, canon, DAY * d, { onDay: () => seenDaily.push(daily.world.stats.vigilus.conflict) });
+
+  assert.strictEqual(seenChunk.length, 13);
+  assert.deepStrictEqual(seenChunk, seenDaily,
+    'a 13-day catch-up must show the hook the same conflict values 13 daily boots would');
+  // and those values really are moving — otherwise the pin would be vacuous
+  assert.notStrictEqual(seenChunk[0], seenChunk[12]);
+  assert.strictEqual(seenChunk[0], Math.max(0, 100 + drift));
+});
+
+test('catchUp onDay: hook events land in the returned event list; omitting it steps as before', () => {
+  const s = confState(0);
+  const r = W.catchUp(s, canon, DAY * 2, { onDay: (d, evs) => evs.push({ kind: 'hooked', day: d }) });
+  assert.deepStrictEqual(r.events.filter(e => e.kind === 'hooked').map(e => e.day), [1, 2]);
+  const plain = confState(0);
+  const r2 = W.catchUp(plain, canon, DAY * 2);   // no hook at all — legacy call shape
+  assert.strictEqual(r2.ticks, 2);
+  assert.strictEqual(plain.world.stats.vigilus.conflict, s.world.stats.vigilus.conflict);
+});
