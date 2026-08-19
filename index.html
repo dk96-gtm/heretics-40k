@@ -1902,6 +1902,15 @@ var WORLD=(function(){
     events.filter(function(e){return e.kind==='near_clock';}).forEach(function(e){
       lines.push('⏳ '+e.faction+' has clocked '+e.loc+' — '+e.days+' days.');
     });
+    // T-NPC-3 N2 task 7: the drama — spawn line matches the World Log's own wording (mintDrama);
+    // the conclusion line is worth its own digest entry too (one drama at a time, cap 1, so
+    // this can never fire more than once per digest window).
+    events.filter(function(e){return e.kind==='drama_spawn';}).forEach(function(e){
+      lines.push('🎭 War comes to '+e.loc+' — the battle is joined in the open.');
+    });
+    events.filter(function(e){return e.kind==='drama_end';}).forEach(function(e){
+      lines.push('🎭 The battle for '+e.loc+' is decided — '+e.outcome+'.');
+    });
     var seatEv=events.filter(function(e){return e.kind==='seat_income';});
     if(seatEv.length)lines.push('👑 Your seats paid their dues ('+seatEv.length+' payments).');
     if(events.some(function(e){return e.kind==='seat_unrest'}))lines.push('⚠ An unpaid garrison let a seat decay.');
@@ -2994,6 +3003,7 @@ function foundingWorld(){return {
  doorTiers:{},doorBuilds:{},locConds:{},condHeal:{},
  work:{},seats:{},seatMiss:{},governor:{},      // T-TERR-2 (standing seeds in commitFounding — needs the faction)
  chronicle:{},                                  // T-NPC-3 N2: per-location CHRON.record log
+ drama:null,                                    // T-NPC-3 N2 task 7: {tid,day,agg,attParty,defParty} | null — cap 1
  missions:{},missionSeedBase:(Date.now()%2147483647),missionDay:0,   // Missions V2 slice A: founding never gets a reload, so init()'s backfill never fires — seed here too (S.time.epoch isn't in scope yet: commitFounding assigns `world:` before `time:`, so this mirrors init()'s Date.now()-based epoch as closely as scope allows)
  log:[],
  forces:{vigilus:[['The Rotward','You · WARBAND','The Ash Ravine'],['Iron Ruin Landing Claw','Warsmith Dravok (PC, Black Legion) · SQUAD','The Carrion Market'],["Sskarith's Brood",'NPC, Tyranids · WARBAND','The Ash Ravine']],
@@ -4462,18 +4472,18 @@ function mintNpcClock(c,agg,scale,muster,day){
  S.world.log.unshift(nowStamp()+' — ⏳ '+fac.name+' has clocked '+l.name+' — '+_windowDays+' days.');
  return {kind:'near_clock',loc:l.name,faction:fac.name,days:_windowDays};
 }
-/* N2: one seeded raid resolved instantly (no Ultimatum thread, no player-facing clock) —
-   mirrors resolveUltLapses' own condition-ladder + capture + chronicle writes so a far-lane
-   battle and a lapsed near-lane clock read identically in the World Log / chronicle. */
-function resolveFarBattle(c,agg,scale,muster,day){
- var base=S.world.missionSeedBase||1;
- var def=Math.round(c.garrisonPC*((D.rules.ultimatum||{}).defender_mult||1.25));
- var r=ULT.rng(ULT.seedFor(base,day,c.lid,'far:'+agg));
- var res=ULT.resolveLapse(muster,def,scale==='INVASION'?'invasion':'raid',r,D);
+/* T-NPC-3 N2 task 7: shared write-block for "a battle resolved, apply it to the world" —
+   condition ladder + capture + chronicle + world-log, extracted unchanged out of
+   resolveFarBattle (below, now a thin caller — byte-identical behavior) so the drama's own
+   conclusion (concludeDrama, below) can apply the EXACT same writes off a fought-out result
+   instead of a seeded roll. recKind feeds CHRON.record's rec.kind ('far'/'drama' — what
+   resolution PATH this was); viaLabel feeds npcCapture's log-line tail on a 'captured'
+   outcome only (what the conquest is described as having come through). */
+function applyWarResolution(c,agg,outcome,arith,day,recKind,viaLabel,seed){
  var defFacName=(pRuler(c.planet)||{}).faction||'the garrison';
  // condition ladder, same writes as the lapse site (mirrors resolveUltLapses)
  var prev=effCond(c.loc),end=prev;
- if(res.outcome==='repelled_losses'||res.outcome==='sacked')end=ULT.stepDown(prev);
+ if(outcome==='repelled_losses'||outcome==='sacked')end=ULT.stepDown(prev);
  if(end!==prev){
   S.world.locConds=S.world.locConds||{};
   // fix round 1: mirror resolveUltLapses' own 3-way overlay semantics — collapse back to
@@ -4486,13 +4496,160 @@ function resolveFarBattle(c,agg,scale,muster,day){
   else if(end===c.loc.condition)delete S.world.locConds[c.lid];
   else S.world.locConds[c.lid]=end;
  }
- if(res.outcome==='captured')npcCapture(c.pid,agg,'a '+scale.toLowerCase()+' out of the void');
- var rec=CHRON.record(S,c.lid,{day:day,kind:'far',att:(FAC(agg)||{}).name||agg,
-   def:defFacName,outcome:res.outcome,arith:res.arith,
-   seed:ULT.seedFor(base,day,c.lid,'far:'+agg)},D);
+ if(outcome==='captured')npcCapture(c.pid,agg,viaLabel);
+ var rec=CHRON.record(S,c.lid,{day:day,kind:recKind,att:(FAC(agg)||{}).name||agg,
+   def:defFacName,outcome:outcome,arith:arith,seed:seed},D);
  S.world.log=S.world.log||[];
- S.world.log.unshift(nowStamp()+' — WAR: '+CHRON.titleOf(rec,c.loc.name)+' — '+res.arith);
+ S.world.log.unshift(nowStamp()+' — WAR: '+CHRON.titleOf(rec,c.loc.name)+' — '+arith);
+ return rec;
+}
+/* N2: one seeded raid resolved instantly (no Ultimatum thread, no player-facing clock) —
+   mirrors resolveUltLapses' own condition-ladder + capture + chronicle writes so a far-lane
+   battle and a lapsed near-lane clock read identically in the World Log / chronicle. */
+function resolveFarBattle(c,agg,scale,muster,day){
+ var base=S.world.missionSeedBase||1;
+ var def=Math.round(c.garrisonPC*((D.rules.ultimatum||{}).defender_mult||1.25));
+ var r=ULT.rng(ULT.seedFor(base,day,c.lid,'far:'+agg));
+ var res=ULT.resolveLapse(muster,def,scale==='INVASION'?'invasion':'raid',r,D);
+ var rec=applyWarResolution(c,agg,res.outcome,res.arith,day,'far',
+   'a '+scale.toLowerCase()+' out of the void',ULT.seedFor(base,day,c.lid,'far:'+agg));
  return {kind:'far_battle',loc:c.loc.name,outcome:res.outcome,att:rec.att};
+}
+/* T-NPC-3 N2 task 7: the drama (cap 1) — a FAR event landing on a CROWN world, with no drama
+   currently live, mints a real two-sided public thread instead of resolving instantly (spec
+   §6) — no player force is committed on either side; both are NPC-generated exactly like a
+   far battle's own combatants, just via TWO genHostCombatants calls instead of one (attacker
+   sized off the rolled muster, defender off the target's own garrisonPC, same avg-Core-pc
+   sizing mintNpcClock already uses for its own single NPC side). genHostiles numbers every
+   detachment it generates e0,e1,e2... from zero, so the two sides' ids collide the instant
+   they'd share one state.combatants dict — prefixed apart below (a_/d_) before merging.
+   Auto-deploys + auto-Lock-Ins immediately: bfSetup positions BOTH parties generically (it has
+   never cared which side is "the player" — every field it reads comes off state.combatants),
+   and the Lock-In write below mirrors bfDeployUI's own data-lockin handler (~L5453) field-for-
+   field, so driveDrama (below) can start trading npcTurn exchanges from the very next tick day
+   — no dead first day sitting in an unreachable deploy phase nobody will ever click through. */
+function mintDrama(c,agg,scale,muster,day){
+ var attFac=FAC(agg),defFac=facByName((pRuler(c.planet)||{}).faction);
+ if(!attFac||!defFac)return {kind:'drama_stub'};
+ function avgCorePc(fac){var pool=(fac.models||[]).filter(function(m){return m.cls==='Core';});
+  if(!pool.length)pool=fac.models||[];
+  return pool.length?(pool.reduce(function(s,m){return s+(m.pc||1);},0)/pool.length):40;}
+ var attName=attFac.name+' host',defName=defFac.name+' garrison';
+ var attCount=Math.max(2,Math.min(4,Math.round(muster/Math.max(1,avgCorePc(attFac)))));
+ var defCount=Math.max(2,Math.min(4,Math.round(c.garrisonPC/Math.max(1,avgCorePc(defFac)))));
+ var gA=genHostCombatants(attFac,attName,attCount,null,null);
+ var gD=genHostCombatants(defFac,defName,defCount,null,null);
+ if(!gA.specs.length||!gD.specs.length)return {kind:'drama_stub'};   // no rosters to spawn from — dead code against real canon
+ var C={};for(var ka in gA.C)C['a_'+ka]=gA.C[ka];for(var kd in gD.C)C['d_'+kd]=gD.C[kd];
+ var pools={};pools[attName]=gA.ap;pools[defName]=gD.ap;
+ var id='drama_'+c.lid+'_'+S.threads.length;
+ var t={id:id,type:scale,n:scale+' — '+attFac.name+' vs '+defFac.name+' at '+c.loc.name,
+   loc:c.planet.name+' · '+c.loc.name,pl:c.pid,lid:c.lid,turn:'them',vis:'public',
+   initiator:attFac.name+' (drama)',
+   about:'War has come to '+c.loc.name+' in the open — '+attFac.name+' against '+defFac.name+'. No Force is committed on either side; the field decides it on its own.',
+   forces:[attName,defName],npc:null,drama:true};
+ t.seedState={pools:pools,combatants:C,joined:true};
+ t.state=THREAD.initState(t,D);
+ bfSetup(t);                                          // deploy: board + zones + positions, both parties
+ t.state.phase='battle';t.state.joined=true;
+ t.state.locked={loadout:true,playerFac:S.player.faction};   // mirrors bfDeployUI's own Lock-In write
+ if(!t.posts)t.posts=[];
+ t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+  body:'🎭 THE DRAMA — '+attFac.name+' descends on '+c.loc.name+'. '+defFac.name+' stands to the guns. Both hosts are committed; the field alone decides it.'});
+ S.threads.push(t);
+ var key=c.pid+'/'+c.lid;if(!S.world.history[key])S.world.history[key]=[];
+ S.world.history[key].unshift(scale+' — '+attFac.name+' vs '+defFac.name+' at '+c.loc.name+' · ACTIVE (drama)');
+ S.world.drama={tid:id,day:day,agg:agg,attParty:attName,defParty:defName};
+ S.world.log=S.world.log||[];
+ S.world.log.unshift(nowStamp()+' — 🎭 War comes to '+c.loc.name+' — the battle is joined in the open.');
+ return {kind:'drama_spawn',loc:c.loc.name,planet:c.planet.name,att:attFac.name,def:defFac.name};
+}
+/* T-NPC-3 N2 task 7: per-party living/fallen tally off the actually-fought state — the
+   drama's own RECORD arithmetic (unlike resolveFarBattle's seeded res.arith, there is no
+   formula here: the field itself already decided it). */
+function _dramaTally(st,party){
+ var alive=0,dead=0;
+ for(var id in (st.combatants||{})){var c=st.combatants[id];if(c.party!==party)continue;
+  if(c.dead)dead++;else if(!c.captured)alive++;}
+ return {alive:alive,dead:dead};
+}
+/* T-NPC-3 N2 task 7: the drama's own conclusion — fires from driveDrama (below) either on a
+   real THREAD.outcome/pendingOutcome decision or the 60-in-game-day hard cap. Victor mapping
+   (stated in the task-7 report): defender-won, a mutual wipe (nobody left to hold the ground),
+   or the hard-cap timeout all read 'repelled' — the attacker did not take the location. An
+   attacker win reads 'captured' when the drama minted at INVASION scale (t.type, stamped at
+   spawn off the identical muster-vs-garrison ratio CAD.scaleFor used to decide the far lane's
+   own scale) or 'sacked' otherwise — the same two-rung ladder resolveFarBattle already writes,
+   so applyWarResolution needs no drama-specific branch. */
+function concludeDrama(t,oc,day,hardCap){
+ var dr=S.world.drama,attParty=dr.attParty,defParty=dr.defParty,agg=dr.agg;
+ var st=t.state,a=_dramaTally(st,attParty),d=_dramaTally(st,defParty);
+ var tallyLine=attParty+' '+a.alive+' standing/'+a.dead+' fallen vs '+defParty+' '+d.alive+' standing/'+d.dead+' fallen.';
+ var arith=hardCap?('The siege ground on 60 days without a break — '+tallyLine):tallyLine;
+ var outcome=(oc&&oc.victor===attParty)?(t.type==='INVASION'?'captured':'sacked'):'repelled';
+ var c={pid:t.pl,lid:t.lid,loc:fLoc(t.pl,t.lid),planet:fPl(t.pl).p};
+ var rec=applyWarResolution(c,agg,outcome,arith,day,'drama','a pitched battle fought to its end',
+   ULT.seedFor(S.world.missionSeedBase,day,t.lid,'drama:'+agg));
+ t.done={kind:'drama',victor:outcome==='repelled'?defParty:attParty,
+   defeated:[outcome==='repelled'?attParty:defParty],at:Date.now()};
+ t.posts=t.posts||[];
+ t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+  body:'🎭 THE DRAMA ENDS — '+CHRON.titleOf(rec,c.loc.name)+'. '+arith});
+ S.world.drama=null;
+ return {kind:'drama_end',loc:c.loc.name,planet:c.planet.name,outcome:outcome};
+}
+/* T-NPC-3 N2 task 7: the drama driver — one npcTurn exchange PER SIDE, per absolute tick day,
+   for whichever drama S.world.drama points at (cap 1 — never more than one live; called once
+   per day from init()'s catch-up loop, right after that day's npcAggression pass, so a drama
+   minted THIS day trades its first exchange starting the NEXT day, same one-thing-per-day
+   discipline every other pass in that loop already keeps). Reuses npcRespond (the exact same
+   fog/AP/validate/apply pipeline a player-vs-NPC thread runs) for BOTH sides — passing the
+   OTHER party as npcRespond's "playerParty" makes it play the named side's turn, since
+   npcRespond's own foe = whichever party isn't the one it was handed. npcRespond already no-ops
+   safely if its target side is wiped or the thread has left 'battle' (aftermath/deploy guard,
+   ~L5357), so calling it twice unconditionally is safe even mid-retreat or post-wipe. */
+/* T-NPC-3 N2 task 7 fix (found in E2E, not anticipated by the brief): bfSetup deploys both
+   parties at their zones' INNER edges, but genBoard's default zoneDepth (2, on a w:14 board)
+   still leaves an ~11-tile gap between them — beyond even LONG-band sight (SIGHT_SQ.LONG=11,
+   ~L1079, and most factions' generic npcWeaponFor pick is nowhere near LONG). npcTurn is
+   deliberately fog-honest ("sees nothing → holds", ~L1320) — that's correct fog-of-war
+   behavior and must not change for the shared core. In every OTHER combat thread this is a
+   non-issue because the PLAYER'S side is driven by a human manually walking toward the enemy
+   over several posts; a drama has no human on either side, so two fog-honest npcTurn sides
+   deployed 11 apart would hold forever and never make contact. This is glue-only, drama-scoped
+   vanguard movement — NOT a core change, NOT reachable from any other thread type: a side with
+   nothing spotted yet advances each of its living models toward the enemy zone's center (using
+   THREAD.reachable, so terrain/passability/occupancy are respected exactly like npcTurn's own
+   gap-closing move) instead of holding. The instant a side sees anything, this returns instantly
+   (spotted.length check) and ordinary fog-gated npcTurn combat takes over untouched. */
+function _dramaBlindAdvance(party,enemyParty,st){
+ if(!st.board)return;
+ if(THREAD.spottedEnemies(party,st,st.board).length)return;   // already sees something — npcTurn handles it
+ var ez=(st.zones&&st.zones[enemyParty])||null;if(!ez)return;
+ var tgt={x:Math.round((ez.x0+ez.x1)/2),y:Math.round((ez.y0+ez.y1)/2)};
+ var C=st.combatants||{};
+ for(var id in C){var c=C[id];if(c.party!==party||c.dead||c.captured||c.x==null)continue;
+  var spd=Math.max(0,(c.spd||0)+THREAD.condMods(c).speed);if(!spd)continue;
+  var occ=[];for(var oid in C){if(oid!==id&&C[oid]&&!C[oid].dead&&C[oid].x!=null)occ.push({x:C[oid].x,y:C[oid].y});}
+  var rs=THREAD.reachable({x:c.x,y:c.y},spd,st.board,occ),best=null,bestD=THREAD.cheb(c,tgt);
+  for(var k in rs){var xy=k.split(','),cell={x:+xy[0],y:+xy[1]},d=THREAD.cheb(cell,tgt);
+   if(d<bestD){bestD=d;best=cell;}}
+  if(best){c.x=best.x;c.y=best.y;}
+ }
+}
+function driveDrama(day){
+ var dr=S.world.drama;if(!dr)return null;
+ var t=S.threads.filter(function(x){return x.id===dr.tid;})[0];
+ if(!t||t.done){S.world.drama=null;return null;}    // thread vanished/concluded some other way — free the slot defensively
+ var st=t.state;if(!st||!st.board||st.phase!=='battle')return null;
+ _dramaBlindAdvance(dr.attParty,dr.defParty,st);
+ _dramaBlindAdvance(dr.defParty,dr.attParty,st);
+ npcRespond(t,dr.defParty);   // foe=attParty → attacker's exchange
+ npcRespond(t,dr.attParty);   // foe=defParty → defender's exchange
+ var oc=THREAD.outcome(t,st,MISSION.constraintCheck)||((st.phase==='aftermath'&&st.pendingOutcome)||null);
+ var hardCap=(day-dr.day)>=60;
+ if(oc||hardCap)return concludeDrama(t,oc,day,hardCap&&!oc);
+ return null;
 }
 /* T-NPC-3 N2: one cadence pass for ONE absolute day index. Runs inside init()'s per-day loop,
    interleaved with lapses/heal/seat passes — chunk-independent by construction (every seed
@@ -4530,6 +4687,10 @@ function npcAggression(day){
   var muster=Math.round(drawn.garrisonPC*(0.8+1.6*ULT.rng(CAD.seed(base,day,'mus:'+sec.id+':'+agg))()));
   var scale=CAD.scaleFor(muster,drawn.garrisonPC,drawn.isPlanet,D);
   if(drawn.isPlayer){activePlayerClocks++;out.push(mintNpcClock(drawn,agg,scale,muster,day));}
+  // T-NPC-3 N2 task 7: cap 1 — a crown world only gets the drama treatment while no other
+  // drama is already live; a second crown hit mid-drama falls straight through to the
+  // ordinary instant far battle, exactly like every non-crown location always has.
+  else if(drawn.planet.crown&&!S.world.drama)out.push(mintDrama(drawn,agg,scale,muster,day));
   else out.push(resolveFarBattle(drawn,agg,scale,muster,day));
  });});});
  return out;
@@ -5660,6 +5821,20 @@ function threadView(V,t){
       (p.block?'<div class="ab"><div class="ah">Action Block</div><ul>'+p.block.map(function(b){
         return '<li><b>'+b.action+'</b>'+(b.cost?' ('+b.cost+' AP)':'')+'</li>'}).join('')+'</ul></div>':'')+'</div>');
   });
+  // T-NPC-3 N2 task 7: a drama has NO player-committed force on either side — every other
+  // caller of threadView that reaches a live combat board owns a force in t.forces (an
+  // unjoined npcClock thread never reaches this function at all; openT's own npcClock branch
+  // intercepts it first, ~L4986). partyOf's fallback (t.forces[0], for when no owned force
+  // matches) exists for that "you always own something here" assumption — without this gate a
+  // spectator would silently inherit control of the attacker's own side: the board's fog would
+  // render from the attacker's viewpoint and clicking POST would call THREAD.apply as the
+  // attacker. Read-only instead: posts only, no composer, no board controls, no action block.
+  var participant=!isCombat||(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f});});
+  if(isCombat&&!participant&&!t.done){
+    V.appendChild(E('div','card','<h3>🎭 Spectating</h3><div style="font-size:12px;color:var(--dim)">Neither side answers to you — this war plays itself out on its own terms. Read on; nothing here can be posted to.</div>'));
+    var wrapS=E('div','tw solo');wrapS.appendChild(scroll);V.appendChild(wrapS);
+    return;
+  }
   var party=partyOf(t);
   if(t.done){                                        // T-TERR-1: a concluded thread is read-only
     V.appendChild(E('div','card','<h3>'+(t.done.kind==='accord'?'🕊 Accord':'⚔ Concluded')+'</h3><div style="font-size:12px;color:var(--dim)">'
@@ -6020,6 +6195,7 @@ function init(){
   if(!S.world.seatMiss)S.world.seatMiss={};                              // T-TERR-2 fix round 1: older saves
   if(!S.world.governor)S.world.governor={};                              // T-TERR-2 task 7: older saves
  if(!S.world.chronicle)S.world.chronicle={};                            // T-NPC-3 N2: older saves
+  if(S.world.drama===undefined)S.world.drama=null;                       // T-NPC-3 N2 task 7: older saves
   if(!S.progress)S.progress={streaks:{}};                                 // T-MSN-1C task 4: older saves
   // final review FIX I1: seat tax + garrison upkeep moved INTO the pure per-day pass
   // (WORLD.seatDay, run by stepDay right after produce) so currency-coupled seat flows
@@ -6038,6 +6214,11 @@ function init(){
     // index, interleaved right after that day's lapse resolution (same discipline: a
     // 30-day catch-up chunk and 30 separate daily boots must tell the identical story).
     npcAggression(_startDay+_db+1).forEach(function(e){_wc.events.push(e);});
+    // T-NPC-3 N2 task 7: the drama driver — one exchange (or a conclusion) for whichever
+    // drama S.world.drama points at, same absolute-day interleave as everything else above
+    // (a drama minted by the npcAggression pass just above trades its first exchange from
+    // the NEXT day, never the mint day itself — see driveDrama's own comment).
+    var _dr=driveDrama(_startDay+_db+1);if(_dr)_wc.events.push(_dr);
     DOOR.tickBuilds(S).forEach(function(f){
     var _fl=lById(f.loc);
     _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});
