@@ -2950,17 +2950,25 @@ function summonNPC(t,npc,mode,done){
   var horizon=(npc.persona&&npc.persona.knowledge_horizon)||{sectors:[]};
   var _place=aiPlace(t);
   var _scoped=NPCAI.worldScope(S.world,horizon,npc.location);
-  // T-NPC-3 N2 task 8: NPC memory — inject this location's chronicle (CHRON.record log,
-  // §3b) as remembered fact lines. The pure NPCAI core is untouched (worldScope's signature
-  // and buildBundle's template are unchanged); this is the engine-side ctx-build glue,
-  // widening the SAME locationHistory array buildBundle already renders under "HERE LATELY:"
-  // — the simplest honest path onto an existing templated field, no new NPC state. Newest-3,
-  // newest-first, matching the Chronicle panel's own ordering. npc.location is 'pid/lid'
-  // (see npcsAt) — chronicle is keyed by bare lid (ids are galaxy-unique, see lById).
+  // T-NPC-3 N2 task 8 (fix round 1 — locked spec §3b, Daak ruling 2026-08-18): NPC memory
+  // draws on the record's FULL reconstructed account ("sides, closeness, what broke"), NOT
+  // the headline — the compressed record is a full story, its prose just isn't duplicated on
+  // disk. So each of the last 3 records is expanded through the SAME deterministic narrator
+  // the Chronicle panel uses (CHRON.account, pure fn of record+seed via ULT.rng) and its
+  // narrative posts (everything but the closing THE RECORD arithmetic line — that's numbers,
+  // not story, and would just bloat the bundle) are joined into one compact fact, truncated
+  // at 400 chars as a size guard. Still lands in the SAME locationHistory array buildBundle
+  // already renders under "HERE LATELY:" — the pure NPCAI core (worldScope's signature,
+  // buildBundle's template) stays untouched; only the CONTENT of this ctx-build glue deepens.
+  // Newest-3, newest-first, matching the Chronicle panel's own ordering. npc.location is
+  // 'pid/lid' (see npcsAt) — chronicle is keyed by bare lid (ids are galaxy-unique, see lById).
   var _clid=(npc.location||'').split('/')[1];
   var _crec=(S.world.chronicle&&S.world.chronicle[_clid])?S.world.chronicle[_clid].slice(-3).reverse():[];
   _scoped.locationHistory=_scoped.locationHistory.concat(_crec.map(function(rec){
-    return 'This ground remembers: '+CHRON.titleOf(rec,_place.locName)+' ('+rec.outcome+', day '+rec.day+').';
+    var _acc=CHRON.account(rec,_place.locName,ULT.rng);
+    var _narr=_acc.filter(function(p){return p.who!=='THE RECORD';}).map(function(p){return p.body;}).join(' ');
+    if(_narr.length>400)_narr=_narr.slice(0,400)+'…';
+    return 'This ground remembers: '+CHRON.titleOf(rec,_place.locName)+' — '+_narr;
   }));
   var ctx={ai:D.ai,npc:npc,behavior:st.behavior,
     memory:{recentJournal:st.recentJournal,longTermMemory:st.longTermMemory,
