@@ -2948,10 +2948,24 @@ function summonNPC(t,npc,mode,done){
   if(st.retired){T(npc.name.split(' ')[0]+' is dead. No answer comes.');return;}
   var cmdr=activeModel(),cmdrId=cmdr.id,cmdrName=cmdr.n.split(',')[0];
   var horizon=(npc.persona&&npc.persona.knowledge_horizon)||{sectors:[]};
+  var _place=aiPlace(t);
+  var _scoped=NPCAI.worldScope(S.world,horizon,npc.location);
+  // T-NPC-3 N2 task 8: NPC memory — inject this location's chronicle (CHRON.record log,
+  // §3b) as remembered fact lines. The pure NPCAI core is untouched (worldScope's signature
+  // and buildBundle's template are unchanged); this is the engine-side ctx-build glue,
+  // widening the SAME locationHistory array buildBundle already renders under "HERE LATELY:"
+  // — the simplest honest path onto an existing templated field, no new NPC state. Newest-3,
+  // newest-first, matching the Chronicle panel's own ordering. npc.location is 'pid/lid'
+  // (see npcsAt) — chronicle is keyed by bare lid (ids are galaxy-unique, see lById).
+  var _clid=(npc.location||'').split('/')[1];
+  var _crec=(S.world.chronicle&&S.world.chronicle[_clid])?S.world.chronicle[_clid].slice(-3).reverse():[];
+  _scoped.locationHistory=_scoped.locationHistory.concat(_crec.map(function(rec){
+    return 'This ground remembers: '+CHRON.titleOf(rec,_place.locName)+' ('+rec.outcome+', day '+rec.day+').';
+  }));
   var ctx={ai:D.ai,npc:npc,behavior:st.behavior,
     memory:{recentJournal:st.recentJournal,longTermMemory:st.longTermMemory,
             dossier:st.commanders[cmdrId]||{standing:0,facts:[],goals:[],grudges:[]}},
-    thread:t,place:aiPlace(t),scoped:NPCAI.worldScope(S.world,horizon,npc.location),
+    thread:t,place:_place,scoped:_scoped,
     commanderName:cmdrName,mode:mode};
   var b=NPCAI.buildBundle(ctx);
   T(npc.name.split(' ')[0]+' considers…');
@@ -3859,6 +3873,9 @@ d.onclick=function(){MV.lc=l.id;rMap()};gg.appendChild(d)});
 z.appendChild(gg)});
 var l=fLoc(pl.id,MV.lc);
 var fr=forcesAt(pl.id),hi=histAt(pl.id,l.id),np=npcsAt(pl.id,l.id);
+// T-NPC-3 N2 task 8: the location's Chronicle (CHRON.record log, keyed by bare location id —
+// ids are galaxy-unique, see lById) — rendered newest-first ABOVE the old demo History block.
+var chr=(S.world.chronicle&&S.world.chronicle[l.id])?S.world.chronicle[l.id].slice().reverse():[];
 var _lt=LT(l.type)||{name:l.type},_dz=doorsAt(l),_lc=effCond(l),_cd=CD(_lc)||{},isOrbit=(l.tier==='orbit');
 var frLoc=fr.filter(function(x){return x[2]===l.name});
 var h2='<h3>'+pl.name+' — '+pl.type+'</h3>';
@@ -3876,8 +3893,10 @@ if(isOrbit)h2+='<div class="lsec"><h5>Ships in orbit</h5>'+(l.ships&&l.ships.len
 if(_dz.length)h2+='<div class="lsec"><h5>Doors — click to enter</h5>'+_dz.map(function(s,di){return s.open?'<div class="lrow" data-door="'+s.kind+'">▸ <b>'+s.name+'</b> <span class="pill">'+s.kind.toUpperCase()+'</span> '+doorTierTip(s.kind,doorTierAt(pl,l,s.kind))+'</div>':'<div class="lrow closed">▸ '+s.name+' <span class="pill">'+s.kind.toUpperCase()+'</span> <span style="color:var(--blh)">— closed</span></div>'}).join('')+'</div>';
 /* FORCES — clickable if you hold intel on them */
 h2+='<div class="lsec"><h5>Forces present — click for auspex intel</h5>'+(frLoc.length?frLoc.map(function(x){var known=!!forceIntel(x[0]);return '<div class="lrow'+(known?'':' unknown')+'" data-force="'+esc(x[0])+'">▸ <b>'+x[0]+'</b> — '+x[1]+(known?' <span class="mono" style="color:var(--vdh)">◉ known</span>':' <span class="mono" style="color:var(--dim)">no intel</span>')+'</div>'}).join(''):'<span style="color:var(--dim)">· none known</span>')+'</div>';
-/* THREAD HISTORY — clickable with summaries */
-h2+='<div class="lsec"><h5>Thread history — click for summary</h5>'+(hi.length?hi.map(function(t,ti){return '<div class="lrow" data-hist="'+ti+'">▸ '+t+'</div>'}).join(''):'<span style="color:var(--dim)">No threads recorded yet.</span>')+'</div>';
+/* CHRONICLE — the location's real war record (T-NPC-3 N2 task 8), newest-first, click for the full account */
+h2+='<div class="lsec"><h5>Chronicle — click a clash for the full account</h5>'+(chr.length?chr.map(function(rec,ci){return '<div class="lrow" data-chron="'+ci+'">⚔ '+CHRON.titleOf(rec,l.name)+' · day '+rec.day+' · '+esc(rec.att)+' vs '+esc(rec.def)+' · '+String(rec.outcome||'').toUpperCase()+'</div>'}).join(''):'<span style="color:var(--dim)">No recorded clashes here yet.</span>')+'</div>';
+/* THREAD HISTORY (ARCHIVE) — the pre-Chronicle demo stub; kept, not deleted, clickable with summaries */
+h2+='<div class="lsec"><h5>Thread history (ARCHIVE) — click for summary</h5>'+(hi.length?hi.map(function(t,ti){return '<div class="lrow" data-hist="'+ti+'">▸ '+t+'</div>'}).join(''):'<span style="color:var(--dim)">No threads recorded yet.</span>')+'</div>';
 /* MISSIONS — posted here, unaccepted (Missions V2 slice A + T-MSN-1B task 4 modifier chips) */
 /* T-MSN-1B task 5: boards are minted player-agnostic — an allegiance-gated row (e.g.
    Consecration/Desecration) is hidden here rather than never generated, so the same
@@ -3931,6 +3950,7 @@ p.innerHTML=h2;
 p.querySelectorAll('.lrow[data-door]').forEach(function(el){el.onclick=function(){if(atHere)go('shop');else T('Travel here first to use its doors.')}});
 p.querySelectorAll('.lrow[data-force]').forEach(function(el){el.onclick=function(){openForce(el.getAttribute('data-force'))}});
 p.querySelectorAll('.lrow[data-hist]').forEach(function(el){el.onclick=function(){openHist(hi[+el.dataset.hist],pl.name+' · '+l.name)}});
+p.querySelectorAll('.lrow[data-chron]').forEach(function(el){el.onclick=function(){openChron(chr[+el.dataset.chron],l.name)}});
 p.querySelectorAll('.lrow[data-npc]').forEach(function(el){el.onclick=function(){openNPC(el.dataset.npc)}});
 /* T-MSN-1B task 4: chips toggle a per-mission (keyed by iid) modifier selection and redraw
    via rMap() (MV state is unchanged, so the same panel comes back with _msel intact); the
@@ -6651,6 +6671,23 @@ function openHist(txt,locName){mkEntity();
  +'<div class="entrow"><div class="k">Record</div><div class="vv">'+txt+'</div></div>'
  +'<div class="entrow"><div class="k">Summary</div><div class="vv">'+threadSummary(txt)+'</div></div>'
  +'<div style="font-size:11px;color:var(--dim)">Public threads are part of this location\'s permanent record — anyone who comes here can read them.</div>'
+ +'</div></div>';
+ document.getElementById('entx').onclick=function(){ENT.classList.remove('on')};ENT.classList.add('on')}
+/* T-NPC-3 N2 task 8: a Chronicle record read as a concluded thread — reuses threadView's own
+   .post/.ph/.who/.body card markup + .threadscroll container inside the standard ENT overlay
+   (same container pattern as openHist/openNPC/openForce). CHRON.account is a pure function of
+   record+seed through ULT.rng, so the same record renders identical prose on every open — read
+   only, nothing is written or stored (the account is never saved to S). */
+function openChron(rec,locName){if(!rec)return;mkEntity();
+ var posts=CHRON.account(rec,locName,ULT.rng);
+ var scroll='<div class="threadscroll">'+posts.map(function(p){
+   return '<div class="post" style="--speech:'+pickSpeechColor(p.who,S.roster,SPEECH_PALETTE)+'"><div class="ph"><span class="who">'+esc(p.who)+'</span></div><div class="body">'+esc(p.body)+'</div></div>';
+ }).join('')+'</div>';
+ ENT.innerHTML='<div class="entc"><div class="entb">'
+ +'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h3>'+CHRON.titleOf(rec,locName)+'</h3><button class="movbk" id="entx">Close</button></div>'
+ +'<div style="display:flex;gap:6px"><span class="pill">DAY '+rec.day+'</span><span class="pill">'+String(rec.outcome||'').toUpperCase()+'</span></div>'
+ +scroll
+ +'<div style="font-size:11px;color:var(--dim)">This ground remembers — the same record always tells the same story.</div>'
  +'</div></div>';
  document.getElementById('entx').onclick=function(){ENT.classList.remove('on')};ENT.classList.add('on')}
 /* ─── v12: floating profile HUD ─── */
