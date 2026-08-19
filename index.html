@@ -1302,7 +1302,12 @@ var THREAD=(function(){
   }
   function shouldRetreat(side,state,canon){
     var beh=state&&state.behavior&&state.behavior[side];if(!beh)return false;
-    if(state.retreatTried)return false;
+    // N2 fix wave M1: retreatTried is thread-global (a scalar) on every ordinary thread — one
+    // player side, one NPC side, one withdrawal attempt. A DRAMA has an NPC on BOTH sides, so
+    // its glue stamps a per-party OBJECT instead ({party:1}); read whichever shape is present
+    // so one host's attempt can never consume the other host's.
+    var rt=state.retreatTried;
+    if(rt&&(typeof rt!=='object'||rt[side]))return false;
     var doc=doctrineOf(beh,canon);if(doc.retreatAt>=1)return false;
     var C=state.combatants||{},tot=0,alive=0,id;
     for(id in C){var c=C[id];if(c.party!==side)continue;var pc=(c.model&&c.model.pc)||0;
@@ -1845,7 +1850,19 @@ var WORLD=(function(){
     var elapsed=ticksElapsed(state,canon,nowMs);
     var cap=(canon.tick&&canon.tick.max_catchup_days)||30;
     var run=Math.min(elapsed,cap);
-    for(var i=0;i<run;i++)stepDay(state,canon,events,opts);
+    /* T-NPC-3 N2 fix wave I2 — the per-day hook. Everything the boot glue used to run in a
+       SECOND loop after the whole chunk (lapse resolution, the NPC cadence pass, the drama
+       driver, door builds, the condition heal pass) now runs here, day by day, immediately
+       after that day's stepDay. Load-bearing because stepDay's driftScores moves sector
+       conflict every day and CAD.rollDay's probability is conflict/400: run after the chunk,
+       day 1 of a 13-day catch-up rolled its cadence against day 13's conflict, so 13 daily
+       boots told a different story than one 13-day boot. The absolute day index handed to the
+       hook is (today − run + i + 1) — exactly the day that step would carry on separate daily
+       boots. Purity holds: the callback is INJECTED through opts (like seat/stepDown), never
+       reached for as a global, and it is optional — a fixture that omits it steps as before. */
+    var today=dayIndexAt(state,canon,nowMs),onDay=opts&&opts.onDay;
+    for(var i=0;i<run;i++){stepDay(state,canon,events,opts);
+      if(onDay)onDay(today-run+i+1,events);}
     var compressed=Math.max(0,elapsed-run);
     if(compressed>0)events.push({kind:'compressed',days:compressed});
     if(!state.time)state.time={};
@@ -4067,6 +4084,38 @@ dash.insertAdjacentHTML('beforeend','<div class="lsec" style="margin-top:14px"><
 if(!confs.length)dash.insertAdjacentHTML('beforeend','<div style="font-size:12px;color:var(--dim)">No multi-faction sectors in play.</div>');
 confs.forEach(function(c){dash.insertAdjacentHTML('beforeend','<div class="thc"><div><b>'+c.sec+'</b> <span class="stt '+c.status+'">'+c.status+'</span><div style="font-size:11.5px;color:var(--dim);margin-top:3px">'+c.sides.join(' vs ')+'</div></div></div>')});
 L.appendChild(dash)}
+/* ── T-NPC-3 N2 fix wave C1 helpers: an NPC-initiated Ultimatum thread is not the player's to
+   delete, so exiting one can only ever strip the PLAYER's own side off it. ── */
+function _myForcesOn(t){return (t.forces||[]).filter(function(f){return S.forces.some(function(x){return x.n===f})})}
+/* the exact inverse of joinNpcClock's merge: the player's combatants, AP pool, zone and
+   behavior stamp come off; the thread, its ultimatum clock and the besieged overlay are left
+   untouched. The board is dropped too — bfSetup is idempotent on state.board, so a stale board
+   would deny a later re-committed Force any deployment zone of its own. */
+function _npcClockWithdraw(t){
+  var st=t.state||{},mine=_myForcesOn(t);
+  mine.forEach(function(fn){
+    Object.keys(st.combatants||{}).forEach(function(id){if(st.combatants[id].party===fn)delete st.combatants[id]});
+    if(st.pools)delete st.pools[fn];
+    if(st.poolsBase)delete st.poolsBase[fn];
+    if(st.zones)delete st.zones[fn];
+    if(st.behavior)delete st.behavior[fn];
+  });
+  t.forces=(t.forces||[]).filter(function(f){return mine.indexOf(f)<0});
+  st.board=null;st.zones=null;st.phase='deploy';st.joined=false;st.pendingOutcome=null;st.retreatTried=0;
+  t._bf=null;t._bfd=null;
+  return mine;
+}
+/* my committed, still-standing combatants on this thread (the models that would actually pay
+   the price of a flight), and the fastest thing on the besiegers' side. */
+function _myCombatantsOn(t){var st=t.state||{},mine=_myForcesOn(t),out=[];
+  Object.keys(st.combatants||{}).forEach(function(id){var c=st.combatants[id];
+    if(mine.indexOf(c.party)>=0&&!c.dead&&!c.captured)out.push({id:id,c:c})});
+  return out}
+function _npcClockFoeSpeed(t){var st=t.state||{},mine=_myForcesOn(t),m=0;
+  Object.keys(st.combatants||{}).forEach(function(id){var c=st.combatants[id];
+    if(mine.indexOf(c.party)>=0||c.dead||c.captured)return;
+    m=Math.max(m,c.spd||(c.model&&(c.model.spd||c.model.speed))||3)});
+  return m}
 /* leave a thread — free if no combat; costs wounds + currency once combat is joined */
 function exitThread(t){
   if(t.type==='TRAVEL'){
@@ -4076,6 +4125,48 @@ function exitThread(t){
     rW();
     var dn=t._dest?((fLoc(t._dest.pl,t._dest.sp)||{}).name||''):'';
     T('You abort the passage'+(dn?' to '+dn:'')+' — '+refund+' '+curName()+' refunded.');
+    go('threads');rTL();return;
+  }
+  /* ── N2 fix wave C1: exit semantics INVERT on an NPC-initiated clock. Exiting a clock the
+     PLAYER started means calling off your own siege (delete + restore is correct — the branches
+     below). Exiting a clock an NPC pointed at YOUR ground means IGNORE: the thread, the clock
+     and the Besieged overlay all survive and resolveUltLapses still fires on schedule. Before
+     this, any near-lane INVASION could be neutralized for free by committing one model and
+     pressing Exit. Two branches, both of which only ever strip the player's own side:
+       · pre-Lock-In (state.joined falsy — nothing has been risked yet): a free withdrawal,
+         exactly undoing joinNpcClock's merge; the Force is released, the clock runs on.
+       · post-Lock-In: the existing mid-battle escape rules decide it — strictly faster than
+         the besiegers ⇒ break contact at the usual price (a wound on every committed model,
+         5% currency, spoils carried out, a qualifying loss for the streak primitive); as slow
+         or slower ⇒ refused, you are pinned and must see it through.
+     Never concludeThread from here: the clock, not this fight, decides the ground. ── */
+  if(t.npcClock&&!t.done){
+    if(!(t.state&&t.state.joined)){
+      var _wf=_npcClockWithdraw(t);
+      T(_wf.length?(_wf.join(', ')+' withdraws from the field at '+t.loc+' — the clock keeps running.')
+                  :'You leave it to the clock — the siege at '+t.loc+' stands.');
+      persist();go('threads');rTL();return;
+    }
+    var _cm=_myCombatantsOn(t);
+    var _mySpd=_cm.reduce(function(a,x){return Math.max(a,x.c.spd||(x.c.model&&x.c.model.spd)||2)},0);
+    if(_npcClockFoeSpeed(t)>=_mySpd){
+      T('The clock does not care that you leave. Withdraw your force or see it through.');return;
+    }
+    _cm.forEach(function(x){var c=x.c;
+      c.w[0]=Math.max(0,(c.w[0]||1)-1);
+      var m=S.roster.filter(function(r){return r.id===x.id})[0];
+      if(m)m.w=c.w[0]+'/'+c.w[1];
+      if(c.w[0]<=0){c.dead=true;if(m){m.st='DEAD';m.loc=(t.loc||'the field')+' — field, recoverable'}}});
+    convertSpoils(t);                       // a carrier who quits the field alive keeps its cargo
+    tickStreaksAndSync(t.state,false);      // fleeing a joined combat is a qualifying loss
+    var _cc=Math.round(S.army*0.05);S.cur=Math.max(0,S.cur-_cc);
+    var _wf2=_npcClockWithdraw(t);
+    if(!t.posts)t.posts=[];
+    t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+      body:'⚑ '+esc(_wf2.join(', ')||'Your force')+' breaks contact and quits the field. The siege is not lifted — the clock runs on.'});
+    persist();rW();rRos();
+    T('You break contact at '+t.loc+' — '+_cm.length+' model(s) wounded, '+_cc+' '+curName()
+      +' spent. The siege stands; the clock runs on.');
     go('threads');rTL();return;
   }
   // T-NPC-3 N1 final review FIX 1: restore the pre-siege location condition before ANY
@@ -4259,6 +4350,22 @@ function concludeThread(t,oc){
   S.world.missions[t.mission.pl]=mbd.filter(function(m){return m.iid!==t.mission.iid});
  }
  captureOnVictory(t,oc,mineWon);
+ /* ── N2 fix wave I3 (ruling): fighting and LOSING an NPC-initiated INVASION clock must cost at
+    least as much as ignoring it. captureOnVictory only ever fires on mineWon, and t.done makes
+    resolveUltLapses skip the clock forever — so before this, throwing a cheap losing fight was
+    strictly SAFER than letting the clock lapse (the lapse can capture; the fought defeat could
+    not). Decisive defeats only (oc.victor is unset on accord/mutual) and only on a clock an NPC
+    actually owns — u.attPC is the same npcClock discriminator resolveUltLapses uses. ── */
+ var _capT=((D.rules.territory&&D.rules.territory.capture)||{}).thread_type||'INVASION';
+ var _u3=t.ultimatum,_npcTook=false;
+ if(!mineWon&&oc.victor&&t.pl&&t.type===_capT&&_u3&&_u3.attPC!=null){
+  var _aggN=(FAC(_u3.aggressor)||{}).name||_u3.aggressor,_pn=((fPl(t.pl)||{}).p||{}).name||t.pl;
+  npcCapture(t.pl,_u3.aggressor,'the invasion breaks through',
+    {day:WORLD.dayIndexAt(S,D,Date.now())});
+  _npcTook=true;
+  t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
+   body:'🏴 THE LINE BREAKS — '+_aggN+' walks over your defense. '+_pn+' passes out of your hands.'});
+ }
  // T-NPC-3 N1 task 5 / final review FIX 3: the fight resolved the ground before the
  // Ultimatum clock could lapse — lift the siege overlay back to what it was before the
  // clock started. Consolidated onto the one shared helper (was an inline duplicate).
@@ -4276,7 +4383,9 @@ function concludeThread(t,oc){
   CHRON.record(S,t.lid,{day:_cday,kind:'thread',
     att:mineWon?((oc.defeated||[]).join(', ')||'the enemy'):oc.victor,
     def:mineWon?oc.victor:((oc.defeated||[]).join(', ')||'your forces'),
-    outcome:mineWon?'repelled':'sacked',
+    // fix wave I3: a defeat that actually transferred the planet is chronicled as 'captured',
+    // not the generic 'sacked' — the chronicle title/log must say what really happened.
+    outcome:mineWon?'repelled':(_npcTook?'captured':'sacked'),
     arith:t.n+' ('+t.id+') — '+(mineWon?oc.victor+' held the field':oc.victor+' took the field'),
     seed:ULT.seedFor(S.world.missionSeedBase,_cday,t.lid,t.id)},D);
  }
@@ -4313,6 +4422,41 @@ function ultDaysLeft(t){return t.ultimatum.expiresDay-WORLD.dayIndexAt(S,D,Date.
    WORLD.stepDay right after produce() (final review FIX I1: chunk-independence). The old
    engine-side seatTickIncome()/upkeep loop is gone; stationedPCAt stays — the lapse
    defense roll below still reads it. */
+/* ── N2 fix wave I4: the ONE stationed-garrison casualty block (T-TERR-2 table ❸), extracted
+   verbatim out of resolveUltLapses so the near-lane lapse and the far/drama seat sweep bleed
+   IDENTICALLY (spec §3 FAR: a seat falls "with the T-TERR-2 casualty rules if a force was
+   stationed" — the sweep used to free the garrison without a scratch). The seed and the
+   revival-window day arrive from the caller, because each path has its own deterministic day
+   (the clock's expiresDay; the capture's own tick day) — no Date.now() in here. Returns the
+   ' · garrison: …' arithmetic tail, or '' when there was nothing left to bleed. ── */
+function _seatGarrisonCasualties(forceId,locName,outcome,seed,winDay){
+ var _sf=S.forces.filter(function(x){return x.id===forceId})[0];
+ var _mem=_sf?S.roster.filter(function(m){return m.fo===_sf.n&&m.st!=='DEAD'&&m.st!=='TAKEN'}):[];
+ if(!_mem.length)return '';
+ var _cr=ULT.rng(seed);
+ var _tw=_mem.reduce(function(s,m){return s+parseInt(m.w,10);},0);   // current wounds ("3/5"→3)
+ var _pool=SEAT.poolOf(outcome,_tw,D);
+ var _hits=SEAT.distribute(_mem.map(function(m){return {id:m.id,w:parseInt(m.w,10)};}),_pool,_cr);
+ var _downed=[];
+ _hits.forEach(function(h){var m=S.roster.filter(function(x){return x.id===h.id})[0];
+  var mx=m.w.split('/')[1];m.w=h.w+'/'+mx;
+  if(h.down){_downed.push(m);}});
+ function _slay(m,bodyHeld){m.st='DEAD';m.fo='—';
+  m.loc=locName+' — fell in the defense'+(bodyHeld?'':' (body carried off)');
+  if(bodyHeld)S.inv.push({cat:'REMAINS',n:'Remains of '+m.n,d:'Fell defending '+locName+'.',
+   ref:{cid:m.id},window:{element:'Physical',expiresDay:winDay}});}
+ if(outcome==='repelled'||outcome==='repelled_losses'){
+  _downed.forEach(function(m){_slay(m,true);});}                    // ground held: bodies recoverable
+ else if(outcome==='sacked'){
+  var _co=SEAT.carryOff(_downed,_cr,D);
+  _co.taken.forEach(function(m){m.st='TAKEN';m.fo='—';m.loc=locName+' — taken in the sack';});
+  _co.left.forEach(function(m){_slay(m,true);});}
+ else if(outcome==='captured'){
+  var _cs=SEAT.captiveSplit(_downed,_cr);
+  _cs.captive.forEach(function(m){m.st='TAKEN';m.fo='—';m.loc=locName+' — taken with the planet';});
+  _cs.slain.forEach(function(m){_slay(m,false);});}                 // planet lost: bodies lost with it
+ return ' · garrison: '+_hits.reduce(function(s,h){return s+h.hit;},0)+' wounds, '+_downed.length+' down';
+}
 function resolveUltLapses(nowMs,capDay){
  var capped=(typeof capDay==='number'),today=WORLD.dayIndexAt(S,D,nowMs),out=[];
  S.threads.forEach(function(t){
@@ -4369,36 +4513,11 @@ function resolveUltLapses(nowMs,capDay){
      S.world.seats[t.lid].stationedForceId — sweeping first would erase the garrison
      before it ever took its losses. */
   var _sfid=(S.world.seats[t.lid]||{}).stationedForceId;
-  if(_sfid){
-   var _sf=S.forces.filter(function(x){return x.id===_sfid})[0];
-   var _mem=_sf?S.roster.filter(function(m){return m.fo===_sf.n&&m.st!=='DEAD'&&m.st!=='TAKEN'}):[];
-   if(_mem.length){
-    var _cr=ULT.rng(ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,'cas:'+u.aggressor));
-    var _tw=_mem.reduce(function(s,m){return s+parseInt(m.w,10);},0);   // current wounds ("3/5"→3)
-    var _pool=SEAT.poolOf(res.outcome,_tw,D);
-    var _hits=SEAT.distribute(_mem.map(function(m){return {id:m.id,w:parseInt(m.w,10)};}),_pool,_cr);
-    var _downed=[];
-    _hits.forEach(function(h){var m=S.roster.filter(function(x){return x.id===h.id})[0];
-     var mx=m.w.split('/')[1];m.w=h.w+'/'+mx;
-     if(h.down){_downed.push(m);}});
-    var _winDay=u.expiresDay+((D.rules.death.revival_window.windows||{}).Physical||8);
-    function _slay(m,bodyHeld){m.st='DEAD';m.fo='—';
-     m.loc=l.name+' — fell in the defense'+(bodyHeld?'':' (body carried off)');
-     if(bodyHeld)S.inv.push({cat:'REMAINS',n:'Remains of '+m.n,d:'Fell defending '+l.name+'.',
-      ref:{cid:m.id},window:{element:'Physical',expiresDay:_winDay}});}
-    if(res.outcome==='repelled'||res.outcome==='repelled_losses'){
-     _downed.forEach(function(m){_slay(m,true);});}                    // ground held: bodies recoverable
-    else if(res.outcome==='sacked'){
-     var _co=SEAT.carryOff(_downed,_cr,D);
-     _co.taken.forEach(function(m){m.st='TAKEN';m.fo='—';m.loc=l.name+' — taken in the sack';});
-     _co.left.forEach(function(m){_slay(m,true);});}
-    else if(res.outcome==='captured'){
-     var _cs=SEAT.captiveSplit(_downed,_cr);
-     _cs.captive.forEach(function(m){m.st='TAKEN';m.fo='—';m.loc=l.name+' — taken with the planet';});
-     _cs.slain.forEach(function(m){_slay(m,false);});}                 // planet lost: bodies lost with it
-    res.arith+=' · garrison: '+_hits.reduce(function(s,h){return s+h.hit;},0)+' wounds, '+_downed.length+' down';
-   }
-  }
+  // fix wave I4: body lifted into _seatGarrisonCasualties (shared with sweepSeatsOn) —
+  // same seed, same outcome row, same writes; behavior-identical for this path.
+  if(_sfid)res.arith+=_seatGarrisonCasualties(_sfid,l.name,res.outcome,
+    ULT.seedFor(S.world.missionSeedBase,u.expiresDay,t.lid,'cas:'+u.aggressor),
+    u.expiresDay+((D.rules.death.revival_window.windows||{}).Physical||8));
   // T-NPC-3 N2 step 6: chronicle back-fill — write BEFORE captureOnVictory so defFacName
   // (captured above, pre-ruler-change) is the actual pre-battle defender.
   CHRON.record(S,t.lid,{day:u.expiresDay,kind:'lapse',
@@ -4418,7 +4537,9 @@ function resolveUltLapses(nowMs,capDay){
      'captured' outcome on an npcClock thread silently transferred nothing at all. Mirrors
      resolveFarBattle's own capture handling (npcCapture(c.pid,agg,...)) for the near lane. */
   if(res.outcome==='captured'){
-   if(u.attPC!=null)npcCapture(t.pl,u.aggressor,"the ultimatum's lapse");
+   // fix wave I4: skipLid — this location's garrison already bled above on THIS event.
+   if(u.attPC!=null)npcCapture(t.pl,u.aggressor,"the ultimatum's lapse",
+     {day:u.expiresDay,skipLid:t.lid});
    else captureOnVictory(t,{kind:'lapse'},true);
   }
   t.done={kind:'ult_lapse',victor:res.outcome==='sacked'||res.outcome==='captured'?'attacker':'defender',at:Date.now()};
@@ -4524,7 +4645,8 @@ function applyWarResolution(c,agg,outcome,arith,day,recKind,viaLabel,seed){
   else if(end===c.loc.condition)delete S.world.locConds[c.lid];
   else S.world.locConds[c.lid]=end;
  }
- if(outcome==='captured')npcCapture(c.pid,agg,viaLabel);
+ // fix wave I4: the capture's own absolute tick day seeds the seat sweep's casualty roll.
+ if(outcome==='captured')npcCapture(c.pid,agg,viaLabel,{day:day});
  var rec=CHRON.record(S,c.lid,{day:day,kind:recKind,att:(FAC(agg)||{}).name||agg,
    def:defFacName,outcome:outcome,arith:arith,seed:seed},D);
  S.world.log=S.world.log||[];
@@ -4682,6 +4804,13 @@ function driveDrama(day){
 /* T-NPC-3 N2: one cadence pass for ONE absolute day index. Runs inside init()'s per-day loop,
    interleaved with lapses/heal/seat passes — chunk-independent by construction (every seed
    below derives from missionSeedBase ⊕ day ⊕ stable ids, never Date.now()). */
+/* fix wave M4: the location a live drama is being fought over (dramas carry no t.ultimatum,
+   so activeUltAt cannot see them) — null when no drama is live or its thread has gone. */
+function _dramaLid(){
+ var dr=S.world&&S.world.drama;if(!dr||!dr.tid)return null;
+ var dt=S.threads.filter(function(x){return x.id===dr.tid})[0];
+ return dt?dt.lid:null;
+}
 function npcAggression(day){
  var out=[],base=S.world.missionSeedBase||1;
  var activePlayerClocks=S.threads.filter(function(t){return t.ultimatum&&!t.done&&t.npcClock;}).length;
@@ -4708,7 +4837,14 @@ function npcAggression(day){
   // sideOf (keyed on faction NAME, not id), never allegiance guesswork.
   var aggFac=FAC(agg),aggSide=aggFac?RIFT.sideOf(aggFac.name,D):null;
   cands.forEach(function(c){c.crossRift=!!(c.planet.rift&&aggSide&&c.planet.rift!==aggSide);});
-  var legal=CAD.legalTargets(agg,cands.filter(function(c){return !activeUltAt(c.lid);}),D);
+  // fix wave M4: a raging drama's own ground is off the table too. activeUltAt only sees
+  // ultimatum threads and a drama carries no t.ultimatum, so a second event could otherwise
+  // fire at the very location a drama is being fought over — writing conditions (or even an
+  // npcCapture) underneath it, which the drama's own conclusion would then write over.
+  // Re-read per sector (not once per pass): a drama minted by an EARLIER sector in this same
+  // day's walk must already be excluded by the time a later sector rolls.
+  var dLid=_dramaLid();
+  var legal=CAD.legalTargets(agg,cands.filter(function(c){return !activeUltAt(c.lid)&&c.lid!==dLid;}),D);
   var drawn=CAD.drawTarget(legal,ULT.rng,CAD.seed(base,day,'tgt:'+sec.id));
   drawn=CAD.applyPlayerCap(legal,drawn,activePlayerClocks,D);
   if(!drawn)return;
@@ -4912,12 +5048,14 @@ function _pTribTransfer(t,final){
  idxs.sort(function(a,b){return b-a;}).forEach(function(i){S.inv.splice(i,1);});   // high→low so earlier indices stay valid mid-splice
  return true;
 }
-function _pTribConclude(t,final){
+function _pTribConclude(t,final,names){
  var u=t.ultimatum;
  _ultRestoreCond(t);
  t.done={kind:'tribute',victor:'accord',at:Date.now()};
- var itemNames=Object.keys(final.items||{}).filter(function(k){return final.items[k];})
-   .map(function(k){var it=S.inv[+k];return it?it.n:null;}).filter(Boolean);
+ // fix wave M2 (same index-drift class): the names are captured by the caller BEFORE
+ // _pTribTransfer splices the goods out of S.inv — reading S.inv[idx] here (as this did)
+ // read whatever had slid into those slots, or nothing at all.
+ var itemNames=names||[];
  var resLine=_tribResLine(final.res||{});
  var itemsLine=itemNames.length?(' + '+itemNames.join(', ')):'';
  if(!t.posts)t.posts=[];
@@ -4935,12 +5073,14 @@ function _pTribConclude(t,final){
  rW();rRos();openT(t.id);
 }
 function _pTribAccept(t,final){
+ var _names=Object.keys(final.items||{}).filter(function(k){return final.items[k];})
+   .map(function(k){var it=S.inv[+k];return it?it.n:null;}).filter(Boolean);
  if(!_pTribTransfer(t,final)){
   if(!t.posts)t.posts=[];
   t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:'The offer could not be honored — funds or stock had already moved. Nothing was taken.'});
   persist();openT(t.id);return;
  }
- _pTribConclude(t,final);
+ _pTribConclude(t,final,_names);
 }
 function playerTributeSubmit(t){
  var u=t.ultimatum;if(!u||t.done||!t.npcClock||u.pOfferState==='countered')return;
@@ -4967,7 +5107,13 @@ function playerTributeSubmit(t){
   var perUnit=_pTribSellPerUnit(),resValue=0;
   ['Food','Material','Fuel'].forEach(function(k){resValue+=(res[k]||0)*perUnit;});
   var itemsValue=0;Object.keys(items).forEach(function(k){itemsValue+=_pTribItemValue(S.inv[+k],u.aggressor);});
-  u.pCounter={mult:ev.mult,demand:ev.counterDemand,cur:cur,res:res,items:items,
+  // fix wave M2: the counter persists across reloads and can sit open indefinitely, so it
+  // stores item IDENTITY ({n,cat,d} triples), never raw S.inv indices — any sale, spoils
+  // conversion or trade in the meantime shifted those indices under it and the wrong goods
+  // (re-valued as the right ones) would have transferred on accept.
+  var itemRefs=Object.keys(items).map(function(k){var it=S.inv[+k];
+    return it?{n:it.n,cat:it.cat||null,d:it.d||null}:null;}).filter(Boolean);
+  u.pCounter={mult:ev.mult,demand:ev.counterDemand,cur:cur,res:res,itemRefs:itemRefs,
     resValue:Math.round(resValue),itemsValue:Math.round(itemsValue)};
   t.posts.push({who:aggName,tag:'',stamp:nowStamp(),
    body:'⚔ TRIBUTE REJECTED — that offer falls short. '+aggName+' will settle for nothing less than ×'+ev.mult+' the price. Meet their counter, or the clock runs on.'});
@@ -4976,12 +5122,33 @@ function playerTributeSubmit(t){
  }
  persist();openT(t.id);
 }
+/* fix wave M2: turn stored item descriptors back into live S.inv indices, one unclaimed match
+   per descriptor. Fails CLOSED (ok:false) the moment any offered item is no longer held.
+   A pre-fix counter row (index map only, no itemRefs) falls back to its indices unchanged. */
+function _pTribResolveRefs(refs,legacy){
+ if(!refs){var idx={},lok=true;
+  Object.keys(legacy||{}).forEach(function(k){if(!legacy[k])return;
+   if(!S.inv[+k]){lok=false;return}idx[k]=true;});
+  return {ok:lok,items:idx};}
+ var used={},out={},ok=true;
+ refs.forEach(function(rf){var hit=-1;
+  for(var i=0;i<(S.inv||[]).length;i++){var it=S.inv[i];
+   if(used[i]||!it)continue;
+   if(it.n===rf.n&&(it.cat||null)===(rf.cat||null)&&(it.d||null)===(rf.d||null)){hit=i;break}}
+  if(hit<0){ok=false;return}
+  used[hit]=true;out[hit]=true;});
+ return {ok:ok,items:out};
+}
+function _pTribCounterItemCount(c){return c.itemRefs?c.itemRefs.length
+  :Object.keys(c.items||{}).filter(function(k){return c.items[k]}).length}
 function acceptCounterTribute(t){
  var u=t.ultimatum;if(!u||t.done||u.pOfferState!=='countered'||!u.pCounter)return;
  var c=u.pCounter;
+ var _rs=_pTribResolveRefs(c.itemRefs||null,c.items||null);
+ if(!_rs.ok){T('The goods you offered are no longer in your holdings — the counter cannot be met.');return;}
  var needCur=Math.max(c.cur,Math.round(c.demand-c.resValue-c.itemsValue));
  if(needCur>(S.cur||0)){T('Not enough '+curName()+' to meet the counter.');return;}
- _pTribAccept(t,{cur:needCur,res:c.res,items:c.items});
+ _pTribAccept(t,{cur:needCur,res:c.res,items:_rs.items});
 }
 /* the OFFER TRIBUTE panel — mirrors ultTributePanel's card styling. Fog: the player only ever
    sees a qualitative "patience" hint (thirds of offerValue/demand), never the demand number
@@ -4996,7 +5163,7 @@ function playerTributePanel(t){
   var c=u.pCounter,aggName=(FAC(u.aggressor)||{}).name||'They';
   var needCur=Math.max(c.cur,Math.round(c.demand-c.resValue-c.itemsValue));
   var afford=needCur<=(S.cur||0);
-  var itemCt=Object.keys(c.items||{}).filter(function(k){return c.items[k];}).length;
+  var itemCt=_pTribCounterItemCount(c);   // fix wave M2: identity refs (legacy index maps still count)
   panel.innerHTML='<h3>⚔ Counter-demand</h3><div style="font-size:12px;color:var(--dim)">'
     +aggName+' will settle for nothing less — meet it, or the clock runs on.</div>'
     +'<div class="d mono" style="margin-top:6px">Requires '+needCur+' '+curName()+_tribResLine(c.res)
@@ -5096,10 +5263,25 @@ function secOwner(s){ // absolute majority of planet rulers (overlay-aware); unt
    seats standing. Residue: the seat's own missed-payment counter dies with it (M3), and a
    garrison whose every member died or was taken with the planet disbands (spec §4.3.3) —
    guarded against a force that is somehow still committed to a live thread. */
-function sweepSeatsOn(pid){
+/* N2 fix wave I4: opts = {cas,facId,day,skipLid}. `cas` is set ONLY by npcCapture (the ruler
+   change went against the player) — a player conquest that happens to sweep a seat never bleeds
+   its own garrison. `skipLid` is the location whose own lapse already applied the casualties for
+   this very event (resolveUltLapses bleeds t.lid before the capture fires), so nobody is billed
+   twice. `day` is the event's absolute tick day — passed, never read off Date.now(), so a
+   catch-up chunk and N daily boots seed the same casualty roll. */
+function sweepSeatsOn(pid,opts){
+ opts=opts||{};
  Object.keys(S.world.seats||{}).forEach(function(lid){
   if(S.world.seats[lid].pid!==pid)return;
   var _sfid=S.world.seats[lid].stationedForceId;
+  if(opts.cas&&_sfid&&lid!==opts.skipLid){
+   var _sl=lById(lid)||{},_sd=(opts.day!=null)?opts.day:WORLD.dayIndexAt(S,D,Date.now());
+   var _sum=_seatGarrisonCasualties(_sfid,_sl.name||lid,'captured',
+     ULT.seedFor(S.world.missionSeedBase,_sd,lid,'sweep:'+(opts.facId||'')),
+     _sd+((D.rules.death.revival_window.windows||{}).Physical||8));
+   if(_sum){S.world.log=S.world.log||[];
+    S.world.log.unshift(nowStamp()+' — GARRISON OVERRUN at '+(_sl.name||lid)+':'+_sum+'.');}
+  }
   delete S.world.seats[lid];
   if(S.world.seatMiss)delete S.world.seatMiss[lid];
   if(_sfid){
@@ -5115,7 +5297,7 @@ function sweepSeatsOn(pid){
    pid from S.world.holdings/governor (the player is LOSING the planet), captureOnVictory
    ADDS it (the player is TAKING the planet). Writes the overlay, fires the seat sweep
    (T-TERR-2), logs. */
-function npcCapture(pid,facId,viaText){
+function npcCapture(pid,facId,viaText,opts){
  var fp=fPl(pid);if(!fp)return;
  var f=FAC(facId);if(!f)return;
  var cur=pRuler(fp.p);if(cur&&cur.faction===f.name)return;
@@ -5124,7 +5306,9 @@ function npcCapture(pid,facId,viaText){
  // losing the planet costs the PLAYER its holding/governor row if it was theirs
  var ix=(S.world.holdings||[]).indexOf(pid);
  if(ix>=0){S.world.holdings.splice(ix,1);delete (S.world.governor||{})[pid];}
- sweepSeatsOn(pid);
+ // fix wave I4: the seats fall WITH the planet, and their stationed garrisons take the
+ // 'captured' row of the T-TERR-2 casualty table on the way down (spec §3 FAR).
+ sweepSeatsOn(pid,{cas:true,facId:facId,day:(opts&&opts.day),skipLid:(opts&&opts.skipLid)||null});
  S.world.log=S.world.log||[];
  S.world.log.unshift(nowStamp()+' — CONQUEST: '+fp.p.name+' falls to '+f.name+(viaText?(' — '+viaText):'')+'.');
 }
@@ -5172,7 +5356,11 @@ if(t){
   var acc=E('button','btn','Accept mission');acc.style.cssText='width:100%;margin-top:10px';acc.onclick=function(){t.accepted=true;t.turn='you';T('Mission accepted: '+t.n+' — you can post now.');openT(t.id)};
   box.appendChild(acc);V.appendChild(box);
   var xb0=E('button','btn gh','Decline / leave');xb0.style.marginTop='10px';xb0.onclick=function(){exitThread(t)};V.appendChild(xb0);
- } else if(t.npcClock&&!(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f});})){
+ // fix wave I1: `!t.done` — openT runs resolveUltLapses first, so opening an expired clock
+ // reliably lands here; without the gate the player was offered "Commit <Force>" buttons on a
+ // battle that had already resolved. A concluded clock falls through to threadView's own
+ // read-only concluded view instead.
+ } else if(t.npcClock&&!t.done&&!(t.forces||[]).some(function(f){return S.forces.some(function(x){return x.n===f});})){
   // T-NPC-3 N2 task 5: mintNpcClock seeds only the NPC side — no player force exists in
   // t.state.combatants yet. Gate threadView (and its bfSetup call) out entirely until the
   // player commits: bfSetup assigns deployment zones off whichever parties are present in
@@ -5203,6 +5391,9 @@ else V.insertAdjacentHTML('beforeend','<div class="empty">Thread not found.</div
    sides at once and assigns two real deployment zones. Must run BEFORE the thread is ever handed
    to threadView — see the openT gate above. */
 function joinNpcClock(t,force){
+ // fix wave I1: defense in depth behind openT's own !t.done gate — never merge live combatants
+ // into a thread whose battle has already been resolved (lapse, tribute, or a fought conclusion).
+ if(t.done){T('That clock has already run out — the matter is settled.');openT(t.id);return}
  if(threadOfForce(force.n)){T(force.n+' is already committed to another thread.');return}
  var _slk=stationedThreadLockOf(force.id);
  if(_slk){T(force.n+' is standing garrison at '+((lById(_slk)||{}).name||_slk)+'. Recall it first.');return}
@@ -5554,20 +5745,38 @@ function npcRespond(t,playerParty){
   // T-NPC-4: lazily stamp the NPC side's rolled personality (deterministic off thread id
   // → same roll every reload even pre-persist; covers every seed path incl. legacy saves)
   st.behavior=st.behavior||{};
+  // N2 fix wave M1: a DRAMA has an NPC on BOTH sides. _npcFacIdOf reads the location's local
+  // NPC force — a single identity for the whole thread — and the seed carried no party, so the
+  // two hosts rolled the SAME axes under the SAME (for at least one of them, wrong) faction.
+  // On a drama each party is stamped from its own faction (attacker = the cadence aggressor,
+  // defender = the planet's ruler) with a party-distinct seed. Every other thread is untouched,
+  // placed-NPC override included (a drama has no player and no dossier to speak for either host).
+  var _drm=(t.drama&&S.world.drama&&S.world.drama.tid===t.id)?S.world.drama:null;
   if(!st.behavior[foe]){
-    var _fid=_npcFacIdOf(t);
-    st.behavior[foe]=THREAD.AXES.rollFor(_fid||'none','doctrine:'+t.id,D);
-    // placed-NPC override: if the sole co-located placed NPC has authored behavior, its
-    // .value axes win (spec §2) — mirror counterTribute's unwrap:
-    var _npc=npcsAt(t.pl,t.lid)[0],_nst=_npc&&S.npcState&&S.npcState[_npc.id];
-    if(_nst&&_nst.behavior){var _b={};THREAD.AXES.AXIS.forEach(function(ax){
-      var v=_nst.behavior[ax]&&_nst.behavior[ax].value;_b[ax]=(v!=null?v:st.behavior[foe][ax]);});
-      st.behavior[foe]=_b;}
+    if(_drm){
+      var _isAtt=(foe===_drm.attParty),_fp1=fPl(t.pl),_rl=_fp1?pRuler(_fp1.p):null;
+      var _dfid=_isAtt?_drm.agg:((_rl&&facByName(_rl.faction)||{}).id||null);
+      st.behavior[foe]=THREAD.AXES.rollFor(_dfid||'none','doctrine:'+t.id+':'+(_isAtt?'att':'def'),D);
+    } else {
+      var _fid=_npcFacIdOf(t);
+      st.behavior[foe]=THREAD.AXES.rollFor(_fid||'none','doctrine:'+t.id,D);
+      // placed-NPC override: if the sole co-located placed NPC has authored behavior, its
+      // .value axes win (spec §2) — mirror counterTribute's unwrap:
+      var _npc=npcsAt(t.pl,t.lid)[0],_nst=_npc&&S.npcState&&S.npcState[_npc.id];
+      if(_nst&&_nst.behavior){var _b={};THREAD.AXES.AXIS.forEach(function(ax){
+        var v=_nst.behavior[ax]&&_nst.behavior[ax].value;_b[ax]=(v!=null?v:st.behavior[foe][ax]);});
+        st.behavior[foe]=_b;}
+    }
   }
   // T-NPC-4 §4/§4a: pragmatic withdrawal — SKIRMISH/INVASION only, never duels/missions
   if((t.type==='SKIRMISH'||t.type==='INVASION')&&!/duel/i.test(t.n||'')&&st.phase==='battle'
      &&THREAD.shouldRetreat(foe,st,D)){
-    st.retreatTried=1;
+    // fix wave M1: per-party flag on a drama (both sides are NPC — one host's attempt must not
+    // consume the other's); the thread-global scalar everywhere else. THREAD.shouldRetreat
+    // reads whichever shape it finds.
+    if(_drm){st.retreatTried=(st.retreatTried&&typeof st.retreatTried==='object')?st.retreatTried:{};
+      st.retreatTried[foe]=1;}
+    else st.retreatTried=1;
     var _spdMax=function(party){var m=0;for(var id2 in st.combatants){var c2=st.combatants[id2];
       if(c2.party===party&&!c2.dead&&!c2.captured&&c2.x!=null)m=Math.max(m,c2.spd||0);}return m;};
     var who2=bfFoeName(st,foe);
@@ -6230,26 +6439,29 @@ function init(){
   // interleave with production day by day — 13 daily boots === one 13-day boot. The core
   // stays pure: the seat rules, the ladder step, and the siege-paused set are injected.
   var _bsg={};S.threads.forEach(function(t){if(t.ultimatum&&!t.done&&t.lid)_bsg[t.lid]=true;});
-  var _wc=WORLD.catchUp(S,D,Date.now(),{seat:SEAT,stepDown:ULT.stepDown,besieged:_bsg});
-  // final review FIX 2: chunk-independence — resolve any lapse due THIS tick day BEFORE that
-  // day's heal pass runs (below), so a multi-day catch-up chunk heals post-expiry days exactly
-  // like N separate daily boots would (a lapse dated mid-chunk no longer stalls the heal until
-  // the whole chunk finishes). _startDay is the day-index the chunk starts from.
-  var _startDay=WORLD.dayIndexAt(S,D,Date.now())-_wc.ticks;
-  for(var _db=0;_db<_wc.ticks;_db++){
-    resolveUltLapses(Date.now(),_startDay+_db+1).forEach(function(e){_wc.events.push(e);});
+  /* N2 fix wave I2: this day-pass used to be a SECOND loop that ran after WORLD.catchUp had
+     already stepped the whole chunk — so day 1 of a 13-day catch-up rolled npcAggression's
+     cadence against day 13's drifted conflict, and 13 daily boots told a different story than
+     one 13-day boot (CAD.rollDay's p = conflict/400). It is now catchUp's own per-day hook,
+     called immediately after each day's stepDay with that day's absolute index: the lapse
+     resolution, the cadence pass, the drama driver, door builds and the heal pass all read the
+     world as it stood on the day they belong to. `evs` is catchUp's own event array. */
+  var _wc=WORLD.catchUp(S,D,Date.now(),{seat:SEAT,stepDown:ULT.stepDown,besieged:_bsg,
+   onDay:function(_day,evs){
+    // final review FIX 2 (N1): resolve any lapse due THIS tick day BEFORE that day's heal pass.
+    resolveUltLapses(Date.now(),_day).forEach(function(e){evs.push(e);});
     // T-NPC-3 N2 task 4: far-lane aggression — one seeded cadence pass per absolute day
     // index, interleaved right after that day's lapse resolution (same discipline: a
     // 30-day catch-up chunk and 30 separate daily boots must tell the identical story).
-    npcAggression(_startDay+_db+1).forEach(function(e){_wc.events.push(e);});
+    npcAggression(_day).forEach(function(e){evs.push(e);});
     // T-NPC-3 N2 task 7: the drama driver — one exchange (or a conclusion) for whichever
     // drama S.world.drama points at, same absolute-day interleave as everything else above
     // (a drama minted by the npcAggression pass just above trades its first exchange from
     // the NEXT day, never the mint day itself — see driveDrama's own comment).
-    var _dr=driveDrama(_startDay+_db+1);if(_dr)_wc.events.push(_dr);
+    var _dr=driveDrama(_day);if(_dr)evs.push(_dr);
     DOOR.tickBuilds(S).forEach(function(f){
-    var _fl=lById(f.loc);
-    _wc.events.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});
+     var _fl=lById(f.loc);
+     evs.push({kind:'door_built',planet:(_fl&&_fl.name)||f.loc,doorKind:f.kind,to:f.to});});
     // (seat tax + garrison upkeep no longer run here — they live in WORLD.seatDay,
     //  inside the same per-day pass as produce(); see the catchUp call above.)
     // T-NPC-3 N1 task 5: condition self-heal, one pass per tick day — sector-paced
@@ -6261,9 +6473,9 @@ function init(){
       var _sid=sectorOfPlanet(_lp.pid);
       var _stt=WORLD.sectorStatus(liveScores(_sid)||{},D);
       var _ev=ULT.healTick(S,lid,_stt,!!activeUltAt(lid),D);
-      if(_ev){_ev.loc=_lp.l.name;_wc.events.push(_ev);}
+      if(_ev){_ev.loc=_lp.l.name;evs.push(_ev);}
     });
-  }
+   }});
   // T-NPC-3 N1 task 4: a lapse can be due even when no production tick ran this load
   // (e.g. session opened mid-window last time, expiry crossed since) — resolve it
   // regardless of _wc.ticks, and widen the digest gate so its ⏳ line still surfaces.
