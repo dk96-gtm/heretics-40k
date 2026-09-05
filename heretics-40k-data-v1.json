@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.36",
-  "updated": "2026-08-12",
+  "version": "1.37",
+  "updated": "2026-09-05",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -14426,11 +14426,11 @@
      "ceiling": 100
     },
     "pragmatism": {
-     "base": 75,
+     "base": 60,
      "spread": 12,
      "plasticity": 12,
-     "floor": 50,
-     "ceiling": 100
+     "floor": 35,
+     "ceiling": 85
     },
     "honor": {
      "base": 50,
