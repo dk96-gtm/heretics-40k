@@ -509,6 +509,12 @@ function lById(id,withPid){var r=null,rp=null;D.galaxy.segmentums.forEach(functi
 function sectorOfPlanet(pid){var f=fPl(pid);return f?f.s.id:null}
 function wallets(){return D.allegiances[S.player.allegiance].wallets}
 function curName(){return FAC(S.player.faction).currency}
+/* ── red-team fix (Coward exploit): S.army was set once at founding (always 0) and never
+   updated anywhere, so the 5% flee-cost always rounded to 0. armyValue() computes the total
+   PC of the living roster live, every call — no cached stat to go stale. Used at both escape-
+   cost sites in exitThread AND at the two display sites (HQ tile, Barracks Roster header) so
+   the number shown always matches the number charged. ── */
+function armyValue(){return S.roster.filter(function(m){return m.st!=='DEAD'&&m.st!=='TAKEN'}).reduce(function(a,m){return a+(m.pc||0)},0)}
 /* ---- world overlays (dynamic state, not canon) ---- */
 function forcesAt(pid){return S.world.forces[pid]||[]}
 function histAt(pid,lid){return S.world.history[pid+'/'+lid]||[]}
@@ -3471,7 +3477,7 @@ document.getElementById('lc').innerHTML=w[0]+' <small>(currency)</small>';docume
 document.getElementById('wc').innerHTML=S.cur.toLocaleString()+' <small style="color:var(--dim)">'+w[0].toLowerCase()+'</small>';
 document.getElementById('wd').innerHTML=(S.dom-disp)+' <small>/ '+S.dom+'</small>';
 document.getElementById('wi').textContent=S.infl;
-document.getElementById('warmy').innerHTML=S.army+' <small>/ '+S.infl+'</small>';
+document.getElementById('warmy').innerHTML=armyValue()+' <small>/ '+S.infl+'</small>';
 document.getElementById('wdisp').textContent=disp;
 document.getElementById('rloc').textContent=posTxt();
 document.getElementById('rship').textContent='Vessel: '+S.ships.sys+(S.ships.warp?' · '+S.ships.warp:' · no warp drive');
@@ -3509,7 +3515,7 @@ var sel=null;
 function chips(m){var c=m.st==='DEAD'?'dead':m.st==='TAKEN'?'tkn':m.st==='DEPLOYED'?'dep':'';return '<span class="tc '+c+'">'+(m.st==='TAKEN'?'⛓ TAKEN':m.st)+(m.st==='DEAD'?' · recoverable':m.st==='GARRISON'?' · standby':'')+'</span>'}
 function baseModel(m){return (m.sub||'').split(' - ')[0]||m.cls}
 function rRos(){var tb=document.querySelector('#rt tbody');tb.innerHTML='';
-document.getElementById('rh').textContent='Owned models — '+S.army+' / '+S.infl+' PC';
+document.getElementById('rh').textContent='Owned models — '+armyValue()+' / '+S.infl+' PC';
 var q=(document.getElementById('fq').value||'').toLowerCase(),c=document.getElementById('fc').value,s=document.getElementById('fs').value,f=document.getElementById('ff').value;
 S.roster.forEach(function(m){if(q&&m.n.toLowerCase().indexOf(q)<0)return;if(c&&m.cls!==c)return;if(s&&m.st!==s)return;if(f&&m.fo!==f)return;
 var tr=E('tr','rb'+(m===sel?' sel':''),'<td><b>'+m.n+'</b></td><td style="color:var(--dim)">'+baseModel(m)+'</td><td>'+m.cls+'</td><td>R'+m.rk+'</td><td class="mono">'+AP(m.pc)+'</td><td class="mono">'+m.spd+'</td><td class="mono">'+m.slots+'</td><td class="mono">'+m.w+'</td><td style="font-size:11px">'+(m.fo==='—'?'<span style="color:var(--dim)">—</span>':m.fo)+'</td><td style="font-size:11px;color:var(--dim)">'+m.loc+'</td><td>'+(m.tag?'<span class="pill '+(m.tag.indexOf('Comm')>=0?'bl':'br')+'">'+m.tag+'</span> ':'')+chips(m)+'</td>');
@@ -4160,7 +4166,7 @@ function exitThread(t){
       if(c.w[0]<=0){c.dead=true;if(m){m.st='DEAD';m.loc=(t.loc||'the field')+' — field, recoverable'}}});
     convertSpoils(t);                       // a carrier who quits the field alive keeps its cargo
     tickStreaksAndSync(t.state,false);      // fleeing a joined combat is a qualifying loss
-    var _cc=Math.round(S.army*0.05);S.cur=Math.max(0,S.cur-_cc);
+    var _cc=Math.round(armyValue()*0.05);S.cur=Math.max(0,S.cur-_cc);
     var _wf2=_npcClockWithdraw(t);
     if(!t.posts)t.posts=[];
     t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
@@ -4195,7 +4201,7 @@ function exitThread(t){
   tickStreaksAndSync(t.state,false);
   // T-NPC-3 N1 final review FIX 1: siege restore now hoisted to the top of exitThread
   // (runs for every branch, including this one) — see _ultRestoreCond(t) call above.
-  var curCost=Math.round(S.army*0.05);S.cur=Math.max(0,S.cur-curCost);
+  var curCost=Math.round(armyValue()*0.05);S.cur=Math.max(0,S.cur-curCost);
   S.threads=S.threads.filter(function(x){return x.id!==t.id});
   var yourSpd=deployed.reduce(function(a,m){return Math.max(a,m.spd||2)},0),enemySpd=3,caught=(enemySpd>=yourSpd);
   rW();rRos();
