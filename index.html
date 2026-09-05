@@ -3601,7 +3601,7 @@ var fcOpen=false;
 function idleNow(){return !!(S.pos.void||inTransit())}
 /* T-TERR-2 task 6: a stationed Force is locked unconditionally (even while you personally
    are travelling/void) — only the pre-existing DEPLOYED check stays gated behind idleNow. */
-function forceActive(f){var _sl=!!stationedThreadLockOf(f.id);if(idleNow())return _sl;var ld=S.roster.filter(function(m){return m.id===f.lead})[0];return _sl||(ld&&ld.st==='DEPLOYED')}
+function forceActive(f){var _sl=!!stationedThreadLockOf(f.id)||!!threadOfForce(f.n);if(idleNow())return _sl;var ld=S.roster.filter(function(m){return m.id===f.lead})[0];return _sl||(ld&&ld.st==='DEPLOYED')}
 function eligibleLeaders(){var idle=idleNow();return S.roster.filter(function(m){return m.fo==='—'&&m.st!=='DEAD'&&m.st!=='TAKEN'&&m.tag&&(m.tag.indexOf('Named')>=0||m.tag.indexOf('Comm')>=0)&&!isForceLead(m)&&(idle||m.st!=='DEPLOYED')})}
 function forceAP(fname){var t=0;S.roster.forEach(function(m){if(m.fo===fname&&m.st!=='DEAD'&&m.st!=='TAKEN')t+=AP(m.pc)});return t}
 function makeForce(name,leadId){var ld=S.roster.filter(function(m){return m.id===leadId})[0];if(!ld)return;
@@ -3719,6 +3719,7 @@ db.onclick=function(){
  // the button is only rendered while !active, but re-check at click time in case state moved.
  var _sl2=stationedThreadLockOf(f.id);
  if(_sl2){T(f.n+' is standing garrison at '+((lById(_sl2)||{}).name||_sl2)+'. Recall it first.');return}
+ var _tf=threadOfForce(f.n);if(_tf){T(f.n+' is committed to "'+_tf.n+'". Exit the thread first.');return}
  S.roster.forEach(function(m){if(m.fo===f.n)m.fo='—'});S.forces=S.forces.filter(function(z){return z!==f});
  S.succ.forEach(function(z){if(z.fid===f.id)z.fid=null});
  var ff=document.getElementById('ff');for(var i=ff.options.length-1;i>=0;i--)if(ff.options[i].value===f.n)ff.remove(i);
