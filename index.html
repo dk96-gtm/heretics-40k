@@ -3557,7 +3557,39 @@ var HALL=(function(){
     }
     return out;
   }
-  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt};
+  function T_(canon){return (H(canon).trust)||{};}
+  function rungOf(score,ctx,canon){
+    var T=T_(canon),th=T.thresholds||[0,3,8,15];
+    var names=(ctx.fac==='tyranids'&&T.tyranid)?T.tyranid.rungs:(T.rungs||['stranger','known','trusted','sworn']);
+    var idx=0;for(var i=0;i<th.length;i++){if(score>=th[i])idx=i;}
+    return {index:idx,name:names[idx]};
+  }
+  /* judgeAct: base act weight, reshaped by the culture's doctrine axes, then any authored
+     override. Pure — axes handed in by the glue. Tyranids: cheat acts don't parse. */
+  function judgeAct(act,ctx,axes,canon){
+    var T=T_(canon),ax=T.axis||{},pivot=ax.pivot||60,a=axes||{};
+    var ov=(T.overrides||{})[ctx.fac]||{};
+    // tyranid recognition ladder: cheating is meaningless
+    if(ctx.fac==='tyranids'){
+      if(act==='cheat_clean'||act==='cheat_caught')return 0;
+      var ty=T.tyranid||{};
+      if(act==='offer'&&ty.offer!=null)return ty.offer;
+      if(act==='win'&&ty.win!=null)return ty.win;
+    }
+    // authored override wins outright for the acts it names
+    if(ov[act]!=null)return ov[act];
+    var base=(T.act_base||{})[act];if(base==null)base=0;
+    var v=base;
+    // axis reshaping (only above the pivot does an axis assert itself)
+    if(act==='noble_loss'&&(a.honor||0)>pivot)v+=(ax.honor_noble_bonus||0);
+    if((act==='cheat_clean'||act==='cheat_caught')&&(a.honor||0)>pivot)v+=(ax.honor_cheat_penalty||0);
+    if(act==='cheat_clean'&&(a.cunning||0)>pivot)v+=(ax.cunning_clean_bonus||0);
+    if(act==='job_done'&&(a.pragmatism||0)>pivot)v+=(ax.pragmatism_job_bonus||0);
+    if(act==='offer'&&(a.supremacism||0)>pivot)v=v*(ax.supremacism_offer_mult||1);
+    if(ax.ferocity_only_win&&(a.ferocity||0)>pivot&&act!=='win'&&act!=='lawbreak'&&v>0)v=0;
+    return v;
+  }
+  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt,rungOf:rungOf,judgeAct:judgeAct};
 })();
 /*</hall-core>*/
 /*<save-core>*/

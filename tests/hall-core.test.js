@@ -187,3 +187,42 @@ test('regularsAt: a zero-weight role is never present (custodes barely staff a b
   }
   assert.ok(everAbsent, 'a rare broker should sometimes be absent');
 });
+
+const AX = { honor: 80, cunning: 20, ferocity: 50, pragmatism: 50, supremacism: 50 };
+const AX_CUNNING = { honor: 20, cunning: 85, ferocity: 50, pragmatism: 50, supremacism: 50 };
+
+test('rungOf maps score to the 4 rungs by canon thresholds', () => {
+  assert.equal(HALL.rungOf(0, ctx(), D).name, 'stranger');
+  assert.equal(HALL.rungOf(3, ctx(), D).name, 'known');
+  assert.equal(HALL.rungOf(8, ctx(), D).name, 'trusted');
+  assert.equal(HALL.rungOf(99, ctx(), D).name, 'sworn');
+  assert.equal(HALL.rungOf(99, ctx(), D).index, 3);
+});
+
+test('rungOf uses the Tyranid recognition names for the broodpool', () => {
+  assert.equal(HALL.rungOf(0, ctx({ fac: 'tyranids' }), D).name, 'prey_shaped');
+  assert.equal(HALL.rungOf(99, ctx({ fac: 'tyranids' }), D).name, 'assimilated_adjacent');
+});
+
+test('judgeAct: high honor rewards a noble loss and punishes any cheat', () => {
+  const nobleHonor = HALL.judgeAct('noble_loss', ctx(), AX, D);
+  const nobleFerocity = HALL.judgeAct('noble_loss', ctx(), { honor: 20, cunning: 20, ferocity: 90, pragmatism: 20, supremacism: 20 }, D);
+  assert.ok(nobleHonor > nobleFerocity, 'honor should value a noble loss more than ferocity does');
+  assert.ok(HALL.judgeAct('cheat_clean', ctx(), AX, D) < 0, 'high honor: even a clean cheat falls');
+});
+
+test('judgeAct: high cunning rewards a clean cheat', () => {
+  assert.ok(HALL.judgeAct('cheat_clean', ctx(), AX_CUNNING, D) > 0, 'cunning admires a clean cheat');
+  assert.ok(HALL.judgeAct('cheat_caught', ctx(), AX_CUNNING, D) < 0, 'but a botched one still falls');
+});
+
+test('judgeAct: authored overrides win — Necrons weigh a remembrance offer heavily, lawbreak brutally', () => {
+  assert.ok(HALL.judgeAct('offer', ctx({ fac: 'necrons' }), AX, D) >= 3, 'necron offer override');
+  assert.ok(HALL.judgeAct('lawbreak', ctx({ fac: 'necrons' }), AX, D) <= -8, 'necron lawbreak override');
+});
+
+test('judgeAct: Tyranids do not parse cheating (returns 0)', () => {
+  assert.equal(HALL.judgeAct('cheat_clean', ctx({ fac: 'tyranids' }), AX, D), 0);
+  assert.equal(HALL.judgeAct('cheat_caught', ctx({ fac: 'tyranids' }), AX, D), 0);
+  assert.ok(HALL.judgeAct('offer', ctx({ fac: 'tyranids' }), AX, D) > 0, 'but biomass offers still register');
+});
