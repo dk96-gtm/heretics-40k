@@ -6,8 +6,8 @@ const D = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-da
 
 const FACTIONS = D.factions.map(f => f.id);
 
-test('canon: version is 1.38', () => {
-  assert.equal(D.meta.version, '1.38');
+test('canon: version is 1.39', () => {
+  assert.equal(D.meta.version, '1.39');
 });
 
 test('hall door row exists with 20 per-faction skins and 3 tier lines', () => {

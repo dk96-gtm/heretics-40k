@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.38",
-  "updated": "2026-09-05",
+  "version": "1.39",
+  "updated": "2026-09-06",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -21,7 +21,8 @@
    "v1.29: T-GX-G7 galaxy re-run - 16 crown-sweep retypes seat all 21 subfaction types (crown-only), 8 resource rows tuned to the crown floor rule, tier-III routes opened (shipyard docks on Konor/Iron Reliquary, arena via warzone+lair, reliquary via shrine, warp gate on Dal'yth Verge), legality ghosts cleaned, 5 besieged/infested condition seats (5th on Cominor).",
    "v1.30: T-MST-1 open recruitment + local forge traditions - rules.market block (ruler shelf / items open / models same-allegiance / forge affinity by local ruler); real Muster door replaces the demo stub.",
    "v1.31: T-MSN-1C streaks + 18 signature missions - S.progress.streaks (4 keys, conclude tick), faction-gated generation (one signature row per board), kill filters melee/faction/capture, conclude constraints, collect carriers, signature_premium 1.5.",
-   "v1.34: T-NPC-4 personality combat doctrine — ai.behavior_matrix (20 faction rows, 5 axes as base/spread/plasticity/floor/ceiling) + rules.doctrine (styles onslaught/culling/decapitation, retreat curve, honor gates, lapse nudge tunables)."
+   "v1.34: T-NPC-4 personality combat doctrine — ai.behavior_matrix (20 faction rows, 5 axes as base/spread/plasticity/floor/ceiling) + rules.doctrine (styles onslaught/culling/decapitation, retreat curve, honor gates, lapse nudge tunables).",
+   "v1.39: T-NPC-3.5 full-loadout NPC combat — rules.npc_kit (rank depth ladder) + rules.npc_brain (score bands, draw, tilt, lapse kit nudge); all values flagged tunables."
   ],
   "migration": {
    "done": [
@@ -1356,6 +1357,30 @@
     "base": 30,
     "days": 7
    }
+  },
+  "npc_kit": {
+ "note": "T-NPC-3.5. Depth ladder LOCKED shape (Daak 2026-09-06); values are flagged tunables. items = seeded probability of one item (1 = always); abilities = count for rank>=2; casts gated additionally by the model having a cast-capable slot and DOOR.castRank vs model rk.",
+ "depth_by_rank": {
+  "1": {"items": 0.5, "abilities": 0, "casts": false},
+  "2": {"items": 1, "abilities": 1, "casts": false},
+  "3": {"items": 1, "abilities": 1, "casts": true},
+  "4": {"items": 1, "abilities": 1, "casts": true},
+  "5": {"items": 1, "abilities": 1, "casts": true}
+ }
+  },
+  "npc_brain": {
+ "note": "T-NPC-3.5. Six-step brain (spec §3). Bands per DA:I authoring contract; draw per Battle Brothers; ALL values flagged tunables.",
+ "bands": {"basic_attack": [8, 12], "offensive": [20, 40], "support": [25, 45], "reaction": [50, 70]},
+ "draw_cutoff": 0.7,
+ "inertia_bonus": 0.15,
+ "tilt": {
+  "ferocity": {"targets": "melee_close", "pivot": 50, "max_mult": 1.6},
+  "cunning": {"targets": "denial_ranged", "pivot": 50, "max_mult": 1.6},
+  "supremacism": {"targets": "leader", "pivot": 50, "max_mult": 1.6},
+  "honor_high": 70, "honor_low": 30,
+  "pragmatism_item_pivot": 50
+ },
+ "lapse_kit_nudge": {"per_caster": 0.004, "per_ability": 0.002, "cap": 0.03}
   },
   "cadence": {
  "note": "T-NPC-3 N2. Shape LOCKED (Daak 2026-08-16/18); every value is a flagged tunable, not final balance.",

@@ -21,6 +21,6 @@ test('rules.cadence exists with the locked N2 shape', () => {
   assert.strictEqual(c.tribute_valuation.demand_mult, 1.2);
 });
 
-test('meta.version is 1.38', () => {
-  assert.strictEqual(D.meta.version, '1.38');
+test('meta.version is 1.39', () => {
+  assert.strictEqual(D.meta.version, '1.39');
 });
