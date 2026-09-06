@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ── Balance Lab v1 (T-QA-2) — headless seeded auto-battle arena ──────────────
+/* ── Balance Lab v2 (T-NPC-3.5 task 8) — headless seeded auto-battle arena ────
  * Dev-only, never shipped (same status as tests/). Zero deps.
  *
  * Extracts the pure THREAD core from index.html via the exact tests/_load.js
@@ -11,12 +11,24 @@
  * index.html's parseItem/damageOf/bfAP use, verified by direct inspection —
  * see the comments beside each parser below.
  *
+ * v2 (T-NPC-3.5 task 8) rewires the driver onto the six-step brain shipped by
+ * tasks 3-7: every model's build now carries a REAL minted kit (`KIT.mint`,
+ * the same kit-core the live engine uses at spawn), the battle loop passes a
+ * real `kitOf` accessor (reused from the engine's own `kitOfFor` glue via
+ * tests/_condglue.js — one source of truth, not a re-implementation), and
+ * `state.round` actually advances per exchange (R7 fix — v1 silently reused
+ * the same draw seed forever). Consumable kit rows deplete across a battle,
+ * mirroring `npcRespond`'s own depletion bookkeeping exactly.
+ *
  * Usage: node tools/arena.js
  */
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { loadKit } = require('../tests/_load-kit');
+const { loadAgency } = require('../tests/_load-agency');
+const { loadCondGlue } = require('../tests/_condglue');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -31,6 +43,13 @@ function loadThread() {
 }
 const THREAD = loadThread();
 const D = JSON.parse(fs.readFileSync(path.join(ROOT, 'heretics-40k-data-v1.json'), 'utf8'));
+// KIT (kit-core, mints rank-scaled faction-legal kits) + ULT (agency-core, the rng/hashStr
+// KIT.mint itself expects as its rngFn arg) + G (the engine's own cond-staging glue, reused
+// verbatim so this harness's kitOf produces byte-identical entry shapes to the live game's
+// kitOfFor — same technique tests/kit-glue.test.js already uses).
+const KIT = loadKit();
+const ULT = loadAgency();
+const G = loadCondGlue(THREAD);
 
 /* ═══════════════════════ deterministic RNG plumbing ═══════════════════════
  * Same hash+mulberry32 shape AXES.rollFor uses inside the core (verified at
@@ -222,9 +241,20 @@ function genBuild(fac, rng, tag) {
       slots.push({ type: type, it: it });
     }
     const armour = defaultArmourFor(fac.id, base.cls);
+    // T-NPC-3.5 task 8: mint this model instance's real NPC kit (KIT.mint — the exact
+    // kit-core the live engine calls at every spawn site, genHostCombatants ~index.html
+    // L3894). Rank is sampled uniformly 1-5 per model, NOT derived from PC the way a real
+    // live spawn's npcSpecRk does — this is deliberate: live NPC spawns via genHostiles
+    // almost never reach past rank 1 (bosses land on rank 2 only; see the flagged R8
+    // design gap in BACKLOG), so a Lab that mirrored live spawn ranks would silently
+    // starve its own kit-outlier analytics of the ability/cast rungs. Sampling every rank
+    // here is what makes "the Lab is unaffected by the R8 gap" true.
+    const rk = 1 + Math.floor(rng() * 5);
+    const kitSeed = hashStr(tag + ':' + mi + ':kit:' + fac.id + ':' + rk);
+    const kit = KIT.mint(fac.id, { rk: rk, cls: base.cls, sub: base.n }, kitSeed, ULT.rng, D);
     return {
       n: base.n + ' #' + mi, cls: base.cls, pc: base.pc, spd: base.sp || 3, faction: fac.id,
-      _w: Math.max(1, base.w || 3),
+      _w: Math.max(1, base.w || 3), rk: rk, kit: kit,
       loadout: { slots: slots, armour: { it: armour } },
     };
   });
@@ -246,6 +276,25 @@ function weaponsOfModel(model) {
   });
   return out;
 }
+// T-NPC-3.5 task 8: every unique {kind,name} kit action a build's minted models could ever
+// actually stage — reuses G.condTagsOf (the SAME cond-tag parse kitOfFor itself calls) so
+// "appeared in" matches kitOfFor's own "no stageable cond tag → not a real kit entry" filter
+// exactly, rather than counting raw mint noise (e.g. a Stimm-Injector item with no cond tag,
+// which mints fine but can never actually be drawn by the brain — see kit-glue.test.js).
+function itemsOfBuild(build) {
+  const set = new Map();
+  const CATS = [['items', 'item'], ['abilities', 'ability'], ['casts', 'cast']];
+  build.models.forEach(m => {
+    CATS.forEach(([catKey, kind]) => {
+      (m.kit && m.kit[catKey] || []).forEach(row => {
+        if (!row) return;
+        if (!G.condTagsOf(row).length) return;
+        set.set(kind + '::' + row.n, { kind, name: row.n, item: row });
+      });
+    });
+  });
+  return set;
+}
 function weaponCaps(c) {   // the injected weaponsOf(c) THREAD.npcTurn requires — mirrors bfWeaponCaps L5717
   return weaponsOfModel(c.model).map(it => ({
     name: it.n, band: bandOfItem(it), ap: bfAP(it), damage: damageOf(it),
@@ -264,6 +313,11 @@ function assembleParty(build, party, roster) {
     roster[party + '_' + i] = {
       w: [m._w, m._w], conds: [], party: party, model: m,
       armour: (m.loadout.armour && m.loadout.armour.it) ? m.loadout.armour.it.def : null,
+      // T-NPC-3.5 task 8: `gen.kit` is the ONLY shape kitOfFor reads (index.html L6275-6277:
+      // `if(!c||!c.gen||!c.gen.kit)return []`) — mirrors genHostCombatants' own combatant
+      // shape (`C[spec.id]={...,gen:gen}` where `gen.kit` was minted at spawn). `usedKit`
+      // starts empty; npcRespond's exact depletion bookkeeping is replayed in runBattle below.
+      gen: { kit: m.kit }, usedKit: {},
     };
   });
 }
@@ -358,9 +412,18 @@ const ROUND_CAP = 60;
 function runBattle(buildA, buildB, seed) {
   const rngBoard = rngFor('board:' + seed);
   const partyA = 'A', partyB = 'B';
-  const state = { pools: {}, combatants: {}, conds: [], phase: 'battle', fog: {}, round: 0, mods: [], behavior: {} };
+  // T-NPC-3.5 task 5/8: `state.id` is the thread-id half of the draw seed
+  // (`String(state.id||'')+':'+side+':'+turnIx+':'+aid`, index.html L1457-1458) — a state
+  // with no id collapses every battle's draw onto the SAME stream regardless of which battle
+  // is running. Stamping the battle's own seed here is this harness's equivalent of
+  // initState stamping the owning thread's id onto a real combat state.
+  const state = { id: seed, pools: {}, combatants: {}, conds: [], phase: 'battle', fog: {}, round: 0, mods: [], behavior: {}, aiTrace: [] };
   assembleParty(buildA, partyA, state.combatants);
   assembleParty(buildB, partyB, state.combatants);
+  // T-NPC-3.5 task 8 (R1): the real kitOf accessor, reused verbatim from the engine's own
+  // kitOfFor glue (index.html L6275) via _condglue.js — `state` is accepted but not read by
+  // kitOfFor itself (kept for interface parity), so building it once up front is safe.
+  const kitOf = G.kitOfFor(state);
   setupBoard(state, partyA, partyB, rngBoard);
   state.pools[partyA] = buildA.models.reduce((a, m) => a + apOf(m.pc), 0);
   state.pools[partyB] = buildB.models.reduce((a, m) => a + apOf(m.pc), 0);
@@ -379,10 +442,26 @@ function runBattle(buildA, buildB, seed) {
     for (const side of [partyA, partyB]) {
       const oc = THREAD.outcome(thread, state);
       if (oc) { result = oc; break; }
-      // T-NPC-3.5 task 5: kitOf is the new 5th arg; task 8 rewires this harness to the
-      // real kit-minted accessor. The stub keeps the driver weapons-only for now.
-      const block = THREAD.npcTurn(side, state, state.board, weaponCaps, () => [], D);
-      if (block.length && applyResilient(thread, state, side, block)) progressed = true;
+      // T-NPC-3.5 task 8 (R1): kitOf is now the real kit-minted accessor built above —
+      // the six-step brain can stage cast/ability/item actions, not just weapon attacks.
+      const block = THREAD.npcTurn(side, state, state.board, weaponCaps, kitOf, D);
+      if (block.length && applyResilient(thread, state, side, block)) {
+        progressed = true;
+        // T-NPC-3.5 task 8: depletion mirrors npcRespond exactly (index.html L6588-6592) —
+        // a consumed kit row marks itself used on the ACTING combatant so kitOfFor filters
+        // it out of every later call (drawn once per model, per canon — no inventory count).
+        block.forEach(b => {
+          if (b.consumed && b.item) {
+            const ac = state.combatants[b.actor];
+            if (ac) { ac.usedKit = ac.usedKit || {}; ac.usedKit[b.item.n] = true; }
+          }
+        });
+        // R7 fix: advance state.round per exchange, exactly as npcRespond does right after
+        // an NPC post lands (index.html L6593, `THREAD.tickRound(st)`) — v1 never called
+        // this, so `turnIx` in the draw seed (index.html L1454) was permanently 0 and every
+        // single exchange, for the whole battle, redrew from the identical seeded stream.
+        THREAD.tickRound(state);
+      }
       state.pools[side] = poolsBase[side];   // per-turn AP refresh, mirrors npcRespond L5803
     }
     if (result) break;
@@ -398,12 +477,33 @@ function runBattle(buildA, buildB, seed) {
   return { result: result, rounds: rounds, state: state };
 }
 
-function fight(buildA, buildB, trials, seedBase) {
+// T-NPC-3.5 task 8: tallies actual npcTurn selections off each battle's `state.aiTrace`
+// ring buffer (cap 40, index.html NPCB_TRACE_CAP) into a shared accumulator so the
+// tournament-wide "times chosen" analytics (below) don't require holding every trial's
+// full state in memory. IMPORTANT CAVEAT (documented again in the report): the ring
+// buffer only retains a battle's LAST 40 decisions — on a battle that ran the full
+// ROUND_CAP, this is a sample of the endgame, not the complete decision history.
+function tallyAiTrace(state, tally) {
+  if (!tally) return;
+  (state.aiTrace || []).forEach(e => {
+    const ch = e && e.chosen;
+    if (!ch || !ch.item) return;
+    if (ch.kind !== 'cast' && ch.kind !== 'ability' && ch.kind !== 'item') return;
+    const key = ch.kind + '::' + ch.item;
+    tally.chosen[key] = (tally.chosen[key] || 0) + 1;
+  });
+}
+
+function fight(buildA, buildB, trials, seedBase, kitTally) {
   let aWins = 0, bWins = 0, draws = 0;
   const battles = [];
   for (let t = 0; t < trials; t++) {
     const b = runBattle(buildA, buildB, seedBase + ':t' + t);
-    battles.push(b);
+    tallyAiTrace(b.state, kitTally);
+    // Only `result`/`rounds` survive past this point — a 3000-battle tournament holding
+    // every trial's full combatants/board/aiTrace state would be needlessly heavy; the
+    // aiTrace signal worth keeping is already folded into `kitTally` above.
+    battles.push({ result: b.result, rounds: b.rounds });
     if (b.result.victor === 'A') aWins++;
     else if (b.result.victor === 'B') bWins++;
     else draws++;
@@ -436,6 +536,42 @@ function determinismSelfCheck() {
   console.error('❪arena❫ determinism self-check OK (same seed → identical battles, twice)');
 }
 
+/* T-NPC-3.5 task 8 (R7) — round-seed self-check.
+ * v1's bug: `state.round` was never advanced by the battle loop, so the draw seed
+ * (index.html L1457-1458: `hashStr(String(state.id||'')+':'+side+':'+turnIx+':'+aid)`,
+ * `turnIx=state.round`) collapsed onto the SAME stream for every exchange in a battle,
+ * forever — the seeded draw never actually explored. Two checks:
+ *  (1) formula-level: round 1 vs round 2 of the identical id/side/actor must hash to a
+ *      different seed AND draw a different first value, using the exact hashStr+mulberry32
+ *      shape verified identical to the core's private npcHash/npcRng (both defined at the
+ *      top of this file with a comment pointing at the exact index.html line numbers).
+ *  (2) wiring-level: a real battle must actually advance `state.round` past 0, proving
+ *      THREAD.tickRound is really being invoked from the loop, not just that (1)'s formula
+ *      is theoretically sound. */
+function roundSeedSelfCheck() {
+  const id = 'roundcheck-seed', side = 'A', actor = 'A_0';
+  const seed1 = hashStr(id + ':' + side + ':1:' + actor);
+  const seed2 = hashStr(id + ':' + side + ':2:' + actor);
+  if (seed1 === seed2) {
+    console.error('❪arena❫ ROUND-SEED SELF-CHECK FAILED — round 1 and round 2 hashed identically');
+    process.exit(1);
+  }
+  const draw1 = mulberry32(seed1)(), draw2 = mulberry32(seed2)();
+  if (draw1 === draw2) {
+    console.error('❪arena❫ ROUND-SEED SELF-CHECK FAILED — round 1 and round 2 drew the identical value');
+    process.exit(1);
+  }
+  const facA = D.factions.find(f => f.id === 'necrons'), facB = D.factions.find(f => f.id === 'aeldari');
+  const bA = genBuild(facA, rngFor('roundcheck-build:A'), 'A');
+  const bB = genBuild(facB, rngFor('roundcheck-build:B'), 'B');
+  const b = runBattle(bA, bB, 'roundcheck-battle');
+  if (!(b.state.round >= 2)) {
+    console.error('❪arena❫ ROUND-SEED SELF-CHECK FAILED — state.round never advanced past ' + b.state.round + ' (tickRound not firing from the battle loop)');
+    process.exit(1);
+  }
+  console.error('❪arena❫ round-seed self-check OK (round 1 ≠ round 2 seed/draw; a real battle advances state.round to ' + b.state.round + ')');
+}
+
 /* ═══════════════════════ tournament ═══════════════════════════════════════
  * WARBAND bracket only (T-QA-2 v1 scope). 6 builds/faction x 20 factions =
  * 120 builds. Swiss-style: 2 rounds of pairing (round 1 random-shuffle pairs
@@ -444,6 +580,27 @@ function determinismSelfCheck() {
  * inside the playbook's ~3000-battle compute-sanity aim. */
 const BUILDS_PER_FACTION = 6;
 const TRIALS_PER_PAIRING = 25;
+const KIT_TABLE_CAP = 12;   // top/bottom N rows shown in the kit action analytics table
+
+// T-NPC-3.5 task 8: v1's cross-faction tier table (rank + avg win rate), transcribed
+// verbatim from .superpowers/sdd/2026-09-05-redteam/balance-warband.md's "Cross-faction
+// tier table" section, so writeReport can print a v1→v2 movement column without re-parsing
+// that file at runtime. Faction-name keys are D.factions[].name strings, unchanged since v1.
+const V1_TIER_RANK = {
+  'Orks': 1, 'Adepta Sororitas': 2, 'Aeldari': 3, 'Astra Militarum': 4, 'Genestealer Cults': 5,
+  'Black Legion': 6, 'Leagues of Votann': 7, 'Adeptus Mechanicus': 8, "Emperor's Children": 9,
+  'Drukhari': 10, "T'au": 11, 'Tyranids': 12, 'Daemons': 13, 'World Eaters': 14,
+  'Adeptus Astartes': 15, 'Necrons': 16, 'Death Guard': 17, 'Thousand Sons': 18,
+  'Harlequins': 19, 'Adeptus Custodes': 20,
+};
+const V1_TIER_AVG = {
+  'Orks': 0.793, 'Adepta Sororitas': 0.760, 'Aeldari': 0.713, 'Astra Militarum': 0.683,
+  'Genestealer Cults': 0.663, 'Black Legion': 0.660, 'Leagues of Votann': 0.540,
+  'Adeptus Mechanicus': 0.530, "Emperor's Children": 0.517, 'Drukhari': 0.517,
+  "T'au": 0.457, 'Tyranids': 0.410, 'Daemons': 0.393, 'World Eaters': 0.383,
+  'Adeptus Astartes': 0.343, 'Necrons': 0.343, 'Death Guard': 0.233, 'Thousand Sons': 0.207,
+  'Harlequins': 0.140, 'Adeptus Custodes': 0.087,
+};
 
 function buildTournament(topSeed) {
   const rngPairShuffle = rngFor(topSeed + ':pairshuffle1');
@@ -462,16 +619,22 @@ function buildTournament(topSeed) {
   }
   const record = new Map(builds.map(b => [b, { wins: 0, losses: 0, draws: 0, battles: 0 }]));
   const matchLog = [];
+  // T-NPC-3.5 task 8: `chosen` accumulates from state.aiTrace across every trial (see
+  // tallyAiTrace); `appearances` counts trials where at least one participating build
+  // carried the item in its minted kit (independent of whether it was ever drawn).
+  const kitTally = { chosen: {}, appearances: {} };
 
   function runRound(pairs, roundTag) {
     pairs.forEach(([bA, bB], idx) => {
       if (bA === bB) return;
       const seed = topSeed + ':' + roundTag + ':' + idx;
-      const r = fight(bA, bB, TRIALS_PER_PAIRING, seed);
+      const r = fight(bA, bB, TRIALS_PER_PAIRING, seed, kitTally);
       const rA = record.get(bA), rB = record.get(bB);
       rA.wins += r.aWins; rA.losses += r.bWins; rA.draws += r.draws; rA.battles += r.trials;
       rB.wins += r.bWins; rB.losses += r.aWins; rB.draws += r.draws; rB.battles += r.trials;
       matchLog.push({ a: bA, b: bB, r });
+      const carried = new Map([...itemsOfBuild(bA), ...itemsOfBuild(bB)]);
+      carried.forEach((_, key) => { kitTally.appearances[key] = (kitTally.appearances[key] || 0) + r.trials; });
     });
   }
 
@@ -490,7 +653,7 @@ function buildTournament(topSeed) {
   runRound(round2Pairs, 'r2');
 
   const totalBattles = matchLog.reduce((a, m) => a + m.r.trials, 0);
-  return { builds, record, matchLog, totalBattles };
+  return { builds, record, matchLog, totalBattles, kitTally };
 }
 
 /* ═══════════════════════ analysis + report ═══════════════════════════════ */
@@ -519,7 +682,7 @@ function analyze(tourney) {
   const top = sorted.slice(0, topN);
 
   function tally(list) {
-    const counts = { weapon: {}, element: {}, condTag: {}, forgeTag: {} };
+    const counts = { weapon: {}, element: {}, condTag: {}, forgeTag: {}, kit: {} };
     list.forEach(b => {
       const seenW = new Set(), seenE = new Set(), seenC = new Set();
       b.models.forEach(m => weaponsOfModel(m).forEach(it => {
@@ -531,6 +694,10 @@ function analyze(tourney) {
       seenE.forEach(n => counts.element[n] = (counts.element[n] || 0) + 1);
       seenC.forEach(n => counts.condTag[n] = (counts.condTag[n] || 0) + 1);
       if (b.forgedTag) counts.forgeTag[b.forgedTag] = (counts.forgeTag[b.forgedTag] || 0) + 1;
+      // T-NPC-3.5 task 8: kit outlier category — every distinct minted cast/ability/item
+      // this build's roster carries (same "no stageable cond tag → doesn't count" filter
+      // as itemsOfBuild), so this reads exactly like the weapon/element/tag tables above.
+      itemsOfBuild(b).forEach((v, key) => { counts.kit[key] = (counts.kit[key] || 0) + 1; });
     });
     return counts;
   }
@@ -548,7 +715,7 @@ function analyze(tourney) {
   }
   const outlierReport = {
     weapon: outliers('weapon'), element: outliers('element'),
-    condTag: outliers('condTag'), forgeTag: outliers('forgeTag'),
+    condTag: outliers('condTag'), forgeTag: outliers('forgeTag'), kit: outliers('kit'),
   };
 
   // degenerate combos: single builds with win rate far above the field mean,
@@ -559,6 +726,32 @@ function analyze(tourney) {
   });
 
   return { bestPerFaction, tierTable, topN, outlierReport, degenerate, meanWR };
+}
+
+// T-NPC-3.5 task 8 — the brief's own analytics ask, verbatim: "per cast/ability/item —
+// battles it appeared in, times chosen, win-rate delta of builds carrying it." Distinct
+// from the presence-only 'kit' outlier table above: this one is driven by REAL runtime
+// data (state.aiTrace, via kitTally.chosen), not just what a build's roster carries.
+function kitActionAnalytics(tourney) {
+  const { builds, record, kitTally } = tourney;
+  const carrierSets = new Map(builds.map(b => [b, itemsOfBuild(b)]));
+  const keys = new Set([...Object.keys(kitTally.appearances), ...Object.keys(kitTally.chosen)]);
+  const rows = [];
+  keys.forEach(key => {
+    const [kind, name] = key.split('::');
+    const carriers = builds.filter(b => carrierSets.get(b).has(key));
+    const nonCarriers = builds.filter(b => !carrierSets.get(b).has(key));
+    const avgWR = list => list.length ? list.reduce((a, b) => a + winRateOf(b, record), 0) / list.length : null;
+    const carrierWR = avgWR(carriers), nonCarrierWR = avgWR(nonCarriers);
+    rows.push({
+      key, kind, name,
+      appearances: kitTally.appearances[key] || 0,
+      timesChosen: kitTally.chosen[key] || 0,
+      carrierCount: carriers.length, carrierWR, nonCarrierWR,
+      delta: (carrierWR != null && nonCarrierWR != null) ? carrierWR - nonCarrierWR : null,
+    });
+  });
+  return rows.sort((a, b) => (b.delta || -1) - (a.delta || -1));
 }
 
 function pct(x) { return (x * 100).toFixed(1) + '%'; }
@@ -592,36 +785,42 @@ function buildSummary(b) {
   };
 }
 
-function writeReport(tourney, analysis) {
-  const outDir = path.join(ROOT, '.superpowers', 'sdd', '2026-09-05-redteam');
+function writeReport(tourney, analysis, kitRows) {
+  const outDir = path.join(ROOT, '.superpowers', 'sdd', '2026-09-06-lab-v2');
   fs.mkdirSync(outDir, { recursive: true });
-  const outPath = path.join(outDir, 'balance-warband.md');
+  const outPath = path.join(outDir, 'balance-warband-v2.md');
 
   let md = '';
-  md += '# Balance Lab v1 — WARBAND bracket (T-QA-2)\n\n';
-  md += 'Headless seeded auto-battle sweep over the WARBAND Force-size bracket ';
-  md += '(canon `rules.force_size_tags`: WARBAND is total model PC in the range 250-750, ';
-  md += 'the SQUAD ceiling to the WARBAND ceiling). ' + tourney.builds.length + ' builds sampled ';
-  md += '(' + BUILDS_PER_FACTION + ' per faction across all 20 factions), ' + tourney.totalBattles + ' battles ';
-  md += 'simulated across a 2-round Swiss pairing (round 1 random, round 2 paired by round-1 win rate so ';
-  md += 'similar-strength builds meet), ' + TRIALS_PER_PAIRING + ' trials per pairing to average board-generation ';
-  md += 'and doctrine-roll variance. Every battle is npcTurn vs npcTurn (both sides AI-driven, the same pure ';
-  md += 'THREAD.npcTurn the live game uses for its NPC turns) to a round cap of ' + ROUND_CAP + ' exchanges.\n\n';
+  md += '# Balance Lab v2 — WARBAND bracket, full-kit NPCs (T-NPC-3.5 task 8)\n\n';
+  md += 'Same shape as [Balance Lab v1](../2026-09-05-redteam/balance-warband.md) (T-QA-2), re-run on top of the ';
+  md += 'shipped six-step NPC brain (T-NPC-3.5 tasks 3-7): every model now carries a REAL minted kit (`KIT.mint`, ';
+  md += 'the same kit-core the live engine calls at spawn) and `THREAD.npcTurn` is handed a real `kitOf` accessor, ';
+  md += 'so cast/ability/item choices are no longer inert against the auto-played NPC combat loop — v1\'s central ';
+  md += 'caveat is now resolved. Headless seeded auto-battle sweep over the WARBAND Force-size bracket (canon ';
+  md += '`rules.force_size_tags`: WARBAND is total model PC in the range 250-750, the SQUAD ceiling to the WARBAND ';
+  md += 'ceiling). ' + tourney.builds.length + ' builds sampled (' + BUILDS_PER_FACTION + ' per faction across all 20 factions), ';
+  md += tourney.totalBattles + ' battles simulated across a 2-round Swiss pairing (round 1 random, round 2 paired ';
+  md += 'by round-1 win rate so similar-strength builds meet), ' + TRIALS_PER_PAIRING + ' trials per pairing to average ';
+  md += 'board-generation and doctrine-roll variance. Every battle is npcTurn vs npcTurn (both sides AI-driven, the ';
+  md += 'same pure THREAD.npcTurn the live game uses for its NPC turns) to a round cap of ' + ROUND_CAP + ' exchanges.\n\n';
 
-  md += '## Important scope note — what this run can and cannot see\n\n';
-  md += 'THREAD.npcTurn (the only combat driver this harness uses, matching the real drama/NPC-turn glue) reads ';
-  md += 'ONLY equipped WEAPON slots when choosing and staging an attack — it never casts an ABILITY or CAST, and ';
-  md += 'never reads an ITEM slot\'s effect text. That is a property of the shipped pure core today, not a ';
-  md += 'simplification this harness invented (verified by reading `npcTurn`, index.html ~L1320-1387: it only ';
-  md += 'calls the injected `weaponsOf(c)` and only ever stages `move`/`damage`/fanout-`cond` effects sourced ';
-  md += 'from a weapon). Practically: **item/ability/cast slot choices have zero effect on these simulated ';
-  md += 'outcomes.** This is itself evidence worth a line in the tuning sits — the richest part of the loadout ';
-  md += 'system (abilities, casts, buff items) is currently inert against the auto-played NPC combat loop; only ';
-  md += 'a human composer staging those actions manually would ever trigger them. Builds below still carry ';
-  md += 'randomly-rolled item/ability/cast slots (for a realistic loadout shape), but the win-rate signal in this ';
-  md += 'report is driven entirely by: model selection (class mix, PC efficiency), WEAPON choice (band/damage/AP/';
-  md += 'element/hostile-tag), one optional forge-tag augmentation, and each faction\'s `ai.behavior_matrix` ';
-  md += 'doctrine roll (which shapes npcTurn\'s targeting/kiting/retreat behavior, not the player\'s design intent).\n\n';
+  md += '## What changed since v1 — what this run can see now\n\n';
+  md += 'v1\'s central scope note was that `THREAD.npcTurn` only ever staged WEAPON attacks — item/ability/cast slots ';
+  md += 'were rolled onto every build but had zero effect on outcomes. T-NPC-3.5 shipped the six-step brain that fixed ';
+  md += 'this: `npcTurn` now takes a `kitOf(c)` accessor (5th argument) that surfaces every cond-carrying cast/ability/item ';
+  md += 'a combatant\'s minted kit holds, `enumeratePairs` turns each into a real candidate pair alongside weapon ';
+  md += 'attacks, and the same score → axis-tilt → seeded-draw pipeline picks between them. This harness\'s `kitOf` is ';
+  md += 'not a re-implementation — it is the engine\'s own `kitOfFor` glue (index.html, `/*<cond-staging-glue>*/`), ';
+  md += 'reused verbatim via `tests/_condglue.js`, the same extraction `tests/kit-glue.test.js` already relies on. ';
+  md += 'Every model instance in every build below is minted a kit via `KIT.mint` at a UNIFORMLY SAMPLED rank 1-5 ';
+  md += '(not the PC-derived rank a real spawn gets — see the flagged R8 gap below), so this run\'s kit-outlier ';
+  md += 'analytics exercise the full `rules.npc_kit.depth_by_rank` ladder, including the ability and cast rungs a ';
+  md += 'live spawn today almost never reaches.\n\n';
+  md += '**Caveat carried forward on the analytics, not the sim:** `state.aiTrace` is a capped ring buffer (40 entries, ';
+  md += '`NPCB_TRACE_CAP`) PER BATTLE, so the "times chosen" counts below are drawn from each battle\'s LAST ≤40 ';
+  md += 'decisions, not its complete history — an accurate sample of the endgame of a long battle, not a complete ';
+  md += 'decision log. "Battles it appeared in" (kit presence) and the win-rate-delta columns are NOT subject to this ';
+  md += 'cap — those come from what a build\'s roster actually carries, independent of how much of the trace survived.\n\n';
 
   md += '## Cross-faction tier table\n\n';
   md += 'Ranked by a faction\'s AVERAGE win rate across its ' + BUILDS_PER_FACTION + ' sampled builds (not just its best) — ';
@@ -634,6 +833,26 @@ function writeReport(tourney, analysis) {
   md += '(round 1 + round 2 combined). A draw is a mutual wipe, stalemate (neither side could act) or a round-cap ';
   md += 'timeout — none of those count as a win for either side.\n\n';
 
+  md += '## v1 → v2 movement — who rose/fell once kits mattered\n\n';
+  md += 'v1 ran the SAME 6-builds/faction, 2-round-Swiss, 25-trials-per-pairing shape on an all-weapon, no-kit brain ';
+  md += '(`.superpowers/sdd/2026-09-05-redteam/balance-warband.md`). Comparing v1\'s rank to this run\'s rank isolates how ';
+  md += 'much minted kits (plus the R7 round-ticking fix, which made the seeded draw actually explore instead of reusing ';
+  md += 'round 0 forever) moved each faction\'s standing. Some of this movement is real signal, some is Swiss-pairing + ';
+  md += '25-trial sampling noise (the same caveat v1 itself flagged) — treat a 1-2 rank move either way as noise-band, and ';
+  md += 'the larger swings as worth a second look.\n\n';
+  md += '| Faction | v1 rank | v1 avg WR | v2 rank | v2 avg WR | Rank Δ |\n|---|---|---|---|---|---|\n';
+  analysis.tierTable.forEach((f, i) => {
+    const v1r = V1_TIER_RANK[f.facName], v1w = V1_TIER_AVG[f.facName];
+    const v2r = i + 1;
+    const delta = (v1r != null) ? (v1r - v2r) : null;   // positive = rose (a lower rank NUMBER is better)
+    const arrow = delta == null ? '—' : delta > 0 ? '▲' + delta : delta < 0 ? '▼' + (-delta) : '=';
+    md += '| ' + f.facName + ' | ' + (v1r != null ? v1r : '—') + ' | ' + (v1w != null ? pct(v1w) : '—') + ' | ' +
+      v2r + ' | ' + pct(f.avgWinRate) + ' | ' + arrow + ' |\n';
+  });
+  md += '\nLegend: "Rank Δ" = v1 rank minus v2 rank — ▲N = rose N places (stronger relative to the field once kits ';
+  md += 'mattered), ▼N = fell N places, "=" = unchanged. Both tables rank by the SAME "avg win rate across a faction\'s ';
+  md += 'sampled builds" metric (not best-build), so the comparison is apples-to-apples.\n\n';
+
   md += '## Per-faction best build\n\n';
   analysis.bestPerFaction.forEach(f => {
     const s = buildSummary(f.best);
@@ -645,27 +864,65 @@ function writeReport(tourney, analysis) {
     md += 'this faction\'s sample, not a claim about every possible ' + f.facName + ' loadout.\n\n';
   });
 
-  md += '## Gear / element / tag outliers among winners\n\n';
+  md += '## Gear / element / tag / kit outliers among winners\n\n';
   md += 'A build is in the "top quarter" if its win rate ranks in the top ' + analysis.topN + ' of all ' + tourney.builds.length + ' ';
-  md += 'sampled builds. For each weapon/element/hostile-tag/forge-tag, "top-quarter rate" is the share of top-quarter ';
-  md += 'builds carrying it at least once; "baseline rate" is the same share across ALL sampled builds. Only entries ';
-  md += 'appearing in ≥15% of top-quarter builds AND at ≥1.4x their baseline rate are listed — the ratio column is ';
-  md += 'how many times more common that gear is among winners than in the general population.\n\n';
+  md += 'sampled builds. For each weapon/element/hostile-tag/forge-tag/kit-action, "top-quarter rate" is the share of ';
+  md += 'top-quarter builds carrying it at least once; "baseline rate" is the same share across ALL sampled builds. Only ';
+  md += 'entries appearing in ≥15% of top-quarter builds AND at ≥1.4x their baseline rate are listed — the ratio column ';
+  md += 'is how many times more common that gear is among winners than in the general population. The new **Kit actions** ';
+  md += 'table is T-NPC-3.5 task 8\'s own addition — "carrying" a cast/ability/item now means something to a battle\'s ';
+  md += 'outcome, unlike v1 where kit slots were cosmetic.\n\n';
   const OUTLIER_LABELS = {
     weapon: { plural: 'Weapons', noun: 'weapon' },
     element: { plural: 'Elements', noun: 'element' },
     condTag: { plural: 'Hostile weapon-tags (DoT/Slowing/Suppressing/Draining)', noun: 'hostile weapon-tag' },
     forgeTag: { plural: 'Forge-tag augmentations', noun: 'forge-tag augmentation' },
+    kit: { plural: 'Kit actions (cast/ability/item)', noun: 'kit action' },
   };
-  ['weapon', 'element', 'condTag', 'forgeTag'].forEach(key => {
+  // 'kit' outlier names are 'kind::name' keys (see itemsOfBuild) — split for display.
+  const kitLabel = name => { const [kind, ...rest] = name.split('::'); return rest.join('::') + ' (' + kind + ')'; };
+  ['weapon', 'element', 'condTag', 'forgeTag', 'kit'].forEach(key => {
     const { plural: label, noun } = OUTLIER_LABELS[key];
     const rows = analysis.outlierReport[key];
     md += '**' + label + '**\n\n';
     if (!rows.length) { md += 'No outlier cleared both thresholds — no single ' + noun + ' dominates the winning sample.\n\n'; return; }
     md += '| Name | Top-quarter rate | Baseline rate | Ratio |\n|---|---|---|---|\n';
-    rows.forEach(r => { md += '| ' + r.name + ' | ' + pct(r.topRate) + ' | ' + pct(r.baseRate) + ' | ' + (r.ratio === Infinity ? '∞ (baseline 0)' : r.ratio.toFixed(1) + 'x') + ' |\n'; });
+    rows.forEach(r => {
+      const shown = key === 'kit' ? kitLabel(r.name) : r.name;
+      md += '| ' + shown + ' | ' + pct(r.topRate) + ' | ' + pct(r.baseRate) + ' | ' + (r.ratio === Infinity ? '∞ (baseline 0)' : r.ratio.toFixed(1) + 'x') + ' |\n';
+    });
     md += '\n';
   });
+
+  md += '## Kit action analytics — from `state.aiTrace` (T-NPC-3.5 task 8)\n\n';
+  md += 'The outlier table above answers "do winners carry this more than the field" from what a build\'s roster holds. ';
+  md += 'This table answers a different question with REAL runtime data: per cast/ability/item, how many battles it ';
+  md += 'actually appeared in (carried by a participating build), how many times `npcTurn`\'s seeded draw actually ';
+  md += 'CHOSE it (subject to the 40-entry `aiTrace` ring-buffer cap noted above — an endgame sample, not a full log), ';
+  md += 'and the win-rate delta between builds that carry it and builds that don\'t. Sorted by win-rate delta, richest ';
+  md += 'first; only the top ' + KIT_TABLE_CAP + ' and bottom ' + KIT_TABLE_CAP + ' rows are shown (full tally has ' + kitRows.length + ' distinct kit actions).\n\n';
+  if (!kitRows.length) {
+    md += 'No cast/ability/item ever produced a stageable kit entry this run (every minted row lacked a cond tag) — ';
+    md += 'nothing to tabulate.\n\n';
+  } else {
+    md += '| Kind | Name | Battles appeared in | Times chosen | Carrier win rate | Non-carrier win rate | Δ win rate |\n|---|---|---|---|---|---|---|\n';
+    const rowLine = r => '| ' + r.kind + ' | ' + r.name + ' | ' + r.appearances + ' | ' + r.timesChosen + ' | ' +
+      (r.carrierWR != null ? pct(r.carrierWR) : '—') + ' | ' + (r.nonCarrierWR != null ? pct(r.nonCarrierWR) : '—') + ' | ' +
+      (r.delta != null ? (r.delta >= 0 ? '+' : '') + pct(r.delta) : '—') + ' |\n';
+    const shown = kitRows.length <= KIT_TABLE_CAP * 2 ? kitRows : kitRows.slice(0, KIT_TABLE_CAP).concat(kitRows.slice(-KIT_TABLE_CAP));
+    shown.forEach((r, i) => {
+      if (kitRows.length > KIT_TABLE_CAP * 2 && i === KIT_TABLE_CAP) md += '| … | … | … | … | … | … | … |\n';
+      md += rowLine(r);
+    });
+    md += '\nLegend: "Battles appeared in" = trials where at least one participating build carried this cast/ability/item ';
+    md += 'in its minted kit (independent of whether it was ever drawn). "Times chosen" = occurrences in a battle\'s final ';
+    md += '`aiTrace` where `npcTurn` actually staged it (ring-buffer-capped, see above — a lower bound, not a full count). ';
+    md += '"Carrier"/"Non-carrier win rate" = the average win rate (analysis.tierTable\'s own per-build metric) of builds ';
+    md += 'that do/don\'t carry the item; "Δ win rate" is carrier minus non-carrier — a positive delta means builds ';
+    md += 'carrying that action tended to win more, but with only ' + BUILDS_PER_FACTION + ' builds/faction this is a ';
+    md += 'correlational signal (a build that happens to carry a strong item also has whatever weapon/model choices made ';
+    md += 'it strong), not a controlled A/B — a candidate for a focused follow-up sweep, not a tuning verdict on its own.\n\n';
+  }
 
   md += '## Flagged degenerate combos — candidate nerf list\n\n';
   md += 'Builds whose win rate cleared min(90%, field-mean + 35 points) (field mean this run: ' + pct(analysis.meanWR) + '). ';
@@ -684,10 +941,8 @@ function writeReport(tourney, analysis) {
   }
 
   md += '## Engine findings surfaced by this run — worth a BACKLOG line\n\n';
-  md += 'Two of these came from watching battles deadlock during harness development, not from anything this report\'s ';
-  md += 'numbers show directly — they are reported here because Pillar 2\'s whole point is producing this kind of evidence, ';
-  md += 'not because they change the win-rate numbers above (both are now fixed in the core, T-NPC-3.5 task 2, and this run ';
-  md += 'already reflects the fix — no harness workaround was needed to produce these numbers).\n\n';
+  md += 'The first three below carry forward from v1 (they are still true, and this run still reflects the fix — no ';
+  md += 'harness workaround was needed to produce these numbers); the fourth is new to this task.\n\n';
   md += '- **`THREAD.spottedEnemies` counted dead bodies as "spotted" (FIXED, T-NPC-3.5 task 2).** A corpse never had its ';
   md += 'x/y cleared (only a captured model does), so once a side had line of sight on nothing but corpses, `npcTurn`\'s own ';
   md += '`live` filter emptied out and it staged nothing — forever. Confirmed by tracing a real stalled battle: both sides ';
@@ -707,7 +962,23 @@ function writeReport(tourney, analysis) {
   md += '≥70 spares any target at ≤1 wound ("Critical"). If BOTH sides roll high Honor and both are reduced to all-Critical ';
   md += 'survivors, neither side will land another hit — they just stand there, forever (about 14% of this run\'s battles ended ';
   md += 'this way). Worth a design confirmation from Daak: is a permanent mercy-lock the intended outcome of two high-Honor ';
-  md += 'forces both fighting to the last wound, or should there be an eventual tie-break?\n\n';
+  md += 'forces both fighting to the last wound, or should there be an eventual tie-break?\n';
+  md += '- **v1\'s harness never advanced `state.round`, so the seeded draw never explored (FIXED, T-NPC-3.5 task 8, R7).** ';
+  md += 'The draw seed `npcTurn` feeds `drawAction` is `hashStr(state.id+\':\'+side+\':\'+state.round+\':\'+actor)` — v1\'s ';
+  md += '`runBattle` built `state` with `round:0` and never called `THREAD.tickRound`, so `state.round` stayed 0 for every ';
+  md += 'exchange of every battle: the same (side,actor) pair drew from the IDENTICAL stream turn after turn, all battle ';
+  md += 'long. This never affected v1\'s own numbers (v1 had no kit pairs to draw between — a weapon-only candidate pool with ';
+  md += 'one dominant option barely notices a frozen seed), but it would have silently flattened this run\'s kit-choice ';
+  md += 'variety had it not been caught: v2\'s `runBattle` now calls `THREAD.tickRound(state)` right after every applied ';
+  md += 'exchange, exactly where `npcRespond` calls it in the live engine, and a startup self-check (`roundSeedSelfCheck`) ';
+  md += 'now asserts a real battle actually advances `state.round` and that round 1 vs round 2 hash to different seeds.\n';
+  md += '- **Flagged design gap, not fixed here (R8, from BACKLOG):** `MISSION.genHostiles` mints live NPC spawns at rank 1 ';
+  md += '(named bosses at rank 2), so a real siege or mission encounter almost never reaches `rules.npc_kit.depth_by_rank`\'s ';
+  md += 'ability rung (rank ≥2) and never its cast rung (rank ≥3) except via a boss. This Lab is UNAFFECTED — its build ';
+  md += 'generator samples every rank 1-5 uniformly per model specifically so its kit-outlier analytics exercise the full ';
+  md += 'ladder — but it means the numbers above describe what full-loadout NPC combat COULD look like, not what today\'s ';
+  md += 'live spawns actually produce in play. Worth a Daak design decision: should `genHostiles`/`npcSpecRk` scale spawn ';
+  md += 'rank with mission difficulty/day, or is rank-1-except-bosses the intended default?\n\n';
   md += '## Methodology notes / known simplifications\n\n';
   md += '- Budget = sum of model PC only (250, 750] — gear PC does not count, matching how `THREAD.forcePC` and ';
   md += '`genHostCombatants` both compute a force\'s PC in the live engine.\n';
@@ -721,7 +992,15 @@ function writeReport(tourney, analysis) {
   md += '- AP pool is refreshed to full for a side immediately after that side\'s own post, mirroring `npcRespond`\'s ';
   md += '`poolsBase` refresh (index.html L5803) — this is the real engine\'s behavior, not an arena shortcut.\n';
   md += '- Forge augmentation applies at tier I only, to at most one weapon per build, at ~50% sample rate, and does ';
-  md += 'not adjust the build\'s PC budget (mirrors how a forge upgrade is a currency purchase, not a PC-budget item).\n\n';
+  md += 'not adjust the build\'s PC budget (mirrors how a forge upgrade is a currency purchase, not a PC-budget item).\n';
+  md += '- Each model instance\'s kit rank (1-5, feeding `KIT.mint`\'s depth ladder) is sampled UNIFORMLY, independent of ';
+  md += 'the model\'s PC or the build\'s total budget — this is deliberately NOT how a live spawn picks a rank (`npcSpecRk` ';
+  md += 'derives it from a PC ratio against the growth curve) so this Lab exercises the full depth ladder regardless of the ';
+  md += 'R8 gap above; it does mean an individual build\'s kit richness is not itself a signal about that build\'s PC efficiency.\n';
+  md += '- `state.aiTrace` is a 40-entry ring buffer PER BATTLE — the "times chosen" analytics above sample each battle\'s ';
+  md += 'final ≤40 decisions, not its complete history. Longer battles (more exchanges before a decisive outcome) under-report ';
+  md += 'their early-battle choices relative to short ones; this is a property of the shipped core\'s trace cap, not an arena ';
+  md += 'shortcut.\n\n';
 
   fs.writeFileSync(outPath, md, 'utf8');
   return outPath;
@@ -731,27 +1010,41 @@ function writeReport(tourney, analysis) {
 function main() {
   console.error('❪arena❫ determinism self-check · verifying seeded battles replay identically before the real run');
   determinismSelfCheck();
+  console.error('❪arena❫ round-seed self-check · verifying state.round advances and round 1 ≠ round 2 seed (R7)');
+  roundSeedSelfCheck();
 
-  const topSeed = 'warband-v1-2026-09-05';
-  console.error('❪arena❫ sampling builds · ' + BUILDS_PER_FACTION + ' per faction x 20 factions, WARBAND bracket (250,750] PC');
+  const topSeed = 'warband-v2-2026-09-06';
+  console.error('❪arena❫ sampling builds · ' + BUILDS_PER_FACTION + ' per faction x 20 factions, WARBAND bracket (250,750] PC, real minted kits');
   const tourney = buildTournament(topSeed);
   console.error('❪arena❫ tournament complete · ' + tourney.builds.length + ' builds, ' + tourney.totalBattles + ' battles simulated');
 
-  console.error('❪arena❫ analyzing · tier table, gear outliers, degenerate combos');
+  console.error('❪arena❫ analyzing · tier table, gear/kit outliers, degenerate combos');
   const analysis = analyze(tourney);
+  const kitRows = kitActionAnalytics(tourney);
 
-  console.error('❪arena❫ writing report · .superpowers/sdd/2026-09-05-redteam/balance-warband.md');
-  const outPath = writeReport(tourney, analysis);
+  console.error('❪arena❫ writing report · .superpowers/sdd/2026-09-06-lab-v2/balance-warband-v2.md');
+  const outPath = writeReport(tourney, analysis, kitRows);
 
-  console.error('\n=== TOP 3 TIER LIST ===');
+  console.error('\n=== TOP 3 TIER LIST (v2) ===');
   analysis.tierTable.slice(0, 3).forEach((f, i) => console.error((i + 1) + '. ' + f.facName + ' — ' + pct(f.avgWinRate) + ' avg win rate'));
   console.error('=== BOTTOM 3 ===');
   analysis.tierTable.slice(-3).forEach((f, i) => console.error((analysis.tierTable.length - 2 + i) + '. ' + f.facName + ' — ' + pct(f.avgWinRate) + ' avg win rate'));
+  console.error('\n=== BIGGEST v1→v2 MOVERS ===');
+  const movers = analysis.tierTable.map((f, i) => {
+    const v1r = V1_TIER_RANK[f.facName];
+    return { facName: f.facName, delta: v1r != null ? v1r - (i + 1) : 0, v2rank: i + 1, v1rank: v1r };
+  }).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  movers.slice(0, 3).forEach(m => console.error(m.facName + ': v1 #' + m.v1rank + ' → v2 #' + m.v2rank + ' (' + (m.delta >= 0 ? '▲' : '▼') + Math.abs(m.delta) + ')'));
   if (analysis.degenerate.length) {
     const top = analysis.degenerate[0];
     console.error('\nTop degenerate combo: ' + top.build.factionName + ' @ ' + pct(top.winRate) + ' — ' + buildSummary(top.build).weaponsLine);
   } else {
     console.error('\nNo degenerate combo cleared the outlier bar this run.');
+  }
+  if (kitRows.length) {
+    const topKit = kitRows[0];
+    console.error('\nTop kit-action by win-rate delta: ' + topKit.name + ' (' + topKit.kind + ') — ' +
+      (topKit.delta != null ? (topKit.delta >= 0 ? '+' : '') + pct(topKit.delta) : 'n/a') + ', chosen ' + topKit.timesChosen + '× across ' + topKit.appearances + ' battles');
   }
   console.error('\nReport: ' + outPath);
   console.error('Battles simulated: ' + tourney.totalBattles);
