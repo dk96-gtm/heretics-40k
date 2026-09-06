@@ -71,13 +71,37 @@ test('kitOfFor: a kit row with no stageable cond tag is dropped entirely (not a 
   assert.deepStrictEqual(kitOf(c), []);
 });
 
-test('kitOfFor: c.usedKit filters an entry out by name — depletion contract', () => {
+test('kitOfFor: c.usedKit filters an entry out by name — legacy-save depletion contract still works (finding 6)', () => {
   const kitOf = G.kitOfFor({});
   const c = kitCombatant({ items: [BLIGHT_GRENADE], abilities: [BRING_IT_DOWN], casts: [] },
     { 'Blight Grenade': true });
   const entries = kitOf(c);
   assert.strictEqual(entries.length, 1);
   assert.strictEqual(entries[0].item.n, 'Bring It Down');
+});
+
+// finding 6: usedKit is keyed `cat+':'+n` going forward (a name-only key can collide across two
+// different rows sharing a name, e.g. an ITEM and an ABILITY of the same title). kitOfFor's
+// filter checks the new cat-keyed form; the name-only test above pins that a legacy save's
+// old-style entries still deplete correctly (no migration needed).
+test('kitOfFor: c.usedKit filters an entry out by cat-keyed id — the new depletion contract (finding 6)', () => {
+  const kitOf = G.kitOfFor({});
+  const c = kitCombatant({ items: [BLIGHT_GRENADE], abilities: [BRING_IT_DOWN], casts: [] },
+    { 'ITEM:Blight Grenade': true });
+  const entries = kitOf(c);
+  assert.strictEqual(entries.length, 1);
+  assert.strictEqual(entries[0].item.n, 'Bring It Down');
+});
+
+// a name-only usedKit entry for one cat must never depelete a DIFFERENT-cat row sharing that
+// name — this is exactly the collision the cat-keyed form fixes.
+test('kitOfFor: a name-only used-flag under a DIFFERENT cat does not deplete a same-named row (finding 6)', () => {
+  const kitOf = G.kitOfFor({});
+  const c = kitCombatant({ items: [BLIGHT_GRENADE], abilities: [], casts: [] },
+    { 'ABILITY:Blight Grenade': true });   // a same-named ABILITY row was used, not this ITEM
+  const entries = kitOf(c);
+  assert.strictEqual(entries.length, 1, 'the ITEM row is untouched — different cat, different key');
+  assert.strictEqual(entries[0].item.n, 'Blight Grenade');
 });
 
 test('_kitApMod mirrors THREAD apMod exactly (CAST 2 / ABILITY 1 / ITEM 0, effortless → 0, explicit AP wins)', () => {

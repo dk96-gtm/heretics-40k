@@ -1537,10 +1537,47 @@ var THREAD=(function(){
      within its band, but a band's floor still strictly outranks any band below it. */
   var NPCB_EPS=0.01,NPCB_DENIAL_WEP_CAP=3,NPCB_DENIAL_AP_REF=10,
       NPCB_MAG_DUR_CAP=5,NPCB_MAG_TIER_DUR_CAP=10,NPCB_CLEANSE_CAP=3,NPCB_MOVE_FACTOR=0.5;
+  /* BAND-DOMINANCE (final review Critical #1 / Ruling R11) — with the canon bands as
+     authored (basic_attack ~8-12, every kit band 20-70), a LEGAL kit pair ALWAYS
+     outscores EVERY weapon attack, at any AP cost (R6 keeps every pair inside its own
+     band, so a band's floor strictly beats the band below it). That makes kit actions
+     structurally dominant over weapons — not a bug in scorePair, but an authored
+     consequence of the band table. Left alone, a kit-carrying NPC never fires a
+     weapon again once it has ANY legal cast/ability/item, and (pre-fix) re-cast the
+     same condition on the same target every single post forever. The fix here
+     (kitPayloadRedundant, called from enumeratePairs) prunes a kit pair the moment
+     its recipient already carries every one of its payload tags at >= tier with
+     duration left, so the weapon becomes the best LEGAL option once the cond is up
+     — cast → shoot → shoot → recast when it lapses. The band-dominance QUESTION
+     itself (should a kit action structurally outrank a weapon at any AP cost at
+     all?) is PARKED FOR DAAK as canon tuning, not fixed here — options on the table:
+     overlap offensive's floor down into basic_attack's range, or fold a canon-
+     weighted AP term in that can drag a costly cast below a cheap shot. */
   // emergency tags: the ones that keep a dying model alive → reaction band at <=2 wounds
   var NPCB_EMERGENCY={Regen:1,Cleanse:1,Immunity:1};
   // denial tags: the ones that take a target's actions/movement away
   var NPCB_DENIAL={Suppressing:1,Slowing:1};
+  /* kitPayloadRedundant(pl,recipient) — Ruling R11: true when the recipient already
+     carries EVERY tag in payload `pl` at >= that payload entry's tier with duration
+     left (an Infinity `left`, e.g. a permanent Immunity, counts as "duration left").
+     Pruning at ENUMERATION (not down-scoring in scorePair) is deliberate: even a
+     down-scored recast still sits at its band's floor (>=20 for offensive/support),
+     which is still above any basic_attack ceiling (<=12) — only removing the pair
+     lets the weapon win the draw. Reads combatants[].conds' instance shape
+     {tag,tier,left,...} (normCond's contract) — never the display string form. */
+  function kitPayloadRedundant(pl,recipient){
+    if(!pl||!pl.length)return false;
+    var have=(recipient&&recipient.conds)||[];
+    return pl.every(function(p){
+      if(!p||!p.tag)return true;               // no-op tag entries never block redundancy
+      var tier=p.tier||1,i;
+      for(i=0;i<have.length;i++){
+        var ci=have[i];
+        if(ci&&ci.tag===p.tag&&(ci.tier||1)>=tier&&(ci.left===Infinity||ci.left>0))return true;
+      }
+      return false;
+    });
+  }
   var NPCB_FALLBACK_BANDS={basic_attack:[8,12],offensive:[20,40],support:[25,45],reaction:[50,70]};
   function npcBands(canon){
     var b=(canon&&canon.rules&&canon.rules.npc_brain&&canon.rules.npc_brain.bands)||{};
@@ -1581,10 +1618,17 @@ var THREAD=(function(){
         if(!en)return;
         var pl=en.payload||[];if(!pl.length)return;         // nothing to do → not a pair
         var ap=en.ap||0;if(ap>pool)return;
-        // an entry is hostile if ANY of its payload tags is hostile (mixed payloads
-        // are treated as hostile — they can only legally land on an enemy)
-        var hostile=pl.some(function(p){
-          return p&&(p.hostile!=null?!!p.hostile:condHostile(p.tag));});
+        // finding 5: a payload carrying BOTH a hostile tag and a friendly tag can
+        // never legally land — validate's allegiance gate rejects the whole staged
+        // block no matter which side it's aimed at, and npcRespond swallows that
+        // rejection silently (the NPC holds, mutely, for the whole post). Drop the
+        // entry here instead of ever staging it (0 such catalog rows exist today —
+        // this is hardening against a future mixed-tag row, not a live fix).
+        var anyHostile=false,anyFriendly=false;
+        pl.forEach(function(p){if(!p)return;
+          if(p.hostile!=null?!!p.hostile:condHostile(p.tag))anyHostile=true;else anyFriendly=true;});
+        if(anyHostile&&anyFriendly)return;
+        var hostile=anyHostile;
         var tags=pl.map(function(p){return p&&p.tag;});
         // hostile-only reach gate (fix round 1, finding 2): validate hard-rejects a
         // hostile cond whose target is out of the ITEM's stated band (condBandOf,
@@ -1595,6 +1639,10 @@ var THREAD=(function(){
         (hostile?foes:allies).forEach(function(rid){
           var r=C[rid];
           if(hostile&&r&&r.x!=null&&NPC_RANK[need]<NPC_RANK[bandOf(cheb(me,r))])return;
+          // Ruling R11: the recipient already carries every one of this payload's
+          // tags at >= tier with duration left — prune the redundant recast so the
+          // (now legal-best) weapon attack can win the draw instead.
+          if(kitPayloadRedundant(pl,r))return;
           out.push({actor:aid,kind:'kit',item:en.item||null,target:rid,ap:ap,
             meta:{kitKind:en.kind||null,hostile:hostile,tags:tags,payload:pl,
                   consumable:!!en.consumed,self:rid===aid,
@@ -6271,14 +6319,17 @@ var _KIT_KINDOF={CAST:'cast',ABILITY:'ability',ITEM:'item'};
 // consumed: mirrors condTaggyItem's own "/consumable|stimm|grenade/i on the row's d" marker
 // (thread-core, private) exactly, restricted to ITEM-kind rows — this is depletion's own
 // contract with npcRespond (below): a consumed row used once is filtered out on every later
-// call via c.usedKit.
+// call via c.usedKit, keyed `cat+':'+n` (finding 6 — a name-only key collided across two
+// different rows sharing a name, e.g. a shared-name ITEM and ABILITY). A legacy save may still
+// carry an old name-only entry from before this fix — `used[row.n]` stays as a second, tolerant
+// check so those saves keep depleting correctly without a migration.
 function kitOfFor(state){
   return function(c){
     if(!c||!c.gen||!c.gen.kit)return [];
     var used=c.usedKit||{},kit=c.gen.kit,out=[];
     function addRows(rows,cat){
       (rows||[]).forEach(function(row){
-        if(!row||used[row.n])return;
+        if(!row||used[row.n]||used[(row.cat||cat)+':'+row.n])return;
         var payload=condTagsOf(row).map(function(ct){
           return {tag:ct.tag,tier:ct.tier,hostile:condIsHostile(ct.tag),el:THREAD.elementOf(row)};});
         if(!payload.length)return;                       // nothing to stage → not a real kit entry
@@ -6587,9 +6638,11 @@ function npcRespond(t,playerParty){
   // entry staged from a kit action carries both `item` and `consumed` (npcTurn, ~L1480); a
   // consumed one marks itself used on the ACTING combatant so kitOfFor filters it out of every
   // later call (drawn once per model, per canon — no discovered inventory count to decrement).
+  // finding 6: keyed `cat+':'+n` (not name-only) — kitOfFor's filter checks both this key and
+  // the legacy name-only key so a pre-fix save's usedKit entries still deplete correctly.
   block.forEach(function(b){
     if(b.consumed&&b.item){var ac=st.combatants[b.actor];
-      if(ac){ac.usedKit=ac.usedKit||{};ac.usedKit[b.item.n]=true;}}});
+      if(ac){ac.usedKit=ac.usedKit||{};ac.usedKit[b.item.cat+':'+b.item.n]=true;}}});
   THREAD.tickRound(st);   // T-MSN-1B task 2: a round = one enemy post; this is that post landing
   if(st.poolsBase&&st.poolsBase[foe]!=null)st.pools[foe]=st.poolsBase[foe];   // refresh foe AP
   var _kitLines={};
@@ -6711,8 +6764,12 @@ function bfCombatUI(t,party){
     if(reach[x+','+y])cls+=' bf-reach';
     var mid=myAt(x,y);if(mid)tok='<span class="bf-tok bf-mine'+(ui.sel===mid?' sel':'')+'" data-m="'+mid+'">'+bfTag(mid,C[mid])+'</span>';
     var fid=foeAt(x,y);if(fid)tok+='<span class="bf-tok bf-foe'+(ui.tgt===fid?' tgt':'')+'" data-f="'+fid+'">'+bfTag(fid,C[fid])+'</span>';
-    if(!mid&&!fid){var did=corpseAt(x,y);if(did)tok+='<span class="bf-corpse" data-corpse="'+did+'" title="'+esc((C[did].model?C[did].model.n:did))+'">☠</span>';}
-    if(ghostAt[x+','+y]&&!fid)tok+='<span class="bf-ghost">◌</span>';
+    var did=(!mid&&!fid)?corpseAt(x,y):null;
+    if(did)tok+='<span class="bf-corpse" data-corpse="'+did+'" title="'+esc((C[did].model?C[did].model.n:did))+'">☠</span>';
+    // finding 4: an enemy that dies in view drops out of `spotted` and becomes a
+    // refreshFog ghost at its own corpse square in the SAME render pass — without
+    // the `!did` guard both ☠ and ◌ render in that one cell.
+    if(ghostAt[x+','+y]&&!fid&&!did)tok+='<span class="bf-ghost">◌</span>';
     bh+='<div class="'+cls+'" data-bx="'+x+'" data-by="'+y+'">'+inner+tok+'</div>';
   }
   bh+='</div>';

@@ -148,6 +148,64 @@ test('enumeratePairs: a hostile kit payload is reach-gated exactly like validate
     'the same cast vs an adjacent enemy yields one pair');
 });
 
+// final review Critical #1 / Ruling R11 — redundant kit pairs are PRUNED at enumeration
+// (not down-scored): with the canon bands as authored, ANY kit pair (band floor >= 20)
+// outscores EVERY basic_attack (ceiling <= 12), so a down-scored recast still wins the
+// draw over the weapon. Only removing the pair lets the weapon win once the cond is up.
+test('enumeratePairs: a redundant kit pair is pruned while the recipient already carries it at >= tier with duration left (Ruling R11, finding 1)', () => {
+  const SUPPRESS = {
+    item: { n: 'Warp Chains' }, kind: 'cast', ap: 1, consumed: false,
+    payload: [{ tag: 'Suppressing', tier: 1, hostile: true, el: 'Warp' }],
+  };
+  const UPGRADE = {   // same tag, a HIGHER tier — never redundant against a lower-tier carry
+    item: { n: 'Greater Warp Chains' }, kind: 'cast', ap: 1, consumed: false,
+    payload: [{ tag: 'Suppressing', tier: 2, hostile: true, el: 'Warp' }],
+  };
+  function pairsWith(kitList, heroConds) {
+    const state = {
+      pools: { B: 5 },
+      combatants: {
+        sorc: { party: 'B', x: 0, y: 0, w: [8, 8], sight: 11, spd: 4, kit: kitList },
+        hero: { party: 'A', x: 1, y: 0, w: [10, 10], sight: 11, spd: 4, conds: heroConds },   // dist 1, within SHORT reach
+      },
+    };
+    return THREAD.enumeratePairs('B', state, openBoard(12, 4), wep, kit, CANON).filter((p) => p.kind === 'kit');
+  }
+  assert.strictEqual(pairsWith([SUPPRESS], []).length, 1, 'no existing cond → the cast is a legal candidate');
+  assert.strictEqual(pairsWith([SUPPRESS], [{ tag: 'Suppressing', tier: 1, left: 2 }]).length, 0,
+    'already carries Suppressing I with 2 turns left → the recast is pruned');
+  assert.strictEqual(pairsWith([SUPPRESS], [{ tag: 'Suppressing', tier: 1, left: Infinity }]).length, 0,
+    'an Infinity `left` (permanent) still counts as duration left');
+  assert.strictEqual(pairsWith([SUPPRESS], [{ tag: 'Suppressing', tier: 1, left: 0 }]).length, 1,
+    'left has hit 0 (expired) → legal again');
+  assert.strictEqual(pairsWith([UPGRADE], [{ tag: 'Suppressing', tier: 1, left: 5 }]).length, 1,
+    'the payload tier (2) is higher than the carried tier (1) → not redundant, still legal');
+});
+
+// final review Minor #5 — a payload mixing hostile and friendly tags in ONE entry can never
+// legally land: validate's allegiance gate rejects the whole staged block regardless of which
+// side it's aimed at, and npcRespond then swallows that rejection silently (a mute NPC post).
+// 0 such catalog rows exist today — this pins the hardening, not a live regression.
+test('enumeratePairs: a mixed-polarity kit payload (hostile + friendly tags in one entry) is dropped entirely (finding 5)', () => {
+  const MIXED = {
+    item: { n: 'Cursed Chains' }, kind: 'cast', ap: 1, consumed: false,
+    payload: [
+      { tag: 'Suppressing', tier: 1, hostile: true, el: 'Warp' },
+      { tag: 'Regen', tier: 1, hostile: false, el: null },
+    ],
+  };
+  const state = {
+    pools: { B: 5 },
+    combatants: {
+      sorc: { party: 'B', x: 0, y: 0, w: [8, 8], sight: 11, spd: 4, kit: [MIXED] },
+      hero: { party: 'A', x: 1, y: 0, w: [10, 10], sight: 11, spd: 4 },
+    },
+  };
+  const pairs = THREAD.enumeratePairs('B', state, openBoard(12, 4), wep, kit, CANON);
+  assert.strictEqual(pairs.filter((p) => p.kind === 'kit').length, 0,
+    'a mixed-polarity entry is dropped at enumeration — never staged on the enemy OR an ally');
+});
+
 test('scorePair: an attack on a tough target scores in the basic_attack band', () => {
   const board = openBoard(10, 4);
   const state = {
@@ -710,6 +768,34 @@ test('npcTurn: a staged kit action carries its item so consumables can be deplet
   assert.notStrictEqual(entry.effect.add, SUPPRESS_CAST.payload[0], 'a FRESH payload object — meta.payload is by reference');
   assert.deepStrictEqual(SUPPRESS_CAST.payload, [{ tag: 'Suppressing', tier: 1, hostile: true, el: 'Warp' }],
     'the source payload was never mutated');
+});
+
+// final review Critical #1 reproduction, as a pin (Ruling R11): pre-fix, every band floor sat
+// above basic_attack's ceiling and scorePair had no redundancy term, so the SAME cast landed on
+// the SAME target every post, forever, and the weapon never fired again — reproduced by the
+// reviewer over 12 rounds with real validate/apply (one NPC with a Suppressing cast + a gun vs
+// one enemy: "cond ok=true a0 conds=[\"Suppressing1/1\"] a0 w=10" every round, zero damage).
+// Post-fix: cast once, then the pruned-redundant cast frees the weapon to fire every round after.
+test('npcTurn: fix wave finding 1 — a kit-carrying NPC casts once then keeps shooting, never re-applying the same active cond (12-round reproduction)', () => {
+  const st = duelState();   // persisted across rounds — NOT rebuilt each round, unlike the six-step test above
+  let condCount = 0, damageCount = 0;
+  for (let r = 1; r <= 12; r++) {
+    st.round = r;
+    const block = THREAD.npcTurn('B', st, openBoard(10, 4), bwep, bkit, BRAIN_CANON, FLAT);
+    assert.ok(block.length, 'round ' + r + ': the NPC acts');
+    const v = THREAD.validate({ type: 'SKIRMISH' }, st, 'B', block, BRAIN_CANON);
+    assert.ok(v.ok, 'round ' + r + ': block passes the real validator — ' + v.reason);
+    THREAD.apply({ type: 'SKIRMISH' }, st, block, BRAIN_CANON, 'B');
+    block.forEach((b) => {
+      if (b.effect.kind === 'cond') condCount++;
+      if (b.effect.kind === 'damage') damageCount++;
+    });
+    if (st.combatants.a0.dead) break;
+  }
+  assert.strictEqual(condCount, 1, 'Suppressing is applied exactly once across the run — never re-cast while it is still active');
+  assert.ok(damageCount > 0, 'the freed-up turns actually land weapon damage on the enemy');
+  assert.ok(st.combatants.a0.w[0] < st.combatants.a0.w[1] || st.combatants.a0.dead,
+    'the enemy took real wounds over the run — not the pre-fix zero-damage lockup');
 });
 
 test('npcTurn: determinism — same state, same seed, same block', () => {
