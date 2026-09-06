@@ -6218,6 +6218,42 @@ function bfCondItemsOf(c){var out=[];if(!c.model)return out;
     if(ty==='ABILITY'||ty==='CAST'||ty==='WARP CAST'||ty==='ITEM')
       if(condTagsOf(s.it).length)out.push(s.it);});
   return out;}
+// T-NPC-3.5 task 6: THREAD's own apMod (CAST 2 / ABILITY 1 / ITEM 0, "effortless" → 0, or an
+// explicit "N AP" in the row's description) is a private closure inside the thread-core — never
+// exported and never to be added to the core's return object from outside. Mirrored verbatim
+// here for the engine-side kitOf builder below.
+function _kitApMod(it){var s=it.d||'';if(/effortless/i.test(s))return 0;
+  var m=s.match(/(\d+)\s*AP/);if(m)return parseInt(m[1],10);
+  return it.cat==='CAST'?2:it.cat==='ABILITY'?1:it.cat==='ITEM'?0:1;}
+var _KIT_KINDOF={CAST:'cast',ABILITY:'ability',ITEM:'item'};
+// T-NPC-3.5 task 6: the injectable kitOf(c) the pure brain calls (enumeratePairs, ~L1579,
+// `kit=kitOf?(kitOf(me)||[]):[]`). Only NPC combatants (c.gen.kit, minted at spawn by
+// genHostCombatants) get real entries; a player model's equipped slots are never routed
+// through this — players stage their own actions via the board UI (bfCondItemsOf, above).
+// `state` is accepted (not read) to match the same injected-accessor shape as weaponsOf/kitOf
+// elsewhere and to leave room for a future state-aware kit rule without a signature change.
+// consumed: mirrors condTaggyItem's own "/consumable|stimm|grenade/i on the row's d" marker
+// (thread-core, private) exactly, restricted to ITEM-kind rows — this is depletion's own
+// contract with npcRespond (below): a consumed row used once is filtered out on every later
+// call via c.usedKit.
+function kitOfFor(state){
+  return function(c){
+    if(!c||!c.gen||!c.gen.kit)return [];
+    var used=c.usedKit||{},kit=c.gen.kit,out=[];
+    function addRows(rows,cat){
+      (rows||[]).forEach(function(row){
+        if(!row||used[row.n])return;
+        var payload=condTagsOf(row).map(function(ct){
+          return {tag:ct.tag,tier:ct.tier,hostile:condIsHostile(ct.tag),el:THREAD.elementOf(row)};});
+        if(!payload.length)return;                       // nothing to stage → not a real kit entry
+        out.push({item:row,kind:_KIT_KINDOF[cat]||'item',ap:_kitApMod(row),payload:payload,
+          consumed:cat==='ITEM'&&/consumable|stimm|grenade/i.test(row.d||'')});
+      });
+    }
+    addRows(kit.casts,'CAST');addRows(kit.abilities,'ABILITY');addRows(kit.items,'ITEM');
+    return out;
+  };
+}
 /*</cond-staging-glue>*/
 /*<speech-core>*/
 var SPEECH_PALETTE=['#9fef00','#37d6ff','#ffb347','#c792ea','#ff6b8a','#4ec9b0','#e0e060','#7aa2f7'];
@@ -6505,18 +6541,36 @@ function npcRespond(t,playerParty){
     }
     persist();return;                                             // the attempt consumes the turn
   }
-  // T-NPC-3.5 task 5: npcTurn's signature gained kitOf at position 5. Task 6 swaps in the
-  // real NPC kit accessor; until then the stub keeps behavior weapons-only-identical.
-  var block=THREAD.npcTurn(foe,st,st.board,bfWeaponCaps,function(){return [];},D);
+  // T-NPC-3.5 task 6: the real NPC kit accessor replaces the weapons-only stub — kitOfFor(st)
+  // reads c.gen.kit (minted at spawn) and c.usedKit (depleted just below).
+  var block=THREAD.npcTurn(foe,st,st.board,bfWeaponCaps,kitOfFor(st),D);
   if(!block.length)return;                         // sees nothing / can't act → holds silently
   if(!THREAD.validate(t,st,foe,block,D).ok)return;
   var tickRep=THREAD.apply(t,st,block,D,foe);   // T-CMB-1 Task 6: 5th arg ticks foe's own conds first
+  // T-NPC-3.5 task 6: depletion is engine-side bookkeeping, never the pure core's job — a block
+  // entry staged from a kit action carries both `item` and `consumed` (npcTurn, ~L1480); a
+  // consumed one marks itself used on the ACTING combatant so kitOfFor filters it out of every
+  // later call (drawn once per model, per canon — no discovered inventory count to decrement).
+  block.forEach(function(b){
+    if(b.consumed&&b.item){var ac=st.combatants[b.actor];
+      if(ac){ac.usedKit=ac.usedKit||{};ac.usedKit[b.item.n]=true;}}});
   THREAD.tickRound(st);   // T-MSN-1B task 2: a round = one enemy post; this is that post landing
   if(st.poolsBase&&st.poolsBase[foe]!=null)st.pools[foe]=st.poolsBase[foe];   // refresh foe AP
+  var _kitLines={};
   var who=bfFoeName(st,foe),lines=block.map(function(b){var e=b.effect;
     if(e.kind==='move')return 'repositions';
     if(e.kind==='damage'){var tn=(st.combatants[e.to]&&st.combatants[e.to].model)?st.combatants[e.to].model.n.split(',')[0]:e.to;
       return 'strikes '+tn+' ('+e.amount+(e.element?' '+e.element:'')+')';}
+    // T-NPC-3.5 task 6: a kit action's staged cond entries carry effect.item (a weapon's own
+    // hostile-tag rider does not, see weaponCondEffects) — that is what makes the NPC's
+    // cast/ability/item use actually readable in the post instead of a silent cond apply.
+    // Deduped per (actor,item,target): a multi-tag kit entry fans out several cost-0 block
+    // rows for the SAME use and must read as one line, not one per tag.
+    if(e.kind==='cond'&&e.item){
+      var key=b.actor+'|'+e.item.n+'|'+e.to;if(_kitLines[key])return '';_kitLines[key]=1;
+      var tc=st.combatants[e.to],tn2=(tc&&tc.model)?tc.model.n.split(',')[0]:e.to;
+      return 'uses '+e.item.n+(e.to===b.actor?'':' on '+tn2);
+    }
     return '';}).filter(Boolean);
   var tickText=tickReportText(tickRep,st);   // prepend the tick report ahead of the move/attack clauses
   if(!t.posts)t.posts=[];
