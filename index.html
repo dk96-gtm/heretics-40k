@@ -7333,6 +7333,8 @@ function init(){
   if(!S.world.stock)S.world.stock={};                                    // T-ECN-1: older saves
   if(!S.world.unrest)S.world.unrest={};
   if(!S.social)S.social={pat:{}};                                        // T-SOC-1: older saves
+  if(!S.social.pat)S.social.pat={};                                      // defensive: keep pat shape
+  if(!S.social.reg)S.social.reg={};                                      // T-SOC-1 B1: regulars trust
   if(!S.world.doorTiers)S.world.doorTiers={};                             // T-DOOR-1: older saves
   if(!S.world.doorBuilds)S.world.doorBuilds={};
   if(!S.world.locConds)S.world.locConds={};                               // T-MSN-1B final fix wave: older saves
@@ -7460,7 +7462,7 @@ function commitFounding(cc){
   world:foundingWorld(),threads:[],
   progress:{streaks:{}},   // T-MSN-1C task 4: founding never gets a reload, so init()'s backfill never fires — seed here too (S.world key seeding gotcha)
   time:{epoch:Date.now(),lastTick:0},
-  social:{pat:{}},
+  social:{pat:{},reg:{}},
   npcState:{},active:'cmdr',cart:[]
  };
  S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
@@ -7929,6 +7931,49 @@ function hallCtxOf(h){
    wctx2:{status:ctx.status,taint:taint},pl:pl,loc:loc};
 }
 function hallPatKey(hc,p){return hc.ctx.locId+'/'+p.name}
+/* T-SOC-1 slice B1 task 4: doctrine axes for a Hall's ruling culture. THREAD.AXES.rollFor
+   already turns a faction id into the 5 axis numbers (reads D.ai.behavior_matrix[fac],
+   spread-rolled off a deterministic seed) — reused as-is per the task-4 brief rather than
+   re-reading canon here. Seed is fixed ('hall') so a faction's Hall doctrine flavor is the
+   same everywhere/every day, not per-thread — Halls have no thread id to seed off. */
+function hallAxesOf(fac){return THREAD.AXES.rollFor(fac,'hall',D);}
+/* hallTrustRecord: the one write path for S.social.reg — judgeAct-driven, floored at 0
+   (a fresh stranger never goes negative). Called by the regular-commune path (PRESENCE,
+   guarded to once/day by the caller) and by hallOffer (OFFER, host). */
+function hallTrustRecord(hc,role,act){
+ var key=hc.ctx.locId+'/'+role;
+ var rec=S.social.reg[key]||(S.social.reg[key]={score:0,acts:{},lastSeen:0});
+ var axes=hallAxesOf(hc.ctx.fac);
+ rec.score=(rec.score||0)+HALL.judgeAct(act,hc.ctx,axes,D);
+ if(rec.score<0)rec.score=0;
+ rec.acts[act]=(rec.acts[act]||0)+1;rec.lastSeen=hc.ctx.day;
+ persist();
+ return HALL.rungOf(rec.score,hc.ctx,D);
+}
+/* hallCommuneReg: the Talk path for a pinned regular row. HALL.rumorFor wants a
+   {name,registers} patron shape; regulars (rules.hall.regulars) carry no registers of
+   their own — they're the location's persistent fixtures, plugged-in to everything, so
+   this glue hands them the full register set in priority order. The host's second rumor
+   at rung KNOWN+ (index>=1) reuses rumorFor with a name suffix so its independent seed
+   picks an independently-chosen line (same seed => same pick, so an unmodified second
+   call would just repeat the first verbatim) — deterministic, reload-stable "two sources"
+   flavor rather than a literal second informant. Deeper rung ③/④ unlocks (sanctuary WORK
+   grant, the fence, introductions, training buff, title fight) are Slice B2/C — TODO(B2).
+   CONTEST/hall-law is also out of scope for this slice — TODO(B2). */
+function hallRegRumor(rg,hc,which){
+ var nm=which?rg.name+' (once more)':rg.name;
+ return HALL.rumorFor({name:nm,registers:['war','state','trade','ground']},hc.wctx,hc.ctx,D);
+}
+function hallCommuneReg(rg,hc){
+ var out=document.getElementById('hallout');if(!rg||!out)return;
+ var key=hc.ctx.locId+'/'+rg.role;
+ var rec=S.social.reg[key]||(S.social.reg[key]={score:0,acts:{},lastSeen:0});
+ if(rec.lastSeen!==hc.ctx.day)hallTrustRecord(hc,rg.role,'presence');   // PRESENCE: once/day
+ var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
+ var lines=[hallRegRumor(rg,hc,0).line];
+ if(rung.index>=1&&rg.role==='host')lines.push(hallRegRumor(rg,hc,1).line);   // host two-rumor unlock
+ out.innerHTML=lines.map(esc).join('<br>');
+}
 function hallCommune(p,hc){
  var out=document.getElementById('hallout');if(!p||!out)return;
  var r=HALL.rumorFor(p,hc.wctx,hc.ctx,D);
@@ -7958,6 +8003,7 @@ function hallOffer(p,hc,off){
  }
  var k=hallPatKey(hc,p),rec=S.social.pat[k]||(S.social.pat[k]={disp:0,offers:0,lastDay:0,communed:{}});
  rec.disp+=off.disp;rec.offers++;rec.lastDay=hc.ctx.day;
+ hallTrustRecord(hc,'host','offer');   // T-SOC-1 B1: an offering also advances trust with the room's keeper
  out.innerHTML=esc(p.name)+' accepts. ('+esc(p.name.split(' ')[0])+' disposition +'+off.disp+')';
  rW();persist();
 }
@@ -8113,10 +8159,18 @@ function renderDoor(dr,h){var c=E('div','card');
    hc.ctx.crowdEvent=ev?ev.crowd_delta:0;
    var pats=HALL.patronsAt(hc.ctx,D);
    var off=HALL.offerEval(ev,hc.ctx,D);
+   var regs=HALL.regularsAt(hc.ctx,D).filter(function(r){return r.present;});   // T-SOC-1 B1: pinned fixtures
    var _hallTip='<b>Hall</b> — '+GLOSS['Hall'];
    c.insertAdjacentHTML('beforeend','<div class="d" style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="tipable mono" style="color:var(--dim)" data-tip="'+_hallTip.replace(/"/g,'&quot;')+'">◉ Hall</span></div>');
    var hh='<div class="d" style="margin-bottom:6px"><i>'+esc(cul.flavor||'A gathering place.')+'</i></div>';
    if(ev)hh+='<div class="d" style="border-left:3px solid var(--blh);padding-left:8px;margin-bottom:6px">'+esc(ev.banner)+'</div>';
+   if(regs.length)hh+=regs.map(function(rg){
+     var key=hc.ctx.locId+'/'+rg.role,rec=(S.social.reg||{})[key]||{score:0};
+     var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
+     return '<div class="lrow" style="border-left:2px solid var(--acc)">★ '+esc(rg.name)
+       +' <span style="color:var(--dim)">— '+esc(rung.name)+'</span>'
+       +' <button class="btn gh sm" data-hallcom="reg:'+esc(rg.role)+'">'+esc(cul.commune||'Talk')+'</button></div>';
+   }).join('');
    hh+=pats.length?pats.map(function(p,i){var _offTip='<b>Offering</b> — '+GLOSS['Offering'];return '<div class="lrow" style="cursor:default">'+esc(p.name)+' — <span style="color:var(--dim)">'+esc(p.role)+'</span>'
      +' <button class="btn gh sm" data-hallcom="'+i+'">'+esc(cul.commune||'Talk')+'</button>'
      +' <button class="btn gh sm" data-halloff="'+i+'"><span class="tipable" data-tip="'+_offTip.replace(/"/g,'&quot;')+'">'+esc(off.label)+'</span> ('+(off.kind==='cur'?off.cost+' '+curName():off.kind==='res'?'1 '+off.res:'1 '+off.accepts)+')</button></div>';}).join('')
@@ -8125,7 +8179,12 @@ function renderDoor(dr,h){var c=E('div','card');
    hh+='<div class="d" id="hallout" style="margin-top:8px;color:var(--dim)"><span class="tipable" style="cursor:help" data-tip="'+_rumorTip.replace(/"/g,'&quot;')+'">◌ Word on the ground:</span></div>';
    c.insertAdjacentHTML('beforeend',hh);
    c.querySelectorAll('[data-hallcom]').forEach(function(b){b.onclick=function(){
-     hallCommune(pats[+b.dataset.hallcom],hc);};});
+     var v=b.dataset.hallcom;
+     if(v.slice(0,4)==='reg:'){var role=v.slice(4),rg=null;
+       regs.forEach(function(r){if(r.role===role)rg=r;});
+       hallCommuneReg(rg,hc);
+     }else hallCommune(pats[+v],hc);
+   };});
    c.querySelectorAll('[data-halloff]').forEach(function(b){b.onclick=function(){
      hallOffer(pats[+b.dataset.halloff],hc,off);};});
   }
