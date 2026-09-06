@@ -161,3 +161,29 @@ test('crowdEvent is deterministic: same ctx + same delta = same crowd, every tim
   const b = HALL.patronsAt(ctx({ crowdEvent: 2 }), D);
   assert.deepEqual(a, b);
 });
+
+test('regularsAt: deterministic; returns the 3 roles with present flags by phase', () => {
+  const a = HALL.regularsAt(ctx({ phaseIndex: 4 }), D);
+  assert.deepEqual(a, HALL.regularsAt(ctx({ phaseIndex: 4 }), D));
+  const roles = a.map(r => r.role).sort();
+  assert.deepEqual(roles, ['broker', 'champion', 'host']);
+  for (const r of a) assert.ok(r.name.length > 3 && ['host','broker','champion'].indexOf(r.role) >= 0);
+});
+
+test('regularsAt: host present in the day, broker only later phases', () => {
+  const noon = HALL.regularsAt(ctx({ phaseIndex: 2, fac: 'militarum' }), D);
+  const night = HALL.regularsAt(ctx({ phaseIndex: 6, fac: 'militarum' }), D);
+  assert.equal(noon.filter(r => r.role === 'host')[0].present, true);   // host block includes 2
+  assert.equal(noon.filter(r => r.role === 'broker')[0].present, false); // broker block starts at 4
+  assert.equal(night.filter(r => r.role === 'broker')[0].present, true);
+});
+
+test('regularsAt: a zero-weight role is never present (custodes barely staff a broker)', () => {
+  // custodes broker weight is 0.25 (rare) — over many locations, some present some not, never always
+  let everPresent = false, everAbsent = false;
+  for (let i = 0; i < 40; i++) {
+    const r = HALL.regularsAt(ctx({ locId: 'loc' + i, phaseIndex: 5, fac: 'custodes' }), D).filter(x => x.role === 'broker')[0];
+    if (r.present) everPresent = true; else everAbsent = true;
+  }
+  assert.ok(everAbsent, 'a rare broker should sometimes be absent');
+});

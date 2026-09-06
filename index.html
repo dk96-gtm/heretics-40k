@@ -3539,7 +3539,25 @@ var HALL=(function(){
     return {kind:of.kind,cost:cost,accepts:of.accepts||null,res:of.res||null,
       disp:disp,label:cul.offer_label||'Make an offering'};
   }
-  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,moodEventAt:moodEventAt,offerEval:offerEval};
+  /* regularsAt: the location's persistent fixtures. Deterministic per (seedBase, locId,
+     role). present = phase is in the role's block AND a weight roll passes (weight>=1 always
+     present; 0<weight<1 seeded-rare; weight 0 never). */
+  function regularsAt(ctx,canon){
+    var R=(H(canon).regulars)||{},roles=R.roles||[],out=[];
+    var names=(R.names||{})[ctx.fac]||{},wts=(R.weights||{})[ctx.fac]||{},blocks=R.phase_blocks||{};
+    for(var i=0;i<roles.length;i++){
+      var role=roles[i],w=(wts[role]==null?1:wts[role]);
+      var inPhase=(blocks[role]||[]).indexOf(ctx.phaseIndex)>=0;
+      var present=false;
+      if(w>0&&inPhase){
+        if(w>=1)present=true;
+        else{var r=rng((ctx.seedBase>>>0)^hashStr('reg:'+ctx.locId+':'+role));present=r()<w;}
+      }
+      out.push({role:role,name:names[role]||role,present:present,fac:ctx.fac});
+    }
+    return out;
+  }
+  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt};
 })();
 /*</hall-core>*/
 /*<save-core>*/
