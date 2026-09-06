@@ -34,3 +34,41 @@ test('hall placed at the 16 inhabited location types, absent from the rest', () 
 test('hall tier-seeds at T3 on Hive Worlds', () => {
   assert.equal(D.rules.doors_tiering.t3_homes.hall, 'Hive World');
 });
+
+test('rules.hall: culture + names complete for all 20 factions', () => {
+  const H = D.rules.hall;
+  assert.ok(H, 'rules.hall missing');
+  for (const f of FACTIONS) {
+    const c = H.culture[f];
+    assert.ok(c && c.flavor && c.commune && c.offer_label && c.offer && c.offer.kind, 'culture incomplete: ' + f);
+    assert.ok(['cur', 'item', 'res'].indexOf(c.offer.kind) >= 0, 'bad offer kind: ' + f);
+    const n = H.names[f];
+    assert.ok(n && n.first.length >= 6 && n.epithets.length >= 4, 'name pool thin: ' + f);
+  }
+  assert.equal(H.culture.world_eaters.offer.accepts, 'REMAINS');
+  assert.equal(H.culture.drukhari.offer.accepts, 'CAPTIVE');
+  assert.equal(H.culture.tyranids.offer.res, 'Food');
+});
+
+test('rules.hall: pools cover every hall-bearing location type; events are the 4 mood rows', () => {
+  const H = D.rules.hall;
+  for (const lt of D.galaxy.location_types) {
+    if ((lt.doors || []).indexOf('hall') < 0) continue;
+    assert.ok(Array.isArray(H.pools[lt.id]) && H.pools[lt.id].length >= 3, 'pool thin: ' + lt.id);
+    for (const p of H.pools[lt.id]) assert.ok(p.role && p.registers.length, 'bad pool row in ' + lt.id);
+  }
+  assert.deepEqual(H.events.map(e => e.id), ['famine_table', 'plague_night', 'good_season', 'holy_day']);
+  assert.ok(H.status_roles.Sacked && H.status_roles.Besieged, 'status_roles missing');
+});
+
+test('civilians: one body per faction, low-PC, sexed', () => {
+  for (const f of FACTIONS) {
+    const c = D.civilians[f];
+    assert.ok(c, 'civilian missing: ' + f);
+    assert.ok(c.pc >= 2 && c.pc <= 8 && c.w >= 1 && c.w <= 2, 'civilian statline off: ' + f);
+    assert.ok(['male', 'female', 'varied'].indexOf(c.sex) >= 0, 'bad sex rule: ' + f);
+  }
+  assert.equal(D.civilians.astartes.sex, 'male');
+  assert.equal(D.civilians.custodes.sex, 'male');
+  assert.equal(D.civilians.sororitas.sex, 'female');
+});

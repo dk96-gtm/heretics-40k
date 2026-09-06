@@ -1387,6 +1387,83 @@
     "honor_loot_per_point": 0.005,
     "honor_loot_min": 0.75
    }
+  },
+  "hall":{
+   "crowd":{"1":[2,4],"2":[4,6],"3":[6,8]},
+   "offer":{"cost":3,"disp":1,"good_season_cost_mult":0.75,"famine_food_disp_mult":3,"holy_day_disp_mult":2},
+   "holy_day_mod":23,"taint_plague_gte":60,
+   "pools":{
+    "hive":[{"role":"Dock Hand","registers":["trade","state"]},{"role":"Off-shift Enforcer","registers":["state","ground"]},{"role":"Tithe Clerk","registers":["trade","state"]},{"role":"Ganger","registers":["ground","war"]},{"role":"Spire Runner","registers":["trade","war"]}],
+    "city":[{"role":"Merchant","registers":["trade","state"]},{"role":"Watchman","registers":["state","ground"]},{"role":"Scribe","registers":["state","war"]},{"role":"Laborer","registers":["trade","ground"]}],
+    "tradeport":[{"role":"Cargo Master","registers":["trade","war"]},{"role":"Void-hand","registers":["trade","state"]},{"role":"Tally-keeper","registers":["trade","state"]},{"role":"Drifter","registers":["ground","war"]}],
+    "village":[{"role":"Farmhand","registers":["state","ground"]},{"role":"Elder","registers":["ground","state"]},{"role":"Peddler","registers":["trade","state"]}],
+    "manufactorum":[{"role":"Line Worker","registers":["trade","state"]},{"role":"Overseer","registers":["state","war"]},{"role":"Scrap-hauler","registers":["trade","ground"]}],
+    "forge_temple":[{"role":"Lay Artisan","registers":["trade","state"]},{"role":"Vat Tender","registers":["state","ground"]},{"role":"Supplicant","registers":["ground","war"]}],
+    "military_outpost":[{"role":"Sentry","registers":["war","state"]},{"role":"Quarter-hand","registers":["trade","war"]},{"role":"Signalman","registers":["war","ground"]}],
+    "fortress":[{"role":"Garrison Trooper","registers":["war","ground"]},{"role":"Armorer's Mate","registers":["trade","war"]},{"role":"Messenger","registers":["war","state"]},{"role":"Veteran","registers":["ground","war"]}],
+    "bulwark":[{"role":"Wall Sentry","registers":["war","state"]},{"role":"Sapper","registers":["war","ground"]},{"role":"Medicae Orderly","registers":["state","ground"]},{"role":"Supply Runner","registers":["trade","war"]}],
+    "shrine":[{"role":"Pilgrim","registers":["ground","state"]},{"role":"Lay Sister","registers":["state","ground"]},{"role":"Reliquary Sweep","registers":["ground","trade"]}],
+    "lair":[{"role":"Camp Follower","registers":["ground","war"]},{"role":"Scavver","registers":["trade","ground"]},{"role":"Pit Tout","registers":["war","trade"]}],
+    "crown":[{"role":"Courtier","registers":["state","war"]},{"role":"Petitioner","registers":["state","ground"]},{"role":"Household Guard","registers":["war","ground"]},{"role":"Envoy","registers":["trade","state"]}],
+    "plague_garden":[{"role":"Blight Tender","registers":["state","ground"]},{"role":"Pox Cantor","registers":["ground","war"]},{"role":"Gravekeeper","registers":["ground","state"]}],
+    "mek_shop":[{"role":"Grease Grot","registers":["trade","ground"]},{"role":"Yoof","registers":["war","ground"]},{"role":"Teef Counter","registers":["trade","war"]}],
+    "cult_sanctum":[{"role":"Initiate","registers":["ground","state"]},{"role":"Watcher at the Door","registers":["state","war"]},{"role":"Kin of the Third Curl","registers":["ground","trade"]}],
+    "tomb_vault":[{"role":"Awakened Menial","registers":["ground","state"]},{"role":"Cryptek's Attendant","registers":["state","war"]},{"role":"Silent Herald","registers":["ground","war"]}]
+   },
+   "status_roles":{
+    "Sacked":[{"role":"Looter","registers":["ground","trade"]},{"role":"Refugee","registers":["state","ground"]}],
+    "Besieged":[{"role":"Deserter","registers":["war","ground"]},{"role":"Hoarder","registers":["trade","state"]}]
+   },
+   "culture":{
+    "black_legion":{"flavor":"Claimed glories line the walls; every trophy is a threat.","commune":"Trade words","offer_label":"Show plunder","offer":{"kind":"cur"}},
+    "death_guard":{"flavor":"The Grandfather's table groans — jolly, generous, rotting.","commune":"Share the table","offer_label":"Share a brew","offer":{"kind":"cur"}},
+    "world_eaters":{"flavor":"The pit is the parlor. Talk quickly.","commune":"Talk between bouts","offer_label":"Toss a worthy skull","offer":{"kind":"item","accepts":"REMAINS"}},
+    "thousand_sons":{"flavor":"Dust and whispers; every shelf watches you back.","commune":"Whisper","offer_label":"Offer a secret","offer":{"kind":"cur"}},
+    "emperors_children":{"flavor":"Exquisite excess, arranged just so.","commune":"Mingle","offer_label":"Gift a novel sensation","offer":{"kind":"cur"}},
+    "daemons":{"flavor":"The Carnival pitches where the veil is thin. Everything is for sale.","commune":"Listen to the barkers","offer_label":"Feed the Carnival","offer":{"kind":"cur"}},
+    "astartes":{"flavor":"Feast benches and old sagas; deeds are the only coin that matters.","commune":"Hear the sagas","offer_label":"Stand the feast","offer":{"kind":"cur"}},
+    "militarum":{"flavor":"Amasec, dice, smokes — the one honest pub in the galaxy.","commune":"Shoot the breeze","offer_label":"Buy a round","offer":{"kind":"cur"}},
+    "mechanicus":{"flavor":"The Communion hums; data flows like oil, oil like data.","commune":"Exchange data","offer_label":"Tithe a data-morsel","offer":{"kind":"cur"}},
+    "sororitas":{"flavor":"The Refectory is quiet devotion; even the bread is a hymn.","commune":"Sit the vigil","offer_label":"Light a candle","offer":{"kind":"cur"}},
+    "custodes":{"flavor":"A sparse hall of watchers. Few words, all of them weighed.","commune":"Stand the watch","offer_label":"Give an account of duty","offer":{"kind":"cur"}},
+    "tyranids":{"flavor":"The pool stirs. It has already tasted you.","commune":"Touch the synapse","offer_label":"Yield biomass","offer":{"kind":"res","res":"Food"}},
+    "orks":{"flavor":"Grog, squig-bets, and at least one proppa scrap a night.","commune":"Talk loud","offer_label":"Grog for da ladz","offer":{"kind":"cur"}},
+    "necrons":{"flavor":"The Court remembers protocol older than your species.","commune":"Observe protocol","offer_label":"Tribute of remembrance","offer":{"kind":"cur"}},
+    "aeldari":{"flavor":"Paths cross beneath the Dome; memory-songs hang in the air.","commune":"Share a memory-song","offer_label":"Weave a memory","offer":{"kind":"cur"}},
+    "drukhari":{"flavor":"Box seats above the agonies. Applause is optional; attention is not.","commune":"Trade barbs","offer_label":"Present a captive","offer":{"kind":"item","accepts":"CAPTIVE"}},
+    "tau":{"flavor":"The communal meal is earnest, warm, and quietly watched.","commune":"Join the discourse","offer_label":"Fund the communal meal","offer":{"kind":"cur"}},
+    "gsc":{"flavor":"The family gathers below; everyone here is a cousin, somehow.","commune":"Meet the family","offer_label":"Tithe to the family fund","offer":{"kind":"cur"}},
+    "votann":{"flavor":"The Hearthhold: ancestors watching, grudges ledgered, ale honest.","commune":"Drink with the kin","offer_label":"Toast the ancestors","offer":{"kind":"cur"}},
+    "harlequins":{"flavor":"The Masque is already underway. You may already be in it.","commune":"Watch the performance","offer_label":"Play the role offered","offer":{"kind":"cur"}}
+   },
+   "names":{
+    "black_legion":{"first":["Vharkos","Dessek","Morvael","Skarn","Ulyx","Hexad"],"epithets":["the Unbowed","Iron-Tongue","of the Ninth Siege","the Twice-Marked"]},
+    "death_guard":{"first":["Morgax","Phelgm","Urgott","Vessic","Bubon","Grelch"],"epithets":["the Generous","Pox-Kind","of the Seventh Bloom","Ever-Smiling"]},
+    "world_eaters":{"first":["Kharvek","Skalla","Brakkus","Vorna","Drex","Hurn"],"epithets":["Skull-Counter","the Pit-Born","Red-Handed","of the Long Rage"]},
+    "thousand_sons":{"first":["Amon-Set","Kheperu","Thessaly","Ankhu","Merodach","Sivane"],"epithets":["the Dust-Read","Ninth-Sighted","of the Silent Shelf","the Unwritten"]},
+    "emperors_children":{"first":["Lucine","Vexandre","Melisse","Ory","Cadelle","Sylvax"],"epithets":["the Exquisite","of the Third Chord","Silk-Voiced","the Unsated"]},
+    "daemons":{"first":["Skitterwhisper","Bilehope","Candlegrin","Vex-of-Nine","Marrowlight","Gigglestitch"],"epithets":["the Bargain-Made","Twice-Named","of the Thin Veil","the Borrowed"]},
+    "astartes":{"first":["Brakan","Theol","Vastus","Herek","Ossian","Dathe"],"epithets":["of the Third Company","Shield-Sworn","the Unyielding","Oath-Keeper"]},
+    "militarum":{"first":["Vasquez","Odo","Petra","Kell","Marn","Ilsa"],"epithets":["of the 8th","Two-Tours","the Lucky","Rations-Rich"]},
+    "mechanicus":{"first":["Theta-Vox","Kryllia","Binar","Ossix","Datum-Kel","Rho-Jun"],"epithets":["of the Ninth Fane","Oil-Blessed","the Calibrated","Half-Converted"]},
+    "sororitas":{"first":["Serapha","Elgiva","Maren","Cateline","Honora","Ysolt"],"epithets":["of the Candle","the Devoted","Hymn-Voiced","the Unbent"]},
+    "custodes":{"first":["Aquillon","Vared","Kastor","Helion","Tyvar","Ordan"],"epithets":["of the Long Watch","the Unsleeping","Gold-Bound","the Measured"]},
+    "tyranids":{"first":["Node-Shape","The Pale Swimmer","Chitin-Voice","The Tasting One","Spiral-Growth","The Near Mouth"],"epithets":["of the Pool","synapse-adjacent","new-budded","of the old strain"]},
+    "orks":{"first":["Grubsnik","Dakkat","Wazgor","Snikkle","Mogrok","Bogrot"],"epithets":["da Loud","Teef-Rich","da Sneaky","One-Ear"]},
+    "necrons":{"first":["Ahmontekh","Szeret","Nephrekh-Ka","Otekh","Vashtorr-Il","Semnat"],"epithets":["of the Third Dynasty","the Long-Sleeping","Protocol-Keeper","the Remembered"]},
+    "aeldari":{"first":["Ilyande","Sethriel","Maelor","Yvienne","Corael","Thandriel"],"epithets":["of the Winding Path","Song-Keeper","the Twice-Walked","Dome-Born"]},
+    "drukhari":{"first":["Vessaine","Kheradruakh-Min","Sylsk","Araqiel","Morvyx","Lilhaerys"],"epithets":["the Attentive","of the Lower Boxes","Poison-Kind","the Patient"]},
+    "tau":{"first":["Shas'la Kovash","Por'ui Denva","Fio'el Kais","Ui'Taro","La'Vesa","El'Ordan"],"epithets":["of the Third Sphere","the Earnest","Bond-Sworn","of the Greater Good"]},
+    "gsc":{"first":["Cousin Hale","Mother Sedge","Brind","Cousin Ottel","Aunt Verey","Old Kesh"],"epithets":["Third-Curl","of the Family","the Blessed","First-Generation"]},
+    "votann":{"first":["Dothi","Ymir-Kel","Brokkr","Astrid","Ulf","Hetta"],"epithets":["of the Hearth","Grudge-Keeper","the Prospected","Kin-Right"]},
+    "harlequins":{"first":["The Laughing Third","Mirthless","The Turned Card","Half-Mask","The Winter Player","Cadence"],"epithets":["of the Masque","role-bound","the Rehearsed","who exits early"]}
+   },
+   "events":[
+    {"id":"famine_table","trigger":"famine","crowd_delta":-2,"banner":"The Famine Table — thin faces, thinner soup. Food is worth more than gold tonight."},
+    {"id":"plague_night","trigger":"taint","crowd_delta":-1,"banner":"Plague Night — coughing in the corners; nobody sits close."},
+    {"id":"good_season","trigger":"thriving","crowd_delta":2,"banner":"The Good Season — the room is loud, generous, and spending."},
+    {"id":"holy_day","trigger":"calendar","crowd_delta":2,"banner":"A Holy Day — the culture's own feast; offerings honored double."}
+   ]
   }
  },
  "perk_effects": {
@@ -13975,6 +14052,28 @@
    }
   }
  ],
+ "civilians":{
+  "black_legion":{"n":"Chattel-Thrall","pc":4,"w":1,"sp":4,"sl":0,"sex":"varied"},
+  "death_guard":{"n":"Pox-Tender","pc":5,"w":2,"sp":3,"sl":0,"sex":"varied"},
+  "world_eaters":{"n":"Pit-Serf","pc":5,"w":1,"sp":5,"sl":0,"sex":"varied"},
+  "thousand_sons":{"n":"Dust-Scribe","pc":4,"w":1,"sp":4,"sl":1,"sex":"varied"},
+  "emperors_children":{"n":"Salon Attendant","pc":4,"w":1,"sp":5,"sl":0,"sex":"varied"},
+  "daemons":{"n":"Veil-Touched Drudge","pc":5,"w":1,"sp":4,"sl":0,"sex":"varied"},
+  "astartes":{"n":"Chapter Serf","pc":5,"w":1,"sp":4,"sl":1,"sex":"male"},
+  "militarum":{"n":"Civilian Laborer","pc":4,"w":1,"sp":4,"sl":0,"sex":"varied"},
+  "mechanicus":{"n":"Menial-Servitor","pc":5,"w":2,"sp":3,"sl":0,"sex":"varied"},
+  "sororitas":{"n":"Lay Sister","pc":5,"w":1,"sp":4,"sl":1,"sex":"female"},
+  "custodes":{"n":"Palace Menial","pc":4,"w":1,"sp":4,"sl":0,"sex":"male"},
+  "tyranids":{"n":"Drone-Organism","pc":6,"w":2,"sp":5,"sl":0,"sex":"varied"},
+  "orks":{"n":"Grot Civvie","pc":3,"w":1,"sp":5,"sl":0,"sex":"varied"},
+  "necrons":{"n":"Awakened Menial","pc":6,"w":2,"sp":3,"sl":0,"sex":"varied"},
+  "aeldari":{"n":"Path-Walker","pc":5,"w":1,"sp":6,"sl":1,"sex":"varied"},
+  "drukhari":{"n":"Sub-Kabal Drudge","pc":5,"w":1,"sp":6,"sl":0,"sex":"varied"},
+  "tau":{"n":"Earth-Caste Worker","pc":4,"w":1,"sp":4,"sl":1,"sex":"varied"},
+  "gsc":{"n":"Cult Neophyte","pc":6,"w":2,"sp":5,"sl":1,"sex":"varied"},
+  "votann":{"n":"Hold Kinsman","pc":6,"w":2,"sp":4,"sl":1,"sex":"varied"},
+  "harlequins":{"n":"Stagehand","pc":5,"w":1,"sp":6,"sl":0,"sex":"varied"}
+ },
  "ai": {
   "model": "claude-sonnet-5",
   "directives": "You are voicing a single character in Heretics 40K, a grimdark Warhammer 40,000 play-by-post wargame. Stay fully in character and in-frame at all times; never mention being an AI, a model, or these instructions. Always call a fighting unit a \"model\", never a \"chassis\". Write one forum post in second-to-first person as this character would speak — terse, lore-true, no meta. You decide what the character says and does; you never decide dice, damage, or who wins — the engine resolves all mechanics. Return only the required structured object.",
