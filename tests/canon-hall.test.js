@@ -6,8 +6,8 @@ const D = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-da
 
 const FACTIONS = D.factions.map(f => f.id);
 
-test('canon: version is 1.39', () => {
-  assert.equal(D.meta.version, '1.39');
+test('canon: version is 1.40', () => {
+  assert.equal(D.meta.version, '1.40');
 });
 
 test('hall door row exists with 20 per-faction skins and 3 tier lines', () => {
@@ -71,4 +71,35 @@ test('civilians: one body per faction, low-PC, sexed', () => {
   assert.equal(D.civilians.astartes.sex, 'male');
   assert.equal(D.civilians.custodes.sex, 'male');
   assert.equal(D.civilians.sororitas.sex, 'female');
+});
+
+test('rules.hall.regulars: roles, names, weights, phase blocks complete for 20 factions', () => {
+  const R = D.rules.hall.regulars;
+  assert.ok(R, 'rules.hall.regulars missing');
+  assert.deepEqual(R.roles, ['host', 'broker', 'champion']);
+  for (const f of FACTIONS) {
+    for (const role of R.roles) {
+      assert.ok(R.names[f] && typeof R.names[f][role] === 'string' && R.names[f][role].length > 0, 'regular name missing: ' + f + '/' + role);
+      assert.ok(R.weights[f] && typeof R.weights[f][role] === 'number', 'regular weight missing: ' + f + '/' + role);
+    }
+  }
+  for (const role of R.roles) {
+    assert.ok(Array.isArray(R.phase_blocks[role]) && R.phase_blocks[role].length >= 1, 'phase block missing: ' + role);
+    for (const p of R.phase_blocks[role]) assert.ok(p >= 0 && p <= 7, 'bad phase index for ' + role);
+  }
+});
+
+test('rules.hall.trust: rungs, thresholds, act weights, judge axis, overrides, tyranid ladder', () => {
+  const T = D.rules.hall.trust;
+  assert.ok(T, 'rules.hall.trust missing');
+  assert.deepEqual(T.rungs, ['stranger', 'known', 'trusted', 'sworn']);
+  assert.equal(T.thresholds.length, 4);
+  assert.equal(T.thresholds[0], 0);
+  for (let i = 1; i < 4; i++) assert.ok(T.thresholds[i] > T.thresholds[i - 1], 'thresholds must ascend');
+  for (const act of ['offer', 'win', 'noble_loss', 'cheat_caught', 'cheat_clean', 'job_done', 'job_dropped', 'lawbreak', 'presence'])
+    assert.ok(typeof T.act_base[act] === 'number', 'act_base missing: ' + act);
+  assert.ok(T.act_base.lawbreak < 0 && T.act_base.cheat_caught < 0, 'penalties must be negative');
+  for (const ov of ['daemons', 'necrons', 'harlequins']) assert.ok(T.overrides[ov], 'override missing: ' + ov);
+  assert.deepEqual(T.tyranid.rungs, ['prey_shaped', 'tasted', 'patterned', 'assimilated_adjacent']);
+  assert.equal(T.tyranid.recognition, true);
 });

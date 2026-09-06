@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.39",
+  "version": "1.40",
   "updated": "2026-09-06",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -22,7 +22,8 @@
    "v1.30: T-MST-1 open recruitment + local forge traditions - rules.market block (ruler shelf / items open / models same-allegiance / forge affinity by local ruler); real Muster door replaces the demo stub.",
    "v1.31: T-MSN-1C streaks + 18 signature missions - S.progress.streaks (4 keys, conclude tick), faction-gated generation (one signature row per board), kill filters melee/faction/capture, conclude constraints, collect carriers, signature_premium 1.5.",
    "v1.34: T-NPC-4 personality combat doctrine — ai.behavior_matrix (20 faction rows, 5 axes as base/spread/plasticity/floor/ceiling) + rules.doctrine (styles onslaught/culling/decapitation, retreat curve, honor gates, lapse nudge tunables).",
-   "v1.39: T-NPC-3.5 full-loadout NPC combat — rules.npc_kit (rank depth ladder) + rules.npc_brain (score bands, draw, tilt, lapse kit nudge); all values flagged tunables."
+   "v1.39: T-NPC-3.5 full-loadout NPC combat — rules.npc_kit (rank depth ladder) + rules.npc_brain (score bands, draw, tilt, lapse kit nudge); all values flagged tunables.",
+   "v1.40: Hall slice B1 — rules.hall.regulars (3 roles: host/broker/champion, names per faction, weights, phase blocks) + rules.hall.trust (4-rung ladder stranger→sworn, 9 act_base weights, judge axes, 3 faction overrides, Tyranid recognition ladder)."
   ],
   "migration": {
    "done": [
@@ -1488,7 +1489,57 @@
     {"id":"plague_night","trigger":"taint","crowd_delta":-1,"banner":"Plague Night — coughing in the corners; nobody sits close."},
     {"id":"good_season","trigger":"thriving","crowd_delta":2,"banner":"The Good Season — the room is loud, generous, and spending."},
     {"id":"holy_day","trigger":"calendar","crowd_delta":2,"banner":"A Holy Day — the culture's own feast; offerings honored double."}
-   ]
+   ],
+   "regulars":{
+    "roles":["host","broker","champion"],
+    "phase_blocks":{"host":[1,2,3,4,5],"broker":[4,5,6,7],"champion":[4,5,6]},
+    "names":{
+     "black_legion":{"host":"the Warband-Keeper","broker":"the Spoils-Broker","champion":"the Trophy-Champion"},
+     "death_guard":{"host":"the Feast-Warden","broker":"the Blight-Peddler","champion":"the Endurance-Champion"},
+     "world_eaters":{"host":"the Pit-Master","broker":"the Meat-Broker","champion":"the Pit-Champion"},
+     "thousand_sons":{"host":"the Curator","broker":"the Whisper-Merchant","champion":"the Riddlemaster"},
+     "emperors_children":{"host":"the Salonnier","broker":"the Procurer","champion":"the Virtuoso"},
+     "daemons":{"host":"the Ringmaster","broker":"the Bargain-Keeper","champion":"the Reveller-Champion"},
+     "astartes":{"host":"the Saga-Warden","broker":"the Scrounger","champion":"the Cage-Champion"},
+     "militarum":{"host":"the Quartermaster-Sergeant","broker":"the Fixer","champion":"the Regimental Champion"},
+     "mechanicus":{"host":"the Fane-Keeper","broker":"the Data-Broker","champion":"the Logic-Champion"},
+     "sororitas":{"host":"the Refectorian","broker":"the Almoner","champion":"the Champion of Faith"},
+     "custodes":{"host":"the Watch-Keeper","broker":"the Seneschal","champion":"the Blade-Champion"},
+     "tyranids":{"host":"the Synapse-Node","broker":"a Lictor-Shadow","champion":"the Broodguard Alpha"},
+     "orks":{"host":"da Brewboss","broker":"da Sneaky-Git","champion":"da Pit-Champ"},
+     "necrons":{"host":"the Chamberlain","broker":"the Reclaimer","champion":"the Regicide-Master"},
+     "aeldari":{"host":"the Dome-Keeper","broker":"the Path-Broker","champion":"the Blade-Dancer"},
+     "drukhari":{"host":"the Gallery-Master","broker":"the Flesh-Broker","champion":"the Duellist"},
+     "tau":{"host":"the Hall-Steward","broker":"the Kroot Envoy","champion":"the Strategy-Champion"},
+     "gsc":{"host":"the Congregation-Elder","broker":"the Cell-Broker","champion":"the Kin-Champion"},
+     "votann":{"host":"the Hearth-Keeper","broker":"the Prospect-Broker","champion":"the Grudge-Champion"},
+     "harlequins":{"host":"the Troupe-Master","broker":"the Bargain-Player","champion":"the Lead"}
+    },
+    "weights":{
+     "black_legion":{"host":1,"broker":1,"champion":1},"death_guard":{"host":1,"broker":1,"champion":1},
+     "world_eaters":{"host":1,"broker":0.5,"champion":1},"thousand_sons":{"host":1,"broker":1,"champion":1},
+     "emperors_children":{"host":1,"broker":1,"champion":1},"daemons":{"host":1,"broker":1,"champion":1},
+     "astartes":{"host":1,"broker":0.5,"champion":1},"militarum":{"host":1,"broker":1,"champion":1},
+     "mechanicus":{"host":1,"broker":1,"champion":0.5},"sororitas":{"host":1,"broker":0.5,"champion":1},
+     "custodes":{"host":1,"broker":0.25,"champion":1},"tyranids":{"host":1,"broker":1,"champion":1},
+     "orks":{"host":1,"broker":1,"champion":1},"necrons":{"host":1,"broker":0.5,"champion":1},
+     "aeldari":{"host":1,"broker":1,"champion":1},"drukhari":{"host":1,"broker":1,"champion":1},
+     "tau":{"host":1,"broker":1,"champion":1},"gsc":{"host":1,"broker":1,"champion":0.5},
+     "votann":{"host":1,"broker":1,"champion":1},"harlequins":{"host":1,"broker":1,"champion":1}
+    }
+   },
+   "trust":{
+    "rungs":["stranger","known","trusted","sworn"],
+    "thresholds":[0,3,8,15],
+    "act_base":{"offer":1,"win":2,"noble_loss":1,"cheat_caught":-2,"cheat_clean":1,"job_done":2,"job_dropped":-2,"lawbreak":-4,"presence":1},
+    "axis":{"pivot":60,"honor_noble_bonus":1,"honor_cheat_penalty":-3,"cunning_clean_bonus":2,"ferocity_only_win":true,"pragmatism_job_bonus":2,"supremacism_offer_mult":2},
+    "overrides":{
+     "daemons":{"note":"trust is a priced bargain","offer":2,"lawbreak":-2},
+     "necrons":{"note":"protocol above all","offer":3,"lawbreak":-8,"win":1},
+     "harlequins":{"note":"a stylish caught-cheat still climbs","cheat_caught":1}
+    },
+    "tyranid":{"rungs":["prey_shaped","tasted","patterned","assimilated_adjacent"],"recognition":true,"offer":2,"win":2}
+   }
   }
  },
  "perk_effects": {
