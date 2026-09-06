@@ -7678,7 +7678,9 @@ var GLOSS={
  'Seat':'A named location held by a Commander on a world his own kin rules. Pays tax and production share; can be built, garrisoned, and lost with the planet.',
  'Hall':'The social door — the culture\'s gathering space. Meet the crowd, hear true rumors drawn from real events, and make the culture\'s offering.',
  'Offering':'The Hall\'s social gesture — each culture accepts its own (a round, a data-tithe, a worthy skull, a captive). Paying it warms a patron\'s disposition.',
- 'Rumor':'Hall talk is TRUE — every rumor cites live world state: war clocks, sector conditions, posted work, or this ground\'s own chronicle.'};
+ 'Rumor':'Hall talk is TRUE — every rumor cites live world state: war clocks, sector conditions, posted work, or this ground\'s own chronicle.',
+ 'Regular':'The Hall\'s persistent fixtures, present only during their scheduled hours. Building trust with a Regular opens doors — sanctuary from the hunt, introductions to key players, training, even a title fight.',
+ 'Trust':'The 4-rung ladder governing your standing with each Regular — how you climb depends on the culture\'s judge: doctrine axes (ferocity, cunning, honor, pragmatism, supremacism) tilt what counts as worthy.'};
 /* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
 function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
  var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');
@@ -8181,8 +8183,10 @@ function renderDoor(dr,h){var c=E('div','card');
    if(regs.length)hh+=regs.map(function(rg){
      var key=hc.ctx.locId+'/'+rg.role,rec=(S.social.reg||{})[key]||{score:0};
      var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
-     return '<div class="lrow" style="border-left:2px solid var(--acc)">★ '+esc(rg.name)
-       +' <span style="color:var(--dim)">— '+esc(rung.name)+'</span>'
+     var _regTip='<b>Regular</b> — '+GLOSS['Regular'];
+     var _trustTip='<b>Trust</b> — '+GLOSS['Trust'];
+     return '<div class="lrow" style="border-left:2px solid var(--acc)"><span class="tipable" data-tip="'+_regTip.replace(/"/g,'&quot;')+'">★ '+esc(rg.name)+'</span>'
+       +' <span style="color:var(--dim)">— <span class="tipable" data-tip="'+_trustTip.replace(/"/g,'&quot;')+'">'+esc(rung.name)+'</span></span>'
        +' <button class="btn gh sm" data-hallcom="reg:'+esc(rg.role)+'">'+esc(cul.commune||'Talk')+'</button></div>';
    }).join('');
    hh+=pats.length?pats.map(function(p,i){var _offTip='<b>Offering</b> — '+GLOSS['Offering'];return '<div class="lrow" style="cursor:default">'+esc(p.name)+' — <span style="color:var(--dim)">'+esc(p.role)+'</span>'
