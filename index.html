@@ -3831,11 +3831,34 @@ function missionTargetLabel(m){
    missionTarget (optional, T-MSN-1B final fix wave): the accepted instance's rolled
    objective.target — only genHostiles' class-filter branch (kill_team) reads it, to know
    how many matching-class hostiles it must guarantee. */
+// T-NPC-3.5 task 6: an NPC-generated spec carries no rank field (genHostiles only ever emits
+// unscaled canon base stats, +1.5x flat premium for a named boss — never a growth-curve pc
+// scale). spec.rk (future-proofing, per the task-6 interface) wins if genHostiles ever stamps
+// one; otherwise reverse the model's own PC against the SAME rules.growth.pc_curve_by_rank
+// devTable already uses (index i ↔ rank i+1) to find which rank's multiplier the spec's
+// pc/basePc ratio is closest to. A generic (unscaled) spawn lands on ratio 1.0 → rank 1
+// exactly; a named boss's 1.5x premium lands nearest rank 2's 1.4x. Clamped to [1,5].
+function npcSpecRk(fac,spec,canon){
+ if(spec&&spec.rk)return spec.rk;
+ var nm=((spec&&spec.sub)||'').split(' — ')[0]||(spec&&spec.n)||'';
+ var row=(fac.models||[]).filter(function(m){return m.n===nm;})[0];
+ if(!row||!row.pc)return 1;
+ var ratio=(spec.pc||row.pc)/row.pc;
+ var curve=(canon.rules&&canon.rules.growth&&canon.rules.growth.pc_curve_by_rank)||[1,1.4,1.9,2.5,3.2];
+ var best=1,bd=Infinity;
+ for(var i=0;i<curve.length;i++){var d=Math.abs(curve[i]-ratio);if(d<bd){bd=d;best=i+1;}}
+ return Math.max(1,Math.min(5,best));
+}
 /* T-NPC-3 N2 task 5: the host-side spawn logic seedCombat used to build inline, extracted so
    mintNpcClock can seed an NPC side onto a thread with no player force committed yet (the
    player joins later via the normal join path — joinNpcClock, below). Byte-identical behavior
-   for seedCombat's own call site (same genHostiles/npcWeaponFor calls, same combatant shape). */
-function genHostCombatants(fac,hostName,mineCount,missionParams,missionTarget){
+   for seedCombat's own call site (same genHostiles/npcWeaponFor calls, same combatant shape).
+   T-NPC-3.5 task 6: `seed` (optional, 6th arg) mints each spawned combatant's kit — every
+   caller now derives one off its own existing seed material (missionSeedBase/day/loc/faction)
+   so the same siege day always re-mints the same kits; a caller with no seed in scope falls
+   back to 1 (KIT.mint still runs, just off a fixed base — dead branch against real callers,
+   every real call site below supplies one). */
+function genHostCombatants(fac,hostName,mineCount,missionParams,missionTarget,seed){
  var wep=npcWeaponFor(fac.id),ap=0,C={};
  var specs=MISSION.genHostiles(missionParams||{},mineCount,fac.models||[],wep,D,missionTarget);
  specs.forEach(function(spec){
@@ -3845,6 +3868,12 @@ function genHostCombatants(fac,hostName,mineCount,missionParams,missionTarget){
   // can read victim.gen.faction — genHostiles (pure mission-core) has no faction id to hand
   // out itself, but fac.id is known right here at the one real spawn call site.
   if(fac.id)gen.faction=fac.id;
+  // T-NPC-3.5 task 6: mint the NPC's kit right here — the one real spot every generated
+  // combatant is built, so every spawn path (seedCombat/mintNpcClock/mintDrama x2) gets it
+  // for free. Seed = the caller's own seed ⊕ this spec's own id (so escorts in the same
+  // detachment each draw independently, not a copy-pasted identical kit).
+  gen.kit=KIT.mint(fac.id,{rk:npcSpecRk(fac,spec,D),cls:spec.cls,sub:spec.sub},
+    ((seed||1)>>>0)^ULT.hashStr('kit:'+spec.id),ULT.rng,D);
   C[spec.id]={w:[spec.w,spec.w],conds:[],party:hostName,model:gen,gen:gen,armour:null};
   ap+=AP(spec.pc);});
  return {C:C,ap:ap,specs:specs};
@@ -3863,7 +3892,13 @@ function seedCombat(t,pid,l,npcId,force,missionParams,missionTarget){
  if(!host){var fr=npcForceAt(pid,l.name);if(fr)host={name:fr.name,faction:npcFactionOf(fr.desc)};}
  var fac=host&&host.faction?facByName(host.faction):null;
  if(!fac)return;                                     // nobody garrisons this ground → social thread
- var g=genHostCombatants(fac,host.name,mine.length,missionParams,missionTarget);
+ // T-NPC-3.5 task 6: no pre-existing seed lives at this call site (a player-opened thread, not
+ // an Ultimatum/drama clock) — derive one the same way every other day-scoped roll in this file
+ // does: missionSeedBase ⊕ the current world day ⊕ this location ⊕ the host faction, tagged
+ // 'kit:' so it never collides with any other seedFor stream keyed off the same three ids.
+ var _kitDay=WORLD.dayIndexAt(S,D,Date.now());
+ var _kitSeed=ULT.seedFor(S.world.missionSeedBase||1,_kitDay,l.id,'kit:'+fac.id);
+ var g=genHostCombatants(fac,host.name,mine.length,missionParams,missionTarget,_kitSeed);
  if(!g.specs.length)return;
  for(var k in g.C)C[k]=g.C[k];
  pools[host.name]=g.ap;
@@ -5257,7 +5292,10 @@ function mintNpcClock(c,agg,scale,muster,day){
  if(!_corePool.length)_corePool=fac.models||[];
  var avgPc=_corePool.length?(_corePool.reduce(function(s,m){return s+(m.pc||1);},0)/_corePool.length):40;
  var mineCount=Math.max(2,Math.min(4,Math.round(muster/Math.max(1,avgPc))));
- var g=genHostCombatants(fac,hostName,mineCount,null,null);
+ // T-NPC-3.5 task 6: same tag-in-aggressorId-slot convention as this function's own 'wl:'/'win:'
+ // rolls just above — 'kit:' + agg keeps this stream distinct from every other seedFor draw
+ // keyed off the same (base,day,lid) triple.
+ var g=genHostCombatants(fac,hostName,mineCount,null,null,ULT.seedFor(base,day,lid,'kit:'+agg));
  if(!g.specs.length)return {kind:'near_clock_stub'};   // faction has no rosters to spawn from — dead code against real canon
  t.forces.push(hostName);
  var pools={};pools[hostName]=g.ap;
@@ -5356,8 +5394,12 @@ function mintDrama(c,agg,scale,muster,day){
  var attName=attFac.name+' host',defName=defFac.name+' garrison';
  var attCount=Math.max(2,Math.min(4,Math.round(muster/Math.max(1,avgCorePc(attFac)))));
  var defCount=Math.max(2,Math.min(4,Math.round(c.garrisonPC/Math.max(1,avgCorePc(defFac)))));
- var gA=genHostCombatants(attFac,attName,attCount,null,null);
- var gD=genHostCombatants(defFac,defName,defCount,null,null);
+ // T-NPC-3.5 task 6: both hosts share (base,day,lid) but must draw independent kits — 'kit:att:'
+ // vs 'kit:def:' keeps the two streams apart the same way the combatant ids below are kept
+ // apart with an a_/d_ prefix.
+ var _base=S.world.missionSeedBase||1;
+ var gA=genHostCombatants(attFac,attName,attCount,null,null,ULT.seedFor(_base,day,c.lid,'kit:att:'+attFac.id));
+ var gD=genHostCombatants(defFac,defName,defCount,null,null,ULT.seedFor(_base,day,c.lid,'kit:def:'+defFac.id));
  if(!gA.specs.length||!gD.specs.length)return {kind:'drama_stub'};   // no rosters to spawn from — dead code against real canon
  var C={};for(var ka in gA.C)C['a_'+ka]=gA.C[ka];for(var kd in gD.C)C['d_'+kd]=gD.C[kd];
  var pools={};pools[attName]=gA.ap;pools[defName]=gD.ap;
