@@ -97,3 +97,39 @@ test('rumorFor is stable within a day, changes across days', () => {
   for (let d = 1; d <= 20; d++) many.add(HALL.rumorFor(p, WCTX, ctx({ day: d }), D).line);
   assert.ok(many.size > 1, 'rumor should vary across days');
 });
+
+test('moodEventAt: famine outranks thriving-adjacent noise; taint fires plague; quiet peace = null or holy day only', () => {
+  assert.equal(HALL.moodEventAt(ctx(), { status: 'Famine', taint: 10 }, D).id, 'famine_table');
+  assert.equal(HALL.moodEventAt(ctx(), { status: 'Warring', taint: 80 }, D).id, 'plague_night');
+  assert.equal(HALL.moodEventAt(ctx(), { status: 'Thriving', taint: 10 }, D).id, 'good_season');
+  const quiet = HALL.moodEventAt(ctx(), { status: 'Peace', taint: 10 }, D);
+  assert.ok(quiet === null || quiet.id === 'holy_day');
+});
+
+test('holy_day fires on the culture calendar, deterministically', () => {
+  const mod = D.rules.hall.holy_day_mod;
+  const facDay = HALL.hashStr('militarum') % mod;
+  let day = facDay === 0 ? mod : facDay;   // find a day that matches the culture's slot
+  while (day % mod !== facDay) day++;
+  const hit = HALL.moodEventAt(ctx({ day: day }), { status: 'Peace', taint: 0 }, D);
+  assert.ok(hit && hit.id === 'holy_day', 'expected holy_day on day ' + day);
+  const miss = HALL.moodEventAt(ctx({ day: day + 1 }), { status: 'Peace', taint: 0 }, D);
+  assert.ok(miss === null, 'expected quiet on day ' + (day + 1));
+});
+
+test('offerEval prices the culture offering under tonight\'s event', () => {
+  const base = HALL.offerEval(null, ctx(), D);
+  assert.equal(base.kind, 'cur');
+  assert.equal(base.cost, D.rules.hall.offer.cost);
+  assert.equal(base.disp, D.rules.hall.offer.disp);
+  const good = HALL.offerEval({ id: 'good_season' }, ctx(), D);
+  assert.ok(good.cost < base.cost, 'good season discounts the round');
+  const holy = HALL.offerEval({ id: 'holy_day' }, ctx(), D);
+  assert.equal(holy.disp, base.disp * D.rules.hall.offer.holy_day_disp_mult);
+  const famineFood = HALL.offerEval({ id: 'famine_table' }, ctx({ fac: 'tyranids' }), D);
+  assert.equal(famineFood.kind, 'res');
+  assert.equal(famineFood.disp, base.disp * D.rules.hall.offer.famine_food_disp_mult);
+  const skulls = HALL.offerEval(null, ctx({ fac: 'world_eaters' }), D);
+  assert.equal(skulls.kind, 'item');
+  assert.equal(skulls.accepts, 'REMAINS');
+});

@@ -2960,7 +2960,35 @@ var HALL=(function(){
     }
     return {register:'none',line:patron.name+' has nothing for you tonight — quiet days, thank the powers.'};
   }
-  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor};
+  /* moodEventAt: max ONE event per hall per day; canon row order IS priority
+     (hardship outranks celebration). Pure — no rng needed: triggers are state
+     predicates, holy_day is calendar math (hash(fac) mod holy_day_mod). */
+  function moodEventAt(ctx,w,canon){
+    var rows=H(canon).events||[],i,e;
+    for(i=0;i<rows.length;i++){e=rows[i];
+      if(e.trigger==='famine'&&w.status==='Famine')return e;
+      if(e.trigger==='taint'&&(w.taint||0)>=(H(canon).taint_plague_gte||60))return e;
+      if(e.trigger==='thriving'&&w.status==='Thriving')return e;
+      if(e.trigger==='calendar'){
+        var mod=H(canon).holy_day_mod||23,slot=hashStr(ctx.fac)%mod;
+        if(ctx.day%mod===slot)return e;
+      }
+    }
+    return null;
+  }
+  /* offerEval: the OFFER verb priced under tonight's event. Returns everything the
+     renderer + handler need: what it costs (cur|item|res), what it pays (disp). */
+  function offerEval(event,ctx,canon){
+    var O=H(canon).offer||{},cul=(H(canon).culture||{})[ctx.fac]||{},of=cul.offer||{kind:'cur'};
+    var cost=O.cost||3,disp=O.disp||1;
+    if(event&&event.id==='good_season')cost=Math.max(1,Math.round(cost*(O.good_season_cost_mult||1)));
+    if(event&&event.id==='holy_day')disp=disp*(O.holy_day_disp_mult||1);
+    if(event&&event.id==='famine_table'&&of.kind==='res'&&of.res==='Food')
+      disp=disp*(O.famine_food_disp_mult||1);
+    return {kind:of.kind,cost:cost,accepts:of.accepts||null,res:of.res||null,
+      disp:disp,label:cul.offer_label||'Make an offering'};
+  }
+  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,moodEventAt:moodEventAt,offerEval:offerEval};
 })();
 /*</hall-core>*/
 /*<save-core>*/
