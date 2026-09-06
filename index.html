@@ -2819,6 +2819,71 @@ var CHRON=(function(){
   return {record:record,titleOf:titleOf,account:account};
 })();
 /*</cadence-core>*/
+/*<kit-core>*/
+/* T-NPC-3.5 task 3 — pure KIT generator: rank-scaled, faction-legal NPC kits.
+   Pure + DOM-free: canon arrives as an argument; rng arrives as an argument (glue passes
+   ULT.rng). NO Date.now()/Math.random(), reads no globals (D/S/ULT/THREAD not read).
+   CONTROLLER RULING R2: cast eligibility is depth.casts && rank gate (R<=model.rk) &&
+   faction-legal casts exist — NO slot-type check, because NPC generated specs {rk,cls,sub}
+   carry no slot typing. */
+var KIT=(function(){
+  var SECOND_CAST_P=0.5; // flagged tunable — canon has no field for the rank-5 2nd-cast chance
+  function hashStr(s){var h=2166136261;for(var i=0;i<s.length;i++){
+    h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+  function castRank(d){var m=/^R(\d+)\b/.exec(d||'');return m?+m[1]:1;}
+  function depthOf(rk,canon){
+    var tbl=(canon.rules&&canon.rules.npc_kit&&canon.rules.npc_kit.depth_by_rank)||{};
+    return tbl[String(rk)]||{items:0,abilities:0,casts:false};}
+  var CATMAP={ITEM:'items',ABILITY:'abilities',CAST:'casts'};
+  function legalFor(facId,cat,canon){
+    var key=CATMAP[cat],rows=(canon&&canon[key])||[];
+    return rows.filter(function(r){return !r.faction||r.faction===facId;});}
+  function pickOne(list,rngFn,sd){
+    if(!list.length)return null;
+    return list[Math.floor(rngFn(sd)()*list.length)];}
+  function pickDistinct(list,n,rngFn,sdBase){
+    var pool=list.slice(),out=[];
+    for(var i=0;i<n&&pool.length;i++){
+      var idx=Math.floor(rngFn(sdBase+i)()*pool.length);
+      out.push(pool[idx]);pool.splice(idx,1);}
+    return out;}
+  function mint(facId,model,seed,rngFn,canon){
+    var rk=(model&&model.rk)||1;
+    var base=((seed>>>0)^hashStr(facId+rk))>>>0;
+    var depth=depthOf(rk,canon);
+    var out={items:[],abilities:[],casts:[]};
+    if(rngFn(base^hashStr('items'))()<depth.items){
+      var it=pickOne(legalFor(facId,'ITEM',canon),rngFn,base^hashStr('items:pick'));
+      if(it)out.items.push(it);}
+    var abilN=depth.abilities|0;
+    if(abilN>0){
+      out.abilities=pickDistinct(legalFor(facId,'ABILITY',canon),abilN,rngFn,base^hashStr('abilities'));}
+    if(depth.casts){
+      var legalCasts=legalFor(facId,'CAST',canon).filter(function(c){return castRank(c.d)<=rk;});
+      if(legalCasts.length){
+        var first=pickOne(legalCasts,rngFn,base^hashStr('casts:1'));
+        if(first){
+          out.casts.push(first);
+          if(rk>=5){
+            var rest=legalCasts.filter(function(c){return c!==first;});
+            if(rest.length&&rngFn(base^hashStr('casts:2'))()<SECOND_CAST_P){
+              var second=pickOne(rest,rngFn,base^hashStr('casts:2:pick'));
+              if(second)out.casts.push(second);}}}}}
+    return out;}
+  function each(coll,fn){
+    if(!coll)return;
+    if(Array.isArray(coll)){coll.forEach(fn);return;}
+    for(var k in coll){if(Object.prototype.hasOwnProperty.call(coll,k))fn(coll[k],k);}}
+  function kitDepth(combatants){
+    var casters=0,abilityCarriers=0;
+    each(combatants,function(c){
+      if(!c||!c.gen||!c.gen.kit)return;
+      if(c.gen.kit.casts&&c.gen.kit.casts.length>0)casters++;
+      if(c.gen.kit.abilities&&c.gen.kit.abilities.length>0)abilityCarriers++;});
+    return {casters:casters,abilityCarriers:abilityCarriers};}
+  return {mint:mint,legalFor:legalFor,kitDepth:kitDepth};
+})();
+/*</kit-core>*/
 /*<hall-core>*/
 /* T-SOC-1 slice A — pure, DOM-free Hall generation: patrons, rumors, mood events.
    Canon/ctx arrive as arguments. NO Date.now()/Math.random(): determinism comes from
