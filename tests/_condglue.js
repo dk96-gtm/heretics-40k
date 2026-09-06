@@ -12,7 +12,8 @@ function loadCondGlue(THREAD) {
   if (!parse) throw new Error('item-parse-glue region not found in index.html');
   if (!glue) throw new Error('cond-staging-glue region not found in index.html');
   const names = ['condTagsOf', 'condEffectsFor', 'livingAllies', 'cleanseReach',
-    'condIsHostile', 'parseItem', 'bfCondItemsOf', 'weaponCondEffects'];
+    'condIsHostile', 'parseItem', 'bfCondItemsOf', 'weaponCondEffects',
+    'kitOfFor', '_kitApMod'];
   const ret = names.map(n => n + ':(typeof ' + n + '==="undefined"?null:' + n + ')').join(',');
   const src = '(function(THREAD){' + parse[1] + '\n' + glue[1] + '\n;return {' + ret + '};})';
   return vm.runInThisContext(src)(THREAD);
