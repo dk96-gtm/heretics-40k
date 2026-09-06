@@ -1359,7 +1359,7 @@
    }
   },
   "npc_kit": {
- "note": "T-NPC-3.5. Depth ladder LOCKED shape (Daak 2026-09-06); values are flagged tunables. items = seeded probability of one item (1 = always); abilities = count for rank>=2; casts gated additionally by the model having a cast-capable slot and DOOR.castRank vs model rk.",
+ "note": "T-NPC-3.5. Depth ladder LOCKED shape (Daak 2026-09-06); values are flagged tunables. items = seeded probability of one item (1 = always); abilities = count for rank>=2; casts gated additionally by depth.casts && the model rank meeting the cast row's own R-prefix rank gate (R<=model rk) && at least one faction-legal cast existing — NPC-generated specs carry no slot typing, so there is no cast-capable-slot check.",
  "depth_by_rank": {
   "1": {"items": 0.5, "abilities": 0, "casts": false},
   "2": {"items": 1, "abilities": 1, "casts": false},
