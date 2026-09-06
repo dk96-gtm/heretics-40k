@@ -157,18 +157,29 @@ test('N2/M5: evalPlayerTribute is deterministic for a fixed rng draw', () => {
   assert.strictEqual(a.result, 'counter');
 });
 
-// T-NPC-3.5 task 7 — chunk-independence sanity for the far-battle kit nudge.
-// resolveFarBattle itself is engine glue (reads S/D/applyWarResolution as bare globals; not
-// extractable the way kitOfFor/npcSpecRk were in task 6 — see kit-glue.test.js's own note on
-// that same limit) so this test replicates its exact formula against the pure ULT+KIT exports
-// it's built from: def = garrisonPC*defender_mult, r = ULT.rng(ULT.seedFor(base,day,lid,'far:'+agg)),
-// kitMult = KIT.kitMult(KIT.syntheticDepth(muster), canon), att = round(muster*kitMult), then
-// ULT.resolveLapse(att, def, scale, r, canon). Extending world-core.test.js's own "chunk === daily
-// boots" fixture (tests/world-core.test.js:218-231) wasn't a fit — that fixture drives WORLD.catchUp
-// over holdings/production and never touches ULT/resolveLapse/resolveFarBattle at all — whereas THIS
-// file already hosts resolveLapse's own arithmetic fixtures immediately above, so it's the closer
-// home for a far-battle-shaped chunk-vs-daily check.
-test('T-NPC-3.5 task 7: far-battle kit nudge derives only from seeded state — a 13-day chunk equals daily replay', () => {
+// T-NPC-3.5 task 7 fix round 1 — WHAT THIS TEST PROVES AND DOES NOT.
+// resolveFarBattle itself is engine glue: it reads S/D as bare globals and calls
+// applyWarResolution, which in turn calls npcCapture -> sweepSeatsOn -> _seatGarrisonCasualties
+// (a full save-state's roster/forces/S.world.seats/S.world.rulers/S.world.holdings/governor,
+// plus CHRON.record, effCond, pRuler, FAC, lById, threadOfForce, WORLD.dayIndexAt) — a
+// dependency graph far past the ~40-line stub budget that made kitOfFor/npcSpecRk extractable
+// in task 6 (see kit-glue.test.js's own note on that same limit). Actually driving
+// resolveFarBattle node-side would mean minting a whole fake save-state to satisfy that graph,
+// which is unreasonable here; that call site's wiring is only reachable in-browser (E2E).
+//
+// So — same as the review found — this test does NOT drive resolveFarBattle or WORLD.catchUp.
+// It validates FORMULA PURITY: that KIT.kitMult/KIT.syntheticDepth/KIT.kitNudgeArith (the real,
+// shipped pure functions the call site is built from — never a hand-copied reimplementation of
+// their math) combine with ULT.resolveLapse/ULT.rng/ULT.seedFor deterministically, so the same
+// (day, muster) inputs always produce the same result whether visited in one straight run or
+// two independent runs over the same days. It intentionally does NOT prove that
+// resolveFarBattle's actual call-site wiring (the S/D global reads, the applyWarResolution/
+// npcCapture/CHRON chain) is chunk-safe under WORLD.catchUp's real day-elapse bookkeeping —
+// only a browser/E2E pass (or a future engine refactor that makes resolveFarBattle DOM-free)
+// can cover that. Compare tests/world-core.test.js:210-227, which DOES drive the real
+// W.catchUp over live mutable state for its own chunk-vs-daily claim — this test cannot make
+// the same claim about resolveFarBattle.
+test('T-NPC-3.5 task 7: kit-nudge formula purity (KIT.kitMult/syntheticDepth/kitNudgeArith + ULT.resolveLapse) — a 13-day chunk equals daily replay; NOT a resolveFarBattle call-site wiring test', () => {
   const base = 91, lid = 'forgeworld-vex', agg = 'orks', garrisonPC = 400;
   function farBattleDay(day, muster) {
     const def = Math.round(garrisonPC * ((canon.rules.ultimatum || {}).defender_mult || 1.25));
