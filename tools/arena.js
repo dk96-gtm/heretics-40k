@@ -379,7 +379,9 @@ function runBattle(buildA, buildB, seed) {
     for (const side of [partyA, partyB]) {
       const oc = THREAD.outcome(thread, state);
       if (oc) { result = oc; break; }
-      const block = THREAD.npcTurn(side, state, state.board, weaponCaps, D);
+      // T-NPC-3.5 task 5: kitOf is the new 5th arg; task 8 rewires this harness to the
+      // real kit-minted accessor. The stub keeps the driver weapons-only for now.
+      const block = THREAD.npcTurn(side, state, state.board, weaponCaps, () => [], D);
       if (block.length && applyResilient(thread, state, side, block)) progressed = true;
       state.pools[side] = poolsBase[side];   // per-turn AP refresh, mirrors npcRespond L5803
     }
