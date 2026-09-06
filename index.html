@@ -1398,6 +1398,215 @@ var THREAD=(function(){
     }
     return block;
   }
+  /* ── T-NPC-3.5 · Task 4 — the brain, steps 2+3 (ENUMERATE + SCORE) ─────
+     Two pure, DETERMINISTIC functions beside npcTurn (Task 5 wires them in;
+     npcTurn itself is unchanged this task). No Math.random, no Date.now —
+     ALL variety enters at Task 5's seeded draw.
+
+     enumeratePairs(side,state,board,weaponsOf,kitOf,canon) → [pair]
+       pair = {actor, kind:'attack'|'kit'|'move', item?, target?, ap, meta}
+       meta (attack) : {band, dist, weapon}
+       meta (kit)    : {kitKind, hostile, tags[], payload[], consumable, self,
+                        dist, tgtWeapons}
+       meta (move)   : {intent:'close', toward:<enemyId>, dist}
+     scorePair(pair,state,canon) → number
+
+     FOG HONESTY: targets come only from spottedEnemies (Task 2: living,
+     uncaptured, on-board enemies only) — no pair can ever name a model this
+     side has not legally seen.
+     PURITY: reads nothing but its arguments; weaponsOf/kitOf are injected. */
+
+  /* Normalization caps — every one of them stated here, none hardcoded in canon's place:
+       NPCB_EPS ............... consideration floor. Keeps every factor in (0,1] so a
+                                single inert consideration can never hard-zero the
+                                geometric mean of the others.
+       NPCB_DENIAL_WEP_CAP .... a target holding 3+ weapons counts as fully armed.
+       NPCB_DENIAL_AP_REF ..... fallback AP-pool denominator when state.poolsBase is
+                                absent (poolsBase is stamped at Lock-In; pre-Lock-In
+                                and in bare fixtures we fall back to this).
+       NPCB_MAG_DUR_CAP ....... duration cap for the generic-magnitude term; an
+                                Infinity duration (Immunity) counts as this many turns.
+       NPCB_MAG_TIER_DUR_CAP .. tier x duration >= this is a maximal generic effect.
+       NPCB_CLEANSE_CAP ....... cleansing 3+ hostile conds is full value.
+       NPCB_MOVE_FACTOR ....... a move scores at this fraction of the basic_attack
+                                FLOOR, so it can never outbid a real action — it exists
+                                only as the draw's fallback when nothing else is legal.
+     Wounds are ALWAYS normalized by the recipient's MAX wounds (w[1], floored at 1)
+     and capped by what is actually available: remaining wounds for damage, missing
+     wounds for a heal. Band ranges themselves come from canon.rules.npc_brain.bands. */
+  var NPCB_EPS=0.01,NPCB_DENIAL_WEP_CAP=3,NPCB_DENIAL_AP_REF=10,
+      NPCB_MAG_DUR_CAP=5,NPCB_MAG_TIER_DUR_CAP=10,NPCB_CLEANSE_CAP=3,NPCB_MOVE_FACTOR=0.5;
+  // emergency tags: the ones that keep a dying model alive → reaction band at <=2 wounds
+  var NPCB_EMERGENCY={Regen:1,Cleanse:1,Immunity:1};
+  // denial tags: the ones that take a target's actions/movement away
+  var NPCB_DENIAL={Suppressing:1,Slowing:1};
+  var NPCB_FALLBACK_BANDS={basic_attack:[8,12],offensive:[20,40],support:[25,45],reaction:[50,70]};
+  function npcBands(canon){
+    var b=(canon&&canon.rules&&canon.rules.npc_brain&&canon.rules.npc_brain.bands)||{};
+    return {basic_attack:b.basic_attack||NPCB_FALLBACK_BANDS.basic_attack,
+            offensive:b.offensive||NPCB_FALLBACK_BANDS.offensive,
+            support:b.support||NPCB_FALLBACK_BANDS.support,
+            reaction:b.reaction||NPCB_FALLBACK_BANDS.reaction};
+  }
+  function npcNorm(v){return !(v>NPCB_EPS)?NPCB_EPS:(v>1?1:v);}   // clamp into (0,1]; NaN → EPS
+  function enumeratePairs(side,state,board,weaponsOf,kitOf,canon){
+    canon=canon||{rules:{}};
+    var C=(state&&state.combatants)||{},out=[],id;
+    var pool=(state&&state.pools&&state.pools[side]!=null)?state.pools[side]:0;
+    var spotted=board?spottedEnemies(side,state,board):[];
+    // belt-and-braces over Task 2: a corpse or a carried captive is never a target
+    var foes=spotted.filter(function(eid){var e=C[eid];
+      return !!(e&&!e.dead&&!e.captured&&e.x!=null);}).sort();
+    var actors=[];
+    for(id in C){var c=C[id];if(c&&c.party===side&&!c.dead&&!c.captured&&c.x!=null)actors.push(id);}
+    actors.sort();                     // stable output independent of key-insertion order
+    var allies=actors.slice();         // friendly recipients = self + every living ally
+    var wOf=function(c){return (weaponsOf?(weaponsOf(c)||[]):[]);};
+    actors.forEach(function(aid){
+      var me=C[aid];
+      // ── attack pairs: every affordable weapon that actually reaches a visible enemy
+      var weps=wOf(me);
+      foes.forEach(function(fid){
+        var f=C[fid],d=cheb(me,f),db=bandOf(d);
+        weps.forEach(function(w){
+          var ap=w.ap||0;
+          if(ap>pool)return;                                // unaffordable this post
+          if(NPC_RANK[w.band]<NPC_RANK[db])return;          // out of the weapon's reach
+          out.push({actor:aid,kind:'attack',item:w,target:fid,ap:ap,
+            meta:{band:db,dist:d,weapon:w.name||null}});});});
+      // ── kit pairs: each cond-carrying cast/ability/item x each LEGAL recipient
+      var kit=kitOf?(kitOf(me)||[]):[];
+      kit.forEach(function(en){
+        if(!en)return;
+        var pl=en.payload||[];if(!pl.length)return;         // nothing to do → not a pair
+        var ap=en.ap||0;if(ap>pool)return;
+        // an entry is hostile if ANY of its payload tags is hostile (mixed payloads
+        // are treated as hostile — they can only legally land on an enemy)
+        var hostile=pl.some(function(p){
+          return p&&(p.hostile!=null?!!p.hostile:condHostile(p.tag));});
+        var tags=pl.map(function(p){return p&&p.tag;});
+        (hostile?foes:allies).forEach(function(rid){
+          var r=C[rid];
+          out.push({actor:aid,kind:'kit',item:en.item||null,target:rid,ap:ap,
+            meta:{kitKind:en.kind||null,hostile:hostile,tags:tags,payload:pl,
+                  consumable:!!en.consumed,self:rid===aid,
+                  dist:(r&&r.x!=null)?cheb(me,r):null,
+                  // stamped HERE because scorePair's signature has no weaponsOf —
+                  // the denial consideration needs the target's weapon count
+                  tgtWeapons:wOf(r).length}});});});
+      // ── movement: at most ONE fallback pair per actor. Task 5 owns real movement
+      //    shaping; this exists so the draw always has something legal to pick.
+      if(foes.length){
+        var near=null,nd=Infinity;
+        foes.forEach(function(fid){var d=cheb(me,C[fid]);
+          if(d<nd||(d===nd&&near!==null&&fid<near)){nd=d;near=fid;}});
+        out.push({actor:aid,kind:'move',target:near,ap:0,
+          meta:{intent:'close',toward:near,dist:nd}});
+      }
+    });
+    return out;
+  }
+  /* Expected wounds an attack pair lands — mirrors apply()'s damage branch exactly
+     (attacker dmgOut / melee bonus, target dmgIn, armour Defense for the element,
+     terrain cover, the Non-Lethal floor) so the brain never scores physics the
+     pipeline will not deliver. A weapon-carried DoT rides ON TOP and is NOT
+     armour-reduced — tickConds applies its dw straight to wounds. */
+  function npcExpDamage(pair,state){
+    var C=(state&&state.combatants)||{},a=C[pair.actor],t=C[pair.target],w=pair.item||{};
+    if(!t||!t.w)return 0;
+    var am=condMods(a),tm=condMods(t);
+    var amt=(w.damage||0)+(am.dmgOut||0)+
+            ((pair.meta&&pair.meta.band==='MELEE')?(am.dmgOutMelee||0):0)+(tm.dmgIn||0);
+    var dv=(t.armour&&t.armour[w.element])||0;
+    var cov=(state&&state.board&&t.x!=null)?(coverMod({x:t.x,y:t.y},state.board)||0):0;
+    var taken=Math.max(0,amt-dv-cov);
+    if(w.nonLethal)taken=Math.min(taken,Math.max(0,t.w[0]-1));
+    (w.conds||[]).forEach(function(ct){
+      if(!ct||!ct.tag)return;var d=CONDS[ct.tag];if(!d||!d.tick)return;
+      var r=d.tick({tier:ct.tier||1});if(!r||!(r.dw<0))return;
+      var dur=condDur(ct.tag,ct.tier||1);if(!isFinite(dur))dur=NPCB_MAG_DUR_CAP;
+      taken+=(-r.dw)*dur;});
+    return taken;
+  }
+  /* Wounds a kit payload moves over its FULL duration (hostile → damage taken,
+     friendly → wounds restored). Armour never applies: cond ticks hit wounds direct. */
+  function npcKitSwing(pl,hostile){
+    var n=0;
+    (pl||[]).forEach(function(p){
+      if(!p||!p.tag)return;var d=CONDS[p.tag];if(!d||!d.tick)return;
+      var r=d.tick({tier:p.tier||1});if(!r||!r.dw)return;
+      var dur=condDur(p.tag,p.tier||1);if(!isFinite(dur))dur=NPCB_MAG_DUR_CAP;
+      if(hostile&&r.dw<0)n+=(-r.dw)*dur;
+      else if(!hostile&&r.dw>0)n+=r.dw*dur;});
+    return n;
+  }
+  function scorePair(pair,state,canon){
+    canon=canon||{rules:{}};
+    if(!pair)return 0;
+    var B=npcBands(canon),C=(state&&state.combatants)||{};
+    // a move is a pure fallback: bottom of basic_attack x NPCB_MOVE_FACTOR, no
+    // considerations, no AP division (a move costs 0 AP).
+    if(pair.kind==='move')return B.basic_attack[0]*NPCB_MOVE_FACTOR;
+    var tgt=C[pair.target]||null,cons=[],band=null,i;
+    var maxW=Math.max(1,(tgt&&tgt.w&&tgt.w[1])||1),cur=(tgt&&tgt.w)?tgt.w[0]:0;
+    if(pair.kind==='attack'){
+      band=B.basic_attack;
+      // C1 — expected wounds after armour, capped by what the target has left,
+      //      normalized by the target's MAX wounds.
+      cons.push(npcNorm(Math.min(npcExpDamage(pair,state),cur)/maxW));
+    }else if(pair.kind==='kit'){
+      var m=pair.meta||{},pl=m.payload||[],hostile=!!m.hostile,tags={},emerg=false,denies=false;
+      pl.forEach(function(p){if(p&&p.tag)tags[p.tag]=p;});
+      for(i in tags){if(NPCB_EMERGENCY[i])emerg=true;if(NPCB_DENIAL[i])denies=true;}
+      // band placement (brief, verbatim): hostile payload → offensive; friendly →
+      // support, unless it is a heal/cleanse/ward on a recipient at <=2 wounds → reaction.
+      band=hostile?B.offensive:((emerg&&cur<=2)?B.reaction:B.support);
+      // C1 — wound swing over the payload's full duration, capped by what is
+      //      available (remaining wounds to take / missing wounds to restore).
+      var swing=npcKitSwing(pl,hostile);
+      if(swing>0)cons.push(npcNorm(Math.min(swing,hostile?cur:Math.max(0,maxW-cur))/maxW));
+      // C2 — denial: what the target would plausibly have done with the actions we
+      //      take away = (its weapon count) x (its side's remaining AP share) x
+      //      (its per-post action cap, which a wounded model already loses).
+      if(denies&&tgt){
+        var tp=tgt.party,
+            tpool=(state&&state.pools&&state.pools[tp]!=null)?state.pools[tp]:0,
+            tbase=(state&&state.poolsBase&&state.poolsBase[tp]>0)?state.poolsBase[tp]:NPCB_DENIAL_AP_REF,
+            apShare=Math.max(0,Math.min(1,tpool/tbase)),
+            wc=Math.min(NPCB_DENIAL_WEP_CAP,(m.tgtWeapons!=null?m.tgtWeapons:1))/NPCB_DENIAL_WEP_CAP,
+            aBase=(canon.rules&&canon.rules.combat&&typeof canon.rules.combat.actions_per_post==='number')
+                    ?canon.rules.combat.actions_per_post:3,
+            actShare=Math.max(0,Math.min(1,actionCap(tgt,canon)/Math.max(1,aBase)));
+        cons.push(npcNorm(wc*apShare*actShare));
+      }
+      // C3 — peril-weighted support: buffing a full-health model is nearly worthless.
+      if(!hostile&&tgt)cons.push(npcNorm(1-(cur/maxW)));
+      // C4 — Cleanse relevance: enumerated even where pointless (per spec), but scored
+      //      by how many hostile conds the recipient is actually carrying.
+      if(tags.Cleanse&&tgt){
+        var hc=0;(tgt.conds||[]).forEach(function(x){if(x&&x.tag&&condHostile(x.tag))hc++;});
+        cons.push(npcNorm(hc/NPCB_CLEANSE_CAP));
+      }
+      // fallback — payloads that neither tick, deny, nor support (Marked, Draining,
+      // Charging on an enemy…): value them by raw magnitude, tier x duration.
+      if(!cons.length){
+        var mag=0;
+        pl.forEach(function(p){if(!p||!p.tag)return;
+          var d=condDur(p.tag,p.tier||1);if(!isFinite(d))d=NPCB_MAG_DUR_CAP;
+          mag+=(p.tier||1)*Math.min(d,NPCB_MAG_DUR_CAP);});
+        cons.push(npcNorm(mag/NPCB_MAG_TIER_DUR_CAP));
+      }
+    }else return 0;                                   // unknown kind → never drawn
+    if(!cons.length)cons.push(NPCB_EPS);
+    // geometric-mean compensation (utility-school standard): n considerations, each
+    // in (0,1], combine to a single position within the band without a long list of
+    // weak factors collapsing the score the way a plain product would.
+    var prod=1;for(i=0;i<cons.length;i++)prod*=cons[i];
+    var gm=Math.pow(prod,1/cons.length);
+    // AP efficiency: score per AP. ap 0 (free items) is treated as 1 — never a divide
+    // by zero, never an infinite bid.
+    return (band[0]+gm*(band[1]-band[0]))/Math.max(1,pair.ap||0);
+  }
   /* ── Capture & Remains (spec 2026-07-24) ── */
   function captureTier(item){var m=((item&&item.d)||'').match(/Capture\s+(III|II|I)\b/i);
     return m?m[1].toUpperCase():null;}
@@ -1494,7 +1703,7 @@ var THREAD=(function(){
     });
     return out;
   }
-  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, AXES:AXES, doctrineOf:doctrineOf, shouldRetreat:shouldRetreat, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive, condTaggyItem:condTaggyItem, condHostile:condHostile, condBandOf:condBandOf };
+  return { passageCost:passageCost, wordCount:wordCount, forcePC:forcePC, initState:initState, create:create, catalog:catalog, validate:validate, apply:apply, arrivalReady:arrivalReady, outcome:outcome, elementOf:elementOf, isNoRevival:isNoRevival, cheb:cheb, bandOf:bandOf, reachable:reachable, lineOfSight:lineOfSight, coverMod:coverMod, genBoard:genBoard, sightOf:sightOf, spottedEnemies:spottedEnemies, refreshFog:refreshFog, npcTurn:npcTurn, enumeratePairs:enumeratePairs, scorePair:scorePair, AXES:AXES, doctrineOf:doctrineOf, shouldRetreat:shouldRetreat, captureTier:captureTier, mkCaptive:mkCaptive, mkRemains:mkRemains, emptySlotOf:emptySlotOf, evalObjective:evalObjective, streakResultOf:streakResultOf, CONDS:CONDS, normCond:normCond, normConds:normConds, condMods:condMods, actionCap:actionCap, condDur:condDur, stampKill:stampKill, tickConds:tickConds, applyCond:applyCond, tickRound:tickRound, modCheck:modCheck, combatKind:combatKind, enemyAliveCount:_enemyAliveCount, mineAlive:_mineAlive, condTaggyItem:condTaggyItem, condHostile:condHostile, condBandOf:condBandOf };
 })();
 /*</thread-core>*/
 /*<rift-core>*/
@@ -6607,6 +6816,7 @@ function init(){
   if(!S.world.missionDay)S.world.missionDay=0;
   if(!S.world.stock)S.world.stock={};                                    // T-ECN-1: older saves
   if(!S.world.unrest)S.world.unrest={};
+  if(!S.social)S.social={pat:{}};                                        // T-SOC-1: older saves
   if(!S.world.doorTiers)S.world.doorTiers={};                             // T-DOOR-1: older saves
   if(!S.world.doorBuilds)S.world.doorBuilds={};
   if(!S.world.locConds)S.world.locConds={};                               // T-MSN-1B final fix wave: older saves
@@ -6734,6 +6944,7 @@ function commitFounding(cc){
   world:foundingWorld(),threads:[],
   progress:{streaks:{}},   // T-MSN-1C task 4: founding never gets a reload, so init()'s backfill never fires — seed here too (S.world key seeding gotcha)
   time:{epoch:Date.now(),lastTick:0},
+  social:{pat:{}},
   npcState:{},active:'cmdr',cart:[]
  };
  S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
@@ -7165,6 +7376,72 @@ function sellPrice(it){
    they declare their own accepted categories through this same function. */
 function doorSells(kind,cat){if(kind==='shop')return cat==='WEAPON'||cat==='ITEM'||cat==='ABILITY'||cat==='ARMOUR'||cat==='CAPTIVE'||cat==='REMAINS';if(kind==='altar')return cat==='CAST';if(kind==='reliquary')return cat==='LEGENDARY';return false}
 /* render one door as a functional card */
+/* T-SOC-1 slice A: one snapshot of everything the Hall reads. The Hall invents no
+   state — it is the first door that reads ALL of it at once (spec §1).
+   Deviations from the task-6 brief, verified against the live tree before wiring:
+   - fPl(pid) returns {g,z,s,p} (NOT {p,sid}) — sector id is pl.s.id, not pl.sid.
+   - D.galaxy.segmentums nests zones→sectors (not sectors directly) — matches the
+     fSec/fPl/sectorConflicts iteration pattern already used everywhere else.
+   - S.world.missions[] mission rows carry the display name in `.n`, not `.name`/`.family`. */
+function hallCtxOf(h){
+ var pl=fPl(S.pos.pl),loc=fLoc(S.pos.pl,S.pos.sp);
+ var st=NPCAI.stampAtProfile(S.time.epoch,Date.now(),D,curProfile());
+ var scores=liveScores(pl.s.id)||{};
+ var ctx={locId:S.pos.pl+'/'+S.pos.sp,locType:loc.type,tier:h.tier,
+   phaseIndex:st.phaseIndex,day:st.day,fac:doorFactionId()||'militarum',
+   cond:effCond(loc),status:WORLD.sectorStatus(scores,D),
+   seedBase:(S.world.missionSeedBase||0)};
+ // wctx: TRUE rumor sources — every entry is real, live state
+ var war=[];(S.threads||[]).forEach(function(t){
+   if(t.ultimatum&&!t.done)war.push({loc:t.loc||'contested ground',
+     fac:(FAC(t.ultimatum.aggressor)||{}).name||t.ultimatum.aggressor||'someone',
+     days:Math.max(0,(t.ultimatum.expiresDay||0)-st.day)});});
+ var state=[];D.galaxy.segmentums.forEach(function(sg){sg.zones.forEach(function(z){z.sectors.forEach(function(sec){
+   var ss=WORLD.sectorStatus(liveScores(sec.id)||{},D);
+   if(ss==='Famine'||ss==='Warring'||ss==='Thriving')state.push({name:sec.name,status:ss});});});});
+ var trade=[];Object.keys(S.world.missions||{}).forEach(function(pid){
+   if(pid===S.pos.pl)return;
+   (S.world.missions[pid]||[]).slice(0,1).forEach(function(m){
+     var p=fPl(pid);if(p&&p.p)trade.push({planet:p.p.name,mission:m.n});});});
+ var ground=((S.world.chronicle||{})[S.pos.sp]||[]).slice(0,3).map(function(rec){
+   return CHRON.titleOf(rec,loc.name);});
+ var taint=scores.taint||0;
+ return {ctx:ctx,wctx:{war:war,state:state,trade:trade,ground:ground},
+   wctx2:{status:ctx.status,taint:taint},pl:pl,loc:loc};
+}
+function hallPatKey(hc,p){return hc.ctx.locId+'/'+p.name}
+function hallCommune(p,hc){
+ var out=document.getElementById('hallout');if(!p||!out)return;
+ var r=HALL.rumorFor(p,hc.wctx,hc.ctx,D);
+ out.innerHTML=esc(r.line);
+ var k=hallPatKey(hc,p),rec=S.social.pat[k]||(S.social.pat[k]={disp:0,offers:0,lastDay:0,communed:{}});
+ rec.communed[hc.ctx.day]=r.register;rec.lastDay=hc.ctx.day;
+ persist();
+}
+/* T-SOC-1 deviation: spendStock(pid,res) is a bare unconditional subtract (no bounds
+   check, no return value — grep confirmed at its definition) — the established
+   caller convention (Exchange sell flow, ~L7488) is to re-read stockOf() and gate
+   BEFORE calling it, so the res-offer branch below follows that same pattern rather
+   than trusting a boolean return the real function never gives. */
+function hallOffer(p,hc,off){
+ var out=document.getElementById('hallout');if(!p||!out)return;
+ if(off.kind==='cur'){
+  if((S.cur||0)<off.cost){T('Not enough '+curName()+'.');return;}
+  S.cur-=off.cost;
+ }else if(off.kind==='res'){
+  var now=stockOf(S.pos.pl);
+  if((now[off.res]||0)<1){T('No '+off.res+' stocked on this world.');return;}
+  var wd={};wd[off.res]=1;spendStock(S.pos.pl,wd);
+ }else if(off.kind==='item'){
+  var idx=-1;for(var i=0;i<(S.inv||[]).length;i++){if(S.inv[i].cat===off.accepts){idx=i;break;}}
+  if(idx<0){T('You carry no fitting offering ('+off.accepts+').');return;}
+  S.inv.splice(idx,1);
+ }
+ var k=hallPatKey(hc,p),rec=S.social.pat[k]||(S.social.pat[k]={disp:0,offers:0,lastDay:0,communed:{}});
+ rec.disp+=off.disp;rec.offers++;rec.lastDay=hc.ctx.day;
+ out.innerHTML=esc(p.name)+' accepts. ('+esc(p.name.split(' ')[0])+' disposition +'+off.disp+')';
+ rW();persist();
+}
 function renderDoor(dr,h){var c=E('div','card');
  c.insertAdjacentHTML('beforeend','<div class="doorimg">'+dr.name+'<span>'+dr.kind+' image — art slot</span></div>');
  c.insertAdjacentHTML('beforeend','<h3 style="margin-top:0">'+dr.name+' <span class="pill">'+dr.kind.toUpperCase()+'</span></h3>');
@@ -7306,6 +7583,30 @@ function renderDoor(dr,h){var c=E('div','card');
   var bt=E('button','btn gh sm','Open Comms channel');bt.style.marginTop='8px';bt.onclick=function(){go('comms')};c.appendChild(bt)}
  else if(kind==='arena'){c.insertAdjacentHTML('beforeend','<div class="d">Host a Duel — a 1v1 Skirmish under the eyes of the mob.</div>');
   var bt=E('button','btn gh sm','Post a Duel thread');bt.style.marginTop='8px';bt.onclick=function(){startThread(S.pos.pl,h,'Skirmish',null,{duel:true})};c.appendChild(bt)}
+ else if(kind==='hall'){
+  if(S.pos.pl==null||h.id==null){c.insertAdjacentHTML('beforeend',
+    '<div class="d">The door-demo sandbox has no crowd — visit a real Hall.</div>');}
+  else{
+   var hc=hallCtxOf({tier:tier}),cul=(D.rules.hall.culture||{})[hc.ctx.fac]||{};
+   var ev=HALL.moodEventAt(hc.ctx,hc.wctx2,D);
+   if(ev)hc.ctx.crowdEvent=ev.crowd_delta;
+   var pats=HALL.patronsAt(hc.ctx,D);
+   if(ev&&ev.crowd_delta)pats=ev.crowd_delta<0?pats.slice(0,Math.max(1,pats.length+ev.crowd_delta)):pats;
+   var off=HALL.offerEval(ev,hc.ctx,D);
+   var hh='<div class="d" style="margin-bottom:6px"><i>'+esc(cul.flavor||'A gathering place.')+'</i></div>';
+   if(ev)hh+='<div class="d" style="border-left:3px solid var(--blh);padding-left:8px;margin-bottom:6px">'+esc(ev.banner)+'</div>';
+   hh+=pats.length?pats.map(function(p,i){return '<div class="lrow" style="cursor:default">'+esc(p.name)+' — <span style="color:var(--dim)">'+esc(p.role)+'</span>'
+     +' <button class="btn gh sm" data-hallcom="'+i+'">'+esc(cul.commune||'Talk')+'</button>'
+     +' <button class="btn gh sm" data-halloff="'+i+'">'+esc(off.label)+' ('+(off.kind==='cur'?off.cost+' '+curName():off.kind==='res'?'1 '+off.res:'1 '+off.accepts)+')</button></div>';}).join('')
+     :'<div class="d" style="color:var(--dim)">The hall stands empty tonight.</div>';
+   hh+='<div class="d" id="hallout" style="margin-top:8px;color:var(--dim)"></div>';
+   c.insertAdjacentHTML('beforeend',hh);
+   c.querySelectorAll('[data-hallcom]').forEach(function(b){b.onclick=function(){
+     hallCommune(pats[+b.dataset.hallcom],hc);};});
+   c.querySelectorAll('[data-halloff]').forEach(function(b){b.onclick=function(){
+     hallOffer(pats[+b.dataset.halloff],hc,off);};});
+  }
+ }
  else if(kind==='warp_gate'){c.insertAdjacentHTML('beforeend','<div class="d">A tear in reality — passage through a linked Warp Gate is <b>free</b>, skipping the travel ladder entirely. No linked gates are charted in this region of space yet.</div>');
   var bt=E('button','btn gh sm','Attune the gate');bt.style.marginTop='8px';bt.onclick=function(){T('The gate hums, but finds no linked gate to lock onto — none are charted here yet.')};c.appendChild(bt)}
  else if(kind==='throne_room'){var crown=fPl(S.pos.pl).p.crown;
