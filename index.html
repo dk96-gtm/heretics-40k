@@ -3125,7 +3125,14 @@ var HALL=(function(){
     var n=band[0]+Math.floor(r()*(band[1]-band[0]+1));
     if(ctx.phaseIndex===4||ctx.phaseIndex===5||ctx.phaseIndex===6)n+=1;   // evening/night/midnight
     if(ctx.phaseIndex===0||ctx.phaseIndex===7)n-=1;                       // early morning/dead of night
-    return Math.max(band[0],Math.min(band[1],n));
+    n=Math.max(band[0],Math.min(band[1],n));
+    /* Fix round 1 (design spec §7): a mood event's crowd_delta must actually move the
+       crowd — positive (Good Season/Holy Day) SWELLS past the band ceiling, negative
+       (Famine/Plague) SHRINKS below the band floor, but never below 1. Pure: ctx.crowdEvent
+       is a plain number the caller (renderDoor) stamps before generation — no Date/rng here. */
+    var ev=ctx.crowdEvent||0;
+    n+=ev;
+    return Math.max(1,Math.min(band[1]+Math.max(0,ev),n));
   }
   /* patronsAt: tonight's crowd — a pure function of (seedBase, locId, day, phaseIndex,
      tier, locType, cond, fac). Same inputs = same faces, forever (tier-1 RENDERED on the
@@ -7589,9 +7596,10 @@ function renderDoor(dr,h){var c=E('div','card');
   else{
    var hc=hallCtxOf({tier:tier}),cul=(D.rules.hall.culture||{})[hc.ctx.fac]||{};
    var ev=HALL.moodEventAt(hc.ctx,hc.wctx2,D);
-   if(ev)hc.ctx.crowdEvent=ev.crowd_delta;
+   /* Fix round 1: stamp the mood delta on ctx BEFORE generation so crowdSize (pure core)
+      sizes the crowd correctly in one deterministic pass — no post-hoc slicing. */
+   hc.ctx.crowdEvent=ev?ev.crowd_delta:0;
    var pats=HALL.patronsAt(hc.ctx,D);
-   if(ev&&ev.crowd_delta)pats=ev.crowd_delta<0?pats.slice(0,Math.max(1,pats.length+ev.crowd_delta)):pats;
    var off=HALL.offerEval(ev,hc.ctx,D);
    var hh='<div class="d" style="margin-bottom:6px"><i>'+esc(cul.flavor||'A gathering place.')+'</i></div>';
    if(ev)hh+='<div class="d" style="border-left:3px solid var(--blh);padding-left:8px;margin-bottom:6px">'+esc(ev.banner)+'</div>';

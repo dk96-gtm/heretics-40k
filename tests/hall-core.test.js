@@ -133,3 +133,31 @@ test('offerEval prices the culture offering under tonight\'s event', () => {
   assert.equal(skulls.kind, 'item');
   assert.equal(skulls.accepts, 'REMAINS');
 });
+
+// Fix round 1 (design spec §7): a mood event's crowd_delta must actually move the
+// crowd — positive events swell it past the tier band, negative events shrink it
+// below the band, floored at 1. crowdEvent is not exported directly; exercise it
+// through patronsAt/crowdSize's public surface (ctx.crowdEvent), same seed throughout
+// so any size difference is attributable to the delta alone.
+test('crowdEvent swells the crowd: a positive delta yields strictly more patrons than none', () => {
+  const base = HALL.patronsAt(ctx(), D).length;
+  const swelled = HALL.patronsAt(ctx({ crowdEvent: 2 }), D).length;
+  assert.equal(swelled, base + 2, 'a +2 mood event should add exactly 2 patrons over baseline');
+});
+
+test('crowdEvent shrinks the crowd: a negative delta yields fewer patrons than none', () => {
+  const base = HALL.patronsAt(ctx(), D).length;
+  const shrunk = HALL.patronsAt(ctx({ crowdEvent: -2 }), D).length;
+  assert.ok(shrunk < base, 'a -2 mood event should shrink the crowd below baseline, got ' + shrunk + ' vs ' + base);
+});
+
+test('crowdEvent never drops the crowd below 1, even under a crushing negative delta', () => {
+  const crushed = HALL.patronsAt(ctx({ crowdEvent: -50 }), D).length;
+  assert.equal(crushed, 1, 'crowd must floor at exactly 1, never 0 or negative');
+});
+
+test('crowdEvent is deterministic: same ctx + same delta = same crowd, every time', () => {
+  const a = HALL.patronsAt(ctx({ crowdEvent: 2 }), D);
+  const b = HALL.patronsAt(ctx({ crowdEvent: 2 }), D);
+  assert.deepEqual(a, b);
+});
