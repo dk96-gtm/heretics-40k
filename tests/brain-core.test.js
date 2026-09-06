@@ -745,3 +745,61 @@ test('npcTurn: the stub kitOf reproduces weapons-only behavior', () => {
   assert.ok(block.some((b) => b.effect.kind === 'damage'));
   assert.ok(!block.some((b) => b.effect.kind === 'cond'));
 });
+
+/* ── Fix round 1 (review finding) — the draw seed's "thread id" component was dead
+   in production: state.id was never stamped anywhere outside this test file's own
+   duelState() fixture, so String(state.id||'') was always '' and two concurrent
+   combat threads at the same (side, round, actor) drew from the same rng roll. The
+   fix stamps state.id in THREAD.initState (the one seam every combat state passes
+   through) and drops the dead state.posts half of the turnIx ternary. These pins
+   exercise BOTH halves of the seed: the thread-id component (cross-thread
+   independence) and the round component (turn-index advance). Both need a REAL
+   choice to observe, so the two weapons here are tied on every scoring input
+   (same band/ap/damage/element) — scorePair is deterministic, so they always
+   survive draw_cutoff together and the draw is a genuine 50/50 on the rng roll. */
+const WEP_A = { name: 'Chainsword', band: 'MELEE', ap: 1, damage: 4, element: 'Physical' };
+const WEP_B = { name: 'Power Fist', band: 'MELEE', ap: 1, damage: 4, element: 'Physical' };
+function tiedDuelState(id) {
+  return {
+    id: id, round: 1,
+    pools: { B: 10, A: 10 },
+    combatants: {
+      b0: { party: 'B', x: 1, y: 0, w: [10, 10], sight: 9, spd: 3, conds: [], model: { pc: 10 },
+            weps: [WEP_A, WEP_B], kit: [] },
+      a0: { party: 'A', x: 0, y: 0, w: [10, 10], sight: 9, spd: 3, conds: [], model: { pc: 10 }, weps: [SHORT1] },
+    },
+  };
+}
+function drawnWeapon(side, state) {
+  const block = THREAD.npcTurn(side, state, openBoard(10, 4), bwep, STUB_KIT, BRAIN_CANON, FLAT);
+  const hit = block.find((b) => b.effect.kind === 'damage');
+  return hit ? hit.effect.weapon : null;
+}
+
+test('initState/create stamp state.id from the owning thread\'s id', () => {
+  const s = THREAD.initState({ id: 'thread-alpha', type: 'SKIRMISH', seedState: {} }, BRAIN_CANON);
+  assert.strictEqual(s.id, 'thread-alpha', 'initState carries the thread id onto the state it builds');
+  const t = THREAD.create({ id: 'thread-beta', type: 'SKIRMISH', n: 'x', seedState: {} }, BRAIN_CANON);
+  assert.strictEqual(t.state.id, 'thread-beta', 'create (no persisted state yet) carries it through too');
+  const noId = THREAD.initState({ type: 'SKIRMISH', seedState: {} }, BRAIN_CANON);
+  assert.strictEqual(noId.id, '', 'a thread with no id yet degrades to the empty-string fallback, not undefined/null');
+});
+
+test('npcTurn draw seed: two states identical except thread id draw independently', () => {
+  let sawDifference = false;
+  for (let r = 1; r <= 30; r++) {
+    const wA = drawnWeapon('B', Object.assign(tiedDuelState('thread-A'), { round: r }));
+    const wB = drawnWeapon('B', Object.assign(tiedDuelState('thread-B'), { round: r }));
+    if (wA !== wB) { sawDifference = true; break; }
+  }
+  assert.ok(sawDifference, 'at least one round drew a different weapon between two otherwise-identical thread ids');
+});
+
+test('npcTurn draw seed: the round (turn index) advances the draw', () => {
+  // rounds 2 and 3 are the concrete pair verified to diverge for this fixture — the
+  // spirit of the pin (any two round values CAN draw differently) is what matters.
+  const s2 = tiedDuelState('thread-same-2v3'); s2.round = 2;
+  const s3 = tiedDuelState('thread-same-2v3'); s3.round = 3;
+  const at2 = drawnWeapon('B', s2), at3 = drawnWeapon('B', s3);
+  assert.notStrictEqual(at2, at3, 'round 2 and round 3 draw different weapons for the same thread/actor');
+});

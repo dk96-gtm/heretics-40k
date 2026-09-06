@@ -556,7 +556,14 @@ var THREAD=(function(){
   }
   function initState(thread,canon){
     var seed=thread.seedState||{};
-    var s={ pools:seed.pools||{}, combatants:seed.combatants||{},
+    // fix round 1 (T-NPC-3.5 task 5 review): every combat state passes through here
+    // (create() calls initState when a thread has no persisted state yet, and every
+    // live thread-open path — startThread/seedCombat, the drama spawner, openT's lazy
+    // init — hands in a `thread` that already carries `.id` before state is ever
+    // built) so this is the one place to stamp it. npcTurn's draw seed reads
+    // state.id to keep concurrent combat threads independent; see there for the
+    // persisted-save fallback when an OLDER save's state predates this stamp.
+    var s={ id:thread.id||'', pools:seed.pools||{}, combatants:seed.combatants||{},
             joined:!!seed.joined, terms:seed.terms||null,
             transit:null, passage:seed.passage||0,
             board:seed.board||null, phase:seed.phase||null, fog:seed.fog||{},
@@ -1434,10 +1441,19 @@ var THREAD=(function(){
       if(!mine.length)continue;
       mine=tiltScores(mine,beh,canon);                                       // step 4
       if(!mine.length)continue;                                              // e.g. honor vetoed everything
-      /* step 5: the seeded draw. Seed = thread id ⊕ side ⊕ turn index ⊕ actor, so the
-         same state always draws the same action (replayable), while different actors,
-         turns and threads all draw independently. */
-      var turnIx=(state.posts!=null?state.posts:(state.round!=null?state.round:0));
+      /* step 5: the seeded draw. Seed = state.id (stamped by initState from the owning
+         thread's id — see there) ⊕ side ⊕ round ⊕ actor, so the same state always draws
+         the same action (replayable) while different actors, rounds and threads all
+         draw independently. Fix round 1: state.id used to be permanently '' in
+         production (nothing ever stamped it), silently collapsing the "different
+         threads draw independently" half of this guarantee — now fixed at the source
+         in initState. A save persisted before that fix already carries a state with no
+         id; there is nothing here to backfill it from (npcTurn only sees `state`, never
+         the owning thread), so it self-heals by degrading to '' — deterministic and
+         crash-free, just not thread-independent until that save's state is rebuilt
+         through initState/create again. state.posts never existed on any combat state
+         (dead branch, removed) — the turn index is simply the round counter. */
+      var turnIx=(state.round!=null?state.round:0);
       var chosen=drawAction(mine,npcRng(npcHash(String(state.id||'')+':'+side+':'+turnIx+':'+aid)),
                             npcLastKind(state,aid),canon);
       npcTrace(state,aid,chosen,mine);                                       // step 6: the trace
