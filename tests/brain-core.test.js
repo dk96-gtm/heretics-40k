@@ -114,6 +114,40 @@ test('enumeratePairs: an unaffordable or out-of-reach weapon yields no pair', ()
   assert.strictEqual(pairs.filter((p) => p.kind === 'move').length, 1, 'the move fallback survives');
 });
 
+test('enumeratePairs: a hostile kit payload is reach-gated exactly like validate gates it (finding 2)', () => {
+  // validate rejects a hostile cond whose target is out of the ITEM's stated band
+  // (condBandOf, default SHORT — ruling §4). enumeratePairs must apply the SAME gate
+  // on the hostile branch only, so the brain never enumerates a pair the validator
+  // would bounce. Friendly payloads are never range-gated (validate doesn't gate them).
+  const SUPPRESS = {
+    item: { n: 'Warp Chains' }, kind: 'cast', ap: 1, consumed: false,
+    payload: [{ tag: 'Suppressing', tier: 1, hostile: true, el: 'Warp' }],
+  };
+  // no explicit band on the item and no description range word → condBandOf defaults
+  // to SHORT (rank 1). SHORT covers Chebyshev distance <= 3.
+  const far = {
+    pools: { B: 5 },
+    combatants: {
+      sorc: { party: 'B', x: 0, y: 0, w: [8, 8], sight: 11, spd: 4, kit: [SUPPRESS] },
+      hero: { party: 'A', x: 9, y: 0, w: [10, 10], sight: 11, spd: 4 },   // dist 9 → LONG, out of SHORT reach
+    },
+  };
+  const farPairs = THREAD.enumeratePairs('B', far, openBoard(12, 4), wep, kit, CANON);
+  assert.strictEqual(farPairs.filter((p) => p.kind === 'kit').length, 0,
+    'a Suppressing cast vs an enemy 9 tiles away yields no pair');
+
+  const near = {
+    pools: { B: 5 },
+    combatants: {
+      sorc: { party: 'B', x: 0, y: 0, w: [8, 8], sight: 11, spd: 4, kit: [SUPPRESS] },
+      hero: { party: 'A', x: 1, y: 0, w: [10, 10], sight: 11, spd: 4 },   // dist 1 → MELEE, within SHORT reach
+    },
+  };
+  const nearPairs = THREAD.enumeratePairs('B', near, openBoard(12, 4), wep, kit, CANON);
+  assert.strictEqual(nearPairs.filter((p) => p.kind === 'kit').length, 1,
+    'the same cast vs an adjacent enemy yields one pair');
+});
+
 test('scorePair: an attack on a tough target scores in the basic_attack band', () => {
   const board = openBoard(10, 4);
   const state = {
@@ -131,11 +165,13 @@ test('scorePair: an attack on a tough target scores in the basic_attack band', (
 
   // expected wounds after armour = max(0, 3 dmg - 1 Physical Defense - 0 cover) = 2
   //   capped by the target's remaining wounds (10) → 2
-  //   normalized by the target's MAX wounds (10)   → 0.2
-  // one consideration → gm = 0.2^(1/1) = 0.2
-  // basic_attack [8,12] → 8 + 0.2*(12-8) = 8.8 ; / max(1, ap 1) = 8.8
+  //   normalized by the target's MAX wounds (10)   → C1 = 0.2
+  // AP efficiency (R6, inside the geometric mean): 1/max(1, ap 1) = C_AP = 1
+  // gm = sqrt(0.2 * 1) = 0.4472135954999579
+  // basic_attack [8,12] → 8 + 0.4472135954999579*(12-8) = 9.788854381999831 (no post-band divisor)
   const s = THREAD.scorePair(atk, state, CANON);
-  assert.ok(Math.abs(s - 8.8) < 1e-9, `expected 8.8, got ${s}`);
+  const expS = 8 + Math.sqrt(0.2 * 1) * 4;
+  assert.ok(Math.abs(s - expS) < 1e-9, `expected ${expS}, got ${s}`);
   assert.ok(s >= 8 && s <= 12, 'a plain 1-AP shot sits inside the basic_attack band');
 });
 
@@ -165,14 +201,19 @@ test('scorePair: suppressing a 3-weapon model outscores suppressing a dying grun
 
   // denial = (weapons/3 capped at 1) x (remaining AP share) x (actionCap/actions_per_post)
   // veteran: (3/3) x (8/10) x (3/3)                     = 0.8
-  //   offensive [20,40] → 20 + 0.8*20 = 36 ; / ap 1     = 36
   // grunt (1 weapon, 1/4 wounds → actionCap floors to 1):
   //   (1/3) x (8/10) x (1/3) = 0.8/9 = 0.0888888...
-  //   → 20 + 0.0888888*20 = 21.777777... ; / ap 1
+  // AP efficiency (R6): both are 1 AP → C_AP = 1/max(1,1) = 1
+  // veteran: gm = sqrt(0.8 * 1) = 0.8944271909999159
+  //   offensive [20,40] → 20 + 0.8944271909999159*20 = 37.88854381999832 (no post-band divisor)
+  // grunt:   gm = sqrt(0.0888888... * 1) = 0.29814239699997197
+  //   → 20 + 0.29814239699997197*20 = 25.962847939999438
   const sv = THREAD.scorePair(onVet, state, CANON);
   const sg = THREAD.scorePair(onGrunt, state, CANON);
-  assert.ok(Math.abs(sv - 36) < 1e-9, `expected 36, got ${sv}`);
-  assert.ok(Math.abs(sg - (20 + (0.8 / 9) * 20)) < 1e-9, `expected 21.7777..., got ${sg}`);
+  const expSv = 20 + Math.sqrt(0.8 * 1) * 20;
+  const expSg = 20 + Math.sqrt((0.8 / 9) * 1) * 20;
+  assert.ok(Math.abs(sv - expSv) < 1e-9, `expected ${expSv}, got ${sv}`);
+  assert.ok(Math.abs(sg - expSg) < 1e-9, `expected ${expSg}, got ${sg}`);
   assert.ok(sv > sg, 'denying a fully-armed veteran beats denying a dying grunt');
   assert.ok(sv >= 20 && sv <= 40 && sg >= 20 && sg <= 40, 'both sit in the offensive band');
 });
@@ -206,24 +247,68 @@ test('scorePair: healing a model at 1/6 wounds lands in the reaction band; buffi
   // C1 wound swing: Regen I heals tier 1 per tick for condDur(Regen,1) = 2+1 = 3 ticks = 3
   //   capped by MISSING wounds (6-1 = 5) → 3 ; normalized by max wounds 6 → 0.5
   // C3 peril: 1 - 1/6 = 0.8333333...
-  // gm = sqrt(0.5 * 0.8333333) = sqrt(0.4166666...) = 0.6454972243679028
-  // 50 + 0.6454972243679028 * (70-50) = 62.909944487358056 ; / ap 1
+  // AP efficiency (R6): 1 AP → C_AP = 1/max(1,1) = 1
+  // gm = (0.5 * 0.8333333... * 1)^(1/3) = 0.4166666...^(1/3) = 0.7469273620861783
+  // 50 + 0.7469273620861783 * (70-50) = 64.93801582185722 (no post-band divisor)
   const sh = THREAD.scorePair(heal, state, CANON);
-  const expH = 50 + Math.sqrt(0.5 * (1 - 1 / 6)) * 20;
+  const expH = 50 + Math.pow(0.5 * (1 - 1 / 6) * 1, 1 / 3) * 20;
   assert.ok(Math.abs(sh - expH) < 1e-9, `expected ${expH}, got ${sh}`);
   assert.ok(sh >= 50 && sh <= 70, 'an emergency heal sits in the reaction band');
 
   // BUFF on a full-health model → Rally is not an emergency tag → support band [25,45].
   // Only C3 applies (Rally has no wound tick, no denial): peril = 1 - 8/8 = 0,
   //   floored to EPS 0.01 so it can never hard-zero a geometric mean.
-  // 25 + 0.01 * (45-25) = 25.2 ; / ap 1
+  // AP efficiency (R6): 1 AP → C_AP = 1
+  // gm = sqrt(0.01 * 1) = 0.1 → 25 + 0.1*(45-25) = 27 (no post-band divisor)
   const sb = THREAD.scorePair(buff, state, CANON);
-  assert.ok(Math.abs(sb - 25.2) < 1e-9, `expected 25.2, got ${sb}`);
+  const expB = 25 + Math.sqrt(0.01 * 1) * 20;
+  assert.ok(Math.abs(sb - expB) < 1e-9, `expected ${expB}, got ${sb}`);
   assert.ok(sb < (25 + 45) / 2, 'buffing full health scores below support mid-band');
   assert.ok(sh > sb, 'the emergency heal outbids the vanity buff');
 });
 
-test('scorePair: same effect at 2 AP scores half the 1 AP value', () => {
+test('scorePair R6: a 2-AP reaction-band pair strictly outscores any 1-AP support-band pair on the same fixture (band hierarchy holds under AP pressure — finding 1)', () => {
+  // Regression pin for the pre-R6 bug: the old post-band /max(1,ap) divisor let a
+  // cheap 1-AP support play (25-45) beat an expensive 2-AP reaction play (50-70).
+  // Under R6, AP efficiency lives INSIDE the geometric mean, so raw = lo + gm*(hi-lo)
+  // never leaves [lo,hi] regardless of ap — a reaction-band floor (50) always beats
+  // a support-band ceiling (45), full stop.
+  const board = openBoard(8, 4);
+  const HEAL2 = {
+    item: { n: 'Greater Salve' }, kind: 'ability', ap: 2, consumed: false,
+    payload: [{ tag: 'Regen', tier: 1, hostile: false, el: null }],
+  };
+  const BUFF = {
+    item: { n: 'Warcry' }, kind: 'ability', ap: 1, consumed: false,
+    payload: [{ tag: 'Rally', tier: 1, hostile: false, el: null }],
+  };
+  const state = {
+    board,
+    pools: { B: 6 },
+    combatants: {
+      medic:   { party: 'B', x: 0, y: 0, w: [5, 5], sight: 5, spd: 4, kit: [HEAL2, BUFF] },
+      wounded: { party: 'B', x: 1, y: 0, w: [1, 6], sight: 5, spd: 4 },
+      hale:    { party: 'B', x: 2, y: 0, w: [8, 8], sight: 5, spd: 4 },
+    },
+  };
+  const pairs = THREAD.enumeratePairs('B', state, board, wep, kit, CANON);
+  const heal2 = pairs.find((p) => p.kind === 'kit' && p.ap === 2 && p.target === 'wounded');
+  const buff1 = pairs.find((p) => p.kind === 'kit' && p.ap === 1 && p.target === 'hale');
+  assert.ok(heal2 && buff1, 'both a 2-AP emergency heal and a 1-AP vanity buff enumerate');
+
+  const sh2 = THREAD.scorePair(heal2, state, CANON);
+  const sb1 = THREAD.scorePair(buff1, state, CANON);
+  assert.ok(sh2 >= 50 && sh2 <= 70, `the 2-AP heal still lands in the reaction band, got ${sh2}`);
+  assert.ok(sb1 >= 25 && sb1 <= 45, `the 1-AP buff still lands in the support band, got ${sb1}`);
+  assert.ok(sh2 > sb1, 'R6: a 2-AP reaction play always outscores a 1-AP support play — bands never overlap');
+});
+
+test('scorePair R6: AP efficiency lives INSIDE the geometric mean — a pricier action scores lower but never leaves its band (finding 1)', () => {
+  // Pre-R6 this test was "same effect at 2 AP scores half the 1 AP value" (a plain
+  // post-band /max(1,ap) divisor). R6 removes that divisor: AP efficiency is now
+  // just another (0,1]-normalized consideration folded into the geometric mean, so
+  // 2 AP no longer means "exactly half" — it means "the same expected-wounds
+  // consideration, geometric-meaned against a weaker AP-efficiency consideration."
   const board = openBoard(8, 4);
   const CHEAP = { name: 'Knife', band: 'MELEE', ap: 1, damage: 4, element: 'Physical' };
   const DEAR = { name: 'Heavy Maul', band: 'MELEE', ap: 2, damage: 4, element: 'Physical' };
@@ -240,13 +325,19 @@ test('scorePair: same effect at 2 AP scores half the 1 AP value', () => {
   const a2 = pairs.find((p) => p.kind === 'attack' && p.ap === 2);
   assert.ok(a1 && a2);
 
-  // both deal 4 unarmoured to a 10/10 target → 4/10 = 0.4 ; 8 + 0.4*4 = 9.6
-  //   1 AP → 9.6 / 1 = 9.6 ; 2 AP → 9.6 / 2 = 4.8
+  // both deal 4 unarmoured to a 10/10 target → C1 = 4/10 = 0.4
+  // 1 AP → C_AP = 1/max(1,1) = 1        → gm = sqrt(0.4*1)   = 0.6324555320336759
+  //   8 + 0.6324555320336759*4 = 10.529822128134704
+  // 2 AP → C_AP = 1/max(1,2) = 0.5      → gm = sqrt(0.4*0.5) = 0.4472135954999579
+  //   8 + 0.4472135954999579*4 = 9.788854381999831
   const s1 = THREAD.scorePair(a1, state, CANON);
   const s2 = THREAD.scorePair(a2, state, CANON);
-  assert.ok(Math.abs(s1 - 9.6) < 1e-9, `expected 9.6, got ${s1}`);
-  assert.ok(Math.abs(s2 - 4.8) < 1e-9, `expected 4.8, got ${s2}`);
-  assert.ok(Math.abs(s2 * 2 - s1) < 1e-9, 'AP efficiency divides by max(1, ap) exactly');
+  const exp1 = 8 + Math.sqrt(0.4 * 1) * 4;
+  const exp2 = 8 + Math.sqrt(0.4 * 0.5) * 4;
+  assert.ok(Math.abs(s1 - exp1) < 1e-9, `expected ${exp1}, got ${s1}`);
+  assert.ok(Math.abs(s2 - exp2) < 1e-9, `expected ${exp2}, got ${s2}`);
+  assert.ok(s2 < s1, 'the pricier action still scores lower — AP-efficiency pressure survives R6');
+  assert.ok(s1 >= 8 && s1 <= 12 && s2 >= 8 && s2 <= 12, 'both stay inside basic_attack — R6 never lets AP cost leave the band');
 });
 
 test('scorePair: deterministic and canon-driven — reruns match, bands come from canon', () => {
@@ -268,8 +359,10 @@ test('scorePair: deterministic and canon-driven — reruns match, bands come fro
   const shifted = JSON.parse(JSON.stringify(CANON));
   shifted.rules.npc_brain.bands.basic_attack = [100, 200];
   const c = THREAD.scorePair(atk, state, shifted);
-  // 4 dmg / 10 max wounds = 0.4 → 100 + 0.4*100 = 140
-  assert.ok(Math.abs(c - 140) < 1e-9, `expected 140, got ${c}`);
+  // 4 dmg / 10 max wounds = C1 = 0.4 ; 1 AP → C_AP = 1
+  // gm = sqrt(0.4*1) = 0.6324555320336759 → 100 + 0.6324555320336759*100 = 163.2455532033676
+  const expC = 100 + Math.sqrt(0.4 * 1) * 100;
+  assert.ok(Math.abs(c - expC) < 1e-9, `expected ${expC}, got ${c}`);
 });
 
 test('scorePair: a Cleanse on a clean model scores low; on a poisoned model it scores higher', () => {
@@ -296,12 +389,17 @@ test('scorePair: a Cleanse on a clean model scores low; on a poisoned model it s
   // both are at 5/8 → C3 peril = 1 - 5/8 = 0.375 ; support band [25,45] (Cleanse IS an
   // emergency tag but neither recipient is at <= 2 wounds, so no reaction band here).
   // C4 cleanse relevance = hostile conds carried / CLEANSE_CAP 3
-  //   clean:  0/3 → floored to EPS 0.01 → gm = sqrt(0.375*0.01) = 0.0612372...
-  //   cursed: 2/3 = 0.6666666...        → gm = sqrt(0.375*0.6666666) = 0.5
+  //   clean:  0/3 → floored to EPS 0.01
+  //   cursed: 2/3 = 0.6666666...
+  // AP efficiency (R6): 1 AP → C_AP = 1, folded in as a THIRD consideration
+  //   clean:  gm = (0.375*0.01*1)^(1/3)        = 0.15533...
+  //   cursed: gm = (0.375*0.6666666...*1)^(1/3) = 0.25^(1/3) = 0.6299605249474366
   const sClean = THREAD.scorePair(onClean, state, CANON);
   const sCursed = THREAD.scorePair(onCursed, state, CANON);
-  assert.ok(Math.abs(sClean - (25 + Math.sqrt(0.375 * 0.01) * 20)) < 1e-9, `got ${sClean}`);
-  assert.ok(Math.abs(sCursed - (25 + 0.5 * 20)) < 1e-9, `expected 35, got ${sCursed}`);
+  const expClean = 25 + Math.pow(0.375 * 0.01 * 1, 1 / 3) * 20;
+  const expCursed = 25 + Math.pow(0.375 * (2 / 3) * 1, 1 / 3) * 20;
+  assert.ok(Math.abs(sClean - expClean) < 1e-9, `expected ${expClean}, got ${sClean}`);
+  assert.ok(Math.abs(sCursed - expCursed) < 1e-9, `expected ${expCursed}, got ${sCursed}`);
   assert.ok(sCursed > sClean, 'a Cleanse is worth more where there is something to cleanse');
 });
 
@@ -315,20 +413,24 @@ test('scorePair: a payload that neither ticks, denies nor supports falls back to
   };
   // Marked has mods but no tick and is not a denial tag → the C5 generic-magnitude
   // fallback: tier 2 x min(condDur(Marked,2)=4, MAG_DUR_CAP 5) = 8 ; 8 / MAG_TIER_DUR_CAP 10 = 0.8
-  // offensive [20,40] → 20 + 0.8*20 = 36 ; / ap 1
+  // AP efficiency (R6): 1 AP → C_AP = 1, folded in → gm = sqrt(0.8*1) = 0.8944271909999159
+  // offensive [20,40] → 20 + 0.8944271909999159*20 = 37.88854381999832
   const marked = {
     actor: 'a', kind: 'kit', item: { n: 'Hex' }, target: 'z', ap: 1,
     meta: { hostile: true, tags: ['Marked'], payload: [{ tag: 'Marked', tier: 2, hostile: true }], tgtWeapons: 1 },
   };
-  assert.ok(Math.abs(THREAD.scorePair(marked, state, CANON) - 36) < 1e-9);
+  const expMarked = 20 + Math.sqrt(0.8 * 1) * 20;
+  assert.ok(Math.abs(THREAD.scorePair(marked, state, CANON) - expMarked) < 1e-9);
 
   // Immunity carries an Infinity duration — the friendly path is peril-weighted (C3), so
-  // warding a full-health model still scores at the support floor: 25 + 0.01*20 = 25.2
+  // warding a full-health model floors C3 to EPS 0.01. AP efficiency (R6) folds in as a
+  // second consideration: gm = sqrt(0.01*1) = 0.1 → 25 + 0.1*20 = 27 (no post-band divisor)
   const ward = {
     actor: 'a', kind: 'kit', item: { n: 'Ward' }, target: 'a', ap: 1,
     meta: { hostile: false, self: true, tags: ['Immunity'], payload: [{ tag: 'Immunity', tier: 1, hostile: false }] },
   };
-  assert.ok(Math.abs(THREAD.scorePair(ward, state, CANON) - 25.2) < 1e-9);
+  const expWard = 25 + Math.sqrt(0.01 * 1) * 20;
+  assert.ok(Math.abs(THREAD.scorePair(ward, state, CANON) - expWard) < 1e-9);
 });
 
 test('enumeratePairs/scorePair degrade cleanly: no board, no injected accessors, no canon', () => {
@@ -347,12 +449,47 @@ test('enumeratePairs/scorePair degrade cleanly: no board, no injected accessors,
   const pairs = THREAD.enumeratePairs('B', duel, openBoard(6, 3), null, null, CANON);
   assert.deepStrictEqual(pairs.map((p) => p.kind), ['move']);
 
-  // canon-less scorePair falls back to the shipped band table: 5 dmg / 10 max = 0.5 → 8 + 0.5*4 = 10
+  // canon-less scorePair falls back to the shipped band table: 5 dmg / 10 max = C1 = 0.5
+  // AP efficiency (R6): 1 AP → C_AP = 1 → gm = sqrt(0.5*1) = 0.7071067811865476
+  // 8 + 0.7071067811865476*4 = 10.82842712474619 (no post-band divisor)
   const atk = { actor: 'a', kind: 'attack', item: { damage: 5, element: 'Physical', ap: 1 }, target: 'z', ap: 1, meta: { band: 'MELEE' } };
   const st = { pools: {}, combatants: { a: { party: 'B', x: 0, y: 0, w: [5, 5] }, z: { party: 'A', x: 1, y: 0, w: [10, 10] } } };
-  assert.strictEqual(THREAD.scorePair(atk, st), 10);
+  const expAtk = 8 + Math.sqrt(0.5 * 1) * 4;
+  assert.ok(Math.abs(THREAD.scorePair(atk, st) - expAtk) < 1e-9, `expected ${expAtk}`);
   assert.strictEqual(THREAD.scorePair({ kind: 'wat', ap: 1 }, st, CANON), 0, 'an unknown kind can never be drawn');
   assert.strictEqual(THREAD.scorePair(null, st, CANON), 0);
+});
+
+test('scorePair R6: NPCB_MOVE_FACTOR bound — a move scores below even the WORST-CASE real action (finding 3)', () => {
+  // The pre-R6 comment claimed "a move can never outbid a real action," but with the
+  // post-band divisor a 3-AP action at its band floor scored 8/3 < move's 4 — false.
+  // R6's real bound: a real action's worst case is gm = NPCB_EPS across every
+  // consideration it has (including AP efficiency), so its floor is
+  // band[0] + NPCB_EPS*(band[1]-band[0]). For basic_attack that is 8 + 0.01*4 = 8.04,
+  // still comfortably above a move's 8*0.5 = 4.
+  const board = openBoard(6, 3);
+  // 0 damage → C1 floors to EPS; ap 200 → 1/max(1,200) = 0.005, which ALSO floors to
+  // EPS (npcNorm clamps anything <= EPS up to EPS) → gm = sqrt(EPS*EPS) = EPS exactly.
+  const DUD = { name: 'Dud', band: 'MELEE', ap: 200, damage: 0, element: 'Physical' };
+  const state = {
+    board,
+    pools: { B: 250 },
+    combatants: {
+      ork:  { party: 'B', x: 0, y: 0, w: [12, 12], sight: 5, spd: 4, weps: [DUD] },
+      hero: { party: 'A', x: 1, y: 0, w: [10, 10], sight: 5, spd: 4 },
+    },
+  };
+  const pairs = THREAD.enumeratePairs('B', state, board, wep, kit, CANON);
+  const atk = pairs.find((p) => p.kind === 'attack');
+  const mv = pairs.find((p) => p.kind === 'move');
+  assert.ok(atk && mv);
+
+  const sAtk = THREAD.scorePair(atk, state, CANON);
+  const sMv = THREAD.scorePair(mv, state, CANON);
+  const expAtk = 8 + 0.01 * 4;   // 8.04 — the theoretical floor of the basic_attack band
+  assert.ok(Math.abs(sAtk - expAtk) < 1e-9, `expected ${expAtk}, got ${sAtk}`);
+  assert.strictEqual(sMv, 4, 'the move is unaffected — no considerations, no AP division');
+  assert.ok(sMv < sAtk, 'even the worst-case real action outscores the move fallback');
 });
 
 /* ── T-NPC-3.5 · Task 5 — brain part 2: TILT + DRAW + TRACE ───────────

@@ -1501,11 +1501,24 @@ var THREAD=(function(){
        NPCB_MAG_TIER_DUR_CAP .. tier x duration >= this is a maximal generic effect.
        NPCB_CLEANSE_CAP ....... cleansing 3+ hostile conds is full value.
        NPCB_MOVE_FACTOR ....... a move scores at this fraction of the basic_attack
-                                FLOOR, so it can never outbid a real action — it exists
-                                only as the draw's fallback when nothing else is legal.
+                                FLOOR. The REAL bound (fix round 1, Ruling R6): every
+                                real action's worst case is gm=NPCB_EPS across ALL its
+                                considerations (including AP efficiency, see below), so
+                                its floor is band[0] + NPCB_EPS*(band[1]-band[0]) — for
+                                basic_attack that is 8 + 0.01*4 = 8.04, comfortably above
+                                a move's 8*0.5 = 4. A move can still never outbid a real
+                                action; it exists only as the draw's fallback when
+                                nothing else is legal.
      Wounds are ALWAYS normalized by the recipient's MAX wounds (w[1], floored at 1)
      and capped by what is actually available: remaining wounds for damage, missing
-     wounds for a heal. Band ranges themselves come from canon.rules.npc_brain.bands. */
+     wounds for a heal. Band ranges themselves come from canon.rules.npc_brain.bands.
+     AP EFFICIENCY (fix round 1, Ruling R6 — spec over plan): 1/max(1,ap), normalized
+     into (0,1] the same as every other consideration, is folded INTO the geometric
+     mean rather than applied as a post-band divisor. A post-band divisor let a cheap
+     action escape its own band and invade a costlier band below it (e.g. a 1-AP
+     support play beating a 2-AP reaction play) — R6 removes that divisor entirely so
+     raw = lo + gm*(hi-lo) is ALWAYS inside [lo,hi]: a pricier action scores lower
+     within its band, but a band's floor still strictly outranks any band below it. */
   var NPCB_EPS=0.01,NPCB_DENIAL_WEP_CAP=3,NPCB_DENIAL_AP_REF=10,
       NPCB_MAG_DUR_CAP=5,NPCB_MAG_TIER_DUR_CAP=10,NPCB_CLEANSE_CAP=3,NPCB_MOVE_FACTOR=0.5;
   // emergency tags: the ones that keep a dying model alive → reaction band at <=2 wounds
@@ -1557,8 +1570,15 @@ var THREAD=(function(){
         var hostile=pl.some(function(p){
           return p&&(p.hostile!=null?!!p.hostile:condHostile(p.tag));});
         var tags=pl.map(function(p){return p&&p.tag;});
+        // hostile-only reach gate (fix round 1, finding 2): validate hard-rejects a
+        // hostile cond whose target is out of the ITEM's stated band (condBandOf,
+        // default SHORT) — mirror that gate here so the brain never enumerates a
+        // pair the validator would bounce. Friendly payloads are never range-gated
+        // (validate does not gate them either).
+        var need=hostile?condBandOf({item:en.item||null}):null;
         (hostile?foes:allies).forEach(function(rid){
           var r=C[rid];
+          if(hostile&&r&&r.x!=null&&NPC_RANK[need]<NPC_RANK[bandOf(cheb(me,r))])return;
           out.push({actor:aid,kind:'kit',item:en.item||null,target:rid,ap:ap,
             meta:{kitKind:en.kind||null,hostile:hostile,tags:tags,payload:pl,
                   consumable:!!en.consumed,self:rid===aid,
@@ -1670,14 +1690,22 @@ var THREAD=(function(){
       }
     }else return 0;                                   // unknown kind → never drawn
     if(!cons.length)cons.push(NPCB_EPS);
+    // C_AP — AP efficiency (fix round 1, Ruling R6: spec over plan). 1/max(1,ap) is
+    // already in (0,1] for any ap>=1 (ap 0, e.g. free items, is treated as 1 — never
+    // a divide by zero, never an infinite bid); npcNorm still guards it into (0,1]
+    // for safety/NaN. This is a CONSIDERATION inside the geometric mean, not a
+    // post-band divisor: a pricier action needs proportionally stronger OTHER
+    // considerations to hold the top of its band, but raw = lo + gm*(hi-lo) can
+    // never leave [lo,hi] — so a band's floor always strictly outranks the band
+    // below it, at any AP cost. (The old post-band divisor let a cheap action
+    // invade a costlier band underneath it — see the doc block above.)
+    cons.push(npcNorm(1/Math.max(1,pair.ap||0)));
     // geometric-mean compensation (utility-school standard): n considerations, each
     // in (0,1], combine to a single position within the band without a long list of
     // weak factors collapsing the score the way a plain product would.
     var prod=1;for(i=0;i<cons.length;i++)prod*=cons[i];
     var gm=Math.pow(prod,1/cons.length);
-    // AP efficiency: score per AP. ap 0 (free items) is treated as 1 — never a divide
-    // by zero, never an infinite bid.
-    return (band[0]+gm*(band[1]-band[0]))/Math.max(1,pair.ap||0);
+    return band[0]+gm*(band[1]-band[0]);
   }
   /* ── T-NPC-3.5 · Task 5 — the brain, steps 4+5+6 (TILT · DRAW · TRACE) ─
      Pure and DETERMINISTIC. All variety enters through the injected rng.
