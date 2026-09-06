@@ -7147,7 +7147,10 @@ var GLOSS={
  'Tribute':'The third answer to an Ultimatum: fight, ignore, or pay. Defenders may buy peace with currency, resources, or the return of the taken; the attacker names the price — or the clock does.',
  'Standing':'Your ledger with each sub-faction, −3 WAR to +2 ALLIED. Seeded by lore, moved by your acts. Raiding a ruled world floors you to WAR with its ruler.',
  'WORK':'Per-planet trust, earned by concluding missions there (Rebuild counts double). Gates seat petitions — you earn a seat by service, not by shopping.',
- 'Seat':'A named location held by a Commander on a world his own kin rules. Pays tax and production share; can be built, garrisoned, and lost with the planet.'};
+ 'Seat':'A named location held by a Commander on a world his own kin rules. Pays tax and production share; can be built, garrisoned, and lost with the planet.',
+ 'Hall':'The social door — the culture\'s gathering space. Meet the crowd, hear true rumors drawn from real events, and make the culture\'s offering.',
+ 'Offering':'The Hall\'s social gesture — each culture accepts its own (a round, a data-tithe, a worthy skull, a captive). Paying it warms a patron\'s disposition.',
+ 'Rumor':'Hall talk is TRUE — every rumor cites live world state: war clocks, sector conditions, posted work, or this ground\'s own chronicle.'};
 /* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
 function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
  var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');
@@ -7601,13 +7604,16 @@ function renderDoor(dr,h){var c=E('div','card');
    hc.ctx.crowdEvent=ev?ev.crowd_delta:0;
    var pats=HALL.patronsAt(hc.ctx,D);
    var off=HALL.offerEval(ev,hc.ctx,D);
+   var _hallTip='<b>Hall</b> — '+GLOSS['Hall'];
+   c.insertAdjacentHTML('beforeend','<div class="d" style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="tipable mono" style="color:var(--dim)" data-tip="'+_hallTip.replace(/"/g,'&quot;')+'">◉ Hall</span></div>');
    var hh='<div class="d" style="margin-bottom:6px"><i>'+esc(cul.flavor||'A gathering place.')+'</i></div>';
    if(ev)hh+='<div class="d" style="border-left:3px solid var(--blh);padding-left:8px;margin-bottom:6px">'+esc(ev.banner)+'</div>';
-   hh+=pats.length?pats.map(function(p,i){return '<div class="lrow" style="cursor:default">'+esc(p.name)+' — <span style="color:var(--dim)">'+esc(p.role)+'</span>'
+   hh+=pats.length?pats.map(function(p,i){var _offTip='<b>Offering</b> — '+GLOSS['Offering'];return '<div class="lrow" style="cursor:default">'+esc(p.name)+' — <span style="color:var(--dim)">'+esc(p.role)+'</span>'
      +' <button class="btn gh sm" data-hallcom="'+i+'">'+esc(cul.commune||'Talk')+'</button>'
-     +' <button class="btn gh sm" data-halloff="'+i+'">'+esc(off.label)+' ('+(off.kind==='cur'?off.cost+' '+curName():off.kind==='res'?'1 '+off.res:'1 '+off.accepts)+')</button></div>';}).join('')
+     +' <button class="btn gh sm" data-halloff="'+i+'"><span class="tipable" data-tip="'+_offTip.replace(/"/g,'&quot;')+'">'+esc(off.label)+'</span> ('+(off.kind==='cur'?off.cost+' '+curName():off.kind==='res'?'1 '+off.res:'1 '+off.accepts)+')</button></div>';}).join('')
      :'<div class="d" style="color:var(--dim)">The hall stands empty tonight.</div>';
-   hh+='<div class="d" id="hallout" style="margin-top:8px;color:var(--dim)"></div>';
+   var _rumorTip='<b>Rumor</b> — '+GLOSS['Rumor'];
+   hh+='<div class="d" id="hallout" style="margin-top:8px;color:var(--dim)"><span class="tipable" style="cursor:help" data-tip="'+_rumorTip.replace(/"/g,'&quot;')+'">◌ Word on the ground:</span></div>';
    c.insertAdjacentHTML('beforeend',hh);
    c.querySelectorAll('[data-hallcom]').forEach(function(b){b.onclick=function(){
      hallCommune(pats[+b.dataset.hallcom],hc);};});
