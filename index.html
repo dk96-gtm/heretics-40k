@@ -652,14 +652,20 @@ var THREAD=(function(){
         if(_acts[aid]>cap)return {ok:false,
           reason:'Suppressed/wounded: '+aid+' has only '+cap+' action'+(cap>1?'s':'')+' this post'};}
       if(state.board){                              // T-CMB-1 Task 3: hard speed gate — a slowed model can't outrun its mods
+        var _movePos={};for(var mpid in state.combatants){var mpc=state.combatants[mpid];
+          if(mpc&&mpc.x!=null)_movePos[mpid]={x:mpc.x,y:mpc.y};}
+        // T-NPC-3.5 fix 2: walk staged moves against a WORKING position map so a model can
+        // step into a cell another staged move vacates earlier in the same block (assignment
+        // order) — checking the pristine state would still see the vacating model in the way.
         for(var mi=0;mi<block.length;mi++){var mb=block[mi],me=mb.effect;
           if(!me||me.kind!=='move')continue;
-          var mm=state.combatants[me.who||mb.actor];if(!mm||mm.x==null)continue;
+          var mwho=me.who||mb.actor,mm=state.combatants[mwho];if(!mm||!_movePos[mwho])continue;
           var msp=Math.max(0,(mm.spd||0)+condMods(mm).speed);
           var occ=[];for(var oid in state.combatants){var oc=state.combatants[oid];
-            if(oid!==(me.who||mb.actor)&&oc&&!oc.dead&&oc.x!=null)occ.push({x:oc.x,y:oc.y});}
-          var rs=reachable({x:mm.x,y:mm.y},msp,state.board,occ);
-          if(!rs[me.to.x+','+me.to.y])return {ok:false,reason:'Slowed: move exceeds reduced speed'};}}
+            if(oid!==mwho&&oc&&!oc.dead&&_movePos[oid])occ.push(_movePos[oid]);}
+          var rs=reachable(_movePos[mwho],msp,state.board,occ);
+          if(!rs[me.to.x+','+me.to.y])return {ok:false,reason:'Slowed: move exceeds reduced speed'};
+          _movePos[mwho]=me.to;}}
       if(state.board){                              // fog targeting gate (Slice C): attack/capture only what you see
         var vis=spottedEnemies(party,state,state.board);
         for(var gi=0;gi<block.length;gi++){var ge=block[gi].effect;
@@ -1087,7 +1093,7 @@ var THREAD=(function(){
   function spottedEnemies(side,state,board){        // enemies within a live friendly's sight radius + clear LOS
     var C=state.combatants||{},friends=[],out=[];
     for(var id in C){var c=C[id];if(c.party===side&&!c.dead&&c.x!=null)friends.push(c);}
-    for(var fid in C){var f=C[fid];if(f.party===side||f.x==null)continue;
+    for(var fid in C){var f=C[fid];if(f.party===side||f.x==null||f.dead)continue;   // T-NPC-3.5 fix 1: corpses are unseen
       var seen=friends.some(function(fr){return cheb(fr,f)<=(fr.sight||0)&&lineOfSight(fr,f,board);});
       if(seen)out.push(fid);}
     return out;

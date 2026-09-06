@@ -316,26 +316,12 @@ function setupBoard(state, partyA, partyB, rng) {
  * enemy zone's center via THREAD.reachable (terrain/occupancy-respecting,
  * identical to npcTurn's own gap-closing move) and instantly stops the
  * moment it spots anything. Copied logic, not a reach into engine glue. */
-// THREAD.spottedEnemies (index.html L1081-1088) reports a geometric sight+LOS
-// hit against ANY enemy combatant with a non-null x/y — including a DEAD one:
-// a corpse never gets its x/y cleared (only a CAPTURED model does, L888). Once
-// a side has line of sight on nothing but corpses, THREAD.npcTurn's own `live`
-// filter (spotted.filter(!dead)) empties out and it stages nothing forever —
-// and blindAdvance's "already spotted something, stop closing" guard (mirrored
-// from _dramaBlindAdvance) would ALSO freeze on that same corpse, permanently
-// deadlocking a side that can see a body but not a living target. Confirmed by
-// tracing a real stalemated battle: spottedEnemies>0 on both sides, npcTurn
-// returned an empty block on both, at round 9 with 7 vs 13 models still alive.
-// This is a genuine core/glue interaction gap worth a BACKLOG line (T-QA-2
-// forbids touching index.html/canon to fix it here) — this harness works
-// around it by gating advance on LIVING spotted enemies only.
-function livingSpotted(party, state) {
-  return THREAD.spottedEnemies(party, state, state.board).filter(id => {
-    const c = state.combatants[id]; return c && !c.dead;
-  });
-}
+// THREAD.spottedEnemies (index.html L1087) filters out dead combatants itself
+// (T-NPC-3.5 task 2 core fix) — a corpse is never "spotted," so blindAdvance's
+// "already spotted something, stop closing" guard can read it directly with
+// no separate LIVING-only wrapper.
 function blindAdvance(party, enemyParty, state) {
-  if (livingSpotted(party, state).length) return false;
+  if (THREAD.spottedEnemies(party, state, state.board).length) return false;
   const ez = state.zones[enemyParty]; if (!ez) return false;
   const tgt = { x: Math.round((ez.x0 + ez.x1) / 2), y: Math.round((ez.y0 + ez.y1) / 2) };
   const C = state.combatants;
@@ -356,30 +342,15 @@ function blindAdvance(party, enemyParty, state) {
   return moved;
 }
 
-/* THREAD.validate re-checks every staged move's reachability against `state`'s
- * un-mutated positions (index.html L648-656) — but THREAD.npcTurn's own move
- * assignment, for a LARGE block covering many allies in one call, updates its
- * private `pos` map as it goes, so a later ally's staged destination can be a
- * cell an earlier ally is ALREADY assigned to vacate (npcTurn sees the vacancy,
- * validate — checking against still-unmutated `state` — does not). At the
- * small model counts a normal player-vs-NPC thread actually runs, this rarely
- * bites; at WARBAND-bracket model counts colliding into a 2-wide deploy zone,
- * it can reliably invalidate an entire multi-actor block and stall the fight
- * forever (found via this harness — worth a BACKLOG line, not fixed here per
- * the T-QA-2 brief's "never auto-changes canon/engine" contract). This harness
- * works around it the way a resilient client would: on a validate failure,
- * strip every `move` effect and retry attacks/conditions alone, so a large
- * battle still progresses (models just don't advance that exchange) instead of
- * deadlocking to the round cap on a single ally's stale-position conflict. */
+// THREAD.validate now walks staged moves against a working position map in
+// assignment order (T-NPC-3.5 task 2 core fix), so a later ally's staged
+// destination can legally be a cell an earlier ally in the same block is
+// vacating — no retry-without-moves fallback is needed any more.
 function applyResilient(thread, state, side, block) {
-  let v = THREAD.validate(thread, state, side, block, D);
-  if (v.ok) { THREAD.apply(thread, state, block, D, side); return true; }
-  const noMove = block.filter(b => !b.effect || b.effect.kind !== 'move');
-  if (noMove.length && noMove.length !== block.length) {
-    v = THREAD.validate(thread, state, side, noMove, D);
-    if (v.ok) { THREAD.apply(thread, state, noMove, D, side); return true; }
-  }
-  return false;
+  const v = THREAD.validate(thread, state, side, block, D);
+  if (!v.ok) return false;
+  THREAD.apply(thread, state, block, D, side);
+  return true;
 }
 
 /* ═══════════════════════ one full battle ═══════════════════════════════ */
@@ -713,21 +684,23 @@ function writeReport(tourney, analysis) {
   md += '## Engine findings surfaced by this run — worth a BACKLOG line\n\n';
   md += 'Two of these came from watching battles deadlock during harness development, not from anything this report\'s ';
   md += 'numbers show directly — they are reported here because Pillar 2\'s whole point is producing this kind of evidence, ';
-  md += 'not because they change the win-rate numbers above (the harness works around both so the tournament can run at all).\n\n';
-  md += '- **`THREAD.spottedEnemies` counts dead bodies as "spotted."** A corpse never has its x/y cleared (only a captured ';
-  md += 'model does), so once a side has line of sight on nothing but corpses, `npcTurn`\'s own `live` filter empties out and ';
-  md += 'it stages nothing — forever. Confirmed by tracing a real stalled battle: both sides reported a positive `spottedEnemies` ';
-  md += 'count with an empty `npcTurn` block at round 9, 7 vs 13 models still alive. This would affect the live game\'s own ';
-  md += '`driveDrama`/two-sided-NPC battles (T-NPC-3 N2 task 7) exactly the same way, at any scale where a corpse can out-number ';
-  md += 'living targets in a side\'s sight radius. This harness works around it by gating its own blind-advance step on LIVING ';
-  md += 'spotted enemies only.\n';
-  md += '- **`THREAD.validate`\'s move-reachability check can reject a `THREAD.npcTurn` block it just produced.** `npcTurn` updates ';
-  md += 'its own local position map as it assigns each ally a move within one call, so a later ally can be staged to step onto a ';
-  md += 'cell an earlier ally is ALREADY assigned to vacate — but `validate` re-checks reachability against `state`\'s un-mutated ';
-  md += 'positions (nothing has actually moved yet), so it can see that cell as still occupied and reject the WHOLE block, ';
-  md += 'losing every model\'s action that exchange. At the small model counts a normal player-vs-NPC thread runs this rarely ';
-  md += 'bites; at WARBAND-bracket counts converging on a 2-wide deploy zone it reliably stalled entire battles before this ';
-  md += 'harness added a retry-without-moves fallback (see below).\n';
+  md += 'not because they change the win-rate numbers above (both are now fixed in the core, T-NPC-3.5 task 2, and this run ';
+  md += 'already reflects the fix — no harness workaround was needed to produce these numbers).\n\n';
+  md += '- **`THREAD.spottedEnemies` counted dead bodies as "spotted" (FIXED, T-NPC-3.5 task 2).** A corpse never had its ';
+  md += 'x/y cleared (only a captured model does), so once a side had line of sight on nothing but corpses, `npcTurn`\'s own ';
+  md += '`live` filter emptied out and it staged nothing — forever. Confirmed by tracing a real stalled battle: both sides ';
+  md += 'reported a positive `spottedEnemies` count with an empty `npcTurn` block at round 9, 7 vs 13 models still alive. ';
+  md += 'This affected the live game\'s own `driveDrama`/two-sided-NPC battles (T-NPC-3 N2 task 7) exactly the same way, at ';
+  md += 'any scale where a corpse could out-number living targets in a side\'s sight radius. `spottedEnemies` now filters ';
+  md += '`!dead` itself, so neither this harness nor the live game needs a LIVING-only workaround around it any more.\n';
+  md += '- **`THREAD.validate`\'s move-reachability check could reject a `THREAD.npcTurn` block it just produced (FIXED, ';
+  md += 'T-NPC-3.5 task 2).** `npcTurn` updates its own local position map as it assigns each ally a move within one call, ';
+  md += 'so a later ally could be staged to step onto a cell an earlier ally was ALREADY assigned to vacate — but `validate` ';
+  md += 're-checked reachability against `state`\'s un-mutated positions (nothing had actually moved yet), so it could see ';
+  md += 'that cell as still occupied and reject the WHOLE block, losing every model\'s action that exchange. At the small ';
+  md += 'model counts a normal player-vs-NPC thread runs this rarely bit; at WARBAND-bracket counts converging on a 2-wide ';
+  md += 'deploy zone it reliably stalled entire battles. `validate` now walks staged moves against a working position map ';
+  md += 'in assignment order, so a leapfrog like this validates correctly with no retry needed.\n';
   md += '- **High-Honor doctrine can produce a genuine mutual stalemate, and this looks intentional rather than a bug:** Honor ';
   md += '≥70 spares any target at ≤1 wound ("Critical"). If BOTH sides roll high Honor and both are reduced to all-Critical ';
   md += 'survivors, neither side will land another hit — they just stand there, forever (about 14% of this run\'s battles ended ';
@@ -746,11 +719,7 @@ function writeReport(tourney, analysis) {
   md += '- AP pool is refreshed to full for a side immediately after that side\'s own post, mirroring `npcRespond`\'s ';
   md += '`poolsBase` refresh (index.html L5803) — this is the real engine\'s behavior, not an arena shortcut.\n';
   md += '- Forge augmentation applies at tier I only, to at most one weapon per build, at ~50% sample rate, and does ';
-  md += 'not adjust the build\'s PC budget (mirrors how a forge upgrade is a currency purchase, not a PC-budget item).\n';
-  md += '- Two harness-side workarounds exist purely to keep battles from deadlocking on the two core findings above: ';
-  md += 'blind-advance treats a side as still blind while it sees only corpses (not just "sees nothing"), and a validate ';
-  md += 'failure on a full block retries with every `move` effect stripped so attacks/conditions still land. Neither ';
-  md += 'changes combat MATH — both only prevent a stuck battle from silently timing out as a no-signal draw.\n\n';
+  md += 'not adjust the build\'s PC budget (mirrors how a forge upgrade is a currency purchase, not a PC-budget item).\n\n';
 
   fs.writeFileSync(outPath, md, 'utf8');
   return outPath;

@@ -48,6 +48,17 @@ test('spottedEnemies: dead friendlies provide no vision', () => {
   assert.deepStrictEqual(THREAD.spottedEnemies('A', state, board(12, 1, {})), []);
 });
 
+test('spottedEnemies excludes the dead (T-NPC-3.5 fix 1)', () => {
+  const state = { combatants: {
+    a: { party: 'A', x: 0, y: 0, sight: 9 },
+    X: { party: 'B', x: 2, y: 0, dead: true, w: [0, 5] },   // corpse — close range, clear LOS
+    Y: { party: 'B', x: 20, y: 0 }                          // alive but out of sight range
+  } };
+  const spotted = THREAD.spottedEnemies('A', state, board(21, 1, {}));
+  assert.ok(spotted.indexOf('X') < 0, 'a corpse must not be spotted');
+  assert.deepStrictEqual(spotted, [], 'the only other enemy is out of sight range');
+});
+
 test('spottedEnemies: union across friendlies; unseen enemy stays hidden', () => {
   const state = { combatants: {
     a: { party: 'A', x: 0, y: 0, sight: 4 },

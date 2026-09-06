@@ -120,6 +120,22 @@ test('validate accepts a block within pool', () => {
   assert.strictEqual(THREAD.validate(t, t.state, 'The Rotward', ok, canon).ok, true);
 });
 
+test('validate accepts a leapfrog: M2 vacates a cell M1 steps into, same block (T-NPC-3.5 fix 2)', () => {
+  // M2 b(1,0)->c(2,0) frees the cell M1 a(0,0)->b(1,0) steps into. Each move is legal
+  // once processed in assignment order, but today's move check always re-reads the
+  // pristine (unmutated) combatant positions, so M1's check still sees M2 sitting at b.
+  const board = { w: 3, h: 1 };   // tile-less board = all open (reachable's own contract)
+  const st = { pools: { A: 9 }, board, combatants: {
+    M1: { w: [10,10], party: 'A', conds: [], x: 0, y: 0, spd: 1 },
+    M2: { w: [10,10], party: 'A', conds: [], x: 1, y: 0, spd: 1 } } };
+  const block = [
+    { actor: 'M2', cost: 0, effect: { kind: 'move', who: 'M2', to: { x: 2, y: 0 } } },
+    { actor: 'M1', cost: 0, effect: { kind: 'move', who: 'M1', to: { x: 1, y: 0 } } },
+  ];
+  const v = THREAD.validate({ type: 'SKIRMISH' }, st, 'A', block, canon);
+  assert.strictEqual(v.ok, true, v.reason);
+});
+
 test('travel never drains a pool - always valid', () => {
   const t = THREAD.create({ type:'TRAVEL', parties:['A'], seedState:{transit:{tier:'same_planet'}} }, canon);
   const blk = [{actor:'A',action:'Transit post',cost:0,effect:{kind:'transit',words:200}}];
