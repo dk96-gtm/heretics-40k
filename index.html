@@ -1421,7 +1421,7 @@ var THREAD=(function(){
          The brain chooses WHAT to do to that target — which weapon, which cast,
          ability or item, or a friendly play on itself/an ally. */
       if(_dirty||!_pairs)reenum();
-      var mine=[],pi;
+      var mine=[],pi,shadow=npcShadow(state,pos,side,pool);   // built ONCE per actor, not per pair
       for(pi=0;pi<_pairs.length;pi++){var cand=_pairs[pi];
         if(cand.actor!==aid||cand.kind==='move')continue;                    // movement is doctrine's, not the draw's
         if((cand.ap||0)>pool)continue;                                       // the pool shrank since enumeration
@@ -1429,7 +1429,7 @@ var THREAD=(function(){
         if(!npcKitReaches(cand,C,pos[aid]))continue;                         // same reach rule validate applies
         cand.meta=cand.meta||{};
         cand.meta.leader=(cand.target===leaderTgt);                          // supremacism's tilt class
-        cand.score=scorePair(cand,npcShadow(state,pos,side,pool),canon);
+        cand.score=scorePair(cand,shadow,canon);
         mine.push(cand);}
       if(!mine.length)continue;
       mine=tiltScores(mine,beh,canon);                                       // step 4
