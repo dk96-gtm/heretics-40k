@@ -2,7 +2,7 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.37",
+  "version": "1.38",
   "updated": "2026-09-05",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
@@ -687,7 +687,8 @@
     "reliquary": "Shrine World",
     "arena": "War World",
     "muster": "Feudal World",
-    "warp_gate": "Frontier World"
+    "warp_gate": "Frontier World",
+    "hall": "Hive World"
    },
    "t3_anywhere": [
     "shop"
@@ -9588,6 +9589,39 @@
      "2": "+ garrison bonus",
      "3": "sector-scale events"
     }
+   },
+   {
+    "kind": "hall",
+    "name": "Hall",
+    "does": "the social space — meet the crowd, hear true rumors, make the culture's offering",
+    "rarity": "common",
+    "skins": {
+     "black_legion": "The Trophy Hall",
+     "death_guard": "The Poxfeast",
+     "world_eaters": "The Skullpit",
+     "thousand_sons": "The Athenaeum",
+     "emperors_children": "The Salon",
+     "daemons": "The Carnival",
+     "astartes": "The Saga-Hall",
+     "militarum": "The Mess",
+     "mechanicus": "The Communion",
+     "sororitas": "The Refectory",
+     "custodes": "The Vigil",
+     "tyranids": "The Broodpool",
+     "orks": "Da Grog Den",
+     "necrons": "The Court",
+     "aeldari": "The Dome",
+     "drukhari": "The Gallery",
+     "tau": "The Hall of Unity",
+     "gsc": "The Congregation",
+     "votann": "The Hearthhold",
+     "harlequins": "The Masque"
+    },
+    "tiers": {
+     "1": "the back room — a handful of souls, small talk",
+     "2": "the establishment — a real crowd, real news",
+     "3": "the institution — where the famous drink and the big nights happen"
+    }
    }
   ],
   "location_types": [
@@ -9600,7 +9634,8 @@
     "doors": [
      "shop",
      "shop",
-     "muster"
+     "muster",
+     "hall"
     ],
     "planet_types": [
      "Hive World",
@@ -9618,7 +9653,8 @@
     "pop_base": 4,
     "doors": [
      "shop",
-     "muster"
+     "muster",
+     "hall"
     ],
     "planet_types": [
      "*"
@@ -9637,7 +9673,8 @@
     "pop_base": 3,
     "doors": [
      "shop",
-     "reliquary"
+     "reliquary",
+     "hall"
     ],
     "planet_types": [
      "Civilized World",
@@ -9654,7 +9691,8 @@
     "output_base": 0.6,
     "pop_base": 2,
     "doors": [
-     "shop"
+     "shop",
+     "hall"
     ],
     "planet_types": [
      "Agri World",
@@ -9671,7 +9709,8 @@
     "output_base": 2.0,
     "pop_base": 4,
     "doors": [
-     "forge"
+     "forge",
+     "hall"
     ],
     "forge_tiers": "I-II",
     "planet_types": [
@@ -9690,7 +9729,8 @@
     "pop_base": 3,
     "doors": [
      "forge",
-     "reliquary"
+     "reliquary",
+     "hall"
     ],
     "forge_tiers": "I-III",
     "planet_types": [
@@ -9708,7 +9748,8 @@
     "pop_base": 1,
     "doors": [
      "forge",
-     "relay"
+     "relay",
+     "hall"
     ],
     "forge_tiers": "I",
     "planet_types": [
@@ -9724,7 +9765,8 @@
     "pop_base": 2,
     "doors": [
      "forge",
-     "muster"
+     "muster",
+     "hall"
     ],
     "forge_tiers": "I-II",
     "planet_types": [
@@ -9742,7 +9784,8 @@
      "forge",
      "muster",
      "relay",
-     "apothecarion"
+     "apothecarion",
+     "hall"
     ],
     "forge_tiers": "I-II",
     "planet_types": [
@@ -9800,7 +9843,8 @@
     "doors": [
      "altar",
      "apothecarion",
-     "reliquary"
+     "reliquary",
+     "hall"
     ],
     "planet_types": [
      "Shrine World",
@@ -9819,7 +9863,8 @@
      "forge",
      "muster",
      "altar",
-     "arena"
+     "arena",
+     "hall"
     ],
     "forge_tiers": "I-II",
     "forge_kind": "bio",
@@ -9848,7 +9893,8 @@
      "throne_room",
      "shop",
      "reliquary",
-     "apothecarion"
+     "apothecarion",
+     "hall"
     ],
     "planet_types": [
      "*"
@@ -9894,7 +9940,8 @@
     "doors": [
      "forge",
      "shop",
-     "altar"
+     "altar",
+     "hall"
     ],
     "forge_tiers": "I-III",
     "faction": "Death Guard",
@@ -9915,7 +9962,8 @@
     "doors": [
      "forge",
      "muster",
-     "reliquary"
+     "reliquary",
+     "hall"
     ],
     "forge_tiers": "I-III",
     "faction": "Necrons",
@@ -9952,7 +10000,8 @@
     "doors": [
      "forge",
      "shop",
-     "shipyard"
+     "shipyard",
+     "hall"
     ],
     "forge_tiers": "I-II",
     "faction": "Orks",
@@ -9971,7 +10020,8 @@
     "doors": [
      "muster",
      "altar",
-     "shop"
+     "shop",
+     "hall"
     ],
     "faction": "Genestealer Cults",
     "allegiance": "xenos",

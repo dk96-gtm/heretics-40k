@@ -7,8 +7,8 @@ const canon = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8')
 );
 
-test('canon is v1.35', () => {
-  assert.strictEqual(canon.meta.version, '1.37');
+test('canon is v1.38', () => {
+  assert.strictEqual(canon.meta.version, '1.38');
 });
 
 test('every faction has a crown world with a walkable surface start (Founding spawn)', () => {
@@ -72,7 +72,7 @@ test('armour catalog: 143 pieces, valid shape, 80 faction defaults', () => {
 });
 
 test('T-DOOR-2: armoury door retired — 11 doors, shop absorbs armour weight-gated by tier', () => {
-  assert.strictEqual(canon.galaxy.doors.length, 11, 'doors[] shrank 12→11');
+  assert.strictEqual(canon.galaxy.doors.length, 12, 'doors[] is 12 (T-SOC-1 hall added)');
   assert.ok(!canon.galaxy.doors.some((x) => x.kind === 'armoury'), 'no armoury door kind');
   canon.galaxy.location_types.forEach((lt) => {
     assert.ok(!(lt.doors || []).includes('armoury'), `${lt.id} doors list has no armoury`);
@@ -133,7 +133,7 @@ test('canon defines a no-revival tag set and an Annihilation forge tag', () => {
 });
 
 test('canon: ai block present and well-formed', () => {
-  assert.equal(canon.meta.version, '1.37');
+  assert.equal(canon.meta.version, '1.38');
   assert.ok(canon.ai && typeof canon.ai.model === 'string' && canon.ai.model.length);
   assert.ok(typeof canon.ai.directives === 'string' && canon.ai.directives.length > 40);
 });
