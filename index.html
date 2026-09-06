@@ -3511,6 +3511,23 @@ var HALL=(function(){
     }
     return {register:'none',line:patron.name+' has nothing for you tonight — quiet days, thank the powers.'};
   }
+  /* rumorsFor: up to `max` rumors from the SAME real patron, each from a genuinely
+     different register — no name-mangling, no repeated line. Calls rumorFor once per
+     slot, excluding registers already used from the candidate list so the next call
+     (if any) is forced onto a different, still-real source. Stops early (never pads
+     with the 'none' no-news filler) the moment a slot would come up empty — a lone
+     populated register yields exactly one rumor, never a duplicate second line. */
+  function rumorsFor(patron,wctx,ctx,canon,max){
+    var out=[],used={},remaining=(patron.registers||[]).slice(),i;
+    for(i=0;i<(max||1);i++){
+      var cand=remaining.filter(function(reg){return !used[reg];});
+      if(!cand.length)break;
+      var r=rumorFor({name:patron.name,registers:cand},wctx,ctx,canon);
+      if(r.register==='none')break;
+      used[r.register]=true;out.push(r);
+    }
+    return out;
+  }
   /* moodEventAt: max ONE event per hall per day; canon row order IS priority
      (hardship outranks celebration). Pure — no rng needed: triggers are state
      predicates, holy_day is calendar math (hash(fac) mod holy_day_mod). */
@@ -3589,7 +3606,7 @@ var HALL=(function(){
     if(ax.ferocity_only_win&&(a.ferocity||0)>pivot&&act!=='win'&&act!=='lawbreak'&&v>0)v=0;
     return v;
   }
-  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt,rungOf:rungOf,judgeAct:judgeAct};
+  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,rumorsFor:rumorsFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt,rungOf:rungOf,judgeAct:judgeAct};
 })();
 /*</hall-core>*/
 /*<save-core>*/
@@ -7950,29 +7967,26 @@ function hallTrustRecord(hc,role,act){
  persist();
  return HALL.rungOf(rec.score,hc.ctx,D);
 }
-/* hallCommuneReg: the Talk path for a pinned regular row. HALL.rumorFor wants a
+/* hallCommuneReg: the Talk path for a pinned regular row. HALL.rumorFor/rumorsFor want a
    {name,registers} patron shape; regulars (rules.hall.regulars) carry no registers of
    their own — they're the location's persistent fixtures, plugged-in to everything, so
    this glue hands them the full register set in priority order. The host's second rumor
-   at rung KNOWN+ (index>=1) reuses rumorFor with a name suffix so its independent seed
-   picks an independently-chosen line (same seed => same pick, so an unmodified second
-   call would just repeat the first verbatim) — deterministic, reload-stable "two sources"
-   flavor rather than a literal second informant. Deeper rung ③/④ unlocks (sanctuary WORK
-   grant, the fence, introductions, training buff, title fight) are Slice B2/C — TODO(B2).
-   CONTEST/hall-law is also out of scope for this slice — TODO(B2). */
-function hallRegRumor(rg,hc,which){
- var nm=which?rg.name+' (once more)':rg.name;
- return HALL.rumorFor({name:nm,registers:['war','state','trade','ground']},hc.wctx,hc.ctx,D);
-}
+   at rung KNOWN+ (index>=1) uses the pure HALL.rumorsFor(patron,wctx,ctx,canon,max) —
+   it forces each extra slot onto a register not already used, so a second line is a
+   genuinely different true fact (e.g. war then trade) under the SAME real name, never a
+   name-mangled repeat; if no second register has data it simply returns one rumor, and
+   this glue renders only what came back — no placeholder, no duplicate. Deeper rung
+   ③/④ unlocks (sanctuary WORK grant, the fence, introductions, training buff, title
+   fight) are Slice B2/C — TODO(B2). CONTEST/hall-law is also out of scope — TODO(B2). */
 function hallCommuneReg(rg,hc){
  var out=document.getElementById('hallout');if(!rg||!out)return;
  var key=hc.ctx.locId+'/'+rg.role;
  var rec=S.social.reg[key]||(S.social.reg[key]={score:0,acts:{},lastSeen:0});
  if(rec.lastSeen!==hc.ctx.day)hallTrustRecord(hc,rg.role,'presence');   // PRESENCE: once/day
  var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
- var lines=[hallRegRumor(rg,hc,0).line];
- if(rung.index>=1&&rg.role==='host')lines.push(hallRegRumor(rg,hc,1).line);   // host two-rumor unlock
- out.innerHTML=lines.map(esc).join('<br>');
+ var max=(rung.index>=1&&rg.role==='host')?2:1;   // host two-rumor unlock at KNOWN+
+ var rumors=HALL.rumorsFor({name:rg.name,registers:['war','state','trade','ground']},hc.wctx,hc.ctx,D,max);
+ out.innerHTML=rumors.map(function(r){return esc(r.line);}).join('<br>');
 }
 function hallCommune(p,hc){
  var out=document.getElementById('hallout');if(!p||!out)return;

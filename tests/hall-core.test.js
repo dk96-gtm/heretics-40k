@@ -226,3 +226,45 @@ test('judgeAct: Tyranids do not parse cheating (returns 0)', () => {
   assert.equal(HALL.judgeAct('cheat_caught', ctx({ fac: 'tyranids' }), AX, D), 0);
   assert.ok(HALL.judgeAct('offer', ctx({ fac: 'tyranids' }), AX, D) > 0, 'but biomass offers still register');
 });
+
+// T-SOC-1 B1 task 4 fix round 1: the host's second rumor at rung KNOWN+ must be a
+// genuinely different true fact under the real name — never a name-mangled repeat
+// ("(once more)") and never a duplicate/placeholder line when there's nothing more.
+test('rumorsFor: with two populated registers, two lines with DIFFERENT registers, real name, no mangling', () => {
+  const keeper = { name: 'the Quartermaster-Sergeant', registers: ['war', 'state', 'trade', 'ground'] };
+  const rs = HALL.rumorsFor(keeper, WCTX, ctx(), D, 2);
+  assert.equal(rs.length, 2, 'expected two rumors when at least two registers have data');
+  assert.notEqual(rs[0].register, rs[1].register, 'the two rumors must draw from different registers');
+  for (const r of rs) {
+    assert.ok(r.line.indexOf('the Quartermaster-Sergeant') === 0, 'must open with the real, unmangled name: ' + r.line);
+    assert.ok(r.line.indexOf('(once more)') < 0, 'must never contain the implementation-artifact suffix: ' + r.line);
+  }
+});
+
+test('rumorsFor: only one register populated -> exactly one rumor, no second/placeholder line', () => {
+  const keeper = { name: 'the Quartermaster-Sergeant', registers: ['war', 'state', 'trade', 'ground'] };
+  const oneReg = { war: [], state: [], trade: [{ planet: 'Nurth', mission: 'Purge the Warrens' }], ground: [] };
+  const rs = HALL.rumorsFor(keeper, oneReg, ctx(), D, 2);
+  assert.equal(rs.length, 1, 'a lone populated register must yield exactly one rumor, not a padded second');
+  assert.equal(rs[0].register, 'trade');
+  assert.ok(rs[0].line.indexOf('(once more)') < 0);
+});
+
+test('rumorsFor: a totally quiet galaxy yields zero rumors (never the no-news filler as a "second line")', () => {
+  const keeper = { name: 'the Quartermaster-Sergeant', registers: ['war', 'state', 'trade', 'ground'] };
+  const rs = HALL.rumorsFor(keeper, { war: [], state: [], trade: [], ground: [] }, ctx(), D, 2);
+  assert.equal(rs.length, 0);
+});
+
+test('rumorsFor: deterministic — same inputs, same picks and same order, every time', () => {
+  const keeper = { name: 'the Quartermaster-Sergeant', registers: ['war', 'state', 'trade', 'ground'] };
+  const a = HALL.rumorsFor(keeper, WCTX, ctx(), D, 2);
+  const b = HALL.rumorsFor(keeper, WCTX, ctx(), D, 2);
+  assert.deepEqual(a, b);
+});
+
+test('rumorsFor: max=1 always returns at most one rumor even with many registers populated', () => {
+  const keeper = { name: 'the Quartermaster-Sergeant', registers: ['war', 'state', 'trade', 'ground'] };
+  const rs = HALL.rumorsFor(keeper, WCTX, ctx(), D, 1);
+  assert.equal(rs.length, 1);
+});
