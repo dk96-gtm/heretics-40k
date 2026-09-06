@@ -2868,7 +2868,34 @@ var HALL=(function(){
     }
     return out;
   }
-  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize};
+  /* rumorFor: TRUE rumors — every line cites real world state handed in via wctx.
+     Register priority = the patron's own order; first register with data wins.
+     Seeded per (patron, day, loc): the same soul tells the same tale all day. */
+  var RUMOR_TPL={
+    war:function(e,r){return pick([
+      'mutters of war — '+e.fac+' presses '+e.loc+'; the clock stands at '+e.days+' days.',
+      'says '+e.loc+' is under the gun: '+e.fac+', '+e.days+' days to answer.'],r);},
+    state:function(e,r){return pick([
+      'says the '+e.name+' reads '+e.status+' — you can feel it from here.',
+      'heard the '+e.name+' has gone '+e.status+'.'],r);},
+    trade:function(e,r){return pick([
+      'says there is work posted on '+e.planet+' — "'+e.mission+'", they say.',
+      'heard coin moves on '+e.planet+': '+e.mission+'.'],r);},
+    ground:function(e,r){return pick([
+      'remembers this ground: '+e+'.',
+      'will tell anyone who buys: '+e+'.'],r);}
+  };
+  function rumorFor(patron,wctx,ctx,canon){
+    var r=rng((ctx.seedBase>>>0)^hashStr('rum:'+ctx.locId+':'+ctx.day+':'+patron.name));
+    for(var i=0;i<patron.registers.length;i++){
+      var reg=patron.registers[i],entries=(wctx||{})[reg]||[];
+      if(!entries.length)continue;
+      var e=pick(entries,r);
+      return {register:reg,line:patron.name+' '+RUMOR_TPL[reg](e,r)};
+    }
+    return {register:'none',line:patron.name+' has nothing for you tonight — quiet days, thank the powers.'};
+  }
+  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor};
 })();
 /*</hall-core>*/
 /*<save-core>*/

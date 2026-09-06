@@ -59,3 +59,41 @@ test('sex honors the culture rule: sororitas hall seeds female patrons', () => {
   const ps = HALL.patronsAt(ctx({ fac: 'sororitas' }), D);
   for (const p of ps) assert.equal(p.sex, 'female');
 });
+
+const WCTX = {
+  war: [{ loc: 'Garden of Cysts', fac: 'Black Legion', days: 3 }],
+  state: [{ name: 'Pallid Reach', status: 'Famine' }],
+  trade: [{ planet: 'Nurth', mission: 'Purge the Warrens' }],
+  ground: ['The Sack of the Sanctum'],
+};
+
+test('rumorFor routes through the patron\'s registers and speaks real state', () => {
+  const trooper = { name: 'Kell of the 8th', role: 'Garrison Trooper', registers: ['war', 'ground'] };
+  const r = HALL.rumorFor(trooper, WCTX, ctx(), D);
+  assert.equal(r.register, 'war');
+  assert.ok(r.line.indexOf('Garden of Cysts') >= 0 && r.line.indexOf('3') >= 0, 'war rumor must cite the real clock: ' + r.line);
+});
+
+test('rumorFor falls through empty registers to the next one with data', () => {
+  const trooper = { name: 'Kell', role: 'Trooper', registers: ['war', 'ground'] };
+  const quiet = { war: [], state: [], trade: [], ground: ['The Sack of the Sanctum'] };
+  const r = HALL.rumorFor(trooper, quiet, ctx(), D);
+  assert.equal(r.register, 'ground');
+  assert.ok(r.line.indexOf('The Sack of the Sanctum') >= 0);
+});
+
+test('rumorFor with a totally quiet galaxy returns the no-news line', () => {
+  const p = { name: 'Odo', role: 'Merchant', registers: ['trade'] };
+  const r = HALL.rumorFor(p, { war: [], state: [], trade: [], ground: [] }, ctx(), D);
+  assert.equal(r.register, 'none');
+  assert.ok(r.line.length > 10);
+});
+
+test('rumorFor is stable within a day, changes across days', () => {
+  const p = { name: 'Kell', role: 'Trooper', registers: ['war', 'state', 'trade', 'ground'] };
+  const a = HALL.rumorFor(p, WCTX, ctx(), D);
+  assert.deepEqual(HALL.rumorFor(p, WCTX, ctx(), D), a);
+  const many = new Set();
+  for (let d = 1; d <= 20; d++) many.add(HALL.rumorFor(p, WCTX, ctx({ day: d }), D).line);
+  assert.ok(many.size > 1, 'rumor should vary across days');
+});
