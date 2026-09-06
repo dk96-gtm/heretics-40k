@@ -3358,7 +3358,26 @@ var KIT=(function(){
       if(c.gen.kit.casts&&c.gen.kit.casts.length>0)casters++;
       if(c.gen.kit.abilities&&c.gen.kit.abilities.length>0)abilityCarriers++;});
     return {casters:casters,abilityCarriers:abilityCarriers};}
-  return {mint:mint,legalFor:legalFor,kitDepth:kitDepth};
+  /* T-NPC-3.5 task 7 — statistical kit nudge. Pure: canon arrives as an argument, no globals,
+     no rng (this is straight arithmetic over an already-seeded depth count, so it carries the
+     chunk-independence of whatever fed it {casters,abilityCarriers} — the minted kits for a
+     thread-backed lapse, or syntheticDepth's muster-only approximation for a far battle).
+     multiplier = 1 + min(cap, casters*per_caster + abilityCarriers*per_ability). */
+  function kitMult(depth,canon){
+    var C=(canon&&canon.rules&&canon.rules.npc_brain&&canon.rules.npc_brain.lapse_kit_nudge)||{};
+    var perCaster=C.per_caster||0,perAbility=C.per_ability||0,cap=(C.cap!=null?C.cap:0);
+    var d=depth||{},raw=(d.casters||0)*perCaster+(d.abilityCarriers||0)*perAbility;
+    return 1+Math.min(cap,raw);}
+  /* resolveFarBattle spawns no combatants at all (N2's instant far-lane resolution) — approximate
+     depth from the muster PC alone, same discipline mintNpcClock already uses to size its own
+     detachment off an avg-Core-pc ratio: casters ≈ muster/600, abilityCarriers ≈ muster/300. */
+  function syntheticDepth(muster){
+    var m=muster||0;
+    return {casters:Math.round(m/600),abilityCarriers:Math.round(m/300)};}
+  function kitNudgeArith(mult,synthetic){
+    return ' · kit ×'+mult.toFixed(2)+(synthetic?' (synthetic depth)':'');}
+  return {mint:mint,legalFor:legalFor,kitDepth:kitDepth,kitMult:kitMult,
+          syntheticDepth:syntheticDepth,kitNudgeArith:kitNudgeArith};
 })();
 /*</kit-core>*/
 /*<hall-core>*/
@@ -5183,7 +5202,17 @@ function resolveUltLapses(nowMs,capDay){
   // (cunning/ferocity nudge margins, honor tempers loot) — deterministic off the clock's
   // own ids, same discipline as every other Ultimatum roll.
   var beh=THREAD.AXES.rollFor(u.aggressor,'agg:'+u.aggressor+':'+t.lid,D);
+  // T-NPC-3.5 task 7: fold the NPC side's minted kit depth into whichever PC number it measures.
+  // Only ONE side of an Ultimatum thread ever carries real gen.kit combatants — the npcClock's
+  // own host (u.attPC set at mint ⇒ that host IS the attacker) or, for a player-initiated raid
+  // against an NPC-held location (seedCombat's own host), the defender; the other side is always
+  // a bare formula (ULT.garrisonPC or the player's own t.forces sum) with no combatants object at
+  // all, so kitDepth naturally measures only the NPC side regardless of which PC it lands on.
+  var _kitC=(t.state&&t.state.combatants)||(t.seedState&&t.seedState.combatants)||{};
+  var _kitMult=KIT.kitMult(KIT.kitDepth(_kitC),D);
+  if(u.attPC!=null)att=Math.round(att*_kitMult);else def=Math.round(def*_kitMult);
   var res=ULT.resolveLapse(att,def,u.scale,r,D,beh);
+  if(_kitMult>1)res.arith+=KIT.kitNudgeArith(_kitMult,false);
   // condition: besieged lifts; ladder writes down from prev
   var end=u.prev;
   if(res.outcome==='repelled_losses'||res.outcome==='sacked')end=ULT.stepDown(u.prev);
@@ -5367,7 +5396,14 @@ function resolveFarBattle(c,agg,scale,muster,day){
  var base=S.world.missionSeedBase||1;
  var def=Math.round(c.garrisonPC*((D.rules.ultimatum||{}).defender_mult||1.25));
  var r=ULT.rng(ULT.seedFor(base,day,c.lid,'far:'+agg));
- var res=ULT.resolveLapse(muster,def,scale==='INVASION'?'invasion':'raid',r,D);
+ // T-NPC-3.5 task 7: no detachment is ever spawned for a far-lane roll (N2's instant
+ // resolution, no combatants exist to measure) — approximate the aggressor's kit depth off
+ // the muster PC alone (KIT.syntheticDepth, a pure function of muster — chunk-independent by
+ // construction) and fold it into the attacker's PC before the roll; the arith line says
+ // "synthetic" so the report/RECORD post never implies a real detachment was measured.
+ var _kitMult=KIT.kitMult(KIT.syntheticDepth(muster),D);
+ var res=ULT.resolveLapse(Math.round(muster*_kitMult),def,scale==='INVASION'?'invasion':'raid',r,D);
+ if(_kitMult>1)res.arith+=KIT.kitNudgeArith(_kitMult,true);
  var rec=applyWarResolution(c,agg,res.outcome,res.arith,day,'far',
    'a '+scale.toLowerCase()+' out of the void',ULT.seedFor(base,day,c.lid,'far:'+agg));
  return {kind:'far_battle',loc:c.loc.name,outcome:res.outcome,att:rec.att};

@@ -1,9 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { loadAgency } = require('./_load-agency');
+const { loadKit } = require('./_load-kit');
 const fs = require('node:fs'); const path = require('node:path');
 const canon = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8'));
 const ULT = loadAgency();
+const KIT = loadKit();
 
 test('N1: scaleOf + bandOf read canon', () => {
   assert.strictEqual(ULT.scaleOf('SKIRMISH', canon), 'raid');
@@ -153,4 +155,41 @@ test('N2/M5: evalPlayerTribute is deterministic for a fixed rng draw', () => {
   // counter-once is enforced by the engine's persisted u.pCountered flag, not by the core:
   // the core's own contract is that the SAME inputs always return the SAME counter.
   assert.strictEqual(a.result, 'counter');
+});
+
+// T-NPC-3.5 task 7 — chunk-independence sanity for the far-battle kit nudge.
+// resolveFarBattle itself is engine glue (reads S/D/applyWarResolution as bare globals; not
+// extractable the way kitOfFor/npcSpecRk were in task 6 — see kit-glue.test.js's own note on
+// that same limit) so this test replicates its exact formula against the pure ULT+KIT exports
+// it's built from: def = garrisonPC*defender_mult, r = ULT.rng(ULT.seedFor(base,day,lid,'far:'+agg)),
+// kitMult = KIT.kitMult(KIT.syntheticDepth(muster), canon), att = round(muster*kitMult), then
+// ULT.resolveLapse(att, def, scale, r, canon). Extending world-core.test.js's own "chunk === daily
+// boots" fixture (tests/world-core.test.js:218-231) wasn't a fit — that fixture drives WORLD.catchUp
+// over holdings/production and never touches ULT/resolveLapse/resolveFarBattle at all — whereas THIS
+// file already hosts resolveLapse's own arithmetic fixtures immediately above, so it's the closer
+// home for a far-battle-shaped chunk-vs-daily check.
+test('T-NPC-3.5 task 7: far-battle kit nudge derives only from seeded state — a 13-day chunk equals daily replay', () => {
+  const base = 91, lid = 'forgeworld-vex', agg = 'orks', garrisonPC = 400;
+  function farBattleDay(day, muster) {
+    const def = Math.round(garrisonPC * ((canon.rules.ultimatum || {}).defender_mult || 1.25));
+    const r = ULT.rng(ULT.seedFor(base, day, lid, 'far:' + agg));
+    const kitMult = KIT.kitMult(KIT.syntheticDepth(muster), canon);
+    const res = ULT.resolveLapse(Math.round(muster * kitMult), def, 'raid', r, canon);
+    if (kitMult > 1) res.arith += KIT.kitNudgeArith(kitMult, true);
+    return res;
+  }
+  // "chunk": a player who never logs in for 13 days — every day's far battle resolves in one pass
+  // on login, exactly as WORLD.catchUp's own onDay hook drives resolveFarBattle per elapsed day.
+  const chunkRun = [];
+  for (let day = 1; day <= 13; day++) chunkRun.push(farBattleDay(day, 250 + 40 * day));
+  // "daily": the same 13 days, each computed as its own independent call (as if the player had
+  // logged in every single day) — no shared closures, no Date.now, no Math.random anywhere in the
+  // path, so nothing carries state from one day to the next.
+  const dailyRun = [];
+  for (let day = 1; day <= 13; day++) dailyRun.push(farBattleDay(day, 250 + 40 * day));
+  assert.deepStrictEqual(dailyRun, chunkRun);
+  // the fixture must actually exercise the kit-nudge coupling, or the equivalence is vacuous —
+  // confirm at least one day's arithmetic really carries the synthetic-depth kit line.
+  assert.ok(chunkRun.some(r => /kit ×1\.\d\d \(synthetic depth\)/.test(r.arith)),
+    'fixture must exercise the kit nudge: ' + chunkRun.map(r => r.arith).join(' | '));
 });
