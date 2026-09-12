@@ -3606,7 +3606,53 @@ var HALL=(function(){
     if(ax.ferocity_only_win&&(a.ferocity||0)>pivot&&act!=='win'&&act!=='lawbreak'&&v>0)v=0;
     return v;
   }
-  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,rumorsFor:rumorsFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt,rungOf:rungOf,judgeAct:judgeAct};
+  /* ── T-SOC-1 B2: the CONTEST verb ──────────────────────────────────────────────
+     contestOf: the skin's own trial of worth. Every culture declares one (canon
+     Task 1); the resolver decides which engine runs it — 'brawl' is a real
+     non-lethal fight on the grid, 'match' is the seeded opposed roll below. */
+  function contestOf(ctx,canon){
+    var cul=(H(canon).culture||{})[ctx.fac]||{},c=cul.contest||{};
+    return {name:c.name||'a contest',resolver:c.resolver==='brawl'?'brawl':'match',
+            hallLaw:cul.hall_law!==false};
+  }
+  function CN(canon){return (H(canon).contest)||{};}
+  /* wagerFor: what this room plays for. Tier IS social gravity (spec §10) — the
+     institution's table is richer than the back room's. */
+  function wagerFor(ctx,canon){
+    var w=(CN(canon).wager_by_tier||{})[String(ctx.tier)];
+    return w==null?25:w;
+  }
+  /* matchResolve: the MATCH engine. One seeded stream per (seedBase, locId, day,
+     nonce) draws BOTH rolls unconditionally — the win roll and the catch roll — so
+     the stream stays stable whether or not the player cheats, and replays identically
+     forever. Cheating lifts the win odds by cheat_shift and exposes a catch roll whose
+     chance is catch_base, relieved by up to cunning_relief of itself as the culture's
+     own cunning rises past its pivot (a deceitful culture polices deceit poorly).
+     A caught cheat forfeits: the win is void and the stake is lost.
+     Acts fed to the B1 judge: win / noble_loss / cheat_clean / cheat_caught — and null
+     for an uncaught cheat that also lost, where there is nothing for the room to judge. */
+  function matchResolve(ctx,canon,opts){
+    opts=opts||{};
+    var M=CN(canon).match||{},ax=opts.axes||{};
+    var stake=opts.wager||0,cheat=!!opts.cheat;
+    var r=rng((ctx.seedBase>>>0)^hashStr('match:'+ctx.locId+':'+ctx.day+':'+(opts.nonce||'')));
+    var roll=r(),catchRoll=r();
+    var p=(M.base_win==null?0.45:M.base_win)+(cheat?(M.cheat_shift||0):0);
+    if(p>1)p=1;if(p<0)p=0;
+    var won=roll<p;
+    var caught=false;
+    if(cheat){
+      var pivot=(M.cunning_pivot==null?60:M.cunning_pivot);
+      var over=Math.max(0,Math.min(100,(ax.cunning||0)-pivot))/100;
+      var relief=1-over*(M.cunning_relief||0);
+      caught=catchRoll<((M.catch_base||0)*relief);
+    }
+    if(caught)won=false;                                  // forfeit: the win does not stand
+    var act=caught?'cheat_caught':(cheat?(won?'cheat_clean':null):(won?'win':'noble_loss'));
+    return {won:won,cheated:cheat,caught:caught,act:act,stake:stake,
+            payout:won?stake:-stake,roll:roll,catchRoll:catchRoll};
+  }
+  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,rumorsFor:rumorsFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt,rungOf:rungOf,judgeAct:judgeAct,contestOf:contestOf,wagerFor:wagerFor,matchResolve:matchResolve};
 })();
 /*</hall-core>*/
 /*<save-core>*/

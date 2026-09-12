@@ -268,3 +268,105 @@ test('rumorsFor: max=1 always returns at most one rumor even with many registers
   const rs = HALL.rumorsFor(keeper, WCTX, ctx(), D, 1);
   assert.equal(rs.length, 1);
 });
+
+const AX_PLAIN = { honor: 50, cunning: 50, ferocity: 50, pragmatism: 50, supremacism: 50 };
+const AX_SLY = { honor: 20, cunning: 95, ferocity: 50, pragmatism: 50, supremacism: 50 };
+
+test('contestOf reads the skin: name, resolver, hall-law flag', () => {
+  const we = HALL.contestOf(ctx({ fac: 'world_eaters' }), D);
+  assert.equal(we.resolver, 'brawl');
+  assert.ok(we.name.length > 2);
+  assert.equal(we.hallLaw, true);
+  const mil = HALL.contestOf(ctx({ fac: 'militarum' }), D);
+  assert.equal(mil.resolver, 'match');
+  const ork = HALL.contestOf(ctx({ fac: 'orks' }), D);
+  assert.equal(ork.hallLaw, false, 'Da Grog Den is bound by no hall law');
+});
+
+test('wagerFor climbs with the door tier', () => {
+  assert.ok(HALL.wagerFor(ctx({ tier: 1 }), D) > 0);
+  assert.ok(HALL.wagerFor(ctx({ tier: 3 }), D) > HALL.wagerFor(ctx({ tier: 1 }), D));
+});
+
+test('matchResolve is deterministic: same ctx + same nonce + same cheat flag, same result', () => {
+  const o = { wager: 50, cheat: false, nonce: 'bout1', axes: AX_PLAIN };
+  const a = HALL.matchResolve(ctx(), D, o);
+  const b = HALL.matchResolve(ctx(), D, o);
+  assert.deepEqual(a, b);
+  // and a different bout on the same night is a different draw
+  const c = HALL.matchResolve(ctx(), D, Object.assign({}, o, { nonce: 'bout2' }));
+  assert.ok(a.roll !== c.roll, 'a second bout must draw its own roll');
+});
+
+test('matchResolve honest path: win pays the stake, loss forfeits it, acts are win/noble_loss', () => {
+  let sawWin = false, sawLoss = false;
+  for (let i = 0; i < 60; i++) {
+    const r = HALL.matchResolve(ctx({ day: 40 + i }), D, { wager: 50, cheat: false, nonce: 'n', axes: AX_PLAIN });
+    assert.equal(r.cheated, false);
+    assert.equal(r.caught, false);
+    assert.equal(r.stake, 50);
+    if (r.won) { sawWin = true; assert.equal(r.act, 'win'); assert.equal(r.payout, 50); }
+    else { sawLoss = true; assert.equal(r.act, 'noble_loss'); assert.equal(r.payout, -50); }
+  }
+  assert.ok(sawWin && sawLoss, 'an honest match must be able to go either way');
+});
+
+// Ruling 2026-09-12: this pin samples 2000 draws, not 200 — the canon-tuned effect
+// (cheat_shift 0.3 vs catch_base 0.35) nets out to only ~5 points of win rate, which
+// 200 draws cannot resolve above noise (swept: n=200 fails ~20% of windows, n=2000
+// fails 0/200). Do not "tidy" this back down to 200.
+test('matchResolve: cheating raises the win rate and introduces a catch risk', () => {
+  let honestWins = 0, cheatWins = 0, caught = 0;
+  for (let i = 0; i < 2000; i++) {
+    const c = ctx({ day: 100 + i });
+    const h = HALL.matchResolve(c, D, { wager: 10, cheat: false, nonce: 'x', axes: AX_PLAIN });
+    if (h.won) honestWins++;
+    const r = HALL.matchResolve(c, D, { wager: 10, cheat: true, nonce: 'x', axes: AX_PLAIN });
+    if (r.won) cheatWins++;
+    if (r.caught) caught++;
+    // deterministic, sample-free invariant: for the same day and nonce, a cheat never
+    // loses a match the honest player would have won — its only worse outcome is
+    // getting caught.
+    if (h.won) assert.ok(r.won || r.caught,
+      'a cheat can only do worse by being caught: day ' + (100 + i));
+  }
+  assert.ok(cheatWins > honestWins, 'cheating must actually improve the odds');
+  assert.ok(caught > 0 && caught < 2000, 'catching must be a real risk, not a certainty');
+});
+
+test('matchResolve: a caught cheat forfeits the stake and is judged cheat_caught', () => {
+  let found = null;
+  for (let i = 0; i < 300 && !found; i++) {
+    const r = HALL.matchResolve(ctx({ day: 500 + i }), D, { wager: 30, cheat: true, nonce: 'c', axes: AX_PLAIN });
+    if (r.caught) found = r;
+  }
+  assert.ok(found, 'expected at least one caught cheat in 300 draws');
+  assert.equal(found.won, false, 'a caught cheat never keeps the win');
+  assert.equal(found.act, 'cheat_caught');
+  assert.equal(found.payout, -30);
+});
+
+test('matchResolve: an uncaught winning cheat reads cheat_clean; an uncaught losing cheat is judged not at all', () => {
+  let clean = null, quiet = null;
+  for (let i = 0; i < 300 && !(clean && quiet); i++) {
+    const r = HALL.matchResolve(ctx({ day: 900 + i }), D, { wager: 20, cheat: true, nonce: 'q', axes: AX_SLY });
+    if (r.caught) continue;
+    if (r.won && !clean) clean = r;
+    if (!r.won && !quiet) quiet = r;
+  }
+  assert.ok(clean, 'expected an uncaught winning cheat');
+  assert.equal(clean.act, 'cheat_clean');
+  assert.equal(clean.payout, 20);
+  assert.ok(quiet, 'expected an uncaught losing cheat');
+  assert.equal(quiet.act, null, 'nobody saw it and nobody won — there is nothing to judge');
+});
+
+test('matchResolve: a cunning culture catches its own cheats less often', () => {
+  let plain = 0, sly = 0;
+  for (let i = 0; i < 200; i++) {
+    const c = ctx({ day: 2000 + i });
+    if (HALL.matchResolve(c, D, { wager: 10, cheat: true, nonce: 'k', axes: AX_PLAIN }).caught) plain++;
+    if (HALL.matchResolve(c, D, { wager: 10, cheat: true, nonce: 'k', axes: AX_SLY }).caught) sly++;
+  }
+  assert.ok(sly < plain, 'high cunning must relieve the catch risk (' + sly + ' vs ' + plain + ')');
+});
