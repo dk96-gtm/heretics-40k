@@ -3652,7 +3652,30 @@ var HALL=(function(){
     return {won:won,cheated:cheat,caught:caught,act:act,stake:stake,
             payout:won?stake:-stake,roll:roll,catchRoll:catchRoll};
   }
-  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,rumorsFor:rumorsFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt,rungOf:rungOf,judgeAct:judgeAct,contestOf:contestOf,wagerFor:wagerFor,matchResolve:matchResolve};
+  /* brawlAct: how the room judges a concluded bout. The BRAWL engine is a real fight,
+     so the classification reads what actually happened on the grid rather than a roll:
+     a win is a win; losing after drawing blood is the NOBLE LOSS the honor-heavy
+     cultures respect; being beaten without landing a wound is simply not a story. */
+  function brawlAct(mineWon,enemyHurt){
+    return mineWon?'win':(enemyHurt?'noble_loss':null);
+  }
+  /* lawPenalty: the Hall is bound ground (spec §4). Violence inside the contest frame
+     is sacred; violence outside it costs standing with the ruling faction and shuts the
+     door for a window of days. A skin with hall_law:false (Da Grog Den) returns null —
+     there is no law there to break, because the unsanctioned scrap IS the contest. */
+  function lawPenalty(ctx,canon){
+    if(!contestOf(ctx,canon).hallLaw)return null;
+    var L=(H(canon).law)||{};
+    return {standing:(L.standing_penalty==null?-1:L.standing_penalty),
+            days:(L.barred_days==null?5:L.barred_days)};
+  }
+  /* barCheck: is this door shut to us today, and for how much longer. Pure read of the
+     plain {locId:untilDay} ledger the glue persists at S.social.bar. */
+  function barCheck(bar,locId,day){
+    var until=(bar||{})[locId]||0;
+    return (until>day)?{barred:true,left:until-day}:{barred:false,left:0};
+  }
+  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,rumorsFor:rumorsFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt,rungOf:rungOf,judgeAct:judgeAct,contestOf:contestOf,wagerFor:wagerFor,matchResolve:matchResolve,brawlAct:brawlAct,lawPenalty:lawPenalty,barCheck:barCheck};
 })();
 /*</hall-core>*/
 /*<save-core>*/

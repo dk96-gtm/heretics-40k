@@ -370,3 +370,27 @@ test('matchResolve: a cunning culture catches its own cheats less often', () => 
   }
   assert.ok(sly < plain, 'high cunning must relieve the catch risk (' + sly + ' vs ' + plain + ')');
 });
+
+test('brawlAct: a win is a win; a bloodied loss is noble; a bloodless loss earns nothing', () => {
+  assert.equal(HALL.brawlAct(true, true), 'win');
+  assert.equal(HALL.brawlAct(true, false), 'win');
+  assert.equal(HALL.brawlAct(false, true), 'noble_loss');
+  assert.equal(HALL.brawlAct(false, false), null);
+});
+
+test('lawPenalty: standing hit + barred days under hall law, nothing in Da Grog Den', () => {
+  const p = HALL.lawPenalty(ctx({ fac: 'militarum' }), D);
+  assert.ok(p, 'a lawful hall must punish un-challenged violence');
+  assert.ok(p.standing < 0, 'the ruling faction takes offence');
+  assert.ok(p.days >= 1, 'and shuts the door for a while');
+  assert.equal(HALL.lawPenalty(ctx({ fac: 'orks' }), D), null, 'Da Grog Den has no hall law to break');
+});
+
+test('barCheck: reads the bar ledger and counts the days left', () => {
+  const bar = { 'vigilus/sanctum': 45 };
+  assert.deepEqual(HALL.barCheck(bar, 'vigilus/sanctum', 40), { barred: true, left: 5 });
+  assert.deepEqual(HALL.barCheck(bar, 'vigilus/sanctum', 45), { barred: false, left: 0 });
+  assert.deepEqual(HALL.barCheck(bar, 'vigilus/sanctum', 99), { barred: false, left: 0 });
+  assert.deepEqual(HALL.barCheck(bar, 'somewhere/else', 40), { barred: false, left: 0 });
+  assert.deepEqual(HALL.barCheck(null, 'vigilus/sanctum', 40), { barred: false, left: 0 });
+});
