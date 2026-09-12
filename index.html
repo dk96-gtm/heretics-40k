@@ -7749,7 +7749,8 @@ var GLOSS={
  'Offering':'The Hall\'s social gesture — each culture accepts its own (a round, a data-tithe, a worthy skull, a captive). Paying it warms a patron\'s disposition.',
  'Rumor':'Hall talk is TRUE — every rumor cites live world state: war clocks, sector conditions, posted work, or this ground\'s own chronicle.',
  'Regular':'The Hall\'s persistent fixtures, present only during their scheduled hours. Building trust with a Regular opens doors — sanctuary from the hunt, introductions to key players, training, even a title fight.',
- 'Trust':'The 4-rung ladder governing your standing with each Regular — how you climb depends on the culture\'s judge: doctrine axes (ferocity, cunning, honor, pragmatism, supremacism) tilt what counts as worthy.'};
+ 'Trust':'The 4-rung ladder governing your standing with each Regular — how you climb depends on the culture\'s judge: doctrine axes (ferocity, cunning, honor, pragmatism, supremacism) tilt what counts as worthy.',
+ 'Contest':'the culture\'s own trial of worth — a brawl or a match. Win, lose well, or cheat: the room judges all three, and the judging is the culture\'s, not yours.'};
 /* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
 function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
  var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');
@@ -8067,6 +8068,44 @@ function hallCommune(p,hc){
  rec.communed[hc.ctx.day]=r.register;rec.lastDay=hc.ctx.day;
  persist();
 }
+/* T-SOC-1 B2: CONTEST — the culture's own trial of worth. One entry point; the skin's
+   declared resolver decides which engine runs (canon rules.hall.culture[fac].contest).
+   Rung gate (see the plan's open-decision note): a CHALLENGE is open to anyone — that is
+   deliberately how a high-ferocity culture, whose judge zeroes every non-win act, can ever
+   climb at all — but the WAGERED bout is the Champion's rung-② unlock. */
+function hallWagerFor(hc,rg){
+ var key=hc.ctx.locId+'/'+rg.role,rec=(S.social.reg||{})[key]||{score:0};
+ var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
+ var min=((D.rules.hall.contest||{}).wagered_rung_min);
+ return (rung.index>=(min==null?1:min))?HALL.wagerFor(hc.ctx,D):0;
+}
+function hallContest(rg,hc,cheat){
+ var con=HALL.contestOf(hc.ctx,D);
+ if(con.resolver==='brawl')hallBout(rg,hc);
+ else hallMatch(rg,hc,!!cheat);
+}
+function hallMatch(rg,hc,cheat){
+ var out=document.getElementById('hallout');if(!rg||!out)return;
+ var con=HALL.contestOf(hc.ctx,D),wager=hallWagerFor(hc,rg);
+ if(wager&&(S.cur||0)<wager){T('You cannot cover the wager — '+wager+' '+curName()+'.');return}
+ /* nonce: one bout per regular per day is a distinct draw, and a rematch after a
+    resolved bout draws again — the counter lives on the trust record's act tally, which
+    is already persisted, so a reload never re-rolls a bout that already happened. */
+ var key=hc.ctx.locId+'/'+rg.role;
+ var rec=S.social.reg[key]||(S.social.reg[key]={score:0,acts:{},lastSeen:0});
+ var n=(rec.acts.win||0)+(rec.acts.noble_loss||0)+(rec.acts.cheat_clean||0)+(rec.acts.cheat_caught||0);
+ var res=HALL.matchResolve(hc.ctx,D,{wager:wager,cheat:!!cheat,nonce:rg.role+':'+n,
+   axes:hallAxesOf(hc.ctx.fac)});
+ if(wager)S.cur=Math.max(0,(S.cur||0)+res.payout);
+ var rung=res.act?hallTrustRecord(hc,rg.role,res.act):HALL.rungOf(rec.score||0,hc.ctx,D);
+ var line=esc(con.name)+' — '
+  +(res.caught?'caught. The room saw the trick, and the '+esc(rg.name)+' says nothing at all.'
+   :res.won?'you take it.':'the '+esc(rg.name)+' takes it.');
+ if(wager)line+=' Stake '+(res.payout>0?'won +':'lost ')+Math.abs(res.payout)+' '+curName()+'.';
+ line+=' <span style="color:var(--dim)">('+esc(rung.name)+')</span>';
+ out.innerHTML=line;
+ rW();persist();
+}
 /* T-SOC-1 deviation: spendStock(pid,res) is a bare unconditional subtract (no bounds
    check, no return value — grep confirmed at its definition) — the established
    caller convention (Exchange sell flow, ~L7488) is to re-read stockOf() and gate
@@ -8254,9 +8293,16 @@ function renderDoor(dr,h){var c=E('div','card');
      var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
      var _regTip='<b>Regular</b> — '+GLOSS['Regular'];
      var _trustTip='<b>Trust</b> — '+GLOSS['Trust'];
+     var _con=HALL.contestOf(hc.ctx,D),_wag=hallWagerFor(hc,rg),_ctl='';
+     if(rg.role==='champion'){
+       var _conTip='<b>Contest</b> — '+GLOSS['Contest'];
+       _ctl=' <button class="btn gh sm" data-hallcon="'+esc(rg.role)+'"><span class="tipable" data-tip="'+_conTip.replace(/"/g,'&quot;')+'">'+esc(_con.name)+'</span>'
+         +(_wag?' ('+_wag+' '+curName()+')':' (no stake)')+'</button>';
+       if(_con.resolver==='match')_ctl+=' <button class="btn gh sm" data-hallcheat="'+esc(rg.role)+'">Palm the odds</button>';
+     }
      return '<div class="lrow" style="border-left:2px solid var(--acc)"><span class="tipable" data-tip="'+_regTip.replace(/"/g,'&quot;')+'">★ '+esc(rg.name)+'</span>'
        +' <span style="color:var(--dim)">— <span class="tipable" data-tip="'+_trustTip.replace(/"/g,'&quot;')+'">'+esc(rung.name)+'</span></span>'
-       +' <button class="btn gh sm" data-hallcom="reg:'+esc(rg.role)+'">'+esc(cul.commune||'Talk')+'</button></div>';
+       +' <button class="btn gh sm" data-hallcom="reg:'+esc(rg.role)+'">'+esc(cul.commune||'Talk')+'</button>'+_ctl+'</div>';
    }).join('');
    hh+=pats.length?pats.map(function(p,i){var _offTip='<b>Offering</b> — '+GLOSS['Offering'];return '<div class="lrow" style="cursor:default">'+esc(p.name)+' — <span style="color:var(--dim)">'+esc(p.role)+'</span>'
      +' <button class="btn gh sm" data-hallcom="'+i+'">'+esc(cul.commune||'Talk')+'</button>'
@@ -8274,6 +8320,12 @@ function renderDoor(dr,h){var c=E('div','card');
    };});
    c.querySelectorAll('[data-halloff]').forEach(function(b){b.onclick=function(){
      hallOffer(pats[+b.dataset.halloff],hc,off);};});
+   c.querySelectorAll('[data-hallcon]').forEach(function(b){b.onclick=function(){
+     var rg=null;regs.forEach(function(r){if(r.role===b.dataset.hallcon)rg=r;});
+     hallContest(rg,hc,false);};});
+   c.querySelectorAll('[data-hallcheat]').forEach(function(b){b.onclick=function(){
+     var rg=null;regs.forEach(function(r){if(r.role===b.dataset.hallcheat)rg=r;});
+     hallContest(rg,hc,true);};});
   }
  }
  else if(kind==='warp_gate'){c.insertAdjacentHTML('beforeend','<div class="d">A tear in reality — passage through a linked Warp Gate is <b>free</b>, skipping the travel ladder entirely. No linked gates are charted in this region of space yet.</div>');
