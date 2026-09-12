@@ -2,8 +2,8 @@
  "meta": {
   "name": "Heretics 40K",
   "format": "heretics-data",
-  "version": "1.40",
-  "updated": "2026-09-06",
+  "version": "1.41",
+  "updated": "2026-09-12",
   "notes": [
    "Single source of truth for all game content and rules. The engine (heretics-40k engine HTML) renders this file.",
    "Terminology law: always 'model', never 'chassis'.",
@@ -23,7 +23,8 @@
    "v1.31: T-MSN-1C streaks + 18 signature missions - S.progress.streaks (4 keys, conclude tick), faction-gated generation (one signature row per board), kill filters melee/faction/capture, conclude constraints, collect carriers, signature_premium 1.5.",
    "v1.34: T-NPC-4 personality combat doctrine — ai.behavior_matrix (20 faction rows, 5 axes as base/spread/plasticity/floor/ceiling) + rules.doctrine (styles onslaught/culling/decapitation, retreat curve, honor gates, lapse nudge tunables).",
    "v1.39: T-NPC-3.5 full-loadout NPC combat — rules.npc_kit (rank depth ladder) + rules.npc_brain (score bands, draw, tilt, lapse kit nudge); all values flagged tunables.",
-   "v1.40: Hall slice B1 — rules.hall.regulars (3 roles: host/broker/champion, names per faction, weights, phase blocks) + rules.hall.trust (4-rung ladder stranger→sworn, 9 act_base weights, judge axes, 3 faction overrides, Tyranid recognition ladder)."
+   "v1.40: Hall slice B1 — rules.hall.regulars (3 roles: host/broker/champion, names per faction, weights, phase blocks) + rules.hall.trust (4-rung ladder stranger→sworn, 9 act_base weights, judge axes, 3 faction overrides, Tyranid recognition ladder).",
+   "v1.41: Hall slice B2 (T-SOC-1 B2, canon-only) — per-skin rules.hall.culture[fac].contest (name + brawl|match resolver, 8 brawl / 12 match) and hall_law flag (true everywhere except orks) for all 20 factions; rules.hall.contest (wager-by-tier ladder, match base_win/cheat_shift/catch_base/cunning relief), rules.hall.law (barred_days + standing_penalty), rules.hall.champion (rung-gated training buff + title fight) — consumed by Tasks 2-7, nothing reads it yet."
   ],
   "migration": {
    "done": [
@@ -1441,26 +1442,26 @@
     "Besieged":[{"role":"Deserter","registers":["war","ground"]},{"role":"Hoarder","registers":["trade","state"]}]
    },
    "culture":{
-    "black_legion":{"flavor":"Claimed glories line the walls; every trophy is a threat.","commune":"Trade words","offer_label":"Show plunder","offer":{"kind":"cur"}},
-    "death_guard":{"flavor":"The Grandfather's table groans — jolly, generous, rotting.","commune":"Share the table","offer_label":"Share a brew","offer":{"kind":"cur"}},
-    "world_eaters":{"flavor":"The pit is the parlor. Talk quickly.","commune":"Talk between bouts","offer_label":"Toss a worthy skull","offer":{"kind":"item","accepts":"REMAINS"}},
-    "thousand_sons":{"flavor":"Dust and whispers; every shelf watches you back.","commune":"Whisper","offer_label":"Offer a secret","offer":{"kind":"cur"}},
-    "emperors_children":{"flavor":"Exquisite excess, arranged just so.","commune":"Mingle","offer_label":"Gift a novel sensation","offer":{"kind":"cur"}},
-    "daemons":{"flavor":"The Carnival pitches where the veil is thin. Everything is for sale.","commune":"Listen to the barkers","offer_label":"Feed the Carnival","offer":{"kind":"cur"}},
-    "astartes":{"flavor":"Feast benches and old sagas; deeds are the only coin that matters.","commune":"Hear the sagas","offer_label":"Stand the feast","offer":{"kind":"cur"}},
-    "militarum":{"flavor":"Amasec, dice, smokes — the one honest pub in the galaxy.","commune":"Shoot the breeze","offer_label":"Buy a round","offer":{"kind":"cur"}},
-    "mechanicus":{"flavor":"The Communion hums; data flows like oil, oil like data.","commune":"Exchange data","offer_label":"Tithe a data-morsel","offer":{"kind":"cur"}},
-    "sororitas":{"flavor":"The Refectory is quiet devotion; even the bread is a hymn.","commune":"Sit the vigil","offer_label":"Light a candle","offer":{"kind":"cur"}},
-    "custodes":{"flavor":"A sparse hall of watchers. Few words, all of them weighed.","commune":"Stand the watch","offer_label":"Give an account of duty","offer":{"kind":"cur"}},
-    "tyranids":{"flavor":"The pool stirs. It has already tasted you.","commune":"Touch the synapse","offer_label":"Yield biomass","offer":{"kind":"res","res":"Food"}},
-    "orks":{"flavor":"Grog, squig-bets, and at least one proppa scrap a night.","commune":"Talk loud","offer_label":"Grog for da ladz","offer":{"kind":"cur"}},
-    "necrons":{"flavor":"The Court remembers protocol older than your species.","commune":"Observe protocol","offer_label":"Tribute of remembrance","offer":{"kind":"cur"}},
-    "aeldari":{"flavor":"Paths cross beneath the Dome; memory-songs hang in the air.","commune":"Share a memory-song","offer_label":"Weave a memory","offer":{"kind":"cur"}},
-    "drukhari":{"flavor":"Box seats above the agonies. Applause is optional; attention is not.","commune":"Trade barbs","offer_label":"Present a captive","offer":{"kind":"item","accepts":"CAPTIVE"}},
-    "tau":{"flavor":"The communal meal is earnest, warm, and quietly watched.","commune":"Join the discourse","offer_label":"Fund the communal meal","offer":{"kind":"cur"}},
-    "gsc":{"flavor":"The family gathers below; everyone here is a cousin, somehow.","commune":"Meet the family","offer_label":"Tithe to the family fund","offer":{"kind":"cur"}},
-    "votann":{"flavor":"The Hearthhold: ancestors watching, grudges ledgered, ale honest.","commune":"Drink with the kin","offer_label":"Toast the ancestors","offer":{"kind":"cur"}},
-    "harlequins":{"flavor":"The Masque is already underway. You may already be in it.","commune":"Watch the performance","offer_label":"Play the role offered","offer":{"kind":"cur"}}
+    "black_legion":{"flavor":"Claimed glories line the walls; every trophy is a threat.","commune":"Trade words","offer_label":"Show plunder","offer":{"kind":"cur"},"contest":{"name":"Trophy Hall blade-duel","resolver":"brawl"},"hall_law":true},
+    "death_guard":{"flavor":"The Grandfather's table groans — jolly, generous, rotting.","commune":"Share the table","offer_label":"Share a brew","offer":{"kind":"cur"},"contest":{"name":"The endurance table","resolver":"match"},"hall_law":true},
+    "world_eaters":{"flavor":"The pit is the parlor. Talk quickly.","commune":"Talk between bouts","offer_label":"Toss a worthy skull","offer":{"kind":"item","accepts":"REMAINS"},"contest":{"name":"Skullpit bout","resolver":"brawl"},"hall_law":true},
+    "thousand_sons":{"flavor":"Dust and whispers; every shelf watches you back.","commune":"Whisper","offer_label":"Offer a secret","offer":{"kind":"cur"},"contest":{"name":"Riddle-duel","resolver":"match"},"hall_law":true},
+    "emperors_children":{"flavor":"Exquisite excess, arranged just so.","commune":"Mingle","offer_label":"Gift a novel sensation","offer":{"kind":"cur"},"contest":{"name":"One-upmanship","resolver":"match"},"hall_law":true},
+    "daemons":{"flavor":"The Carnival pitches where the veil is thin. Everything is for sale.","commune":"Listen to the barkers","offer_label":"Feed the Carnival","offer":{"kind":"cur"},"contest":{"name":"Soul-wager","resolver":"match"},"hall_law":true},
+    "astartes":{"flavor":"Feast benches and old sagas; deeds are the only coin that matters.","commune":"Hear the sagas","offer_label":"Stand the feast","offer":{"kind":"cur"},"contest":{"name":"Cage spar","resolver":"brawl"},"hall_law":true},
+    "militarum":{"flavor":"Amasec, dice, smokes — the one honest pub in the galaxy.","commune":"Shoot the breeze","offer_label":"Buy a round","offer":{"kind":"cur"},"contest":{"name":"Dice at the Mess","resolver":"match"},"hall_law":true},
+    "mechanicus":{"flavor":"The Communion hums; data flows like oil, oil like data.","commune":"Exchange data","offer_label":"Tithe a data-morsel","offer":{"kind":"cur"},"contest":{"name":"Logic-bout","resolver":"match"},"hall_law":true},
+    "sororitas":{"flavor":"The Refectory is quiet devotion; even the bread is a hymn.","commune":"Sit the vigil","offer_label":"Light a candle","offer":{"kind":"cur"},"contest":{"name":"Trial of devotion","resolver":"match"},"hall_law":true},
+    "custodes":{"flavor":"A sparse hall of watchers. Few words, all of them weighed.","commune":"Stand the watch","offer_label":"Give an account of duty","offer":{"kind":"cur"},"contest":{"name":"The forms","resolver":"brawl"},"hall_law":true},
+    "tyranids":{"flavor":"The pool stirs. It has already tasted you.","commune":"Touch the synapse","offer_label":"Yield biomass","offer":{"kind":"res","res":"Food"},"contest":{"name":"Dominance display","resolver":"match"},"hall_law":true},
+    "orks":{"flavor":"Grog, squig-bets, and at least one proppa scrap a night.","commune":"Talk loud","offer_label":"Grog for da ladz","offer":{"kind":"cur"},"contest":{"name":"A proppa scrap","resolver":"brawl"},"hall_law":false},
+    "necrons":{"flavor":"The Court remembers protocol older than your species.","commune":"Observe protocol","offer_label":"Tribute of remembrance","offer":{"kind":"cur"},"contest":{"name":"Regicide","resolver":"match"},"hall_law":true},
+    "aeldari":{"flavor":"Paths cross beneath the Dome; memory-songs hang in the air.","commune":"Share a memory-song","offer_label":"Weave a memory","offer":{"kind":"cur"},"contest":{"name":"Blade-art","resolver":"brawl"},"hall_law":true},
+    "drukhari":{"flavor":"Box seats above the agonies. Applause is optional; attention is not.","commune":"Trade barbs","offer_label":"Present a captive","offer":{"kind":"item","accepts":"CAPTIVE"},"contest":{"name":"Gallery knife-duel","resolver":"brawl"},"hall_law":true},
+    "tau":{"flavor":"The communal meal is earnest, warm, and quietly watched.","commune":"Join the discourse","offer_label":"Fund the communal meal","offer":{"kind":"cur"},"contest":{"name":"Strategy game","resolver":"match"},"hall_law":true},
+    "gsc":{"flavor":"The family gathers below; everyone here is a cousin, somehow.","commune":"Meet the family","offer_label":"Tithe to the family fund","offer":{"kind":"cur"},"contest":{"name":"Kin-cards","resolver":"match"},"hall_law":true},
+    "votann":{"flavor":"The Hearthhold: ancestors watching, grudges ledgered, ale honest.","commune":"Drink with the kin","offer_label":"Toast the ancestors","offer":{"kind":"cur"},"contest":{"name":"Grudge-bout","resolver":"brawl"},"hall_law":true},
+    "harlequins":{"flavor":"The Masque is already underway. You may already be in it.","commune":"Watch the performance","offer_label":"Play the role offered","offer":{"kind":"cur"},"contest":{"name":"Dance-trial","resolver":"match"},"hall_law":true}
    },
    "names":{
     "black_legion":{"first":["Vharkos","Dessek","Morvael","Skarn","Ulyx","Hexad"],"epithets":["the Unbowed","Iron-Tongue","of the Ninth Siege","the Twice-Marked"]},
@@ -1539,6 +1540,16 @@
      "harlequins":{"note":"a stylish caught-cheat still climbs","cheat_caught":1}
     },
     "tyranid":{"rungs":["prey_shaped","tasted","patterned","assimilated_adjacent"],"recognition":true,"offer":2,"win":2}
+   },
+   "contest":{
+    "wagered_rung_min":1,
+    "wager_by_tier":{"1":25,"2":50,"3":100},
+    "match":{"base_win":0.45,"cheat_shift":0.30,"catch_base":0.35,"cunning_pivot":60,"cunning_relief":0.6}
+   },
+   "law":{"barred_days":5,"standing_penalty":-1},
+   "champion":{
+    "train":{"rung_min":2,"tag":"Rally","tier":1,"cost_mult":3,"days":3},
+    "title":{"rung_min":3,"standing_notch":1,"stake_mult":4}
    }
   }
  },

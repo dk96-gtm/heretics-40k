@@ -6,8 +6,8 @@ const D = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-da
 
 const FACTIONS = D.factions.map(f => f.id);
 
-test('canon: version is 1.40', () => {
-  assert.equal(D.meta.version, '1.40');
+test('canon: version is 1.41', () => {
+  assert.equal(D.meta.version, '1.41');
 });
 
 test('hall door row exists with 20 per-faction skins and 3 tier lines', () => {
@@ -102,4 +102,59 @@ test('rules.hall.trust: rungs, thresholds, act weights, judge axis, overrides, t
   for (const ov of ['daemons', 'necrons', 'harlequins']) assert.ok(T.overrides[ov], 'override missing: ' + ov);
   assert.deepEqual(T.tyranid.rungs, ['prey_shaped', 'tasted', 'patterned', 'assimilated_adjacent']);
   assert.equal(T.tyranid.recognition, true);
+});
+
+test('every hall skin declares a contest (name + legal resolver) and a hall-law flag', () => {
+  const cul = D.rules.hall.culture;
+  for (const f of FACTIONS) {
+    const row = cul[f];
+    assert.ok(row, 'culture row missing: ' + f);
+    assert.ok(row.contest && typeof row.contest.name === 'string' && row.contest.name.length > 2,
+      'contest name missing: ' + f);
+    assert.ok(row.contest.resolver === 'brawl' || row.contest.resolver === 'match',
+      'contest resolver must be brawl|match: ' + f);
+    assert.equal(typeof row.hall_law, 'boolean', 'hall_law flag missing: ' + f);
+  }
+  // spec §4: both engines are actually used across the 20 cultures
+  const resolvers = FACTIONS.map(f => cul[f].contest.resolver);
+  assert.ok(resolvers.indexOf('brawl') >= 0 && resolvers.indexOf('match') >= 0);
+  // spec §4: Da Grog Den is the authored exception — brawling IS the contest there
+  assert.equal(cul.orks.hall_law, false, 'orks must set hall_law:false');
+  assert.equal(cul.orks.contest.resolver, 'brawl');
+  const lawless = FACTIONS.filter(f => cul[f].hall_law === false);
+  assert.deepEqual(lawless, ['orks'], 'orks is the only authored hall-law exception');
+});
+
+test('rules.hall.contest: wager ladder by tier, match odds, cheat + catch curve', () => {
+  const C = D.rules.hall.contest;
+  assert.ok(C, 'rules.hall.contest missing');
+  assert.equal(C.wagered_rung_min, 1);
+  for (const t of ['1', '2', '3']) assert.ok(C.wager_by_tier[t] > 0, 'wager missing for tier ' + t);
+  assert.ok(C.wager_by_tier['3'] > C.wager_by_tier['1'], 'wagers must climb with tier');
+  const M = C.match;
+  assert.ok(M.base_win > 0 && M.base_win < 1, 'base_win must be a probability');
+  assert.ok(M.cheat_shift > 0, 'cheating must improve the odds');
+  assert.ok(M.base_win + M.cheat_shift <= 1, 'cheating must not guarantee a win');
+  assert.ok(M.catch_base > 0 && M.catch_base < 1, 'catch_base must be a probability');
+  assert.ok(M.cunning_pivot >= 0 && M.cunning_pivot <= 100);
+  assert.ok(M.cunning_relief > 0 && M.cunning_relief <= 1, 'cunning relief is a fraction of catch_base');
+});
+
+test('rules.hall.law: a barred window and a negative standing notch', () => {
+  const L = D.rules.hall.law;
+  assert.ok(L, 'rules.hall.law missing');
+  assert.ok(L.barred_days >= 1, 'barred_days must bar for at least a day');
+  assert.ok(L.standing_penalty < 0, 'hall-law standing penalty must be negative');
+});
+
+test('rules.hall.champion: rung-gated training buff and title fight', () => {
+  const CH = D.rules.hall.champion;
+  assert.ok(CH, 'rules.hall.champion missing');
+  assert.equal(CH.train.rung_min, 2);          // TRUSTED
+  assert.equal(CH.title.rung_min, 3);          // SWORN
+  assert.ok(D.rules.hall.trust.rungs.length === 4, 'rung gates index into the B1 ladder');
+  assert.ok(CH.train.cost_mult > 0 && CH.train.days > 0, 'training must cost and must expire');
+  assert.equal(typeof CH.train.tag, 'string');
+  assert.ok(CH.title.standing_notch > 0, 'a title win notches standing upward');
+  assert.ok(CH.title.stake_mult > 1, 'a title fight stakes more than a normal bout');
 });

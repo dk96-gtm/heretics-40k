@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const D = require('../heretics-40k-data-v1.json');
 
-test('meta.version is 1.40', () => { assert.strictEqual(D.meta.version, '1.40'); });
+test('meta.version is 1.41', () => { assert.strictEqual(D.meta.version, '1.41'); });
 
 test('rules.npc_kit shape', () => {
   const k = D.rules.npc_kit;
