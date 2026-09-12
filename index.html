@@ -8088,13 +8088,16 @@ function hallMatch(rg,hc,cheat){
  var out=document.getElementById('hallout');if(!rg||!out)return;
  var con=HALL.contestOf(hc.ctx,D),wager=hallWagerFor(hc,rg);
  if(wager&&(S.cur||0)<wager){T('You cannot cover the wager — '+wager+' '+curName()+'.');return}
- /* nonce: one bout per regular per day is a distinct draw, and a rematch after a
-    resolved bout draws again — the counter lives on the trust record's act tally, which
-    is already persisted, so a reload never re-rolls a bout that already happened. */
+ /* nonce: every bout — judged or not — is a distinct draw. rec.bouts advances
+    unconditionally before the resolve, including on the null-act outcome (an uncaught
+    cheat that also lost, where there is nothing for the room to judge and rec.acts does
+    not move) — deriving the nonce from rec.acts instead would replay that exact loss
+    forever. rec.bouts is persisted with S.social.reg, so a reload never re-rolls a bout
+    that already happened. */
  var key=hc.ctx.locId+'/'+rg.role;
  var rec=S.social.reg[key]||(S.social.reg[key]={score:0,acts:{},lastSeen:0});
- var n=(rec.acts.win||0)+(rec.acts.noble_loss||0)+(rec.acts.cheat_clean||0)+(rec.acts.cheat_caught||0);
- var res=HALL.matchResolve(hc.ctx,D,{wager:wager,cheat:!!cheat,nonce:rg.role+':'+n,
+ rec.bouts=(rec.bouts||0)+1;
+ var res=HALL.matchResolve(hc.ctx,D,{wager:wager,cheat:!!cheat,nonce:rg.role+':'+rec.bouts,
    axes:hallAxesOf(hc.ctx.fac)});
  if(wager)S.cur=Math.max(0,(S.cur||0)+res.payout);
  var rung=res.act?hallTrustRecord(hc,rg.role,res.act):HALL.rungOf(rec.score||0,hc.ctx,D);
