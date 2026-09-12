@@ -394,3 +394,22 @@ test('barCheck: reads the bar ledger and counts the days left', () => {
   assert.deepEqual(HALL.barCheck(bar, 'somewhere/else', 40), { barred: false, left: 0 });
   assert.deepEqual(HALL.barCheck(null, 'vigilus/sanctum', 40), { barred: false, left: 0 });
 });
+
+test('trainOffer is gated at the canon rung and prices off the tier wager', () => {
+  assert.equal(HALL.trainOffer(ctx(), D, 0), null, 'a stranger buys no training');
+  assert.equal(HALL.trainOffer(ctx(), D, 1), null, 'nor does an acquaintance');
+  const t = HALL.trainOffer(ctx({ tier: 2 }), D, 2);
+  assert.ok(t, 'TRUSTED unlocks training');
+  assert.equal(typeof t.tag, 'string');
+  assert.ok(t.tier >= 1);
+  assert.ok(t.days >= 1, 'the buff must expire — no permanent creep');
+  assert.equal(t.cost, HALL.wagerFor(ctx({ tier: 2 }), D) * D.rules.hall.champion.train.cost_mult);
+  const t3 = HALL.trainOffer(ctx({ tier: 3 }), D, 3);
+  assert.ok(t3.cost > t.cost, 'the institution charges more than the establishment');
+});
+
+test('titleGate opens only at the top rung', () => {
+  assert.equal(HALL.titleGate(0, D), false);
+  assert.equal(HALL.titleGate(2, D), false);
+  assert.equal(HALL.titleGate(3, D), true);
+});

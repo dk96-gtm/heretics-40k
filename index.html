@@ -3727,7 +3727,23 @@ var HALL=(function(){
     var until=(bar||{})[locId]||0;
     return (until>day)?{barred:true,left:until-day}:{barred:false,left:0};
   }
-  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,rumorsFor:rumorsFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt,rungOf:rungOf,judgeAct:judgeAct,contestOf:contestOf,wagerFor:wagerFor,matchResolve:matchResolve,brawlAct:brawlAct,lawPenalty:lawPenalty,barCheck:barCheck};
+  /* trainOffer: the Champion's rung-③ service (spec §6) — a purchasable, EXPIRING
+     combat buff, never a permanent gain. Priced off the room's own wager ladder so a
+     grander hall trains dearer. Returns null below the canon rung gate. */
+  function trainOffer(ctx,canon,rungIndex){
+    var T=((H(canon).champion)||{}).train||{};
+    if(rungIndex<(T.rung_min==null?2:T.rung_min))return null;
+    return {tag:T.tag||'Rally',tier:T.tier||1,days:T.days||3,
+            cost:wagerFor(ctx,canon)*(T.cost_mult||3)};
+  }
+  /* titleGate: the rung-④ payoff — beat them in their own form. Design law (spec §6):
+     rung ④ is never a bigger discount, always a bridge into another system. This one
+     bridges into the standing ledger. */
+  function titleGate(rungIndex,canon){
+    var TI=((H(canon).champion)||{}).title||{};
+    return rungIndex>=(TI.rung_min==null?3:TI.rung_min);
+  }
+  return {rng:rng,hashStr:hashStr,patronsAt:patronsAt,poolOf:poolOf,crowdSize:crowdSize,rumorFor:rumorFor,rumorsFor:rumorsFor,moodEventAt:moodEventAt,offerEval:offerEval,regularsAt:regularsAt,rungOf:rungOf,judgeAct:judgeAct,contestOf:contestOf,wagerFor:wagerFor,matchResolve:matchResolve,brawlAct:brawlAct,lawPenalty:lawPenalty,barCheck:barCheck,trainOffer:trainOffer,titleGate:titleGate};
 })();
 /*</hall-core>*/
 /*<save-core>*/
@@ -4158,6 +4174,17 @@ function seedCombat(t,pid,l,npcId,force,missionParams,missionTarget){
  for(var k in g.C)C[k]=g.C[k];
  pools[host.name]=g.ap;
  if(t.forces.indexOf(host.name)<0)t.forces.push(host.name);
+ // T-SOC-1 B2: a purchased Hall training rides the next fight, then is spent. Placed
+ // here — after C holds every combatant that will actually fight, past every earlier
+ // early-return (no idle roster, no garrison host, no spawned host) — so a buff is
+ // only ever spent when a real combat thread is actually being seeded (Ruling 12).
+ var _tr=S.social&&S.social.train;
+ if(_tr&&_tr.untilDay>_kitDay){
+  for(var _tk in C){if(C[_tk].gen)continue;
+   C[_tk].conds.push({tag:_tr.tag,tier:_tr.tier,left:THREAD.condDur(_tr.tag,_tr.tier),
+     src:'Hall training',el:null,nl:false,nr:false});}
+  S.social.train=null;
+ }else if(_tr)S.social.train=null;                 // lapsed unused
  t.seedState={pools:pools,combatants:C,joined:false};
 }
 /* T-NPC-3 N2 task 5: the faction of whichever host seedCombat actually seeded onto a thread —
@@ -5257,6 +5284,19 @@ function concludeThread(t,oc){
   t.posts.push({who:'THE HALL',tag:'',stamp:nowStamp(),
    body:'⚁ THE BOUT — '+(mineWon?'you hold the floor.':_hurt?'you are put down, but you made them work for it.':'you are put down without landing a blow.')
      +(_hb.wager?(mineWon?' The stake comes back doubled: +'+(_hb.wager*2)+'.':' The stake stays on the table.'):'')});
+  // T-SOC-1 B2: the rung-④ payoff. Winning a title fight notches standing with the
+  // ruling faction. Ruling 14: no Chronicle record here — CHRON's war-title table and
+  // its one siege-prose pool are simply the wrong narrator for a title bout (every
+  // outcome key reads as a defense/sack/capture, and NPCs at the location would recite
+  // a fabricated siege); a dedicated title record kind is its own future task.
+  if(_hb.title&&mineWon){
+   var _tn=((D.rules.hall.champion||{}).title||{}).standing_notch||1;
+   S.world.standing=S.world.standing||{};
+   var _tnow=SEAT.moveStanding(S.world.standing,_hb.fac,_tn);
+   t.posts.push({who:'THE HALL',tag:'',stamp:nowStamp(),
+    body:'★ THE TITLE — the room stands. The form is yours now, and the house says so out loud. '
+      +'Standing with '+esc((FAC(_hb.fac)||{}).name||_hb.fac)+' rises to '+esc(SEAT.standingName(_tnow,D))+'.'});
+  }
  }
  var key=(t.pl&&t.lid)?t.pl+'/'+t.lid:null;
  if(key&&S.world.history){
@@ -7507,6 +7547,7 @@ function init(){
   if(!S.social.pat)S.social.pat={};                                      // defensive: keep pat shape
   if(!S.social.reg)S.social.reg={};                                      // T-SOC-1 B1: regulars trust
   if(!S.social.bar)S.social.bar={};                                      // T-SOC-1 B2: hall-law bars
+  if(S.social.train===undefined)S.social.train=null;                     // T-SOC-1 B2: pending training buff (null is meaningful)
   if(!S.world.doorTiers)S.world.doorTiers={};                             // T-DOOR-1: older saves
   if(!S.world.doorBuilds)S.world.doorBuilds={};
   if(!S.world.locConds)S.world.locConds={};                               // T-MSN-1B final fix wave: older saves
@@ -7634,7 +7675,7 @@ function commitFounding(cc){
   world:foundingWorld(),threads:[],
   progress:{streaks:{}},   // T-MSN-1C task 4: founding never gets a reload, so init()'s backfill never fires — seed here too (S.world key seeding gotcha)
   time:{epoch:Date.now(),lastTick:0},
-  social:{pat:{},reg:{},bar:{}},
+  social:{pat:{},reg:{},bar:{},train:null},
   npcState:{},active:'cmdr',cart:[]
  };
  S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
@@ -8184,7 +8225,13 @@ function hallBout(rg,hc){
  if(other){T(force.n+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}
  var _slk=stationedThreadLockOf(force.id);
  if(_slk){T(force.n+' is standing garrison at '+((lById(_slk)||{}).name||_slk)+'. Recall it first.');return}
+ // T-SOC-1 B2: the rung-④ title fight is a CONTEST at a bigger stake — read the rung
+ // directly off the ledger (hallWagerFor already does this for the plain wager gate).
+ var _rkey=hc.ctx.locId+'/'+rg.role,_rrec=(S.social.reg||{})[_rkey]||{score:0};
+ var _rung=HALL.rungOf(_rrec.score||0,hc.ctx,D);
+ var _title=HALL.titleGate(_rung.index,D);
  var wager=hallWagerFor(hc,rg);
+ if(_title)wager=wager*(((D.rules.hall.champion||{}).title||{}).stake_mult||4);
  if(wager&&(S.cur||0)<wager){T('You cannot cover the wager — '+wager+' '+curName()+'.');return}
  var fac=FAC(hc.ctx.fac);if(!fac){T('No one here will stand against you.');return}
  var con=HALL.contestOf(hc.ctx,D),l=hc.loc,pl=hc.pl.p;
@@ -8207,12 +8254,23 @@ function hallBout(rg,hc){
  if(!g.specs.length){T('The '+rg.name+' will not be drawn out tonight.');return}
  for(var k in g.C)C[k]=g.C[k];
  pools[hostName]=g.ap;
+ // T-SOC-1 B2: a purchased Hall training rides the next fight, then is spent. Placed
+ // here — after C holds every combatant that will actually fight, past every earlier
+ // early-return (no Force, wager uncoverable, no host drawn) — so a buff is only ever
+ // spent when a real bout is actually being minted (Ruling 12).
+ var _tr=S.social&&S.social.train;
+ if(_tr&&_tr.untilDay>WORLD.dayIndexAt(S,D,Date.now())){
+  for(var _tk in C){if(C[_tk].gen)continue;
+   C[_tk].conds.push({tag:_tr.tag,tier:_tr.tier,left:THREAD.condDur(_tr.tag,_tr.tier),
+     src:'Hall training',el:null,nl:false,nr:false});}
+  S.social.train=null;
+ }else if(_tr)S.social.train=null;                 // lapsed unused
  var id='bout_'+l.id+'_'+S.threads.length;
- var t={id:id,type:'SKIRMISH',n:con.name+' — '+rg.name,loc:pl.name+' · '+l.name,pl:pl.id,lid:l.id,
+ var t={id:id,type:'SKIRMISH',n:(_title?'TITLE — ':'')+con.name+' — '+rg.name,loc:pl.name+' · '+l.name,pl:pl.id,lid:l.id,
   turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',
   about:'A sanctioned '+con.name+' in '+l.name+'. Nobody dies here: every blow is floored at a single wound, and the room is watching.',
   forces:[force.n,hostName],npc:null,
-  hall:{locId:hc.ctx.locId,role:rg.role,fac:hc.ctx.fac,wager:wager,day:hc.ctx.day}};
+  hall:{locId:hc.ctx.locId,role:rg.role,fac:hc.ctx.fac,wager:wager,day:hc.ctx.day,title:_title}};
  t.seedState={pools:pools,combatants:C,joined:false,nonLethal:true};
  if(wager)S.cur=Math.max(0,(S.cur||0)-wager);          // stake goes down on the table now
  S.threads.push(t);
@@ -8220,6 +8278,23 @@ function hallBout(rg,hc){
  S.world.history[hkey].unshift('SKIRMISH — '+t.n+' · ACTIVE (you)');
  persist();T(con.name+' called — '+force.n+' committed'+(wager?', '+wager+' '+curName()+' on the table':'')+'.');
  go('threads');rTL();openT(id);
+}
+/* T-SOC-1 B2: the Champion's rung-③ training. Buys ONE expiring buff, stored as a pending
+   stamp; the next combat thread you open picks it up and it is spent. Rides the shipped
+   CONDS registry (no new condition kinds) and the shipped duration table, so the buff
+   ticks down and lapses exactly like every other condition in the game. */
+function hallTrain(rg,hc){
+ var out=document.getElementById('hallout');if(!rg||!out)return;
+ var key=hc.ctx.locId+'/'+rg.role,rec=(S.social.reg||{})[key]||{score:0};
+ var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
+ var off=HALL.trainOffer(hc.ctx,D,rung.index);
+ if(!off){T('The '+rg.name+' does not train strangers.');return}
+ if((S.cur||0)<off.cost){T('Training costs '+off.cost+' '+curName()+'.');return}
+ S.cur-=off.cost;
+ S.social.train={tag:off.tag,tier:off.tier,untilDay:hc.ctx.day+off.days};
+ out.innerHTML='The '+esc(rg.name)+' takes you through the forms. '+esc(off.tag)+' '+off.tier
+  +' rides your next fight — it lapses in '+off.days+' days if you do not use it.';
+ rW();persist();
 }
 /* T-SOC-1 B2 — hall law (spec §4). The Hall is bound ground: violence INSIDE the contest
    frame is sacred, violence outside it is a crime against the house. Striking an
@@ -8469,9 +8544,21 @@ function renderDoor(dr,h){var c=E('div','card');
      var _con=HALL.contestOf(hc.ctx,D),_wag=hallWagerFor(hc,rg),_ctl='';
      if(rg.role==='champion'){
        var _conTip='<b>Contest</b> — '+GLOSS['Contest'];
-       _ctl=' <button class="btn gh sm" data-hallcon="'+esc(rg.role)+'"><span class="tipable" data-tip="'+_conTip.replace(/"/g,'&quot;')+'">'+esc(_con.name)+'</span>'
-         +(_wag?' ('+_wag+' '+curName()+')':' (no stake)')+'</button>';
+       // T-SOC-1 B2: at rung ④ the plain contest button IS the title fight — no
+       // separate control, just a legible label. Gated to resolver==='brawl': Step 6's
+       // title-aware stake + standing-notch payoff are wired only into hallBout/
+       // concludeThread's t.hall block (per the brief). A MATCH culture's contest
+       // (hallMatch) is a different, instant-resolve code path this task never
+       // touches — labeling its button TITLE FIGHT would promise a stake bump and a
+       // standing payoff the code never delivers. Flagged for controller review: a
+       // MATCH-resolver title fight is a real design gap, not fixed here.
+       var _isTitle=_con.resolver==='brawl'&&HALL.titleGate(rung.index,D);
+       _ctl=' <button class="btn gh sm" data-hallcon="'+esc(rg.role)+'"><span class="tipable" data-tip="'+_conTip.replace(/"/g,'&quot;')+'">'
+         +(_isTitle?'TITLE FIGHT — ':'')+esc(_con.name)+'</span>'
+         +(_wag?' ('+(_isTitle?_wag*(((D.rules.hall.champion||{}).title||{}).stake_mult||4):_wag)+' '+curName()+')':' (no stake)')+'</button>';
        if(_con.resolver==='match')_ctl+=' <button class="btn gh sm" data-hallcheat="'+esc(rg.role)+'">Palm the odds</button>';
+       var _tOff=HALL.trainOffer(hc.ctx,D,rung.index);
+       if(_tOff)_ctl+=' <button class="btn gh sm" data-halltrain="'+esc(rg.role)+'">Train ('+_tOff.cost+' '+curName()+')</button>';
      }
      return '<div class="lrow" style="border-left:2px solid var(--acc)"><span class="tipable" data-tip="'+_regTip.replace(/"/g,'&quot;')+'">★ '+esc(rg.name)+'</span>'
        +' <span style="color:var(--dim)">— <span class="tipable" data-tip="'+_trustTip.replace(/"/g,'&quot;')+'">'+esc(rung.name)+'</span></span>'
@@ -8503,6 +8590,9 @@ function renderDoor(dr,h){var c=E('div','card');
    c.querySelectorAll('[data-hallcheat]').forEach(function(b){b.onclick=function(){
      var rg=null;regs.forEach(function(r){if(r.role===b.dataset.hallcheat)rg=r;});
      hallContest(rg,hc,true);};});
+   c.querySelectorAll('[data-halltrain]').forEach(function(b){b.onclick=function(){
+     var rg=null;regs.forEach(function(r){if(r.role===b.dataset.halltrain)rg=r;});
+     hallTrain(rg,hc);};});
    }
   }
  }
