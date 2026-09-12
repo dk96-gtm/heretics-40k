@@ -6391,7 +6391,12 @@ function captureOnVictory(t,oc,mineWon){
 }
 function threadHeader(t){var h=E('div','thhdr');
  var ultLine=(t.ultimatum&&!t.done)?('<span>'+annotate('⏳ Ultimatum: '+Math.max(0,ultDaysLeft(t))+' game days — lapse resolves by garrison roll')+'</span>'):'';
- h.innerHTML='<div class="thhdr-top"><span class="tp '+t.type+'">'+t.type+'</span><h3>'+t.n+'</h3></div>'
+ // T-SOC-1 B2 close-out (task 8, step 1): wire the 'Bout' GLOSS entry on a Hall bout
+ // thread's own header — t.hall is stamped only by hallBout's direct mint, so it is the
+ // exact, existing signal for "this thread is a sanctioned Hall bout."
+ var _boutTip=t.hall?('<b>Bout</b> — '+GLOSS['Bout']):null;
+ var _titleHtml=_boutTip?('<span class="tipable" data-tip="'+_boutTip.replace(/"/g,'&quot;')+'">'+t.n+'</span>'):t.n;
+ h.innerHTML='<div class="thhdr-top"><span class="tp '+t.type+'">'+t.type+'</span><h3>'+_titleHtml+'</h3></div>'
  +'<div class="thhdr-loc">◉ '+(t.loc||'—')+'</div>'
  +'<div class="thhdr-meta"><span><b>Initiated by</b> '+(t.initiator||'—')+'</span><span><b>Forces in play</b> '+((t.forces&&t.forces.length)?t.forces.join(' · '):'none committed')+'</span>'+ultLine+'</div>'
  +(t.about?'<div class="thhdr-about">'+t.about+'</div>':'');
@@ -7877,8 +7882,9 @@ var GLOSS={
  'Rumor':'Hall talk is TRUE — every rumor cites live world state: war clocks, sector conditions, posted work, or this ground\'s own chronicle.',
  'Regular':'The Hall\'s persistent fixtures, present only during their scheduled hours. Building trust with a Regular opens doors — sanctuary from the hunt, introductions to key players, training, even a title fight.',
  'Trust':'The 4-rung ladder governing your standing with each Regular — how you climb depends on the culture\'s judge: doctrine axes (ferocity, cunning, honor, pragmatism, supremacism) tilt what counts as worthy.',
- 'Contest':'the culture\'s own trial of worth — a brawl or a match. Win, lose well, or cheat: the room judges all three, and the judging is the culture\'s, not yours.',
- 'Hall law':'the Hall is bound ground: a fight inside the contest frame is sacred, a fight outside it is a crime against the house — standing with the ruling faction falls and the door shuts for days. Da Grog Den keeps no such law.'};
+ 'Contest':'The culture\'s own trial of worth — a brawl or a match. Win, lose well, or cheat: the room judges all three, and the judging is the culture\'s, not yours.',
+ 'Hall law':'the Hall is bound ground: a fight inside the contest frame is sacred, a fight outside it is a crime against the house — standing with the ruling faction falls and the door shuts for days. Da Grog Den keeps no such law.',
+ 'Bout':'a sanctioned Hall fight on the ordinary battlefield grid, made non-lethal — every blow is floored at a single wound, so nobody dies and nobody is taken.'};
 /* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
 function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
  var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');
@@ -8207,11 +8213,35 @@ function hallWagerFor(hc,rg){
  var min=((D.rules.hall.contest||{}).wagered_rung_min);
  return (rung.index>=(min==null?1:min))?HALL.wagerFor(hc.ctx,D):0;
 }
+/* T-SOC-1 B2 close-out (task 8, carry-over item 5): the rung-lookup + titleGate test +
+   stake multiply was copy-pasted at three sites (hallBout, hallMatch, and the Champion
+   row's own button label) — one canon or rung-ladder change would have had to move in
+   lockstep at all three with nothing to catch a missed one. One glue helper (reads S/D —
+   deliberately NOT in the pure hall-core) now owns it; all three call sites below read
+   its {rung,title,wager} instead of recomputing. */
+function hallTitleStakeOf(hc,rg){
+ var key=hc.ctx.locId+'/'+rg.role,rec=(S.social.reg||{})[key]||{score:0};
+ var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
+ var title=HALL.titleGate(rung.index,D);
+ var wager=hallWagerFor(hc,rg);
+ if(title)wager=wager*(((D.rules.hall.champion||{}).title||{}).stake_mult||4);
+ return {rung:rung,title:title,wager:wager};
+}
 function hallContest(rg,hc,cheat){
  var con=HALL.contestOf(hc.ctx,D);
  if(con.resolver==='brawl')hallBout(rg,hc);
  else hallMatch(rg,hc,!!cheat);
 }
+/* T-SOC-1 B2 close-out (task 8, carry-over item 1): every culture's Champion (and other
+   regular) name already begins with its own article ("the Pit-Champion"), so a sentence
+   built by prepending another one read "The the Pit-Champion" at five sites across the
+   Hall glue. hallCap renders a name correctly at the START of a sentence — capitalizing
+   the name's own leading letter instead of stacking a second article — while a
+   mid-sentence use just drops the redundant literal and lets the name's own lowercase
+   article read naturally. Chosen over an idiom string plus a helper because the callers
+   are simple T()/innerHTML lines, not a structured template — capitalizing in place is
+   the smallest fix that reads right everywhere. */
+function hallCap(n){return n?n.charAt(0).toUpperCase()+n.slice(1):n}
 /* T-SOC-1 B2: the BRAWL engine. A pit bout is a non-lethal 1v1 against the Champion by
    name, fought on the ordinary battlefield grid — no new combat machinery. The thread is
    built here rather than through startThread because startThread seeds via seedCombat,
@@ -8227,11 +8257,8 @@ function hallBout(rg,hc){
  if(_slk){T(force.n+' is standing garrison at '+((lById(_slk)||{}).name||_slk)+'. Recall it first.');return}
  // T-SOC-1 B2: the rung-④ title fight is a CONTEST at a bigger stake — read the rung
  // directly off the ledger (hallWagerFor already does this for the plain wager gate).
- var _rkey=hc.ctx.locId+'/'+rg.role,_rrec=(S.social.reg||{})[_rkey]||{score:0};
- var _rung=HALL.rungOf(_rrec.score||0,hc.ctx,D);
- var _title=HALL.titleGate(_rung.index,D);
- var wager=hallWagerFor(hc,rg);
- if(_title)wager=wager*(((D.rules.hall.champion||{}).title||{}).stake_mult||4);
+ var _st=hallTitleStakeOf(hc,rg);
+ var _title=_st.title,wager=_st.wager;
  if(wager&&(S.cur||0)<wager){T('You cannot cover the wager — '+wager+' '+curName()+'.');return}
  var fac=FAC(hc.ctx.fac);if(!fac){T('No one here will stand against you.');return}
  var con=HALL.contestOf(hc.ctx,D),l=hc.loc,pl=hc.pl.p;
@@ -8251,7 +8278,7 @@ function hallBout(rg,hc){
  var hostName=rg.name;
  var seed=ULT.seedFor(S.world.missionSeedBase||1,hc.ctx.day,l.id,'bout:'+rg.role);
  var g=genHostCombatants(fac,hostName,1,{duel:true,filter:'named',target_name:rg.name},1,seed);
- if(!g.specs.length){T('The '+rg.name+' will not be drawn out tonight.');return}
+ if(!g.specs.length){T(hallCap(rg.name)+' will not be drawn out tonight.');return}
  for(var k in g.C)C[k]=g.C[k];
  pools[hostName]=g.ap;
  // T-SOC-1 B2: a purchased Hall training rides the next fight, then is spent. Placed
@@ -8285,14 +8312,22 @@ function hallBout(rg,hc){
    ticks down and lapses exactly like every other condition in the game. */
 function hallTrain(rg,hc){
  var out=document.getElementById('hallout');if(!rg||!out)return;
+ // T-SOC-1 B2 close-out (task 8, carry-over item 4): hallTrain never checked whether
+ // S.social.train already held an unconsumed buff — a second click silently overwrote
+ // the first and the currency already spent on it, with no warning. Guard it the same
+ // way the buff's own lapse check (in hallBout) reads it: still pending if untilDay is
+ // still ahead of the current game day.
+ var _pend=S.social&&S.social.train;
+ if(_pend&&_pend.untilDay>WORLD.dayIndexAt(S,D,Date.now())){
+  T('You already carry a training buff ('+_pend.tag+' '+_pend.tier+') — spend it in a bout before buying another.');return}
  var key=hc.ctx.locId+'/'+rg.role,rec=(S.social.reg||{})[key]||{score:0};
  var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
  var off=HALL.trainOffer(hc.ctx,D,rung.index);
- if(!off){T('The '+rg.name+' does not train strangers.');return}
+ if(!off){T(hallCap(rg.name)+' does not train strangers.');return}
  if((S.cur||0)<off.cost){T('Training costs '+off.cost+' '+curName()+'.');return}
  S.cur-=off.cost;
  S.social.train={tag:off.tag,tier:off.tier,untilDay:hc.ctx.day+off.days};
- out.innerHTML='The '+esc(rg.name)+' takes you through the forms. '+esc(off.tag)+' '+off.tier
+ out.innerHTML=hallCap(esc(rg.name))+' takes you through the forms. '+esc(off.tag)+' '+off.tier
   +' rides your next fight — it lapses in '+off.days+' days if you do not use it.';
  rW();persist();
 }
@@ -8328,11 +8363,8 @@ function hallMatch(rg,hc,cheat){
  // Ruling 15 (T-SOC-1 B2 task 7 fix round): the title fight ships for all 20 cultures, not
  // brawl-only — hallMatch already owns the wager/payout/act for the MATCH resolver and never
  // routes through hallBout, so it needs its own title-aware stake, mirroring hallBout's read.
- var _rkey=hc.ctx.locId+'/'+rg.role,_rrec=(S.social.reg||{})[_rkey]||{score:0};
- var _rung=HALL.rungOf(_rrec.score||0,hc.ctx,D);
- var _title=HALL.titleGate(_rung.index,D);
- var wager=hallWagerFor(hc,rg);
- if(_title)wager=wager*(((D.rules.hall.champion||{}).title||{}).stake_mult||4);
+ var _st=hallTitleStakeOf(hc,rg);
+ var _title=_st.title,wager=_st.wager;
  if(wager&&(S.cur||0)<wager){T('You cannot cover the wager — '+wager+' '+curName()+'.');return}
  /* nonce: every bout — judged or not — is a distinct draw. rec.bouts advances
     unconditionally before the resolve, including on the null-act outcome (an uncaught
@@ -8348,8 +8380,8 @@ function hallMatch(rg,hc,cheat){
  if(wager)S.cur=Math.max(0,(S.cur||0)+res.payout);
  var rung=res.act?hallTrustRecord(hc,rg.role,res.act):HALL.rungOf(rec.score||0,hc.ctx,D);
  var line=esc(con.name)+' — '
-  +(res.caught?'caught. The room saw the trick, and the '+esc(rg.name)+' says nothing at all.'
-   :res.won?'you take it.':'the '+esc(rg.name)+' takes it.');
+  +(res.caught?'caught. The room saw the trick, and '+esc(rg.name)+' says nothing at all.'
+   :res.won?'you take it.':esc(rg.name)+' takes it.');
  if(wager)line+=' Stake '+(res.payout>0?'won +':'lost ')+Math.abs(res.payout)+' '+curName()+'.';
  // Ruling 15: a title match's win takes the culture's title outright — including a clean
  // (uncaught) cheat. No special case: res.won is already false for a caught cheat (the
@@ -8545,70 +8577,75 @@ function renderDoor(dr,h){var c=E('div','card');
       +'<span class="tipable" data-tip="'+_barTip.replace(/"/g,'&quot;')+'">The doorway fills before you reach it.</span> You are barred from this hall for '+_bar.left
       +(_bar.left===1?' more day':' more days')+' — the house has not forgotten.</div>');
    }else{
-   var ev=HALL.moodEventAt(hc.ctx,hc.wctx2,D);
-   /* Fix round 1: stamp the mood delta on ctx BEFORE generation so crowdSize (pure core)
-      sizes the crowd correctly in one deterministic pass — no post-hoc slicing. */
-   hc.ctx.crowdEvent=ev?ev.crowd_delta:0;
-   var pats=HALL.patronsAt(hc.ctx,D);
-   var off=HALL.offerEval(ev,hc.ctx,D);
-   var regs=HALL.regularsAt(hc.ctx,D).filter(function(r){return r.present;});   // T-SOC-1 B1: pinned fixtures
-   var _hallTip='<b>Hall</b> — '+GLOSS['Hall'];
-   c.insertAdjacentHTML('beforeend','<div class="d" style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="tipable mono" style="color:var(--dim)" data-tip="'+_hallTip.replace(/"/g,'&quot;')+'">◉ Hall</span></div>');
-   var hh='<div class="d" style="margin-bottom:6px"><i>'+esc(cul.flavor||'A gathering place.')+'</i></div>';
-   if(ev)hh+='<div class="d" style="border-left:3px solid var(--blh);padding-left:8px;margin-bottom:6px">'+esc(ev.banner)+'</div>';
-   if(regs.length)hh+=regs.map(function(rg){
-     var key=hc.ctx.locId+'/'+rg.role,rec=(S.social.reg||{})[key]||{score:0};
-     var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
-     var _regTip='<b>Regular</b> — '+GLOSS['Regular'];
-     var _trustTip='<b>Trust</b> — '+GLOSS['Trust'];
-     var _con=HALL.contestOf(hc.ctx,D),_wag=hallWagerFor(hc,rg),_ctl='';
-     if(rg.role==='champion'){
-       var _conTip='<b>Contest</b> — '+GLOSS['Contest'];
-       // T-SOC-1 B2: at rung ④ the plain contest button IS the title fight — no
-       // separate control, just a legible label. Ruling 15: both resolvers carry the
-       // title-aware stake now (hallBout for brawl, hallMatch for match), so the label
-       // is never gated on resolver — it shows for all 20 cultures alike.
-       var _isTitle=HALL.titleGate(rung.index,D);
-       _ctl=' <button class="btn gh sm" data-hallcon="'+esc(rg.role)+'"><span class="tipable" data-tip="'+_conTip.replace(/"/g,'&quot;')+'">'
-         +(_isTitle?'TITLE FIGHT — ':'')+esc(_con.name)+'</span>'
-         +(_wag?' ('+(_isTitle?_wag*(((D.rules.hall.champion||{}).title||{}).stake_mult||4):_wag)+' '+curName()+')':' (no stake)')+'</button>';
-       if(_con.resolver==='match')_ctl+=' <button class="btn gh sm" data-hallcheat="'+esc(rg.role)+'">Palm the odds</button>';
-       var _tOff=HALL.trainOffer(hc.ctx,D,rung.index);
-       if(_tOff)_ctl+=' <button class="btn gh sm" data-halltrain="'+esc(rg.role)+'">Train ('+_tOff.cost+' '+curName()+')</button>';
-     }
-     return '<div class="lrow" style="border-left:2px solid var(--acc)"><span class="tipable" data-tip="'+_regTip.replace(/"/g,'&quot;')+'">★ '+esc(rg.name)+'</span>'
-       +' <span style="color:var(--dim)">— <span class="tipable" data-tip="'+_trustTip.replace(/"/g,'&quot;')+'">'+esc(rung.name)+'</span></span>'
-       +' <button class="btn gh sm" data-hallcom="reg:'+esc(rg.role)+'">'+esc(cul.commune||'Talk')+'</button>'+_ctl+'</div>';
-   }).join('');
-   var _hallLawTip='<b>Hall law</b> — '+GLOSS['Hall law'];
-   hh+=pats.length?pats.map(function(p,i){var _offTip='<b>Offering</b> — '+GLOSS['Offering'];return '<div class="lrow" style="cursor:default">'+esc(p.name)+' — <span style="color:var(--dim)">'+esc(p.role)+'</span>'
-     +' <button class="btn gh sm" data-hallcom="'+i+'">'+esc(cul.commune||'Talk')+'</button>'
-     +' <button class="btn gh sm" data-halloff="'+i+'"><span class="tipable" data-tip="'+_offTip.replace(/"/g,'&quot;')+'">'+esc(off.label)+'</span> ('+(off.kind==='cur'?off.cost+' '+curName():off.kind==='res'?'1 '+off.res:'1 '+off.accepts)+')</button>'
-     +' <button class="btn gh sm" data-hallhit="'+i+'"><span class="tipable" data-tip="'+_hallLawTip.replace(/"/g,'&quot;')+'">'+esc(HALL.contestOf(hc.ctx,D).hallLaw?'Strike':'Start somethin\'')+'</span></button></div>';}).join('')
-     :'<div class="d" style="color:var(--dim)">The hall stands empty tonight.</div>';
-   var _rumorTip='<b>Rumor</b> — '+GLOSS['Rumor'];
-   hh+='<div class="d" id="hallout" style="margin-top:8px;color:var(--dim)"><span class="tipable" style="cursor:help" data-tip="'+_rumorTip.replace(/"/g,'&quot;')+'">◌ Word on the ground:</span></div>';
-   c.insertAdjacentHTML('beforeend',hh);
-   c.querySelectorAll('[data-hallcom]').forEach(function(b){b.onclick=function(){
-     var v=b.dataset.hallcom;
-     if(v.slice(0,4)==='reg:'){var role=v.slice(4),rg=null;
-       regs.forEach(function(r){if(r.role===role)rg=r;});
-       hallCommuneReg(rg,hc);
-     }else hallCommune(pats[+v],hc);
-   };});
-   c.querySelectorAll('[data-halloff]').forEach(function(b){b.onclick=function(){
-     hallOffer(pats[+b.dataset.halloff],hc,off);};});
-   c.querySelectorAll('[data-hallhit]').forEach(function(b){b.onclick=function(){
-     hallStrike(pats[+b.dataset.hallhit],hc);};});
-   c.querySelectorAll('[data-hallcon]').forEach(function(b){b.onclick=function(){
-     var rg=null;regs.forEach(function(r){if(r.role===b.dataset.hallcon)rg=r;});
-     hallContest(rg,hc,false);};});
-   c.querySelectorAll('[data-hallcheat]').forEach(function(b){b.onclick=function(){
-     var rg=null;regs.forEach(function(r){if(r.role===b.dataset.hallcheat)rg=r;});
-     hallContest(rg,hc,true);};});
-   c.querySelectorAll('[data-halltrain]').forEach(function(b){b.onclick=function(){
-     var rg=null;regs.forEach(function(r){if(r.role===b.dataset.halltrain)rg=r;});
-     hallTrain(rg,hc);};});
+    var ev=HALL.moodEventAt(hc.ctx,hc.wctx2,D);
+    /* Fix round 1: stamp the mood delta on ctx BEFORE generation so crowdSize (pure core)
+       sizes the crowd correctly in one deterministic pass — no post-hoc slicing. */
+    hc.ctx.crowdEvent=ev?ev.crowd_delta:0;
+    var pats=HALL.patronsAt(hc.ctx,D);
+    var off=HALL.offerEval(ev,hc.ctx,D);
+    var regs=HALL.regularsAt(hc.ctx,D).filter(function(r){return r.present;});   // T-SOC-1 B1: pinned fixtures
+    var _hallTip='<b>Hall</b> — '+GLOSS['Hall'];
+    c.insertAdjacentHTML('beforeend','<div class="d" style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="tipable mono" style="color:var(--dim)" data-tip="'+_hallTip.replace(/"/g,'&quot;')+'">◉ Hall</span></div>');
+    var hh='<div class="d" style="margin-bottom:6px"><i>'+esc(cul.flavor||'A gathering place.')+'</i></div>';
+    if(ev)hh+='<div class="d" style="border-left:3px solid var(--blh);padding-left:8px;margin-bottom:6px">'+esc(ev.banner)+'</div>';
+    if(regs.length)hh+=regs.map(function(rg){
+      var key=hc.ctx.locId+'/'+rg.role,rec=(S.social.reg||{})[key]||{score:0};
+      var rung=HALL.rungOf(rec.score||0,hc.ctx,D);
+      var _regTip='<b>Regular</b> — '+GLOSS['Regular'];
+      var _trustTip='<b>Trust</b> — '+GLOSS['Trust'];
+      var _con=HALL.contestOf(hc.ctx,D),_ctl='';
+      if(rg.role==='champion'){
+        var _conTip='<b>Contest</b> — '+GLOSS['Contest'];
+        // T-SOC-1 B2: at rung ④ the plain contest button IS the title fight — no
+        // separate control, just a legible label. Ruling 15: both resolvers carry the
+        // title-aware stake now (hallBout for brawl, hallMatch for match), so the label
+        // is never gated on resolver — it shows for all 20 cultures alike.
+        var _st=hallTitleStakeOf(hc,rg);
+        _ctl=' <button class="btn gh sm" data-hallcon="'+esc(rg.role)+'"><span class="tipable" data-tip="'+_conTip.replace(/"/g,'&quot;')+'">'
+          +(_st.title?'TITLE FIGHT — ':'')+esc(_con.name)+'</span>'
+          +(_st.wager?' ('+_st.wager+' '+curName()+')':' (no stake)')+'</button>';
+        if(_con.resolver==='match')_ctl+=' <button class="btn gh sm" data-hallcheat="'+esc(rg.role)+'">Palm the odds</button>';
+        var _tOff=HALL.trainOffer(hc.ctx,D,rung.index);
+        // T-SOC-1 B2 close-out (task 8, carry-over item 4): mirror hallTrain's own guard —
+        // grey the button out while a bought buff is still pending, instead of letting a
+        // second click silently clobber it.
+        var _trainPending=!!(S.social.train&&S.social.train.untilDay>WORLD.dayIndexAt(S,D,Date.now()));
+        if(_tOff)_ctl+=' <button class="btn gh sm" data-halltrain="'+esc(rg.role)+'"'+(_trainPending?' disabled':'')+'>'
+          +(_trainPending?'Training pending':'Train ('+_tOff.cost+' '+curName()+')')+'</button>';
+      }
+      return '<div class="lrow" style="border-left:2px solid var(--acc)"><span class="tipable" data-tip="'+_regTip.replace(/"/g,'&quot;')+'">★ '+esc(rg.name)+'</span>'
+        +' <span style="color:var(--dim)">— <span class="tipable" data-tip="'+_trustTip.replace(/"/g,'&quot;')+'">'+esc(rung.name)+'</span></span>'
+        +' <button class="btn gh sm" data-hallcom="reg:'+esc(rg.role)+'">'+esc(cul.commune||'Talk')+'</button>'+_ctl+'</div>';
+    }).join('');
+    var _hallLawTip='<b>Hall law</b> — '+GLOSS['Hall law'];
+    hh+=pats.length?pats.map(function(p,i){var _offTip='<b>Offering</b> — '+GLOSS['Offering'];return '<div class="lrow" style="cursor:default">'+esc(p.name)+' — <span style="color:var(--dim)">'+esc(p.role)+'</span>'
+      +' <button class="btn gh sm" data-hallcom="'+i+'">'+esc(cul.commune||'Talk')+'</button>'
+      +' <button class="btn gh sm" data-halloff="'+i+'"><span class="tipable" data-tip="'+_offTip.replace(/"/g,'&quot;')+'">'+esc(off.label)+'</span> ('+(off.kind==='cur'?off.cost+' '+curName():off.kind==='res'?'1 '+off.res:'1 '+off.accepts)+')</button>'
+      +' <button class="btn gh sm" data-hallhit="'+i+'"><span class="tipable" data-tip="'+_hallLawTip.replace(/"/g,'&quot;')+'">'+esc(HALL.contestOf(hc.ctx,D).hallLaw?'Strike':'Start somethin\'')+'</span></button></div>';}).join('')
+      :'<div class="d" style="color:var(--dim)">The hall stands empty tonight.</div>';
+    var _rumorTip='<b>Rumor</b> — '+GLOSS['Rumor'];
+    hh+='<div class="d" id="hallout" style="margin-top:8px;color:var(--dim)"><span class="tipable" style="cursor:help" data-tip="'+_rumorTip.replace(/"/g,'&quot;')+'">◌ Word on the ground:</span></div>';
+    c.insertAdjacentHTML('beforeend',hh);
+    c.querySelectorAll('[data-hallcom]').forEach(function(b){b.onclick=function(){
+      var v=b.dataset.hallcom;
+      if(v.slice(0,4)==='reg:'){var role=v.slice(4),rg=null;
+        regs.forEach(function(r){if(r.role===role)rg=r;});
+        hallCommuneReg(rg,hc);
+      }else hallCommune(pats[+v],hc);
+    };});
+    c.querySelectorAll('[data-halloff]').forEach(function(b){b.onclick=function(){
+      hallOffer(pats[+b.dataset.halloff],hc,off);};});
+    c.querySelectorAll('[data-hallhit]').forEach(function(b){b.onclick=function(){
+      hallStrike(pats[+b.dataset.hallhit],hc);};});
+    c.querySelectorAll('[data-hallcon]').forEach(function(b){b.onclick=function(){
+      var rg=null;regs.forEach(function(r){if(r.role===b.dataset.hallcon)rg=r;});
+      hallContest(rg,hc,false);};});
+    c.querySelectorAll('[data-hallcheat]').forEach(function(b){b.onclick=function(){
+      var rg=null;regs.forEach(function(r){if(r.role===b.dataset.hallcheat)rg=r;});
+      hallContest(rg,hc,true);};});
+    c.querySelectorAll('[data-halltrain]').forEach(function(b){b.onclick=function(){
+      var rg=null;regs.forEach(function(r){if(r.role===b.dataset.halltrain)rg=r;});
+      hallTrain(rg,hc);};});
    }
   }
  }
