@@ -275,3 +275,89 @@ test('armour mitigates damage by element, floored at 0', () => {
   THREAD.apply(t, t.state, [{actor:'foe',effect:{kind:'damage',amount:2,to:'hero',element:'Corrosive'}}], canon);
   assert.strictEqual(t.state.combatants.hero.w[0], 4);
 });
+
+// T-SOC-1 B2 (Task 5): thread-level nonLethal — a sanctioned Hall bout floors EVERY damage
+// effect at 1 wound, not only weapons whose own description reads Non-Lethal.
+test('thread-level nonLethal floors every damage effect at 1 wound', () => {
+  const mk = () => ({ id: 'brawl1', pools: { You: 10, Them: 10 },
+    combatants: {
+      m1: { w: [4, 4], conds: [], party: 'You', model: { n: 'Mine' } },
+      e0: { w: [3, 3], conds: [], party: 'Them', model: { n: 'Theirs' }, gen: { n: 'Theirs' } } },
+    joined: true, board: null, phase: 'battle', fog: {}, round: 1 });
+  const block = [{ actor: 'm1', cost: 1,
+    effect: { kind: 'damage', to: 'e0', amount: 99, element: 'Physical', weapon: 'Fist' } }];
+
+  // Note: apply's real signature is (thread, state, block, canon, party) — adapted from the
+  // brief's 3-arg sketch (which would throw calling .forEach on canon) to the file's own idiom.
+  const lethal = mk();
+  THREAD.apply({ type: 'SKIRMISH' }, lethal, block, canon);
+  assert.equal(lethal.combatants.e0.w[0], 0, 'without the flag a 99-damage hit kills');
+  assert.equal(lethal.combatants.e0.dead, true);
+
+  const bout = mk(); bout.nonLethal = true;
+  THREAD.apply({ type: 'SKIRMISH' }, bout, block, canon);
+  assert.equal(bout.combatants.e0.w[0], 1, 'a bout never drops a combatant below 1 wound');
+  assert.ok(!bout.combatants.e0.dead, 'and nobody dies in a sanctioned bout');
+});
+
+test('initState carries seedState.nonLethal onto the live state', () => {
+  const s = THREAD.initState({ id: 'b1', type: 'SKIRMISH', seedState: { nonLethal: true, pools: {}, combatants: {} } }, canon);
+  assert.equal(s.nonLethal, true);
+  const plain = THREAD.initState({ id: 'b2', type: 'SKIRMISH', seedState: { pools: {}, combatants: {} } }, canon);
+  assert.equal(plain.nonLethal, false);
+});
+
+// Ruling 8 (T-SOC-1 B2): a non-lethal thread can never produce a dead combatant via the
+// engine's normal dead-check, so it needs its own off-the-field flag — YIELD — or a bout
+// could never conclude. These three pins cover the mechanism end to end.
+test('Ruling 8: a nonLethal hit landing a target at 1 wound sets yielded, not dead', () => {
+  const state = { id: 'b3', pools: { You: 10, Them: 10 }, nonLethal: true,
+    combatants: {
+      m1: { w: [4, 4], conds: [], party: 'You', model: { n: 'Mine' } },
+      e0: { w: [2, 2], conds: [], party: 'Them', model: { n: 'Theirs' }, gen: { n: 'Theirs' } } },
+    joined: true, board: null, phase: 'battle', fog: {}, round: 1 };
+  THREAD.apply({ type: 'SKIRMISH' }, state,
+    [{ actor: 'm1', cost: 1, effect: { kind: 'damage', to: 'e0', amount: 5, element: 'Physical', weapon: 'Fist' } }],
+    canon);
+  assert.equal(state.combatants.e0.w[0], 1);
+  assert.equal(state.combatants.e0.yielded, true);
+  assert.ok(!state.combatants.e0.dead, 'a yielded model never dies');
+});
+
+test('Ruling 8: a lethal thread never sets yielded, even landing exactly at 1 wound', () => {
+  const state = { id: 'b4', pools: { You: 10, Them: 10 },
+    combatants: {
+      m1: { w: [4, 4], conds: [], party: 'You', model: { n: 'Mine' } },
+      e0: { w: [2, 2], conds: [], party: 'Them', model: { n: 'Theirs' }, gen: { n: 'Theirs' } } },
+    joined: true, board: null, phase: 'battle', fog: {}, round: 1 };
+  THREAD.apply({ type: 'SKIRMISH' }, state,
+    [{ actor: 'm1', cost: 1, effect: { kind: 'damage', to: 'e0', amount: 1, element: 'Physical', weapon: 'Fist' } }],
+    canon);
+  assert.equal(state.combatants.e0.w[0], 1);
+  assert.ok(!state.combatants.e0.yielded, 'wound-1 alone (no nonLethal flag) is not a yield');
+  assert.ok(!state.combatants.e0.dead);
+});
+
+test('Ruling 8: outcome concludes annihilation once one side is entirely yielded', () => {
+  const thread = { type: 'SKIRMISH' };
+  const state = { phase: 'battle',
+    combatants: {
+      m1: { party: 'You', w: [4, 4] },
+      e0: { party: 'Them', w: [1, 2], yielded: true } } };
+  const oc = THREAD.outcome(thread, state);
+  assert.deepStrictEqual(oc, { kind: 'annihilation', victor: 'You', defeated: ['Them'] });
+});
+
+test('Ruling 8: validate rejects targeting a yielded combatant (off the field)', () => {
+  const board = { w: 5, h: 5, cells: {} };
+  const state = { pools: { You: 10, Them: 10 },
+    combatants: {
+      m1: { w: [4, 4], conds: [], party: 'You', model: { n: 'Mine' }, x: 0, y: 0, sight: 10 },
+      e0: { w: [1, 2], conds: [], party: 'Them', model: { n: 'Theirs' }, x: 1, y: 0, yielded: true } },
+    joined: true, board: board, phase: 'battle', fog: {}, round: 1 };
+  const block = [{ actor: 'm1', cost: 1,
+    effect: { kind: 'damage', to: 'e0', amount: 1, element: 'Physical', weapon: 'Fist' } }];
+  const v = THREAD.validate({ type: 'SKIRMISH' }, state, 'You', block, canon);
+  assert.equal(v.ok, false);
+  assert.match(v.reason, /not in sight/i);
+});

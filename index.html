@@ -564,7 +564,7 @@ var THREAD=(function(){
     // state.id to keep concurrent combat threads independent; see there for the
     // persisted-save fallback when an OLDER save's state predates this stamp.
     var s={ id:thread.id||'', pools:seed.pools||{}, combatants:seed.combatants||{},
-            joined:!!seed.joined, terms:seed.terms||null,
+            joined:!!seed.joined, nonLethal:!!seed.nonLethal, terms:seed.terms||null,
             transit:null, passage:seed.passage||0,
             board:seed.board||null, phase:seed.phase||null, fog:seed.fog||{},
             round:seed.round||0,                       // T-MSN-1B: survives reload (T-THR-5 pattern)
@@ -674,7 +674,10 @@ var THREAD=(function(){
           if(!rs[me.to.x+','+me.to.y])return {ok:false,reason:'Slowed: move exceeds reduced speed'};
           _movePos[mwho]=me.to;}}
       if(state.board){                              // fog targeting gate (Slice C): attack/capture only what you see
-        var vis=spottedEnemies(party,state,state.board);
+        // Ruling 8 (T-SOC-1 B2): a yielded model (a downed bout fighter) is off the field
+        // exactly like a corpse or a captive — excluded from vis so it fails this same gate.
+        var vis=spottedEnemies(party,state,state.board).filter(function(vid){
+          var vc=state.combatants[vid];return !(vc&&vc.yielded);});
         for(var gi=0;gi<block.length;gi++){var ge=block[gi].effect;
           if(ge&&(ge.kind==='damage'||ge.kind==='capture')&&ge.to&&vis.indexOf(ge.to)<0)
             return {ok:false,reason:ge.kind==='capture'?
@@ -879,11 +882,18 @@ var THREAD=(function(){
         var _amt=e.amount+(_am.dmgOut||0)+((e.band==='MELEE')?(_am.dmgOutMelee||0):0)+(_tm.dmgIn||0);
         var _dv=(_def&&_def[e.element])||0;
         var _taken=Math.max(0,_amt-_dv-_cov);
-        if(e.nonLethal)_taken=Math.min(_taken,Math.max(0,c.w[0]-1)); // Non-Lethal floor: never below 1 wound
+        // T-SOC-1 B2: a thread-level flag (a sanctioned Hall bout) floors EVERY effect,
+        // not only weapons whose own description reads Non-Lethal.
+        if(e.nonLethal||state.nonLethal)_taken=Math.min(_taken,Math.max(0,c.w[0]-1));
         var _abs=Math.max(0,Math.min(_dv,_amt-_cov));   // what the plate actually ate
         var _ai=c.model&&c.model.loadout&&c.model.loadout.armour&&c.model.loadout.armour.it;
         if(_ai&&_abs>0)_ai.absorbed=(_ai.absorbed||0)+_abs; // gear battle record (T-ECO-1 prereq)
         c.w=[Math.max(0,c.w[0]-_taken),c.w[1]];
+        // Ruling 8 (T-SOC-1 B2): a non-lethal thread can never produce a dead combatant, so the
+        // engine needs its OWN off-the-field flag or a bout could never conclude — a hit that
+        // actually lands (_taken>0) and leaves the target at exactly 1 wound downs them for
+        // this bout, nothing more (no kill credit, no capture, no roster change).
+        if(state.nonLethal&&_taken>0&&c.w[0]===1)c.yielded=true;
         if(c.w[0]<=0&&!c.dead){
           var _iron=!!(state.mods&&state.mods.indexOf('ironman')>=0&&!c.gen);  // T-MSN-1B: Ironman permadeaths the player's OWN kills
           stampKill(c,e.element,e.noRevival||_iron,canon);
@@ -1022,7 +1032,7 @@ var THREAD=(function(){
     if(state.phase==='deploy')return null;
     var C=state.combatants||{},parties={},alive={};
     Object.keys(C).forEach(function(id){var c=C[id];if(!c.party)return;
-      parties[c.party]=1;if(!c.dead&&!c.captured)alive[c.party]=1;});
+      parties[c.party]=1;if(!c.dead&&!c.captured&&!c.yielded)alive[c.party]=1;});
     var pn=Object.keys(parties);if(pn.length<2)return null;
     var an=Object.keys(alive);
     if(an.length===1)return {kind:'annihilation',victor:an[0],defeated:pn.filter(function(p){return p!==an[0];})};
@@ -1593,10 +1603,13 @@ var THREAD=(function(){
     var pool=(state&&state.pools&&state.pools[side]!=null)?state.pools[side]:0;
     var spotted=board?spottedEnemies(side,state,board):[];
     // belt-and-braces over Task 2: a corpse or a carried captive is never a target
+    // Ruling 8 (T-SOC-1 B2): a yielded bout fighter is the same class of hazard T-NPC-3.5
+    // already fixed for corpses — exclude it here too, or the NPC brain stalls trying to
+    // keep fighting a downed target.
     var foes=spotted.filter(function(eid){var e=C[eid];
-      return !!(e&&!e.dead&&!e.captured&&e.x!=null);}).sort();
+      return !!(e&&!e.dead&&!e.captured&&!e.yielded&&e.x!=null);}).sort();
     var actors=[];
-    for(id in C){var c=C[id];if(c&&c.party===side&&!c.dead&&!c.captured&&c.x!=null)actors.push(id);}
+    for(id in C){var c=C[id];if(c&&c.party===side&&!c.dead&&!c.captured&&!c.yielded&&c.x!=null)actors.push(id);}
     actors.sort();                     // stable output independent of key-insertion order
     var allies=actors.slice();         // friendly recipients = self + every living ally
     var wOf=function(c){return (weaponsOf?(weaponsOf(c)||[]):[]);};
@@ -1676,7 +1689,7 @@ var THREAD=(function(){
     var dv=(t.armour&&t.armour[w.element])||0;
     var cov=(state&&state.board&&t.x!=null)?(coverMod({x:t.x,y:t.y},state.board)||0):0;
     var taken=Math.max(0,amt-dv-cov);
-    if(w.nonLethal)taken=Math.min(taken,Math.max(0,t.w[0]-1));
+    if(w.nonLethal||(state&&state.nonLethal))taken=Math.min(taken,Math.max(0,t.w[0]-1));
     (w.conds||[]).forEach(function(ct){
       if(!ct||!ct.tag)return;var d=CONDS[ct.tag];if(!d||!d.tick)return;
       var r=d.tick({tier:ct.tier||1});if(!r||!(r.dw<0))return;
