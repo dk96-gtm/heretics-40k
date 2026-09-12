@@ -7506,6 +7506,7 @@ function init(){
   if(!S.social)S.social={pat:{}};                                        // T-SOC-1: older saves
   if(!S.social.pat)S.social.pat={};                                      // defensive: keep pat shape
   if(!S.social.reg)S.social.reg={};                                      // T-SOC-1 B1: regulars trust
+  if(!S.social.bar)S.social.bar={};                                      // T-SOC-1 B2: hall-law bars
   if(!S.world.doorTiers)S.world.doorTiers={};                             // T-DOOR-1: older saves
   if(!S.world.doorBuilds)S.world.doorBuilds={};
   if(!S.world.locConds)S.world.locConds={};                               // T-MSN-1B final fix wave: older saves
@@ -7633,7 +7634,7 @@ function commitFounding(cc){
   world:foundingWorld(),threads:[],
   progress:{streaks:{}},   // T-MSN-1C task 4: founding never gets a reload, so init()'s backfill never fires — seed here too (S.world key seeding gotcha)
   time:{epoch:Date.now(),lastTick:0},
-  social:{pat:{},reg:{}},
+  social:{pat:{},reg:{},bar:{}},
   npcState:{},active:'cmdr',cart:[]
  };
  S.world.holdings=[crownOf(F.id)].filter(Boolean);   // your crown world tithes from day one
@@ -7835,7 +7836,8 @@ var GLOSS={
  'Rumor':'Hall talk is TRUE — every rumor cites live world state: war clocks, sector conditions, posted work, or this ground\'s own chronicle.',
  'Regular':'The Hall\'s persistent fixtures, present only during their scheduled hours. Building trust with a Regular opens doors — sanctuary from the hunt, introductions to key players, training, even a title fight.',
  'Trust':'The 4-rung ladder governing your standing with each Regular — how you climb depends on the culture\'s judge: doctrine axes (ferocity, cunning, honor, pragmatism, supremacism) tilt what counts as worthy.',
- 'Contest':'the culture\'s own trial of worth — a brawl or a match. Win, lose well, or cheat: the room judges all three, and the judging is the culture\'s, not yours.'};
+ 'Contest':'the culture\'s own trial of worth — a brawl or a match. Win, lose well, or cheat: the room judges all three, and the judging is the culture\'s, not yours.',
+ 'Hall law':'the Hall is bound ground: a fight inside the contest frame is sacred, a fight outside it is a crime against the house — standing with the ruling faction falls and the door shuts for days. Da Grog Den keeps no such law.'};
 /* T-DOOR-1: tier pip tooltip — quotes this exact door's own canon tiers ladder line under the generic Door Tier blurb */
 function doorTierTip(kind,tier){var dr=DR(kind)||{},ladder=(dr.tiers||{})[String(tier)]||'';
  var tip='<b>Tier '+['','I','II','III'][tier]+'</b> — '+GLOSS['Door Tier']+(ladder?'<br><b>This door:</b> '+esc(ladder):'');
@@ -8219,6 +8221,32 @@ function hallBout(rg,hc){
  persist();T(con.name+' called — '+force.n+' committed'+(wager?', '+wager+' '+curName()+' on the table':'')+'.');
  go('threads');rTL();openT(id);
 }
+/* T-SOC-1 B2 — hall law (spec §4). The Hall is bound ground: violence INSIDE the contest
+   frame is sacred, violence outside it is a crime against the house. Striking an
+   un-challenged patron costs standing with the ruling faction and shuts the door for a
+   window of days. Where the skin sets hall_law:false (Da Grog Den), lawPenalty returns
+   null and the scrap simply IS the contest — it routes to hallBout instead, and the
+   room's Champion judges it like any other bout. */
+function hallStrike(p,hc){
+ var out=document.getElementById('hallout');if(!p||!out)return;
+ var pen=HALL.lawPenalty(hc.ctx,D);
+ if(!pen){                                       // lawless hall: this is just how they contest
+  var regs=HALL.regularsAt(hc.ctx,D).filter(function(r){return r.present&&r.role==='champion';});
+  if(regs.length)hallBout(regs[0],hc);
+  else out.innerHTML='You swing. Half the room joins in. Nobody here minds.';
+  return;
+ }
+ S.world.standing=S.world.standing||{};
+ var was=(S.world.standing[hc.ctx.fac]||0);
+ var now=SEAT.moveStanding(S.world.standing,hc.ctx.fac,pen.standing);
+ S.social.bar=S.social.bar||{};
+ S.social.bar[hc.ctx.locId]=hc.ctx.day+pen.days;
+ hallTrustRecord(hc,'host','lawbreak');          // the keeper of the space remembers first
+ out.innerHTML='You strike '+esc(p.name)+' un-challenged. The room goes silent, then closes on you. '
+  +'Standing with '+esc((FAC(hc.ctx.fac)||{}).name||hc.ctx.fac)+' falls to '+esc(SEAT.standingName(now,D))
+  +(was!==now?'':' (already at the floor)')+', and you are barred from this hall for '+pen.days+' days.';
+ rW();persist();
+}
 function hallMatch(rg,hc,cheat){
  var out=document.getElementById('hallout');if(!rg||!out)return;
  var con=HALL.contestOf(hc.ctx,D),wager=hallWagerFor(hc,rg);
@@ -8415,6 +8443,13 @@ function renderDoor(dr,h){var c=E('div','card');
     '<div class="d">The door-demo sandbox has no crowd — visit a real Hall.</div>');}
   else{
    var hc=hallCtxOf({tier:tier}),cul=(D.rules.hall.culture||{})[hc.ctx.fac]||{};
+   var _bar=HALL.barCheck(S.social.bar,hc.ctx.locId,hc.ctx.day);
+   if(_bar.barred){
+    var _barTip='<b>Hall law</b> — '+GLOSS['Hall law'];
+    c.insertAdjacentHTML('beforeend','<div class="d" style="border-left:3px solid var(--blh);padding-left:8px">'
+      +'<span class="tipable" data-tip="'+_barTip.replace(/"/g,'&quot;')+'">The doorway fills before you reach it.</span> You are barred from this hall for '+_bar.left
+      +(_bar.left===1?' more day':' more days')+' — the house has not forgotten.</div>');
+   }else{
    var ev=HALL.moodEventAt(hc.ctx,hc.wctx2,D);
    /* Fix round 1: stamp the mood delta on ctx BEFORE generation so crowdSize (pure core)
       sizes the crowd correctly in one deterministic pass — no post-hoc slicing. */
@@ -8442,9 +8477,11 @@ function renderDoor(dr,h){var c=E('div','card');
        +' <span style="color:var(--dim)">— <span class="tipable" data-tip="'+_trustTip.replace(/"/g,'&quot;')+'">'+esc(rung.name)+'</span></span>'
        +' <button class="btn gh sm" data-hallcom="reg:'+esc(rg.role)+'">'+esc(cul.commune||'Talk')+'</button>'+_ctl+'</div>';
    }).join('');
+   var _hallLawTip='<b>Hall law</b> — '+GLOSS['Hall law'];
    hh+=pats.length?pats.map(function(p,i){var _offTip='<b>Offering</b> — '+GLOSS['Offering'];return '<div class="lrow" style="cursor:default">'+esc(p.name)+' — <span style="color:var(--dim)">'+esc(p.role)+'</span>'
      +' <button class="btn gh sm" data-hallcom="'+i+'">'+esc(cul.commune||'Talk')+'</button>'
-     +' <button class="btn gh sm" data-halloff="'+i+'"><span class="tipable" data-tip="'+_offTip.replace(/"/g,'&quot;')+'">'+esc(off.label)+'</span> ('+(off.kind==='cur'?off.cost+' '+curName():off.kind==='res'?'1 '+off.res:'1 '+off.accepts)+')</button></div>';}).join('')
+     +' <button class="btn gh sm" data-halloff="'+i+'"><span class="tipable" data-tip="'+_offTip.replace(/"/g,'&quot;')+'">'+esc(off.label)+'</span> ('+(off.kind==='cur'?off.cost+' '+curName():off.kind==='res'?'1 '+off.res:'1 '+off.accepts)+')</button>'
+     +' <button class="btn gh sm" data-hallhit="'+i+'"><span class="tipable" data-tip="'+_hallLawTip.replace(/"/g,'&quot;')+'">'+esc(HALL.contestOf(hc.ctx,D).hallLaw?'Strike':'Start somethin\'')+'</span></button></div>';}).join('')
      :'<div class="d" style="color:var(--dim)">The hall stands empty tonight.</div>';
    var _rumorTip='<b>Rumor</b> — '+GLOSS['Rumor'];
    hh+='<div class="d" id="hallout" style="margin-top:8px;color:var(--dim)"><span class="tipable" style="cursor:help" data-tip="'+_rumorTip.replace(/"/g,'&quot;')+'">◌ Word on the ground:</span></div>';
@@ -8458,12 +8495,15 @@ function renderDoor(dr,h){var c=E('div','card');
    };});
    c.querySelectorAll('[data-halloff]').forEach(function(b){b.onclick=function(){
      hallOffer(pats[+b.dataset.halloff],hc,off);};});
+   c.querySelectorAll('[data-hallhit]').forEach(function(b){b.onclick=function(){
+     hallStrike(pats[+b.dataset.hallhit],hc);};});
    c.querySelectorAll('[data-hallcon]').forEach(function(b){b.onclick=function(){
      var rg=null;regs.forEach(function(r){if(r.role===b.dataset.hallcon)rg=r;});
      hallContest(rg,hc,false);};});
    c.querySelectorAll('[data-hallcheat]').forEach(function(b){b.onclick=function(){
      var rg=null;regs.forEach(function(r){if(r.role===b.dataset.hallcheat)rg=r;});
      hallContest(rg,hc,true);};});
+   }
   }
  }
  else if(kind==='warp_gate'){c.insertAdjacentHTML('beforeend','<div class="d">A tear in reality — passage through a linked Warp Gate is <b>free</b>, skipping the travel ladder entirely. No linked gates are charted in this region of space yet.</div>');
