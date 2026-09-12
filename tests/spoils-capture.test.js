@@ -107,3 +107,19 @@ test('validate rejects: two captors targeting the same captive in one block', ()
   ];
   assert.ok(!THREAD.validate(T, s, 'A', block, CANON).ok);
 });
+
+// Fix round 1 (T-SOC-1 B2, Ruling 12): a Hall bout is a sanctioned, non-lethal contest —
+// capture is thematically wrong there (mints a CAPTIVE item, credits a kill, flips roster
+// status) and Ruling 8 already said so; nothing had actually enforced it. An otherwise
+// perfectly legal capture (right tier, exactly 1 wound, in range, empty slot) must be
+// rejected outright the moment the thread is nonLethal.
+test('validate rejects an otherwise-legal capture when the thread is nonLethal (bout)', () => {
+  const s = mkState(); s.nonLethal = true;
+  const v = THREAD.validate(T, s, 'A', capBlock(), CANON);
+  assert.strictEqual(v.ok, false);
+  assert.match(v.reason, /not permitted/i);
+});
+test('the same capture still passes validate when the thread is NOT nonLethal (regression guard)', () => {
+  const s = mkState();
+  assert.ok(THREAD.validate(T, s, 'A', capBlock(), CANON).ok);
+});

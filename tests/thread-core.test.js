@@ -361,3 +361,94 @@ test('Ruling 8: validate rejects targeting a yielded combatant (off the field)',
   assert.equal(v.ok, false);
   assert.match(v.reason, /not in sight/i);
 });
+
+// Fix round 1 (T-SOC-1 B2, Ruling 10): tickConds' own DoT floor only ever consulted the
+// per-instance Non-Lethal carrier (inst.nl) — a thread-level state.nonLethal bout could still
+// have a fighter DoT'd to 0 and run the full kill path. The floor must be total.
+test('Ruling 10: a thread-level nonLethal DoT tick floors at 1 wound and yields, never kills', () => {
+  const state = { id: 'b5', pools: { You: 10 }, nonLethal: true, phase: 'battle',
+    combatants: {
+      m1: { party: 'You', w: [2, 4], conds: [{ tag: 'DoT', tier: 5, left: 2, src: 'x', el: 'Physical' }] } } };
+  // no per-instance nl carrier — only the THREAD is nonLethal
+  const rep = THREAD.tickConds('You', state, canon);
+  assert.equal(state.combatants.m1.w[0], 1, 'floored at 1, not killed by the full DoT tier');
+  assert.ok(!state.combatants.m1.dead);
+  assert.equal(state.combatants.m1.yielded, true, 'a DoT that lands a fighter at 1 wound yields them too');
+  assert.ok(rep.some(function (r) { return r.who === 'm1' && r.tag === 'DoT' && r.died === false; }));
+});
+
+test('Ruling 10: a lethal thread\'s DoT is unaffected by the nonLethal floor (regression guard)', () => {
+  const state = { id: 'b6', pools: { You: 10 }, phase: 'battle',
+    combatants: {
+      m1: { party: 'You', w: [2, 4], conds: [{ tag: 'DoT', tier: 5, left: 2, src: 'x', el: 'Physical' }] } } };
+  THREAD.tickConds('You', state, canon);
+  assert.equal(state.combatants.m1.w[0], 0);
+  assert.equal(state.combatants.m1.dead, true);
+  assert.ok(!state.combatants.m1.yielded);
+});
+
+// The controller's own diagnosis of why this slipped through: every Ruling-8 pin above calls
+// THREAD.apply without its 5th `party` arg, so apply's own tickConds gate
+// (`party!=null&&...`) never fires and tickConds never actually runs inside the real
+// post pipeline. This pin exercises the full apply(thread,state,block,canon,party) path.
+test('Ruling 10: THREAD.apply with a party arg ticks conds first and applies the same nonLethal floor', () => {
+  const thread = { type: 'SKIRMISH' };
+  const state = { id: 'b7', pools: { You: 10, Them: 10 }, nonLethal: true, phase: 'battle',
+    combatants: {
+      m1: { party: 'You', w: [2, 4], conds: [{ tag: 'DoT', tier: 5, left: 2, src: 'x', el: 'Physical' }] },
+      e0: { party: 'Them', w: [4, 4], conds: [] } } };
+  THREAD.apply(thread, state, [], canon, 'You');   // party arg present -> tickConds('You',...) runs
+  assert.equal(state.combatants.m1.w[0], 1, 'the posting side\'s own DoT ticked, floored at 1');
+  assert.ok(!state.combatants.m1.dead);
+  assert.equal(state.combatants.m1.yielded, true);
+});
+
+// Ruling 10: npcExpDamage's floor must cap the TOTAL (base + the DoT sum), not only the base
+// component — a DoT tail left unfloored silently mis-scores the brain's own actions. Verified
+// indirectly through the exported scorePair (npcExpDamage itself is internal): the same
+// base+DoT pair, against the same target, must score STRICTLY lower under a nonLethal thread
+// than under a lethal one, because the floored expected-damage consideration (C1) drops from
+// cur/maxW to (cur-1)/maxW while every other scoring input is held identical.
+test('Ruling 10: scorePair scores a base+DoT attack lower under nonLethal (npcExpDamage total floor)', () => {
+  const mkState = (nonLethal) => ({ nonLethal: nonLethal, board: null, pools: {},
+    combatants: {
+      atk: { party: 'B', w: [10, 10] },
+      tgt: { party: 'A', w: [5, 5] } } });
+  const pair = { kind: 'attack', actor: 'atk', target: 'tgt', ap: 1,
+    item: { damage: 1, element: 'Physical', conds: [{ tag: 'DoT', tier: 3 }] } };
+  // raw base(1) + DoT(tier3, duration 2+3=5, magnitude 3*5=15) = 16, far above the target's
+  // 5 current wounds either way -> without the fix both branches cap at cur=5 (indistinguishable).
+  const lethalScore = THREAD.scorePair(pair, mkState(false), canon);
+  const nonLethalScore = THREAD.scorePair(pair, mkState(true), canon);
+  assert.ok(nonLethalScore < lethalScore,
+    `expected the nonLethal floor (cur-1=4) to score strictly below the lethal cap (cur=5): ${nonLethalScore} vs ${lethalScore}`);
+});
+
+// Fix round 1 (T-SOC-1 B2, Ruling 8 minor): a fighter who enters a bout already at 1 wound
+// has the OLD floored-_taken gate stuck at 0 forever (Math.max(0,1-1)=0), so they could never
+// yield — an unconcludable 1v1 except by fleeing. Gate on the REAL hit (post-armour/cover,
+// pre-floor) instead: it landed even though the floor then zeroes the actual wound change.
+test('Ruling 8 fix: a fighter already at 1 wound still yields on a real hit (armour did not eat it)', () => {
+  const state = { id: 'b8', pools: { You: 10, Them: 10 }, nonLethal: true, phase: 'battle',
+    combatants: {
+      m1: { party: 'You', w: [4, 4], conds: [], model: { n: 'Mine' } },
+      e0: { party: 'Them', w: [1, 8], conds: [], model: { n: 'Theirs' }, gen: { n: 'Theirs' } } } };
+  const block = [{ actor: 'm1', cost: 1,
+    effect: { kind: 'damage', to: 'e0', amount: 5, element: 'Physical', weapon: 'Fist' } }];
+  THREAD.apply({ type: 'SKIRMISH' }, state, block, canon);
+  assert.equal(state.combatants.e0.w[0], 1, 'still floored at 1 — no actual wound change was possible');
+  assert.equal(state.combatants.e0.yielded, true, 'but the landed hit still yields them');
+});
+
+test('Ruling 8 fix: armour absorbing the WHOLE hit does not yield a fighter already at 1 wound', () => {
+  const state = { id: 'b9', pools: { You: 10, Them: 10 }, nonLethal: true, phase: 'battle',
+    combatants: {
+      m1: { party: 'You', w: [4, 4], conds: [], model: { n: 'Mine' } },
+      e0: { party: 'Them', w: [1, 8], conds: [], model: { n: 'Theirs' }, gen: { n: 'Theirs' },
+        armour: { Physical: 99 } } } };
+  const block = [{ actor: 'm1', cost: 1,
+    effect: { kind: 'damage', to: 'e0', amount: 5, element: 'Physical', weapon: 'Fist' } }];
+  THREAD.apply({ type: 'SKIRMISH' }, state, block, canon);
+  assert.equal(state.combatants.e0.w[0], 1);
+  assert.ok(!state.combatants.e0.yielded, 'armour ate the whole hit — nothing actually landed, so no yield');
+});

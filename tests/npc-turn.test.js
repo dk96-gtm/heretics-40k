@@ -129,3 +129,35 @@ test('npcTurn→apply: a distant enemy closes AND strikes in one turn', () => {
   assert.ok(state.combatants.ork.x < 4, 'ork advanced toward the player');
   assert.ok(state.combatants.hero.w[0] < 10, 'and landed a hit after closing');
 });
+
+// Fix round 1 (T-SOC-1 B2, Ruling 11): a yielded fighter is visible (not dead, not
+// captured) but is off the field — the SAME stall class T-NPC-3.5 already fixed for
+// corpses. Filtered at npcTurn's own targeting list, NOT inside spottedEnemies (which
+// also drives the fog render and must keep showing a downed fighter on the board).
+test('npcTurn: the only spotted enemy has yielded — holds fire instead of stalling on it', () => {
+  const state = {
+    pools: { B: 10 },
+    combatants: {
+      ork:  { party: 'B', x: 1, y: 0, w: [12, 12], sight: 5, spd: 4, weps: [MELEE] },
+      hero: { party: 'A', x: 0, y: 0, w: [10, 10], sight: 5, spd: 4, weps: [MELEE], yielded: true },
+    },
+  };
+  const block = THREAD.npcTurn('B', state, openBoard(8, 4), wep);
+  assert.deepStrictEqual(block, [], 'nothing legal to do against a yielded-only field — holds cleanly');
+});
+
+test('npcTurn: one yielded + one live enemy — attacks the live one, never the yielded one', () => {
+  const state = {
+    pools: { B: 10 },
+    combatants: {
+      ork:    { party: 'B', x: 1, y: 0, w: [12, 12], sight: 6, spd: 4, weps: [MELEE] },
+      down:   { party: 'A', x: 0, y: 0, w: [1, 8], sight: 6, spd: 4, weps: [MELEE], yielded: true },
+      live:   { party: 'A', x: 2, y: 0, w: [10, 10], sight: 6, spd: 4, weps: [MELEE] },
+    },
+  };
+  const block = THREAD.npcTurn('B', state, openBoard(8, 4), wep);
+  assert.ok(!block.some((b) => b.effect && b.effect.to === 'down'),
+    'never targets the yielded fighter, even though it is closer/equidistant');
+  const atk = block.find((b) => b.effect && b.effect.kind === 'damage');
+  assert.ok(atk && atk.effect.to === 'live', 'attacks the still-standing fighter instead');
+});
