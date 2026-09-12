@@ -5198,6 +5198,24 @@ function concludeThread(t,oc){
   :'⚔ RESOLUTION — '+(oc.defeated||[]).join(', ')+' broken to the last model. <b>'+oc.victor+'</b> holds the field.';
  if(!t.posts)t.posts=[];
  t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),body:line});
+ /* T-SOC-1 B2: a Hall bout settles socially, not territorially — the wager returns
+    doubled on a win or stays on the table on a loss, and the room's judgement of how you
+    fought rides the B1 judge (win / noble_loss / nothing at all). Guarded on t.hall, so
+    every other thread in the game reaches this line and does nothing. */
+ if(t.hall){
+  var _hb=t.hall,_hC=(t.state&&t.state.combatants)||{},_hurt=false;
+  Object.keys(_hC).forEach(function(id){var c=_hC[id];
+   if(c.gen&&c.w&&c.w[0]<c.w[1])_hurt=true;});
+  if(_hb.wager&&mineWon)S.cur=(S.cur||0)+_hb.wager*2;
+  var _act=HALL.brawlAct(mineWon,_hurt);
+  if(_act){
+   var _hc={ctx:{locId:_hb.locId,fac:_hb.fac,day:_hb.day}};
+   hallTrustRecord(_hc,_hb.role,_act);
+  }
+  t.posts.push({who:'THE HALL',tag:'',stamp:nowStamp(),
+   body:'⚁ THE BOUT — '+(mineWon?'you hold the floor.':_hurt?'you are put down, but you made them work for it.':'you are put down without landing a blow.')
+     +(_hb.wager?(mineWon?' The stake comes back doubled: +'+(_hb.wager*2)+'.':' The stake stays on the table.'):'')});
+ }
  var key=(t.pl&&t.lid)?t.pl+'/'+t.lid:null;
  if(key&&S.world.history){
   S.world.history[key]=(S.world.history[key]||[]).filter(function(h){return !(h.indexOf(t.type)===0&&h.indexOf('ACTIVE (you)')>=0)});
@@ -8096,6 +8114,50 @@ function hallContest(rg,hc,cheat){
  var con=HALL.contestOf(hc.ctx,D);
  if(con.resolver==='brawl')hallBout(rg,hc);
  else hallMatch(rg,hc,!!cheat);
+}
+/* T-SOC-1 B2: the BRAWL engine. A pit bout is a non-lethal 1v1 against the Champion by
+   name, fought on the ordinary battlefield grid — no new combat machinery. The thread is
+   built here rather than through startThread because startThread seeds via seedCombat,
+   which needs an NPC garrison at the location (a Hall has none) and floors standing with
+   whoever it seeds (a sanctioned bout is not a raid). Same direct-mint pattern as
+   manualRestore. genHostiles' duel+named contract spawns exactly ONE model, no escort. */
+function hallBout(rg,hc){
+ var am=activeModel(),force=S.forces.filter(function(f){return f.lead===am.id})[0];
+ if(!force){T('No Force to fight with.');return}
+ var other=threadOfForce(force.n);
+ if(other){T(force.n+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}
+ var _slk=stationedThreadLockOf(force.id);
+ if(_slk){T(force.n+' is standing garrison at '+((lById(_slk)||{}).name||_slk)+'. Recall it first.');return}
+ var wager=hallWagerFor(hc,rg);
+ if(wager&&(S.cur||0)<wager){T('You cannot cover the wager — '+wager+' '+curName()+'.');return}
+ var fac=FAC(hc.ctx.fac);if(!fac){T('No one here will stand against you.');return}
+ var con=HALL.contestOf(hc.ctx,D),l=hc.loc,pl=hc.pl.p;
+ var mine=S.roster.filter(function(m){return m.fo===force.n&&m.st!=='DEAD'&&m.st!=='TAKEN'});
+ if(!mine.length){T('No model in '+force.n+' can stand up.');return}
+ var C={},pools={};
+ mine.forEach(function(m){var p=(m.w||'1/1').split('/');
+  C[m.id]={w:[parseInt(p[0],10)||1,parseInt(p[1],10)||1],conds:[],party:force.n,model:m,
+   armour:(m.loadout&&m.loadout.armour&&m.loadout.armour.it)?m.loadout.armour.it.def:null};});
+ pools[force.n]=force.ap;
+ var hostName=rg.name;
+ var seed=ULT.seedFor(S.world.missionSeedBase||1,hc.ctx.day,l.id,'bout:'+rg.role);
+ var g=genHostCombatants(fac,hostName,1,{duel:true,filter:'named',target_name:rg.name},1,seed);
+ if(!g.specs.length){T('The '+rg.name+' will not be drawn out tonight.');return}
+ for(var k in g.C)C[k]=g.C[k];
+ pools[hostName]=g.ap;
+ var id='bout_'+l.id+'_'+S.threads.length;
+ var t={id:id,type:'SKIRMISH',n:con.name+' — '+rg.name,loc:pl.name+' · '+l.name,pl:pl.id,lid:l.id,
+  turn:'you',vis:'public',initiator:'You ('+am.n.split(',')[0]+')',
+  about:'A sanctioned '+con.name+' in '+l.name+'. Nobody dies here: every blow is floored at a single wound, and the room is watching.',
+  forces:[force.n,hostName],npc:null,
+  hall:{locId:hc.ctx.locId,role:rg.role,fac:hc.ctx.fac,wager:wager,day:hc.ctx.day}};
+ t.seedState={pools:pools,combatants:C,joined:false,nonLethal:true};
+ if(wager)S.cur=Math.max(0,(S.cur||0)-wager);          // stake goes down on the table now
+ S.threads.push(t);
+ var hkey=pl.id+'/'+l.id;if(!S.world.history[hkey])S.world.history[hkey]=[];
+ S.world.history[hkey].unshift('SKIRMISH — '+t.n+' · ACTIVE (you)');
+ persist();T(con.name+' called — '+force.n+' committed'+(wager?', '+wager+' '+curName()+' on the table':'')+'.');
+ go('threads');rTL();openT(id);
 }
 function hallMatch(rg,hc,cheat){
  var out=document.getElementById('hallout');if(!rg||!out)return;
