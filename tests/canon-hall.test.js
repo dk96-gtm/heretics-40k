@@ -3,11 +3,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const path = require('path');
 const D = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8'));
+const { loadThread } = require('./_load.js');
+const THREAD = loadThread();
 
 const FACTIONS = D.factions.map(f => f.id);
 
-test('canon: version is 1.41', () => {
-  assert.equal(D.meta.version, '1.41');
+test('canon: version is 1.42', () => {
+  assert.equal(D.meta.version, '1.42');
 });
 
 test('hall door row exists with 20 per-faction skins and 3 tier lines', () => {
@@ -154,7 +156,24 @@ test('rules.hall.champion: rung-gated training buff and title fight', () => {
   assert.equal(CH.title.rung_min, 3);          // SWORN
   assert.ok(D.rules.hall.trust.rungs.length === 4, 'rung gates index into the B1 ladder');
   assert.ok(CH.train.cost_mult > 0 && CH.train.days > 0, 'training must cost and must expire');
-  assert.equal(typeof CH.train.tag, 'string');
+  // Ruling 17 (B2 final fix wave, C2): the pin that SHOULD have caught the dead buff.
+  // `typeof tag === 'string'` alone endorsed a silent no-op: the tag was minted with
+  // COND_DUR.Rally's duration of 1, and apply() ticks the posting side's conditions
+  // BEFORE it reads condMods, so the instance was spliced off the model on the very
+  // first post and contributed nothing, always. Pin the AUTHORED values, and prove the
+  // tag actually resolves in the engine's own condition registry — so retuning
+  // train.tag to something the registry does not know can never again ship green.
+  assert.equal(CH.train.tag, 'Rally');
+  assert.equal(CH.train.tier, 1);
+  assert.ok(THREAD.CONDS[CH.train.tag], 'train.tag must be a tag the CONDS registry knows');
+  const trainDur = THREAD.condDur(CH.train.tag, CH.train.tier);
+  assert.ok(Number.isFinite(trainDur) && trainDur > 0,
+    'train.tag must resolve to a finite, usable duration in the engine registry');
+  // rounds is the authored lifetime of the purchased instance, and it must outlive the
+  // first tickConds pass or the buff is dead on arrival (the C2 bug exactly).
+  assert.equal(typeof CH.train.rounds, 'number');
+  assert.ok(CH.train.rounds >= 2,
+    'a purchased buff must survive the first tickConds decrement to ever be felt');
   assert.ok(CH.title.standing_notch > 0, 'a title win notches standing upward');
   assert.ok(CH.title.stake_mult > 1, 'a title fight stakes more than a normal bout');
 });
