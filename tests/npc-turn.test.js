@@ -161,3 +161,36 @@ test('npcTurn: one yielded + one live enemy — attacks the live one, never the 
   const atk = block.find((b) => b.effect && b.effect.kind === 'damage');
   assert.ok(atk && atk.effect.to === 'live', 'attacks the still-standing fighter instead');
 });
+
+/* ── T-SOC-1 B2 final fix wave, I2 ────────────────────────────────────
+   `yielded` is the bout's win condition — a third off-the-field flag beside dead and
+   captured — and npcTurn's actor loop skipped only `dead`. It IS reachable: npcRespond
+   runs BEFORE THREAD.outcome in the post handler, so on the very post where the player
+   wins the bout the just-yielded Champion still enters the loop. Attacks were already
+   safe (they come only from _pairs, which filters yielded actors) but movement is staged
+   directly, so a downed fighter could take a move step in the post that ends the fight. */
+test('npcTurn: a yielded combatant stages nothing at all — no attack and no move', () => {
+  const state = {
+    pools: { B: 10 },
+    combatants: {
+      champ: { party: 'B', x: 6, y: 0, w: [1, 9], sight: 5, spd: 4, weps: [MELEE], yielded: true },
+      hero:  { party: 'A', x: 0, y: 0, w: [9, 9], sight: 5, spd: 4, weps: [MELEE] },
+    },
+  };
+  const block = THREAD.npcTurn('B', state, openBoard(10, 4), wep);
+  assert.deepStrictEqual(block, [], 'a fighter who has yielded acts no further');
+});
+
+test('npcTurn: an un-yielded ally still acts on the post its partner yields', () => {
+  const state = {
+    pools: { B: 10 },
+    combatants: {
+      champ: { party: 'B', x: 6, y: 0, w: [1, 9], sight: 9, spd: 4, weps: [MELEE], yielded: true },
+      second:{ party: 'B', x: 1, y: 0, w: [9, 9], sight: 9, spd: 4, weps: [MELEE] },
+      hero:  { party: 'A', x: 0, y: 0, w: [9, 9], sight: 9, spd: 4, weps: [MELEE] },
+    },
+  };
+  const block = THREAD.npcTurn('B', state, openBoard(10, 4), wep);
+  assert.ok(block.length > 0, 'the side is not frozen by one yielded model');
+  assert.ok(block.every((b) => b.actor === 'second'), 'and only the standing model acts');
+});

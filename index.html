@@ -1278,7 +1278,15 @@ var THREAD=(function(){
      `instant` handler and store nothing. Unknown tags still apply as inert
      instances (left:Infinity via condDur's fallback) — extensibility.
 
-     Payload contract: add = {tag,tier,src,el,nl,nr,item,of}. `el`/`nl`/`nr`
+     Payload contract: add = {tag,tier,src,el,nl,nr,item,of,left}. `left` is
+     OPTIONAL and almost always omitted — the registry's own COND_DUR table
+     is the right lifetime for a condition applied BY something that happens
+     on the field (a weapon rider, a cast, a kit action). It exists for the
+     one class of caller that buys a condition outright and so owns its
+     lifetime as a balance decision: the Hall's purchased training buff,
+     whose duration is authored at rules.hall.champion.train.rounds (Ruling
+     17). Every existing caller passes nothing here and is unaffected.
+     `el`/`nl`/`nr`
      are STAMPED here, at application: if the payload already carries them
      (staging computed them), they win; otherwise, when the payload carries
      the full `item` (the src item object), they're resolved from it right
@@ -1297,14 +1305,16 @@ var THREAD=(function(){
     var el=(add.el!=null)?add.el:(add.item?elementOf(add.item):null);
     var nl=(add.nl!=null)?add.nl:!!(add.item&&/non-?lethal/i.test(add.item.d||''));
     var nr=(add.nr!=null)?add.nr:!!(add.item&&isNoRevival(add.item,canon));
-    var inst={tag:tag,tier:tier,left:condDur(tag,tier),src:add.src||null,el:el};
+    var _left=(add.left!=null)?add.left:condDur(tag,tier);
+    var inst={tag:tag,tier:tier,left:_left,src:add.src||null,el:el};
     if(nl)inst.nl=true;
     if(nr)inst.nr=true;
     if(actorId!=null)inst.by=actorId;
     if(add.of)inst.of=add.of;
     for(var j=0;j<c.conds.length;j++)if(c.conds[j].tag===tag){
       if(inst.tier>c.conds[j].tier){c.conds[j]=inst;return {replaced:true};}
-      c.conds[j].left=condDur(c.conds[j].tag,c.conds[j].tier);return {refreshed:true};}
+      c.conds[j].left=(add.left!=null)?add.left:condDur(c.conds[j].tag,c.conds[j].tier);
+      return {refreshed:true};}
     c.conds.push(inst);return {applied:true};
   }
   var NPC_RANK={MELEE:0,SHORT:1,MEDIUM:2,LONG:3};
@@ -1435,7 +1445,14 @@ var THREAD=(function(){
       _pairs=enumeratePairs(side,npcShadow(state,pos,side,pool),board,weaponsOf,kitOf||npcNoKit,canon);
       _dirty=false;};
     for(var aid in C){var me=C[aid];
-      if(me.party!==side||me.dead||me.x==null)continue;
+      /* Ruling 8 / final fix wave I2: `yielded` is the third off-the-field flag beside
+         dead and captured, and this loop skipped only `dead`. It IS reachable —
+         npcRespond runs BEFORE THREAD.outcome in the post handler, so on the very post
+         where the player wins the bout the just-yielded Champion still enters here.
+         Attacks were already safe (they come only from _pairs, which filters yielded
+         actors), but MOVEMENT is staged directly below, so a downed fighter could take a
+         move step in the post that ends the bout. Matches enumeratePairs' own filter. */
+      if(me.party!==side||me.dead||me.yielded||me.x==null)continue;
       var tgt=null;
       if(doc.honorMode==='high'&&aid===cmdr&&leaderTgt)tgt=leaderTgt;      // the duel
       else if(sideTgt)tgt=sideTgt;
@@ -3733,7 +3750,13 @@ var HALL=(function(){
   function trainOffer(ctx,canon,rungIndex){
     var T=((H(canon).champion)||{}).train||{};
     if(rungIndex<(T.rung_min==null?2:T.rung_min))return null;
-    return {tag:T.tag||'Rally',tier:T.tier||1,days:T.days||3,
+    /* `rounds` (Ruling 17) is the buff's lifetime in the buyer's OWN posts, authored
+       in canon rather than taken from the CONDS registry: the registry's Rally duration
+       of 1 is correct for a same-post weapon rider but is spliced off the model by
+       apply()'s opening tickConds before condMods is ever read, so a purchased buff minted
+       at that duration contributed exactly nothing (C2). Default kept >= 2 for the same
+       reason — a buff that cannot survive the first tick is dead on arrival. */
+    return {tag:T.tag||'Rally',tier:T.tier||1,days:T.days||3,rounds:T.rounds||3,
             cost:wagerFor(ctx,canon)*(T.cost_mult||3)};
   }
   /* titleGate: the rung-④ payoff — beat them in their own form. Design law (spec §6):
@@ -4178,11 +4201,23 @@ function seedCombat(t,pid,l,npcId,force,missionParams,missionTarget){
  // here — after C holds every combatant that will actually fight, past every earlier
  // early-return (no idle roster, no garrison host, no spawned host) — so a buff is
  // only ever spent when a real combat thread is actually being seeded (Ruling 12).
+ /* T-SOC-1 B2 final fix wave (C2 + I4): mint the purchased buff through THREAD.applyCond
+    — the file's own documented "single place a condition gets applied" (Immunity-first,
+    refresh-or-upgrade) — instead of pushing a raw object into c.conds, and give it the
+    canon-authored lifetime rather than the registry's same-post rider duration. Both were
+    real: the raw push was a new precedent against a stated architectural invariant, and
+    condDur('Rally',1) === 1 meant apply()'s opening tickConds decremented the instance to
+    0 and spliced it before the damage branch ever read condMods — the buff contributed
+    nothing, in every thread, always. applyCond takes {combatants,pools} rather than the
+    thread state because at this point the state object has not been assembled yet; Rally
+    is not an `instant` tag, so pools is never touched. actorId is null — a bought buff
+    has no applying actor and must not carry a kill-credit `by`. */
  var _tr=S.social&&S.social.train;
  if(_tr&&_tr.untilDay>_kitDay){
   for(var _tk in C){if(C[_tk].gen)continue;
-   C[_tk].conds.push({tag:_tr.tag,tier:_tr.tier,left:THREAD.condDur(_tr.tag,_tr.tier),
-     src:'Hall training',el:null,nl:false,nr:false});}
+   THREAD.applyCond({combatants:C,pools:pools},_tk,
+     {tag:_tr.tag,tier:_tr.tier,left:hallTrainRounds(_tr),src:'Hall training',
+      el:null,nl:false,nr:false},D,null);}
   S.social.train=null;
  }else if(_tr)S.social.train=null;                 // lapsed unused
  t.seedState={pools:pools,combatants:C,joined:false};
@@ -5113,6 +5148,43 @@ function exitThread(t){
     T('You abort the passage'+(dn?' to '+dn:'')+' — '+refund+' '+curName()+' refunded.');
     go('threads');rTL();return;
   }
+  /* ── T-SOC-1 B2 final fix wave, C1 (Ruling 18): a Hall bout has its own exit law.
+     hallBout takes the wager off the player the moment the thread is minted, and ONLY
+     concludeThread's t.hall block ever hands it back — exitThread had no t.hall branch at
+     all, so both of its branches spliced the thread away with the stake destroyed, and the
+     pre-Lock-In one even toasted "no cost; hostilities had not begun" while the money was
+     already gone. Backing out of deploy is routine, so that was a silent, repeatable
+     currency loss carrying a message that denied it happened. Shaped on the TRAVEL
+     precedent directly above (refund + say so):
+       · pre-Lock-In (state.joined falsy) — nothing was risked: the stake comes back whole.
+       · post-Lock-In — you walked away from the table, so the house keeps the stake, but
+         NONE of the war-flee penalties apply: no 5%-of-army-value charge, no wound on every
+         DEPLOYED roster model, no pursuit thread. Those are war semantics and they are
+         absurd inside a tavern. Wounds ALREADY taken in the bout DO sync home, the same way
+         concludeThread syncs them — walking out of a beating does not undo it, and skipping
+         the sync would make a mid-bout exit a free full heal, strictly better than finishing
+         the fight. Nobody dies in a non-lethal bout, so there is no death path to run here.
+     Guarded on !t.done so a CONCLUDED bout still falls through to the ordinary free-exit
+     branch below: concludeThread already settled that wager and must never settle it twice.
+     The Force lock releases exactly as every other branch releases it — by the splice, which
+     is what threadOfForce reads. ── */
+  if(t.hall&&!t.done){
+    var _hw=t.hall.wager||0,_hjoined=!!(t.state&&t.state.joined);
+    if(_hjoined){
+      var _hC=(t.state&&t.state.combatants)||{};
+      Object.keys(_hC).forEach(function(id){var c=_hC[id];if(c.gen||!c.w)return;
+        var m=S.roster.filter(function(r){return r.id===id})[0];
+        if(m)m.w=Math.max(0,c.w[0])+'/'+c.w[1];});
+    } else if(_hw)S.cur=(S.cur||0)+_hw;
+    S.threads=S.threads.filter(function(x){return x.id!==t.id});
+    persist();rW();rRos();
+    T(_hjoined
+      ?('You step off the floor at '+t.loc+' — the bout is forfeit'
+        +(_hw?' and the '+_hw+' '+curName()+' on the table stays with the house.':'. Nothing was staked.'))
+      :('You call it off before a blow is struck at '+t.loc
+        +(_hw?' — your '+_hw+' '+curName()+' comes back off the table.':' — nothing was staked.')));
+    go('threads');rTL();return;
+  }
   /* ── N2 fix wave C1: exit semantics INVERT on an NPC-initiated clock. Exiting a clock the
      PLAYER started means calling off your own siege (delete + restore is correct — the branches
      below). Exiting a clock an NPC pointed at YOUR ground means IGNORE: the thread, the clock
@@ -5177,7 +5249,14 @@ function exitThread(t){
   // Must run before t drops off S.threads (mirrors concludeThread's ordering, right after
   // convertSpoils) so if `t` itself carries a streak objective, its own progress meter still
   // gets the post-tick read on this very pass.
-  tickStreaksAndSync(t.state,false);
+  // Ruling 9 / final fix wave I1: a Hall bout moves no mission streak. concludeThread got
+  // this guard (and the sector-Conflict effect with it), a later ruling caught the Chronicle
+  // as a third site — exitThread is the fourth and was never opened, so fleeing a bout booked
+  // a qualifying combat loss on the streak primitive. Defense in depth: the t.hall branch at
+  // the top of this function already returns before reaching here, so this guard is belt to
+  // that brace — kept anyway, matching its three siblings, so the invariant holds at every
+  // site rather than depending on one early return staying where it is.
+  if(!t.hall)tickStreaksAndSync(t.state,false);
   // T-NPC-3 N1 final review FIX 1: siege restore now hoisted to the top of exitThread
   // (runs for every branch, including this one) — see _ultRestoreCond(t) call above.
   var curCost=Math.round(armyValue()*0.05);S.cur=Math.max(0,S.cur-curCost);
@@ -7270,7 +7349,16 @@ function threadView(V,t){
     }
     if(oc&&t.state.phase!=='aftermath'){             // already in aftermath → only END THREAD concludes
       var mineWon=oc.victor&&myForceNames().indexOf(oc.victor)>=0;
-      if(mineWon&&oc.kind==='annihilation'){
+      /* Final fix wave I5: a WON Hall bout used to land in the generic war aftermath,
+         posting "☠ THE FIELD IS YOURS — the enemy is broken. Walk the ground: loot the
+         fallen…" after a sanctioned non-lethal tavern contest, and offering a loot action
+         validate then always refused (the yielded Champion is not dead, so nothing is
+         lootable). Chose to conclude immediately rather than write a hall-voiced aftermath:
+         there is genuinely nothing to DO in a hall aftermath — no corpses, no spoils — so an
+         extra phase whose only button is dead is worse than settling the bout at the moment
+         it is won. Falling through to the else below runs concludeThread, which already
+         posts the ⚁ THE BOUT line, settles the wager and records the room's judgement. */
+      if(mineWon&&oc.kind==='annihilation'&&!t.hall){
         t.state.phase='aftermath';t.state.pendingOutcome=oc;deferred=true;
         t.posts.push({who:'THE RECORD',tag:'',stamp:nowStamp(),
           body:'☠ THE FIELD IS YOURS — the enemy is broken. Walk the ground: loot the fallen (1 AP each), then END THREAD to withdraw with your spoils.'});
@@ -8248,9 +8336,21 @@ function hallCap(n){return n?n.charAt(0).toUpperCase()+n.slice(1):n}
    which needs an NPC garrison at the location (a Hall has none) and floors standing with
    whoever it seeds (a sanctioned bout is not a raid). Same direct-mint pattern as
    manualRestore. genHostiles' duel+named contract spawns exactly ONE model, no escort. */
-function hallBout(rg,hc){
+/* Final fix wave M1: `unwagered` mints a bout with NO stake and no title on the line. It
+   exists for Da Grog Den's lawless strike — where hall_law is false and a swing at a patron
+   simply IS the contest — which routed straight here and so silently read hallTitleStakeOf,
+   opening a rung-④ TITLE fight at 4× stake (up to 400 currency) off a "Start somethin'"
+   button that displayed no stake at all. A spontaneous scrap is not a formal challenge, so
+   it now costs nothing and wins no title; the formal Champion row is still the way to stake
+   one. */
+function hallBout(rg,hc,unwagered){
  var am=activeModel(),force=S.forces.filter(function(f){return f.lead===am.id})[0];
  if(!force){T('No Force to fight with.');return}
+ // Final fix wave M6: defense in depth. Only reachable from a bar-gated render today, but a
+ // barred player must not be able to open a bout by any route. Reads hc.ctx.day, the same
+ // scale hallStrike writes the bar ledger on.
+ var _hbar=HALL.barCheck(S.social.bar,hc.ctx.locId,hc.ctx.day);
+ if(_hbar.barred){T('You are barred from this hall for another '+_hbar.left+' day(s).');return}
  var other=threadOfForce(force.n);
  if(other){T(force.n+' is already committed to "'+other.n+'". One Force can only be in one thread at a time.');return}
  var _slk=stationedThreadLockOf(force.id);
@@ -8258,7 +8358,7 @@ function hallBout(rg,hc){
  // T-SOC-1 B2: the rung-④ title fight is a CONTEST at a bigger stake — read the rung
  // directly off the ledger (hallWagerFor already does this for the plain wager gate).
  var _st=hallTitleStakeOf(hc,rg);
- var _title=_st.title,wager=_st.wager;
+ var _title=unwagered?false:_st.title,wager=unwagered?0:_st.wager;
  if(wager&&(S.cur||0)<wager){T('You cannot cover the wager — '+wager+' '+curName()+'.');return}
  var fac=FAC(hc.ctx.fac);if(!fac){T('No one here will stand against you.');return}
  var con=HALL.contestOf(hc.ctx,D),l=hc.loc,pl=hc.pl.p;
@@ -8285,11 +8385,23 @@ function hallBout(rg,hc){
  // here — after C holds every combatant that will actually fight, past every earlier
  // early-return (no Force, wager uncoverable, no host drawn) — so a buff is only ever
  // spent when a real bout is actually being minted (Ruling 12).
+ /* T-SOC-1 B2 final fix wave (C2 + I4): mint the purchased buff through THREAD.applyCond
+    — the file's own documented "single place a condition gets applied" (Immunity-first,
+    refresh-or-upgrade) — instead of pushing a raw object into c.conds, and give it the
+    canon-authored lifetime rather than the registry's same-post rider duration. Both were
+    real: the raw push was a new precedent against a stated architectural invariant, and
+    condDur('Rally',1) === 1 meant apply()'s opening tickConds decremented the instance to
+    0 and spliced it before the damage branch ever read condMods — the buff contributed
+    nothing, in every thread, always. applyCond takes {combatants,pools} rather than the
+    thread state because at this point the state object has not been assembled yet; Rally
+    is not an `instant` tag, so pools is never touched. actorId is null — a bought buff
+    has no applying actor and must not carry a kill-credit `by`. */
  var _tr=S.social&&S.social.train;
  if(_tr&&_tr.untilDay>WORLD.dayIndexAt(S,D,Date.now())){
   for(var _tk in C){if(C[_tk].gen)continue;
-   C[_tk].conds.push({tag:_tr.tag,tier:_tr.tier,left:THREAD.condDur(_tr.tag,_tr.tier),
-     src:'Hall training',el:null,nl:false,nr:false});}
+   THREAD.applyCond({combatants:C,pools:pools},_tk,
+     {tag:_tr.tag,tier:_tr.tier,left:hallTrainRounds(_tr),src:'Hall training',
+      el:null,nl:false,nr:false},D,null);}
   S.social.train=null;
  }else if(_tr)S.social.train=null;                 // lapsed unused
  var id='bout_'+l.id+'_'+S.threads.length;
@@ -8305,6 +8417,16 @@ function hallBout(rg,hc){
  S.world.history[hkey].unshift('SKIRMISH — '+t.n+' · ACTIVE (you)');
  persist();T(con.name+' called — '+force.n+' committed'+(wager?', '+wager+' '+curName()+' on the table':'')+'.');
  go('threads');rTL();openT(id);
+}
+/* T-SOC-1 B2 final fix wave (Ruling 17, C2): how many of the buyer's OWN posts a purchased
+   Hall training rides for — tickConds decrements one step at the top of each of the
+   afflicted side's posts, so this is a count of posts, not of game days (that is `days`,
+   the shelf life of the unspent stamp). Prefers the lifetime stamped on the deal the player
+   actually bought; a stamp persisted before the field existed falls back to live canon.
+   The 3 at the end is a floor, not a policy — canon owns the number. */
+function hallTrainRounds(tr){
+ var T=(((D.rules||{}).hall||{}).champion||{}).train||{};
+ return (tr&&tr.rounds)||T.rounds||3;
 }
 /* T-SOC-1 B2: the Champion's rung-③ training. Buys ONE expiring buff, stored as a pending
    stamp; the next combat thread you open picks it up and it is spent. Rides the shipped
@@ -8326,7 +8448,16 @@ function hallTrain(rg,hc){
  if(!off){T(hallCap(rg.name)+' does not train strangers.');return}
  if((S.cur||0)<off.cost){T('Training costs '+off.cost+' '+curName()+'.');return}
  S.cur-=off.cost;
- S.social.train={tag:off.tag,tier:off.tier,untilDay:hc.ctx.day+off.days};
+ /* Final fix wave I6: hc.ctx.day comes from NPCAI.stampAtProfile and is 1-BASED, but all
+    four readers of this stamp (seedCombat, hallBout, hallTrain's own re-buy guard, and the
+    Champion row's "pending" label) compare it against WORLD.dayIndexAt, which is 0-based.
+    The buff and its re-buy lockout therefore ran 4 days against an authored 3, and the UI
+    line said 3. Write on the readers' scale — one scale, both sides. (S.social.bar is NOT
+    touched: it writes AND reads hc.ctx.day, so it is already internally consistent.)
+    C2: stamp the authored `rounds` alongside, so the buff lasts what was actually bought
+    even if canon is retuned before it is spent. */
+ S.social.train={tag:off.tag,tier:off.tier,rounds:off.rounds,
+   untilDay:WORLD.dayIndexAt(S,D,Date.now())+off.days};
  out.innerHTML=hallCap(esc(rg.name))+' takes you through the forms. '+esc(off.tag)+' '+off.tier
   +' rides your next fight — it lapses in '+off.days+' days if you do not use it.';
  rW();persist();
@@ -8342,7 +8473,8 @@ function hallStrike(p,hc){
  var pen=HALL.lawPenalty(hc.ctx,D);
  if(!pen){                                       // lawless hall: this is just how they contest
   var regs=HALL.regularsAt(hc.ctx,D).filter(function(r){return r.present&&r.role==='champion';});
-  if(regs.length)hallBout(regs[0],hc);
+  // M1: unwagered — a swung-first scrap stakes nothing and puts no title on the line.
+  if(regs.length)hallBout(regs[0],hc,true);
   else out.innerHTML='You swing. Half the room joins in. Nobody here minds.';
   return;
  }

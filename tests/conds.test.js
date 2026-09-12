@@ -7,6 +7,7 @@ const { loadThread } = require('./_load');
 
 const THREAD = loadThread();
 const canon = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'heretics-40k-data-v1.json'), 'utf8'));
+const D_ROUNDS = canon.rules.hall.champion.train.rounds;   // Ruling 17 — the authored buff lifetime
 
 // Fix round 1 (T-CMB-1 task 5 review): the cond-staging engine glue (condTagsOf/condEffectsFor/
 // livingAllies/cleanseReach/condIsHostile) lives OUTSIDE the thread-core region — it's UI glue, not
@@ -377,6 +378,48 @@ test('applyCond: no stacking — higher tier replaces, equal/lower refreshes the
   assert.strictEqual(r2.replaced, true);
   assert.strictEqual(state.combatants.m.conds.length, 1);
   assert.strictEqual(state.combatants.m.conds[0].tier, 3);
+});
+
+/* T-SOC-1 B2 final fix wave (C2 + I4). A caller that BUYS a condition outright owns its
+   lifetime as a balance decision, so applyCond takes an optional `left`. This is the whole
+   reason the Hall's purchased training buff could be routed through applyCond at all without
+   re-introducing the bug it was minted with: condDur('Rally',1) is 1, and apply() ticks the
+   posting side's conditions BEFORE it reads condMods, so an instance minted at 1 is spliced
+   off the model before it can ever be felt. Every pre-existing caller omits `left` and must
+   keep getting the registry duration — both halves are pinned here. */
+test('applyCond: an explicit left overrides the registry duration, on both apply and refresh', () => {
+  const state = { pools: {}, combatants: { m: combatant({}) } };
+  const r = THREAD.applyCond(state, 'm', { tag: 'Rally', tier: 1, src: 'Hall training', left: 3 }, canon);
+  assert.strictEqual(r.applied, true);
+  assert.strictEqual(state.combatants.m.conds[0].left, 3, 'the authored lifetime wins');
+  assert.notStrictEqual(THREAD.condDur('Rally', 1), 3, 'and it is genuinely not the registry value');
+  // a same-tier re-apply refreshes to the authored clock, not back to the registry's
+  state.combatants.m.conds[0].left = 1;
+  const r2 = THREAD.applyCond(state, 'm', { tag: 'Rally', tier: 1, src: 'Hall training', left: 3 }, canon);
+  assert.strictEqual(r2.refreshed, true);
+  assert.strictEqual(state.combatants.m.conds[0].left, 3);
+});
+
+test('applyCond: omitting left still takes the registry duration (every existing caller)', () => {
+  const state = { pools: {}, combatants: { m: combatant({}) } };
+  THREAD.applyCond(state, 'm', { tag: 'Rally', tier: 1, src: 'Banner', el: null }, canon);
+  assert.strictEqual(state.combatants.m.conds[0].left, THREAD.condDur('Rally', 1));
+});
+
+/* The bug itself, end to end: a Rally minted at the registry duration is GONE by the time
+   apply() reads condMods on the buyer's first post; minted at the canon-authored rounds it
+   is still there and still contributing. This is the exact before/after of C2. */
+test('applyCond + tickConds: the registry duration dies on the first post, the authored one rides it', () => {
+  const mk = (left) => ({ pools: { A: 9 }, combatants: {
+    hero: { party: 'A', w: [9, 9], conds: [{ tag: 'Rally', tier: 1, left, src: 'Hall training', el: null }] } } });
+  const dead = mk(THREAD.condDur('Rally', 1));
+  THREAD.tickConds('A', dead, canon);
+  assert.strictEqual(dead.combatants.hero.conds.length, 0, 'registry-minted buff is spliced before it is read');
+  assert.strictEqual(THREAD.condMods(dead.combatants.hero).dmgOut || 0, 0);
+  const live = mk(D_ROUNDS);
+  THREAD.tickConds('A', live, canon);
+  assert.strictEqual(live.combatants.hero.conds.length, 1, 'canon-minted buff survives the opening tick');
+  assert.strictEqual(THREAD.condMods(live.combatants.hero).dmgOut, 1, 'and is actually felt on that post');
 });
 
 test('applyCond: Immunity blocks its stated tag', () => {

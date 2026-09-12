@@ -406,6 +406,11 @@ test('trainOffer is gated at the canon rung and prices off the tier wager', () =
   assert.equal(t.cost, HALL.wagerFor(ctx({ tier: 2 }), D) * D.rules.hall.champion.train.cost_mult);
   const t3 = HALL.trainOffer(ctx({ tier: 3 }), D, 3);
   assert.ok(t3.cost > t.cost, 'the institution charges more than the establishment');
+  // Ruling 17 (final fix wave, C2): the offer carries its own combat lifetime in the
+  // buyer's posts, authored in canon — NOT the CONDS registry duration, which for Rally is
+  // one post and is spliced by apply()'s opening tickConds before it can ever be felt.
+  assert.equal(t.rounds, D.rules.hall.champion.train.rounds);
+  assert.ok(t.rounds >= 2, 'a purchased buff must outlive the first tickConds decrement');
 });
 
 test('titleGate opens only at the top rung', () => {
