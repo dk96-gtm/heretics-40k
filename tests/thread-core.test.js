@@ -387,6 +387,21 @@ test('Ruling 10: a lethal thread\'s DoT is unaffected by the nonLethal floor (re
   assert.ok(!state.combatants.m1.yielded);
 });
 
+// Fix round 2 (Ruling 8 minor, DoT half): the same _realHit gap apply's damage branch closed
+// — a fighter already at exactly 1 wound has the post-floor dw land at -0 (dw<0 is false), so
+// gating yield on the FLOORED dw meant a fighter only ever ticked by a DoT (never hit directly)
+// could never yield. Gate on the RAW pre-floor tick (r.dw<0) instead.
+test('Ruling 8 fix round 2: a fighter already at 1 wound still yields from a DoT tick alone', () => {
+  const state = { id: 'b6b', pools: { You: 10 }, nonLethal: true, phase: 'battle',
+    combatants: {
+      m1: { party: 'You', w: [1, 4], conds: [{ tag: 'DoT', tier: 5, left: 2, src: 'x', el: 'Physical' }] } } };
+  const rep = THREAD.tickConds('You', state, canon);
+  assert.equal(state.combatants.m1.w[0], 1, 'still floored at 1 — no actual wound change was possible');
+  assert.ok(!state.combatants.m1.dead);
+  assert.equal(state.combatants.m1.yielded, true, 'but the raw DoT tick still yields them');
+  assert.ok(rep.some(function (r) { return r.who === 'm1' && r.tag === 'DoT' && r.died === false; }));
+});
+
 // The controller's own diagnosis of why this slipped through: every Ruling-8 pin above calls
 // THREAD.apply without its 5th `party` arg, so apply's own tickConds gate
 // (`party!=null&&...`) never fires and tickConds never actually runs inside the real
