@@ -1,0 +1,449 @@
+===== [2022-09-26] Planet exploration =====
+Surveying the planet
+
+Surveying a planet can be performed from the planet's orbit, with the spaceship's sensors, to gradually map the planet's surface.
+
+[img]
+6 days of survey from the planet's orbit.
+
+The efficiency of the survey depends not only on the spaceship's sensor strength but also on the planet's size and cloud cover.
+
+[img]
+The planet as revealed.
+
+Fog of war
+
+[img]
+The line of sight is blocked by terrain.
+
+There are 3 levels of discovery, the first allows to discriminate between land and sea, the second gives details on the relief and the third gives full topographical information.
+
+Danger of landing
+
+[img]
+We are landing on a known and relatively safe location, the danger during landing is minimal.
+
+Landing may be dangerous, especially on an unknown planet. A damaged ship can be tough to land too. Minor issues during landing or reentry may ground the spaceship for a while before being able to take-off again. If a major issue occurs with the propulsion system, the ship may crash instead, leaving the player stranded on a planet.
+
+The expeditionary party
+
+[img]
+Formed a land expedition with all the spaceship's crew.
+
+It is possible to travel across the planet, for now, there is only are some basic interactions (camping, mining, harvesting, and visiting a location in a region) but the framework is in place to expand it.
+
+[img]
+
+[img]
+The group can visit a ship (ERR-1) and the city of Gumborne
+
+[img]
+Visiting the ship "location", from there it is possible to perform some actions such as taking control of the spacecraft.
+
+===== [2022-09-26] Cities, industries and colonisation =====
+Administration
+
+Each city has an administration capacity, the effective range of administered tiles is also influenced by the level of infrastructure and the terrain, thus shaping the territory. 
+
+[img]
+There are a few cities from the same faction located on this planet
+
+Developing tiles
+
+[img]
+Infrastructure is visually represented as roads and may host more population
+
+Each tile has a level of development, mining industries, manufacturing industries, agricultural lands, infrastructures, wilderness, and ruins. The last 2 can't be directly built by a player.
+
+Ruins are created after the destruction of human-built developments, they can be extracted to provide a source of building materials but also blocks higher levels of development.
+
+Wilderness determines how luxurious the flora is and can provide a boost to subsistence economy and agricultural developments. 
+
+[img]
+The city of Bowborne
+
+Industries and recipes
+
+Industries are separated into 3 families, agriculture, mining, and manufacturing.
+
+[img]
+Fluston is an agricultural city
+
+[img]
+
+The total development for each of these industries is the sum of the development of each tile controlled by the city in addition to the bonuses provided by the city's buildings.
+
+Development determines the available jobs, then the available workforce fills them.
+
+It is then possible to choose which industries to focus on, for mining industries this would be choosing which ore/liquid to extract, for agriculture, it will determine which available flora to grow, and for the manufacturing sector, this is all the possible crafting recipes to choose from.
+
+[img]
+
+There is a bit of inertia when allocating the workforce to a recipe/flora/ore, meaning that a sudden change in production will temporarily hit productivity.
+
+Colonisation 
+
+[img]
+
+Cities will sometimes expand beyond their frontier by founding a new city. This occurs under certain demographic, economical, and political conditions and also depends on the desirability of the colonisable lands on the planet.
+
+[img]
+2 factions are colonising beyond their home systems for hundreds of years
+
+ A spacefaring civilization will even try to expand to another planet, or even beyond its home stellar system.
+
+===== [2022-09-26] Universe & history generation =====
+[img]
+
+The galaxy is generated and simulated for hundreds of years, depending on the player's choice.
+
+The top-down view of the galaxy is certainly underwhelming compared to how much is happening under the hood.
+
+To generate a rich galaxy, I have decided to keep as much accuracy as I could during the historic generation. Therefore, every tile on every planet is simulated, and all cities are being simulated with a simplified economy loop.
+
+On the GIF above we notice an intensive colonisation phase for about a thousand year. Then the antimatter crisis occurs and puts an end to interstellar colonisation, and is ravaging every city except the ones in core worlds.
+
+Currently, the antimatter crisis doesn't seem to affect very much the global economy, the disasters are local. I am working on putting basic migrations and trade into the historic generation to both boost the colony's development, and increase economic interdependencies.
+
+Indeed, the current state of the "historic" economy is analog to a society in a permanent state of embargo: it adapts and leans toward a robust yet poorly stimulated economy, with a very slow build up.
+
+[img]
+
+In this galaxy, things certainly didn't go well for a lot of colonies, especially these mining colonies located in a barren world. The lack of any agricultural development usually meant a deadly spiral of starvation and the rapid decay of social order.
+
+For the world that survived, the crisis often meant secessions, political struggles, and even war with other cities on the same planet.
+
+A prolonged state of instability is also a favorable ground for technological regression. 
+
+The raison d'être historic generation is to provide believable (without smokes and mirrors)  worlds to explore. Since a good part of exploration will be to find civilisation, or their remnants, I think the better approach was to simulate history itself. One of the following devlog will cover tile development, among these "development" types there are "ruins". With the historic simulation, it is possible to track the nature of these ruins, which are the product of human-built tile development which has been destroyed.
+
+It is therefore possible to add a historical/exploration value to these ruins. 
+
+[img]
+Overall, it is possible to decide how populated, chaotic, and big a galaxy can be.
+
+===== [2022-09-26] Terraformation & atmospheric modeling =====
+Terraformation is essentially the control of a planet's atmosphere.
+
+In Antimatter, planets are formed given an accretion model, gases and dust agglomerate to form stars and planets and then the atmosphere is formed upon the geologically stabilized planetary body. This involves an atmospheric model. While it probably looks like a joke beside modern meteorologist/astrophysicist atmospheric modelling, it does a very satisfying job for the purpose of the game.
+
+In the last devlog I have briefly presented terraformation. In its core principles, terraformation is extremly simple and there isn't a set of gamey switches and toggles. 
+
+Currently, the only thing you can do is set the desired pressure for each molecule and let your terraformation facility get to this goal.
+
+This is already an astounding amount of complexity, your action are simple, but the ramification and chain reaction of the simulated atmosphere , biosphere, hydrosphere and how the rest of the planet's surface are affected. It gives the player almost endless terraforming possibilities.
+
+But enough with the theory. Let's experiment with our terraforming skills on a  barely inhabited planet. Terraforming is entirely safe anyway.
+
+Krapro is a cold planet in the Jansa system. A small moon is graviting around the planet.
+
+This is an idyllic location for tourism if we exclude the unbreathable atmosphere the -97.7°C mean temperature, the ice-covered surface and the lack of modern facility in the single city on the planet : Photur .
+
+[img]
+
+[img]
+
+[img]
+Brrrrrrr...
+
+The city of Photur (top right corner) hosts our terraforming facility, spewing the desired gases in enormous quantity in the atmosphere. The inhabitants of Photur are not really getting used to this, but you'll discover soon that this will be the least of their problem.
+
+[img]
+
+This planet is covered in water ice. This is fantastic news ! Our scientists worked around the clock and  discovered that melting solidified water with heat produces liquid water.
+
+[img]
+
+Currently the planet isn't great for any human beings.
+
+We have enough pressure, there isn't any toxic gases, but the temperature range is too cold, and there isn't enough oxygen.
+
+Let's add some oxygen (0.2bar), I have also added methane which has a very strong greenhouse effect and isn't very toxic.
+
+Here adding carbon dioxyde would be inefficient has we need to warm up the planet quite a lot, and we would quickly reach a toxicity level.
+
+[img]
+
+Now let's wait for about 40 years.
+
+[img]
+Life !
+
+[img]
+Issues with the planet's moisture
+
+[img]
+A good chunk of the icesheet melted and moisture stabilised
+
+[img]
+
+With 84 differents species of flora, the biosphere is thriving.
+
+[img]
+
+The city of Photur is also thriving, and its inhabitants quickly developped their dormant amphibious genes.
+
+(Currently destruction of city isn't entirely implemented)
+
+[img]
+
+Krapro is now a shiny earth-like planet ready to be infested by humans.
+
+[img]
+
+===== [2022-09-26] Summer Devlogs =====
+I did it again... Postponing a single devlog and then getting overwhelmed with the number of subjects to talk about. 
+
+So I'll spread that burden in 9 devlogs, perhaps 10 if there are too many leftover features.
+
+I'll post the first one today "Terraformation & atmospheric modeling" , and then the others shortly.
+
+1-Terraformation & atmospheric modeling
+
+How terraformation is implemented and how the atmospheric modeling was significantly improved.
+
+2-Universe & history generation
+
+How the galaxy's history is dynamically generated through hundreds of years, starting from the first wave of colonisation to the antimatter crisis.
+
+3-Cities, civilisations and colonisation
+
+How cities are growing, how they decide to administrate new tiles, how new cities are settled, and how industries and tile development work.
+
+4-Interfaces, better visuals & stellarium
+
+Going through the deep revamp of the interfaces. Improved the display of the galaxy and the planisphere. A new window : stellarium.
+
+5-Planet surface exploration
+
+Fog of war, surface parties, landing of spaceship, land/sea travel on the planet surface.
+
+6-Fleet & carriers
+
+Docking, and carrier operation and storage of ships were expanded, fleets AI and actions were expanded, allowing much more complex tactics.
+
+7-Missions
+
+A lot more mission types, better UI, more triggers, and minimal guidance (no GPS though) when it is relevant.
+
+8-The scale of Antimatter, performances, and multithreading
+
+Going through benchmarks, with a huge universe, terrifying battles involving hundreds of spaceships, and ridiculous scenarii. Talk about multithreading and how Antimatter has very satisfying results in performances and the usual self-congratulation session.
+
+9-AI, chapter II
+
+The state of modular AI since the last devlog about the subject, and probably another round of self-congratulation.
+
+===== [2022-09-26] A glimpse of the terraformation simulation =====
+Just a tiny, out-of-context update showing an example of how a planet itself continues to be simulated, even after the universe generation.
+
+This is the terraformation attempt of a cold martian world covered by water ice.
+
+I am diffusing a massive amount of CO2 into the atmosphere, over time.
+
+The seemingly immediate rise of water at the end is the result of a rapid chain reaction provoked by the ice sheet melting (thus reducing albedo and also releasing even more gas, increasing temperature then melting more ice etc...) 
+
+[img]
+
+This is another example of climate control (again, Co2 added) to increase the temperature. Of course, any molecule can be added/removed.
+
+[img]
+
+Some results are quite unexpected, chain reaction and interwined relation between gases, temperature pressure etc... can create very complex situations.
+
+===== [2022-05-13] Video devlog with gameplay ! =====
+
+
+===== [2022-06-08] 2 years of dev and all's well ! =====
+Hello everyone. This is a short update to inform you that for the 2 years of work (I have started working on Antimatter the 15th of april in 2020.) I will be doing a commented video (planned for the next weeks)  showing off gameplay and I'll be talking in details of the last 2 months of work (hence no redundant devlog has been posted).
+
+I will also talk about my roadmap and what to expect for the coming months.
+
+===== [2022-02-15] Space stations, production chains, trading, mining. =====
+Mining
+
+Every tile in a planet/asteroid has potentialy one or more ore deposit. Currently, on-site mining operations are performed by the inhabitants of a region/ city given their racial productivity (for now only humans are represented).
+
+This region has rich iron and copper deposit, and provides an estimated base value of $8.4 per mining power/day. Forgive the weird decimal places, I have a tendency to neglect formating :/. 
+
+[img]
+
+Planet side mining yields ressources such as iron, copper, and uranium ore, gold, petrol, water, coal and stones.
+
+Asteroids usually yield chondrite, an ore that can be processed to a collection of essential ressources.
+
+[img]
+
+Past weeks work was focused on improving the generation of deposit and creating a good AI for mining operations. Now mining ships are dispatched to profitable deposits, will land on the planetary body to start the operations and drop off theirs mined ore. A complete mining run, in the same system, can takes weeks to complete.
+
+[img]
+
+Solar energy
+
+A good chunk of the economy in the antimatter world happens in interplanetary space. The industry, especially power hungry ones when it involves ore smelting, require a good access to energy. I have implemented solar panels modules of differents sizes that fits to the auxiliary slot, they provide an energy production given the star distance and brightness. Therefore, such industries tend to stay close to their star. 
+
+A chondrite foundry.
+
+[img]
+
+This makes any star vicinity a strategical location to protect, since that's where the industry will be located.
+
+I am planning to implement other types of energy production.
+
+Production lines
+
+I don't think I have ever mentionned the production/crafting part of the game, at least not in much details.
+
+This was greatly improving in the past months and it is time to show its current state. While it involved significant work, such system has not much novelty compared to what we see in any other game that feature a crafting system.
+
+[img]
+
+I put a great deal of thinking, to make sure that developped feature are not leading to a gameplay dead-end, and once again the seamingly remotly relevant character system, and the bridge feature are exploited. The needed workforce and the productivity efficiency is directly impacted by the engineering crew and officers. 
+
+Hyperspace and gravity well
+
+It is worth detailing more how hyperspace works in Antimatter.
+
+Hyperspace travel uses a non-relativist type of travel. Gravity wells, such as a star or a planet (most specifically stars) have a significant influence on the reliability of such travel. As such, the nominal faster-than-light speed is dramatically decreased by the gravitational influence.
+
+I have witnessed the immediate effects on gameplay, the inner system can be a much scarier place since evading in hyperspace is less viable, and trade less profitable since it takes much more time to travel.
+
+That's certainely a good balance for piratery as well, combat are much involving at such place, but preys less likely to evade.
+
+Combined with how asteroids belts are generated and how solar energy collections efficiency is computed you probably see where it's going. There is an organic economical pattern that builds by itself, there are "spots" in space ideal for a specific purpose.
+
+Foundries
+
+Chondrite processing is the first step to produce a spaceship, as it turns extracted chondrite to a number of byproducts . It is likely that the chondrite industry will be a dominant one in an asteroid rich system.
+
+Other foundries exist for other type of ore.
+
+Spacefuel
+
+Water is a valuable ressources extracted from chondrite and any bodies of water or ice sheet, it is used in the production of spacefuel at the moment.
+
+From ore to spaceship
+
+A complete production chain from ore to spaceship is completed !
+
+from ores to smelted/ transformed materials, to more intermediate products and finally spaceship, there is now a full path to produce any of the existing spacecraft.
+
+[img]
+
+[img]
+
+Trade node
+
+Trade nodes are not a new thing in Antimatter development. I have put significant work on improving the simulation and now trade nodes are editable for target stock and price.
+
+[img]
+
+Supply/demand factor and by extension the price is not exactly a fixed in time formula but takes into account some psychological aspect in assessing the state of the market.
+
+My biggest concern when playing some released game is the lack of inertia, or rather the robotic impact on supply/demand after any trade operation.
+
+(non-virtual) Trade nodes in Antimatter are linked to an economical modules that does a number of tracking and estimation to help evaluate a ressource's balance, but more importantly how it will evolve in the future. The demand won't skyrocket after a single day of shortage if it estimates that this situation is temporary for example, or if there are enough in-bound orders.
+
+This also prevents sustained oscillations induced by the latency in order fullfilments.
+
+[img]
+Antimatter trade system does NOT work likes this.
+
+Some trade nodes are virtual, I am merging trade nodes into virtual ones that group a node for a whole planet with its cities, a system with all planets and space stations, and galaxy that merges everything.
+
+Opportunities are visible as either the red bar that implies a shortage or the green bar for surplus.
+
+The trade nodes show a global value of combined shortages and surplus. Significant variation mean opportunities.
+
+[img]
+A system wide virtual trade node. this is a compilation of every planet level virtual trade nodes.
+
+------------------------------------------------
+
+The pace of my work has significantly evolved during the past months, the good news is that development is easier than ever and it contines on this trend. I am so glad that I've decided to focus head-on to the core engine rather to more fun stuff.  
+
+Now the fun begins onto strong foundations, I've got a personal roadmap for the next months, fleshing out a complete gameplay in the spatial environment, while having a working abtracted version of surface cities.
+
+------------------------------------------------
+
+Next update will focus on corporations and factions, these are the organised AI entities, a level above individual AI agents (characters and character driven spaceships).
+
+===== [2022-02-10] Modular spaceships =====
+It was explained in another devlog how spaceships were separated in modules.
+
+This feature was even more expanded and polished.
+
+Modules as physical parts
+
+[img]
+
+[img]
+
+Now, every single module has a physical location on the ship, it can be either on the front, rear, right, left side or in a central position. I have abstracted this to 5 directions for performance prevention, computation can be easily expanded to an accurate direction but this might slow down the late/very large games later.
+
+A module's location is important, since I am modeling the direction of the impacts and the damage propagation.
+
+Additionally, modules can be internal or external. External components are not protected by the hull and its armor, but only by the module's slot own armor.
+
+[img]
+
+Damage modelling
+
+[img]
+
+Damage calculation takes in account the direction of the projectile and the location of the modules on the spaceship. Armor, hull and shield each have their own purpose. 
+
+The energy shield is the first layer of defense, it takes all the damages it can and doesn't let any of the absorbed damage through the hull and components.
+
+The hull will take excess damages not absorbed by the energy shield minus the hull's armor. At this point, the external modules are vulnerable and will take damages.
+
+The hull, contrary to the shield provides a variable defense against projectiles. If something hits the ship's hull, it is possible that some of the damages will penetrate to one of the internal module. A very damaged hull won't provide much protection to components and the whole ship will be shaken after every hit, the mondane low voltage electrical wiring will burst into dangerous sparks, and all the seemingly strong space plumbering will sundenly break down in absurd manners.
+
+[img]
+
+The component slot itself has an armor value, so choosing the right location for a module is key to survivability. 
+
+Damages to components has of course the effect you'd expect on the spaceship's performances.
+
+[img]
+
+[img]
+
+Components are repaired over time by the crew, the engineering efficiency influences the repair rate, being docked at a spacestation significantly improves the repair rate.
+
+Slot flexibility
+
+The slots aren't necessarly designed to host any modules. For exemple on the Forager ship, two of the cargo modules are exclusively designed to host a mining drill module. Nothing else can be installed on this slot. 
+
+A slot can be flexible but more optimised to work with a specific module.
+
+And finally a slot can be entirely flexible.
+
+Flexibility VS efficiency
+
+The other key difference between dedicated, optimised and a flexible slot lies in the required crew modifier. For a dedicated slot the needed crew is halved, for a optimised slot the needed crew is either increased or decresed by 25% wether or not we have the optimised module fitted in. And for a flexible slot, no bonus/malus applies .
+
+Since the crew wage plays a major role in a ship's operational cost, this effect has major consequences on profitability.
+
+Bad maintenance
+
+Faster than light travel induces a lot of mechanical stress on the spaceship's modules. A good maintenance, provided by an efficient engineer crew will, in most cases,  prevent a module to suddenly fail during hyperspace travel. This possibility of failure adds a lot of dangerosity to ill-prepared long range travels.
+
+An overhauled spaceship UI
+
+Working on UI takes a lot of time on planning and tweaking, especially when the goal is to create something that scale well and doesn't suck time later in development.
+
+The spaceship UI displays the damage control and component details and interaction.
+
+Another cool feature is the damage control being displayed directly on the ship, allowing a quick overview of the damages thanks to a hotkey/toggle.
+
+[img]
+
+------------------------------------
+
+That's it for this devlog, and I am now drawing a line for spaceship's main development cycle. The last updates have certainly opened the gate to a lot of new features and the damage model was a prerequisite to implement piratery and law enforcement.
+
+This development cycle also implied a lot of background work in the spaceships data structure, to keep things as moddable as possible. 
+
+The next devlog, in 2 weeks, give or take, will focus on the following subjects : full spaceships production chain, station building, expanded trade nodes, regular shipping lines, mining and harvesting.
+

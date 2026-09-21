@@ -1,0 +1,59 @@
+Organisations are administrated by such AI characters and of course, internal politic has a preponderant role, since most organisations share power among its members.
+The player can create his own organisation from scratch or join one and climb the political ladder.
+On this devlog, I will cover what was recently added, an old devlog details the past work of finances, and corporation AI.
+The emblem
+I'll start with the aesthetic part, the organisation's flag is entirely customizable (and easily moddable).
+
+The emblem, primary and secondary color can be chosen freely. Generated organisation will have a preference in color combinaison and emblem type based on its ethics and type, meaning that emblem will most of the time be aesthetically coherent with the organisation. 
+The organisation's color also affect the clothes color of its members.
+Policies &amp; regimes
+Policies are the most important part and the building blocks of an organisation, these will define what kind of organisation it is, from a familial cooperative to a galactic empire.
+
+The oranisation's ethics are directly computed with all enacted policies, meaning that the constituting members are the primary forces pressuring the organistion toward certain policies, since each individual has his own ethics.
+Policies affect the organisation's internal politics, its goal, administration, succession,  regime, representation, financial aspects etc... It combines all you can expect of a political regime.
+
+For example the "Religious Order" policy fits well for a theocracy, with this policy enacted a member will need an adequate religious education traits to claim a political seat.
+
+Generated organisations will follow certain archetypes, with some variety, this determines the usual set of policies and the rank's titles and chamber's names. It also affect the flag aesthetics.
+Absolute kingdom, holy empire, authoritarian republic, democratic republic, empire, feodal kingdom, horde, parliamentary monarchy, corporation, private company, public company, outcasts, pillagers, privateer, slavers are the current regime templates.
+
+Politics
+Many organisations will have a low chamber, a high chamber and a supreme chamber and finally the leader,  each having certain privileges, requirements and voting power.
+
+Each policies must be approved by the voting members, some dictatorial regimes will grant absolute or overwhelming power to the leader, or some regimes will grant equal power to all members.
+A member will vote according to his ethics and his perception of the whole reform package, therefore, concession can be made. The voter will also consider his opinion of the reform's proponent, and last (but not least!) he will above all favor reforms that gives him personal benefits or power.
+Influence
+The influence represents a member's capital in the organisation. For a commercial corporation with dividends this is comparable to public company stocks, this is more abstract for other types of organisations where the influence will often determine the voting power and the capacity to allocate the organisation's assets, such as spaceships when forming a fleet. This also determine what kind of affectation a captain can have, higher influence mean that a candidate can be granted a larger spaceship.
+
+Influence is gained by fulfilling missions for the organisations by performing profitable trade deal on its behalf by destroying enemy's assets or by directly injecting money, when this is possible.
+Influence is lost with failed mission, debts, bad trade deals and by losing organisation's assets under your control.
+Diplomacy
+A barebone diplomacy system is in place, with very basic stance : allied, neutral, enemy and a tributary status (used for extorsions from pirates).
+
+The rest of the iceberg. The future.
+This is a rather non exhaustive explanation of the political system, there are whole game mechanics that I have implemented, such as the generation of Political Power that is dependent on many factors such as policies and skill of the members and leader, corruption, potential corruption, administrative capacity and cost, The list goes on... This devlog is hopefully a good introduction on how organisations will work.
+A lot remains to be done, especially for the diplomacy between organisations, more political actions and how influence works when governing a city or a territory, and a better AI for the organisations and its members.
+For now, the goal is to have a functioning force that creates some dynamism, and challenges the player."/>
+
+  var _sift = _sift || [];
+  _sift.push(['_setAccount', '637102']);
+  _sift.push(['_setUserId', '']);
+  _sift.push(['_trackPageview']);
+
+  (function() {
+    function loadSift() {
+      var insertScript = function(url) {
+        var sift, s;
+        e = document.createElement('script');
+        e.type = 'text/javascript';
+        e.async = true;
+        e.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + url;
+        s = document.getElementsByTagName('script')[0];
+        s.parentNode.insertBefore(e, s);
+      };
+      if (root.visitor_id) {
+        _sift.push(['_setSessionId', root.visitor_id]);
+      }
+      insertScript('cdn.siftscience.com/s.js'); // device
+    }
+    if (

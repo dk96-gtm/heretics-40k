@@ -1,0 +1,270 @@
+===== [2020-10-18] Thanks a lot ! =====
+Together, we nuked the initial goal and blasted through the terraforming stretch goal and we made the second stretch goal a close call.
+
+Join the community
+
+Join now the growing community behind Antimatter, follow the updates and debate about the game or important topics like which of the elephant or the hippopotamus is the strongest?
+
+[img]
+https://discord.com/invite/2v42fgS
+
+I'll probably stick to this discord server as I don't want to spread too much. You can also follow me on twitter.
+
+Some credits
+
+I will remember this month as the one I have said thank you the most. And also receive the most "congrats" like I have just fathered a kid. Well, Antimatter is indeed my kid, it is a monstrosity of strange and complex game concepts.
+
+A lot of the initial steam comes from the backers from the first unsuccessful campaign. They made sure to back Antimatter at day 0 and it worked!
+
+Many backers come from the Bay12 forum. Bay12 is the official forum for Dwarf Fortress, an incredible 2 man's project simulating an entire fantasy world and allowing the player to build a dwarven colony.
+
+Another forum that brought a lot of backers is Aurora 4x. Aurora is a very complex 4x game with very detailed ship combats and customization. It is developed by a single person Steve Walmsley.
+
+Both forums are populated by gentlemen so feel free to join them.
+
+Then there are some spontaneous articles like the ones in Gamers Global and Gaming for Linux, so thanks to the journalists.
+
+All the kind words and moral support is very valuable, especially for a one-man project, I would feel a bit isolated without it. Some peoples expressed their intention to support the project without having the personal fund themself.
+
+Last but not least, credit is due to the backers who supported the project with outstanding contributions. I won't disclose any name now to keep their privacy, but peoples should know that the 10k€ stretch goal wouldn't even be a thing without 2-3 generous donators.
+
+I am a backer, what's next?
+
+You will soon receive a mail with some details related to your reward and we will also see together the distribution of roles in the discord server, WHICH YOU SHOULD HAVE ALREADY JOINED BY NOW! :P
+
+How am I developing the game?
+
+Some asked how such an ambitious project could be funded with such a little budget, the simple answer is that I am keeping a full-time professional activity, in short, there is no budget burn rate as money can be spent wisely and slowly and any external sourcing is weighted at market value, and any outstanding expenses will be covered by my personal contribution. Also, an important element is that I occupy all key roles in development, so as long as I am alive and sane with most of my fingers and a computer I will be able to continue the game. Of course, it means it will take a long time until the game will leave a beta stage, but I am planning a first playable early version of the game during Q1 - Q2 2021.
+
+On a more personal note, my professional situation just changed for the best, as I just been employed by a very reputable studio, as a programmer, who fully respects that I pursue this project and for a job that I have really chosen.
+
+Hiring
+
+Freelancer contract.
+
+-A low res pixel artist, static and/or animated (asap)
+
+-A Concept artist for illustration (in about 1-3 months)
+
+Please DM me on discord with your portfolio.
+
+Currently, no budget will be allocated to other tasks, and applications in a field that is different from the ones enumerated will be stored.
+
+Presenting the project of a fellow developer
+
+He made some shout out of the game and was the first to pledge. "Boot Danubien" is developing an adventure game and attempted a Kickstarter campaign some months ago, about the same time as my last campaign. He failed at his first attempt, just like me. But he is persevering and is continuing on his project and clearly made a lot of progress. 
+
+[img]
+
+A free demo is available here.
+
+He will probably launch his campaign in November here is the page.
+
+And his twitter where he often posts updates. 
+
+Did I forget something? Certainly.
+
+Here ends the campaign. 
+
+Thanks to all backers for your generosity.
+
+===== [2020-10-15] 12 500€ Stretch goal - Game editor and further modding support =====
+We made it to 10 000€! This is such an important milestone and I have so much gratitude for those who believe in the project. This is still the easy part, finishing and expanding Antimatter will be the next, and biggest challenge.
+
+Game Editor
+
+This is a rather technical stretch goal, it does not sound very fancy but will open up huge possibilities for the game.
+
+The game follows a very modular architecture and allows the modding of most contents and even allows scripting. But for those who don't know XML or programming, this might sounds complex.
+
+For this next stretch goal, I will make a fully documented (in all core languages) editor allowing to quickly modify the game data and to create your own custom experience or mod with a friendly interface. And modders will have an efficient tool to make large scale modification without bugs.
+
+This will also help the development of the game as I'll use this shiny tool myself. For now, I use my own method of adding content.
+
+Mods
+
+Mod support will be a very important part of Antimatter, I have often seen mods surpassing the base game, and I wish the same for Antimatter. Many times I even bought a game just for one of its mod.
+
+(Here is a nice project I have backed from a talented team of modders: Terra Invicta  . Free promo to them!)
+
+PS : I am busy right now so I cannot edit the stretch goal visual on the front page just yet, so don't worry I am aware my frontpage is outdated and will edit it this evening ;)
+
+===== [2020-10-15] Jobs, populations, education and policies. =====
+Hello everyone and welcome to the new backers.
+
+It seems the campaign is on the rail to reach the 10k€ goal !
+
+Today's update is about very important pivots in the city-builder : jobs, population, education and policies, this involve a lot of complexe interactions to support the economy system of the game.
+
+I worked the past two weeks on these topics, and after dozens of source files and about 10 000 lines of codes, I am getting close to completition.
+
+There is still a lot of work to make everything work together, there is so much interdepency that it is hard to evaluate how well the whole system works, it will surely need a lot of work on balance.
+
+Populations
+
+Each population is separated by its job and race (yes other sentient life will be implemented). 1 population represent an individual capable of working, it exludes childrens, the elderly and the sick and any excluded gender (I will introduce discriminatory policies on genders).
+
+This is a work in progress of the population UI, there is also an elite class we can't see on this picture. Some icons are reused as placeholders for different jobs.
+
+[img]
+WIP of the population panel.
+
+Jobs
+
+Jobs have an education requirement and are used for industries. For exemple, one factory may need 100 laborers and 25 technicians to operate correctly, therefore, the building will generate a demand for these jobs.
+
+However, each job has a weight value and may be marked as essential. For exemple a research facility may need 100 laborers, 40 technicians and 30 scientists but the laborers may be considered non essential or/and will have of course much less impact on the productivity. Scientists on the other hand are marked as essential, and a research facility will not operate at all if no scientist is employed.
+
+[img]
+
+Now the good question is how the population reacts to job supply ?
+
+If a population has enough education, and if the happiness of the targeted job is high enough and if the job is in supply, the population may have a chance to promote to this job. On the other hand if a job is destroyed, someone can become jobless. A population that stays jobless too long has a risk of being demoted to a job (still as a jobless though) of a lower rank. Of course you can counter this with unemployment benefits and other welfare policies. There is also a chance that he will get what I call an « horizontal promotion » meaning he will be employed at a different job of the same social rank.
+
+Therefore, you don't want a jobless population, for obvious reasons, but also because it consumes much less consumer goods, may cost money for welfare and it indicates that your economy is too unstable or shrinking in a sector. It takes times for a population to change job, and this is a poor utilisation of education ressources if they end up doing a job at the lowest rank.
+
+Consumers. Vital, basic and luxury needs.
+
+Each race has preset vital, basic, and luxury needs. Same for culture, social rank (determined by job) culture and job.
+
+The needs of a population is the additions of all these needs, it can be any goods and the game will have a broad range of good recipes to produce.
+
+Vital needs is mostly food and clothing. It affects health which in turns affect mortality rate and hapiness.
+
+Basic needs are things such as furnitures. Each fullfiled need adds hapiness to the population.
+
+Luxury needs is often the basic items needed from a upper class, it provides happiness * the fullfilment level of basic needs. It means luxury needs will only impact happiness if the basic needs are fullfilled as well.
+
+Consumption of goods has a very important impact to the economy, each consumed goods gives 25% of its base value back to the city. This is the sales taxes / VAT. A stimulated and well supplied economy is key to generate cash, if you have ever played any of the Anno game you know how the system works.
+
+Education
+
+Educating a population is key for an advanced economy, the instruction value of a population gives more chance to be promoted if a job is needed. It will also provide some bonus to research when I will expand this.
+
+Education also serves as a propaganda tool, to influence the ethic tradition of the populations.
+
+3 kind of education focuses are now available :
+
+  
+ Propaganda : big bonus to tradition shift toward  the city ethics. Small bonus to instruction .
+
+  
+ Balanced : Medium bonus to tradition shift toward  the city ethics. Medium bonus to instruction .
+
+  
+ Open minded : Small bonus to tradition shift toward  the city ethics. Big bonus to instruction .
+
+Slavery / serfdom
+
+Slaves is one particular hum … « job », they can fullfill any job as long as the instruction rating of this population is enough. However the amount of jobs required is doubled for each rank above the lower class (the one with laborers and soldiers etc ...). Slaves don't cost any money to the facility, so this is great for you. and a bit less for the slave himself as this job position does'nt provide much benefit to him. Allowing or enforcing slavery is usually a huge shift toward an « Elitist » ethic.
+
+You will be able to acquire slaves through trade with or by "interacting" with the native populations and also directly in your society. One that I have already implemented is a policy that force any beggars job type, (which is at the bottom class and is usually the consequence of a very poor economy ) to be slowly "promoted" to a slave job. It is basically a society where you are not allowed to be poor. I will add the same policy for prisoners as well.
+
+This happened often in history, when being dressed too poorly could encourage roaming slavers to eagerly offer you the job position. This was the good old time of full employment.
+
+Policies
+
+I have already talked about policies in this old post, I have improved the interface and also included the ethic shift consequences of adopting a policy.
+
+[img]
+
+Policy will be the core of managing your city as my main goal is to make city-building a macro-managment task, not a micro-managment nightmare with pop-up windows every seconds.
+
+Terraforming
+
+I Added a tool to dig the terrain or create flat surface for building placement or to create a draining system.
+
+[img]
+
+I improved the building production panel, we can see the recipe and the productivity that depends on job and ressources fullfillment.
+
+[img]
+
+The future of the UI
+
+Once all the data are binded to the interface, I will conduct an overhaul of the user interface to make it more generic and consistent.
+
+===== [2020-10-13] Halfway ! =====
+First of all thanks to all the new backers !
+
+We are halfway through the end of this campaign, just as the we have  reached half of the strech goal.
+
+It is going to be hard to reach this strech goal, but I am not in control of all the variables, there are still some cards to play and it turns out that luck can play a big role in such a small campaign.
+
+I haven't wasted my time since. Putting the city-builder module into full production and committed to fulfill the harsh deadline I've put on my shoulders, I am expanding the logic behind the complex demographic simulation of the game, the education, ethics, policies along with industry. I am now weaving all of this together and it turns out great ! I will do a detailed devlog sunday if all goes as planned and when I have consistent interface to show.
+
+I also started developping the gameplay around the city-builder, defining what will be the stick and carrots for the player. I will make some user interface before telling you more details about this.
+
+A word about transparency 
+
+Since there are nothing protecting backers and due to the nature of the project and while I want to encourage such generosity, and (who knows ?) provide a brighter look on any solo devs on kickstarter, I have decided to give financial transparency on any fund backed to the project.
+
+A condensed financial report will be issued every trimester to the backers, giving insight of the project health and direction.
+
+===== [2020-09-27] First week ! =====
+Thanks a lot for the new backers !
+
+The result of this first week of campaign is encouraging. While the goal was quickly reached,  we are getting closer and closer to the 10 000€ stretch goal for planet-wide terraforming, It will probably be a close call though.
+
+As always, if you want to recommend me a forum, a reddit or any community where I can pop in and talk about Antimatter, or if you know anyone who could talk about the project, I am all ears.
+
+Geoffroy.
+
+===== [2020-10-13] Ethics and traditions. =====
+Yes... I should tweet , post of forums etc... to promote the game, but this sunday I couldn't hold myself to setup the data structures and code some basics stuffs related to population types (and social classes), education and ethics.
+
+While I have something to show (found / made some icons and created the UI layout) here is a bit of informations on how ethics and traditions will work.
+
+[img]
+WIP
+
+A while ago, I have created the policy system  (Details here (disclaimer : dark humour))  , and added a bunch of exemples.
+
+Adopting policies will shift one or several city ethics toward a value. The player will be free to change any policies but if the state ethics shift too much from the population tradition (represented as a colored bar) it will generate some dissent among it.
+
+Education will serve multiple purposes. One of it is to shift the tradition value of the populations to the state ethics. 
+
+Therefore, big political changes in contradiction to the populations traditions or immigration from a culturaly divergent planet will cause unhappiness in the population as very different ethics will blend into the existing one.
+
+Most ethics on the screenshot are self-explanatory but the latest needs some clarifications : specieism is how a civilisation treats other species, be it sentient or not, in the first bunch of policies I mentionned, it may be affected by banning meat.
+
+===== [2020-10-13] How and when the game will be delivered to you. =====
+Modules of the game will be released and plugged together throughout the developpement until beta testing and full release of the game.
+
+This developement paradigm specifically tailored for a crowdfunding has multiple purposes :
+
+- Play the game as soon as possible and eliminate the weariness of very long developpement  cycles.
+
+- Early fullfilment of rewards.
+
+- Reduce the early alpha duration as each modules will have its own alpha - beta - release phases.
+
+-Provide positive cashflow to continue developpement in good conditions as modules will have a public release phase.
+
+The first module to be delivered :
+
+City-builder (Q1/Q2 2021)
+
+ -The first module will consist of the city-builder part of the game only, I will deliver a full and enjoyable gameplay experience, limited to a colony on a planet (and its 10 colonisable regions). The modules will of course beneficiate from the very complexe universe generation part by providing a good variety of planets.
+
+===== [2020-10-13] German translation of the game. =====
+Due to a very active german gaming community on simulation games, tycoons and city-builder genre. And while I noticed that many backers come from Germany. I have calculated the budget for a professional translation and decided to include german as one of the core language in the game along with english and french.
+
+A core language means I will conduct a professional and quality translation / proof reading of all textual elements for it.
+
+===== [2020-09-18] 100% Funded! A new strechgoal ; Terraforming ! =====
+This is it, the project managed to take off thanks to your timely support ! 
+
+Huge thanks to all the generous, to this merry crowd of haughty plebeans, spoiled lords, megalomaniac kinglets ... sigh* 
+
+[img]
+
+===== [2020-09-16] An incredible first day ! =====
+The project raised 1983€ in 24 hours reaching 80% of the goal.
+
+Thanks a lot for your overwhelming support. I really did NOT expect such support, it is now almost certain that my project will be financed. This is a great day for me, and a strange one as well, the feeling that a new chapter in my life is starting, and it is titled "Antimatter".
+
+Let's keep the pressure and spread together the word ! Every penny above the goal will be used for more contents, any reward taken adds by itself more contents. 
+
+I will reveal this evening the next stretchgoal, stay updated !
+
